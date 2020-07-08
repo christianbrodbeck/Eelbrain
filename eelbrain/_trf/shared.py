@@ -10,13 +10,13 @@ from scipy.linalg import norm
 
 from .. import _info
 from .._data_obj import CategorialArg, NDVarArg, Dataset, NDVar, Case, UTS, dataobj_repr, ascategorial, asndvar
-from .._utils import LazyProperty
+from .._utils import LazyProperty, PickleableDataClass
 from .._utils.numpy_utils import newaxis
 
 
 @dataclass
-class Split:
-    train: np.ndarray
+class Split(PickleableDataClass):
+    train: np.ndarray  # (, 2) array of int, segment (start, stop)
     validate: np.ndarray = None
     test: np.ndarray = None
     i_test: int = 0  # Index (to group splits with the same test segmet)
@@ -44,6 +44,140 @@ def merge_segments(
     return np.vstack(out_segments)
 
 
+@dataclass
+class Splits(PickleableDataClass):
+    splits: List[Split]
+    partitions_arg: Union[int, None]
+    n_partitions: int
+    n_validate: int
+    n_test: int
+    model: CategorialArg = None
+    segments: np.ndarray = None  # Original data segments
+    split_segments: np.ndarray = None  # Data subdivision for splits
+
+    def __repr__(self):
+        if len(self.segments) == 1:
+            desc = "continuous data"
+        else:
+            desc = f"{len(self.segments)} data segments"
+        items = ['']
+        if self.n_validate:
+            items.append(f'n_validate={self.n_validate}')
+        if self.n_test:
+            items.append(f'n_test={self.n_test}')
+        if self.model is not None:
+            items.append(f'model={dataobj_repr(self.model)}')
+        items = ', '.join(items)
+        return f"<Splits: {desc} split into {len(self.split_segments)} sections{items}>"
+
+
+def split_data(
+        segments: np.ndarray,  # (n, 2) array of [start, stop] indices
+        partitions: int = None,  # Number of segments to split the data
+        model: CategorialArg = None,  # sample evenly from cells
+        ds: Dataset = None,
+        validate: int = 1,  # Number of segments in validation set
+        test: int = 0,  # Number of segments in test set
+):
+    """Split data segments into train, validate and test segments"""
+    if partitions is not None and partitions <= validate + test:
+        raise ValueError(f"partitions={partitions} with validate={validate}, test={test}")
+    partitions_arg = partitions
+    assert validate >= 0
+    if validate > 1:
+        raise NotImplementedError
+    assert test >= 0
+    if test > 1:
+        raise NotImplementedError
+    if len(segments) == 1:
+        if partitions is None:
+            partitions = 2 + test + validate if test else 10
+        if model is not None:
+            raise TypeError(f'model={dataobj_repr(model)!r}: model cannot be specified in unsegmented data')
+        n_times = segments[0, 1] - segments[0, 0]
+        split_points = np.round(np.linspace(0, n_times, partitions + 1)).astype(np.int64)
+        soft_splits = split_points[1:-1]
+        split_segments = np.vstack([split_points[i: i+2] for i in range(partitions)])
+        categories = [None]
+    else:
+        n_segments = len(segments)
+        # determine model cells
+        if model is None:
+            categories = [None]
+            cell_size = n_segments
+        else:
+            model = ascategorial(model, ds=ds, n=n_segments)
+            categories = [np.flatnonzero(model == cell) for cell in model.cells]
+            cell_sizes = [len(i) for i in categories]
+            cell_size = min(cell_sizes)
+            cell_sizes_are_equal = len(set(cell_sizes)) == 1
+            if partitions is None and not cell_sizes_are_equal:
+                raise NotImplementedError(f'Automatic partition for variable cell size {dict(zip(model.cells, cell_sizes))}')
+        # automatic selection of partitions
+        if partitions is None:
+            if 3 <= cell_size <= 10:
+                partitions = cell_size
+            else:
+                raise NotImplementedError(f"Automatic partition for {cell_size} cases")
+        # create segments
+        if cell_size >= partitions:
+            soft_splits = None
+            split_segments = segments
+        else:
+            # need to subdivide segments
+            if model is not None:
+                raise NotImplementedError(f'partitions={partitions}: with model')
+            elif partitions % cell_size:
+                raise ValueError(f'partitions={partitions}: not a multiple of n_cases ({cell_size})')
+            n_parts = partitions // cell_size
+            split_segments = []
+            soft_splits = []
+            for start, stop in segments:
+                split_points = np.round(np.linspace(start, stop, n_parts)).astype(np.int64)
+                soft_splits.append(split_points[1:-1])
+                split_segments.extend(split_points[i: i + 2] for i in range(n_parts))
+            soft_splits = np.concatenate(soft_splits)
+            split_segments = np.vstack(split_segments)
+    # create actual splits
+    splits = []  # list of Split
+    test_iter = range(partitions) if test else [None]
+    validate_iter = range(partitions) if validate else [None]
+    n_segments = len(split_segments)
+    for i_test in test_iter:
+        for i_validate in validate_iter:
+            if i_test == i_validate:
+                continue
+            train_set = np.ones(n_segments, bool)
+            # test set
+            if i_test is None:
+                test_segments = None
+            else:
+                test_set = np.zeros(n_segments, bool)
+                for cell_index in categories:
+                    index = slice(i_test, None, partitions)
+                    if cell_index is not None:
+                        index = cell_index[index]
+                    test_set[index] = True
+                train_set ^= test_set
+                test_segments = merge_segments(split_segments[test_set], soft_splits)
+            # validation set
+            if i_validate is None:
+                validate_segments = None
+            else:
+                validate_set = np.zeros(n_segments, bool)
+                for cell_index in categories:
+                    index = slice(i_validate, None, partitions)
+                    if cell_index is not None:
+                        index = cell_index[index]
+                    validate_set[index] = True
+                train_set ^= validate_set
+                validate_segments = merge_segments(split_segments[validate_set], soft_splits)
+            # create split
+            train_segments = merge_segments(split_segments[train_set], soft_splits)
+            splits.append(Split(train_segments, validate_segments, test_segments, i_test))
+    return Splits(splits, partitions_arg, partitions, validate, test, model, segments, split_segments)
+
+
 class RevCorrData:
     """Restructure input NDVars into arrays for reverse correlation
     
@@ -69,20 +203,13 @@ class RevCorrData:
     y_mean = None
     y_scale = None
     x_pads = None
-    _x_is_copy = False
-    _y_is_copy = False
+    _x_is_copy: bool = False
+    _y_is_copy: bool = False
     # prefit
-    scale_data = False
-    _prefit_repr = None
+    scale_data: bool = False
+    _prefit_repr: str = None
     # cross-validation
-    partitions_arg = None
-    partitions = None
-    model = None
-    validate = None
-    test = None
-    cv_segments = None
-    cv_indexes = None
-    splits = None
+    splits: Splits = None
 
     def __init__(
             self,
@@ -444,108 +571,7 @@ class RevCorrData:
          - create splits
          - merge segments at soft boundaries
         """
-        if partitions is not None and partitions <= validate + test:
-            raise ValueError(f"partitions={partitions} with validate={validate}, test={test}")
-        assert validate >= 0
-        if validate > 1:
-            raise NotImplementedError
-        assert test >= 0
-        if test > 1:
-            raise NotImplementedError
-        self.partitions_arg = partitions
-        if len(self.segments) == 1:
-            if partitions is None:
-                partitions = 2 + test + validate if test else 10
-            if model is not None:
-                raise TypeError(f'model={dataobj_repr(model)!r}: model cannot be specified in unsegmented data')
-            n_times = len(self.time)
-            split_points = np.round(np.linspace(0, n_times, partitions + 1)).astype(np.int64)
-            soft_splits = split_points[1:-1]
-            segments = np.vstack([split_points[i: i+2] for i in range(partitions)])
-            categories = [None]
-        else:
-            n_segments = len(self.segments)
-            # determine model cells
-            if model is None:
-                categories = [None]
-                cell_size = n_segments
-            else:
-                model = ascategorial(model, ds=ds, n=n_segments)
-                categories = [np.flatnonzero(model == cell) for cell in model.cells]
-                cell_sizes = [len(i) for i in categories]
-                cell_size = min(cell_sizes)
-                cell_sizes_are_equal = len(set(cell_sizes)) == 1
-                if partitions is None and not cell_sizes_are_equal:
-                    raise NotImplementedError(f'Automatic partition for variable cell size {dict(zip(model.cells, cell_sizes))}')
-            # automatic selection of partitions
-            if partitions is None:
-                if 3 <= cell_size <= 10:
-                    partitions = cell_size
-                else:
-                    raise NotImplementedError(f"Automatic partition for {cell_size} cases")
-            # create segments
-            if cell_size >= partitions:
-                soft_splits = None
-                segments = self.segments
-            else:
-                # need to subdivide segments
-                if model is not None:
-                    raise NotImplementedError(f'partitions={partitions}: with model')
-                elif partitions % cell_size:
-                    raise ValueError(f'partitions={partitions}: not a multiple of n_cases ({cell_size})')
-                n_parts = partitions // cell_size
-                segments = []
-                soft_splits = []
-                for start, stop in self.segments:
-                    split_points = np.round(np.linspace(start, stop, n_parts)).astype(np.int64)
-                    soft_splits.append(split_points[1:-1])
-                    segments.extend(split_points[i: i+2] for i in range(n_parts))
-                soft_splits = np.concatenate(soft_splits)
-                segments = np.vstack(segments)
-        # create actual splits
-        splits = []  # list of Split
-        test_iter = range(partitions) if test else [None]
-        validate_iter = range(partitions) if validate else [None]
-        n_segments = len(segments)
-        for i_test in test_iter:
-            for i_validate in validate_iter:
-                if i_test == i_validate:
-                    continue
-                train_set = np.ones(n_segments, bool)
-                # test set
-                if i_test is None:
-                    test_segments = None
-                else:
-                    test_set = np.zeros(n_segments, bool)
-                    for cell_index in categories:
-                        index = slice(i_test, None, partitions)
-                        if cell_index is not None:
-                            index = cell_index[index]
-                        test_set[index] = True
-                    train_set ^= test_set
-                    test_segments = merge_segments(segments[test_set], soft_splits)
-                # validation set
-                if i_validate is None:
-                    validate_segments = None
-                else:
-                    validate_set = np.zeros(n_segments, bool)
-                    for cell_index in categories:
-                        index = slice(i_validate, None, partitions)
-                        if cell_index is not None:
-                            index = cell_index[index]
-                        validate_set[index] = True
-                    train_set ^= validate_set
-                    validate_segments = merge_segments(segments[validate_set], soft_splits)
-                # create split
-                train_segments = merge_segments(segments[train_set], soft_splits)
-                splits.append(Split(train_segments, validate_segments, test_segments, i_test))
-
-        self.partitions = partitions
-        self.validate = validate
-        self.test = test
-        self.model = None if model is None else dataobj_repr(model)
-        self.cv_segments = segments
-        self.splits = splits
+        self.splits = split_data(self.segments, partitions, model, ds, validate, test)
 
     def data_scale_ndvars(self):
         if self.scale_data:

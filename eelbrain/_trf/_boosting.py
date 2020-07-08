@@ -33,11 +33,11 @@ import scipy.signal
 from tqdm import tqdm
 
 from .._config import CONFIG, mpc
-from .._data_obj import Dataset, NDVar, NDVarArg
+from .._data_obj import Dataset, NDVar, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
-from .._utils import LazyProperty, user_activity
+from .._utils import LazyProperty, PickleableDataClass, user_activity
 from ._boosting_opt import l1, l2, generate_options, update_error
-from .shared import RevCorrData, Split, merge_segments
+from .shared import RevCorrData, Split, Splits, merge_segments
 from ._fit_metrics import get_evaluators
 
 
@@ -50,7 +50,7 @@ DELTA_ERROR_FUNC = {'l2': 2, 'l1': 1}
 
 
 @dataclass(eq=False)
-class BoostingResult:
+class BoostingResult(PickleableDataClass):
     """Result from boosting a temporal response function
 
     Attributes
@@ -105,8 +105,8 @@ class BoostingResult:
         Mean that was subtracted from ``x``.
     x_scale : NDVar | scalar | tuple
         Scale by which ``x`` was divided.
-    partitions : int
-        Numbers of partitions of the data used for cross validation.
+    splits : Splits
+        Data splits used for cross-validation.
     algorithm_version : int
         Version of the algorithm with which the model was estimated; ``-1`` for
         results from before this attribute was added.
@@ -120,6 +120,7 @@ class BoostingResult:
     delta: float
     mindelta: float
     error: str
+    selective_stopping: int
     # data properties
     y_mean: NDVar
     y_scale: NDVar
@@ -130,15 +131,9 @@ class BoostingResult:
     _isnan: np.ndarray
     t_run: float
     # advanced parameters
-    basis: float = 0
-    basis_window: str = 'hamming'
-    _partitions_arg: int = None
-    partitions: int = None
-    validate: int = 1
-    test: int = 0
-    model: str = None
-    prefit: str = None
-    selective_stopping: int = 0
+    basis: float
+    basis_window: str
+    splits: Splits
     # advanced data properties
     n_samples: int = None
     _y_info: dict = field(default_factory=dict)
@@ -148,19 +143,21 @@ class BoostingResult:
     r_rank: Union[float, NDVar] = None
     r_l1: NDVar = None
     # store the version of the boosting algorithm with which model was fit
-    version: int = 12  # file format (updates when re-saving)
+    version: int = 13  # file format (updates when re-saving)
     algorithm_version: int = -1  # does not change when re'saving
     # debug parameters
     y_pred: NDVar = None
     fit: Any = None  # scanpydoc can't handle undocumented 'Boosting'
+    # legacy attributes
+    prefit: str = None
 
-    def __getstate__(self) -> dict:
-        return {f.name: getattr(self, f.name) for f in fields(self)}
+    def __post_init__(self):
+        self.partitions = self.splits.n_partitions
 
     def __setstate__(self, state: dict):
         # backwards compatibility
         version = state.pop('version')
-        if version < 12:
+        if version < self.version:
             if version == 7:
                 state['partitions'] = state.pop('n_partitions')
                 state['partitions_arg'] = state.pop('n_partitions_arg')
@@ -174,6 +171,9 @@ class BoostingResult:
                 # Vector residuals are averaged
                 if state['r_rank'] is None:
                     state['residual'] *= state['n_samples']
+            if version < 13:
+                args = [state.pop(arg) for arg in ['_partitions_arg', 'partitions', 'validate', 'test', 'model']]
+                state['splits'] = Splits(None, *args)
         self.__init__(**state)
 
     def __repr__(self):
@@ -193,7 +193,15 @@ class BoostingResult:
             elif name == 'debug':
                 continue
             elif name == 'partitions':
-                value = self._partitions_arg
+                value = self.splits.partitions_arg
+            elif name == 'model':
+                if self.splits.model is None:
+                    continue
+                value = dataobj_repr(self.splits.model)
+            elif name == 'validate':
+                value = self.splits.n_validate
+            elif name == 'test':
+                value = self.splits.n_test
             else:
                 value = getattr(self, name)
             if value != param.default and value is not None:
@@ -373,12 +381,12 @@ class Boosting:
             self.n_skip = h_n_times - 1
 
         # progress bar
-        n_splits = len(self.data.splits)
+        n_splits = len(self.data.splits.splits)
         pbar = tqdm(desc=f"Fitting models", total=n_y * n_splits, disable=CONFIG['tqdm'])
         self.t_fit_start = time.time()
 
         # boosting
-        split_results = [SplitResult(split, n_y, n_x, h_n_times) for split in self.data.splits]
+        split_results = [SplitResult(split, n_y, n_x, h_n_times) for split in self.data.splits.splits]
         if CONFIG['n_workers']:
             # Make sure cross-validations are added in the same order, otherwise
             # slight numerical differences can occur
@@ -406,7 +414,7 @@ class Boosting:
         self.t_fit_done = time.time()
 
     def _get_i_tests(self):
-        assert self.data.test
+        assert self.data.splits.n_test
         return sorted({split.split.i_test for split in self.split_results})
 
     def _get_h(
@@ -448,7 +456,7 @@ class Boosting:
             debug: bool = False,
     ):
         if cross_fit is None:
-            cross_fit = bool(self.data.test)
+            cross_fit = bool(self.data.splits.n_test)
 
         # fit evaluation
         if metrics is None:
@@ -541,13 +549,13 @@ class Boosting:
         t_run = self.t_fit_done - self.t_fit_start
         return BoostingResult(
             # basic parameters
-            self.data.y_name, self.data.x_name, self.tstart, self.tstop, bool(self.data.scale_data), self.delta, self.mindelta, self.error,
+            self.data.y_name, self.data.x_name, self.tstart, self.tstop, bool(self.data.scale_data), self.delta, self.mindelta, self.error, self.selective_stopping,
             # data properties
             y_mean, y_scale, x_mean, x_scale,
             # results
             h, self._get_h_failed(), t_run,
             # advanced parameters
-            self.data.basis, self.data.basis_window, self.data.partitions_arg, self.data.partitions, self.data.validate, self.data.test, self.data.model, self.data._prefit_repr, self.selective_stopping,
+            self.data.basis, self.data.basis_window, self.data.splits,
             # advanced data properties
             self.data.y.shape[1], self.data.y_info,
             algorithm_version=0,
@@ -880,7 +888,7 @@ def setup_workers(data, i_start, i_stop, delta, mindelta, error, selective_stopp
     job_queue = mpc.Queue(200)
     result_queue = mpc.Queue(200)
 
-    args = (y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, data.splits, i_start, i_stop, delta, mindelta, error, selective_stopping, job_queue, result_queue)
+    args = (y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, data.splits.splits, i_start, i_stop, delta, mindelta, error, selective_stopping, job_queue, result_queue)
     for _ in range(CONFIG['n_workers']):
         process = mpc.Process(target=boosting_worker, args=args)
         process.start()

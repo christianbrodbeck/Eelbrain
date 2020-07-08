@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from dataclasses import replace
 from itertools import product
 from math import floor
 import os
@@ -18,7 +19,7 @@ from eelbrain import (
 )
 
 from eelbrain.testing import assert_dataobj_equal
-from eelbrain._trf._boosting import Split, boost
+from eelbrain._trf._boosting import Split, Splits, boost
 from eelbrain._trf._boosting import convolve as boosting_convolve
 
 
@@ -84,7 +85,7 @@ def test_boosting(n_workers):
     assert correlation_coefficient(res.h, res_cv.h) == approx(.986, abs=.001)
     # fit res_cv on same data as res
     fit = res_cv.fit
-    fit.data.splits = [fit.data.splits[i] for i in [9, 10, 11]]
+    fit.data.splits = replace(fit.data.splits, splits=[fit.data.splits.splits[i] for i in [9, 10, 11]])
     fit.fit(0, 1, 0, 'l2')
     res_cv = fit.evaluate_fit(debug=True)
     assert_dataobj_equal(res_cv.h, res.h)
@@ -130,7 +131,7 @@ def test_boosting_epochs():
         assert y.name == 'predicted'
         r = correlation_coefficient(y, ds['uts'])
         assert res.r == approx(r, abs=1e-3)
-        assert res.partitions == 3
+        assert res.splits.n_partitions == 3
     # 2d
     res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', ds=ds, partitions=3)
     assert len(res.h) == 2

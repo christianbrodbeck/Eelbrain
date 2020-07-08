@@ -26,43 +26,43 @@ def test_revcorr_data_continuous():
 
     # partitioning, no testing set
     data.initialize_cross_validation(4)
-    assert len(data.splits) == 4
-    assert_array_equal(data.splits[0].validate, [[0, 20]])
-    assert_array_equal(data.splits[0].train, [[20, 80]])
-    assert_array_equal(data.splits[1].validate, [[20, 40]])
-    assert_array_equal(data.splits[1].train, [[0, 20], [40, 80]])
-    assert_array_equal(data.splits[2].validate, [[40, 60]])
-    assert_array_equal(data.splits[2].train, [[0, 40], [60, 80]])
-    assert_array_equal(data.splits[3].validate, [[60, 80]])
-    assert_array_equal(data.splits[3].train, [[0, 60]])
+    assert len(data.splits.splits) == 4
+    assert_array_equal(data.splits.splits[0].validate, [[0, 20]])
+    assert_array_equal(data.splits.splits[0].train, [[20, 80]])
+    assert_array_equal(data.splits.splits[1].validate, [[20, 40]])
+    assert_array_equal(data.splits.splits[1].train, [[0, 20], [40, 80]])
+    assert_array_equal(data.splits.splits[2].validate, [[40, 60]])
+    assert_array_equal(data.splits.splits[2].train, [[0, 40], [60, 80]])
+    assert_array_equal(data.splits.splits[3].validate, [[60, 80]])
+    assert_array_equal(data.splits.splits[3].train, [[0, 60]])
 
     # partitioning, testing set
     data.initialize_cross_validation(4, test=1)
-    assert len(data.splits) == 12
+    assert len(data.splits.splits) == 12
     # 0/1
-    assert_array_equal(data.splits[0].test, [[0, 20]])
-    assert_array_equal(data.splits[0].validate, [[20, 40]])
-    assert_array_equal(data.splits[0].train, [[40, 80]])
+    assert_array_equal(data.splits.splits[0].test, [[0, 20]])
+    assert_array_equal(data.splits.splits[0].validate, [[20, 40]])
+    assert_array_equal(data.splits.splits[0].train, [[40, 80]])
     # 0/2
-    assert_array_equal(data.splits[1].test, [[0, 20]])
-    assert_array_equal(data.splits[1].validate, [[40, 60]])
-    assert_array_equal(data.splits[1].train, [[20, 40], [60, 80]])
+    assert_array_equal(data.splits.splits[1].test, [[0, 20]])
+    assert_array_equal(data.splits.splits[1].validate, [[40, 60]])
+    assert_array_equal(data.splits.splits[1].train, [[20, 40], [60, 80]])
     # 0/3
-    assert_array_equal(data.splits[2].test, [[0, 20]])
-    assert_array_equal(data.splits[2].validate, [[60, 80]])
-    assert_array_equal(data.splits[2].train, [[20, 60]])
+    assert_array_equal(data.splits.splits[2].test, [[0, 20]])
+    assert_array_equal(data.splits.splits[2].validate, [[60, 80]])
+    assert_array_equal(data.splits.splits[2].train, [[20, 60]])
     # 1/0
-    assert_array_equal(data.splits[3].test, [[20, 40]])
-    assert_array_equal(data.splits[3].validate, [[0, 20]])
-    assert_array_equal(data.splits[3].train, [[40, 80]])
+    assert_array_equal(data.splits.splits[3].test, [[20, 40]])
+    assert_array_equal(data.splits.splits[3].validate, [[0, 20]])
+    assert_array_equal(data.splits.splits[3].train, [[40, 80]])
     # 1/2
-    assert_array_equal(data.splits[4].test, [[20, 40]])
-    assert_array_equal(data.splits[4].validate, [[40, 60]])
-    assert_array_equal(data.splits[4].train, [[0, 20], [60, 80]])
+    assert_array_equal(data.splits.splits[4].test, [[20, 40]])
+    assert_array_equal(data.splits.splits[4].validate, [[40, 60]])
+    assert_array_equal(data.splits.splits[4].train, [[0, 20], [60, 80]])
     # 1/3, 2/0, 2/1, 2/3, 3/0, 3/1, 3/2
-    assert_array_equal(data.splits[11].test, [[60, 80]])
-    assert_array_equal(data.splits[11].validate, [[40, 60]])
-    assert_array_equal(data.splits[11].train, [[0, 40]])
+    assert_array_equal(data.splits.splits[11].test, [[60, 80]])
+    assert_array_equal(data.splits.splits[11].validate, [[40, 60]])
+    assert_array_equal(data.splits.splits[11].train, [[0, 40]])
 
 
 def test_revcorr_data_trials():
@@ -77,17 +77,17 @@ def test_revcorr_data_trials():
 
     # partitioning
     data.initialize_cross_validation(3)
-    assert len(data.splits) == 3
+    assert len(data.splits.splits) == 3
     arange = np.arange(len(data.segments)) % 3
-    for i, split in enumerate(data.splits):
+    for i, split in enumerate(data.splits.splits):
         validate_index = arange == i
         assert_array_equal(split.validate, data.segments[validate_index])
         assert_array_equal(split.train, data.segments[~validate_index])
 
     # continuoue model
     data.initialize_cross_validation(3, 'A', ds)
-    assert len(data.splits) == 3
-    for i, split in enumerate(data.splits):
+    assert len(data.splits.splits) == 3
+    for i, split in enumerate(data.splits.splits):
         validate_index = arange == i
         assert_array_equal(split.validate, data.segments[validate_index])
         assert_array_equal(split.train, data.segments[~validate_index])
@@ -95,9 +95,9 @@ def test_revcorr_data_trials():
     # alternating model
     ds['C'] = Factor('abc', tile=20)
     data.initialize_cross_validation(3, 'C', ds)
-    assert len(data.splits) == 3
+    assert len(data.splits.splits) == 3
     arange = np.repeat(np.arange(20), 3) % 3
-    for i, split in enumerate(data.splits):
+    for i, split in enumerate(data.splits.splits):
         validate_index = arange == i
         assert_array_equal(split.validate, data.segments[validate_index])
         assert_array_equal(split.train, data.segments[~validate_index])

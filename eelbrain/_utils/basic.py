@@ -1,6 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 "A few basic operations needed throughout Eelbrain"
 from collections import defaultdict
+from dataclasses import dataclass, fields
 import functools
 import logging
 import re
@@ -218,6 +219,16 @@ class LazyProperty:
             return self
         result = instance.__dict__[self.__name__] = self._func(instance)
         return result
+
+
+@dataclass
+class PickleableDataClass:
+
+    def __getstate__(self) -> dict:
+        return {f.name: getattr(self, f.name) for f in fields(self)}
+
+    def __setstate__(self, state: dict):
+        self.__init__(**state)
 
 
 def _natural_keys(text):
