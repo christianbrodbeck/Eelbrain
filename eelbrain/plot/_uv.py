@@ -27,39 +27,20 @@ del s
 PAIRWISE_COLORS = ('#00FF00', '#FFCC00', '#FF6600', '#FF3300')
 
 
-def _mark_plot_pairwise(ax, ct, parametric, bottom, y_unit, corr, trend, markers,
-                        levels=True, pwcolors=None, x0=0, top=None):
-    """Mark pairwise significance
-
-    Parameters
-    ----------
-    ax : Axes
-        Axes to plot to.
-    ct : Celltable
-        Data for the tests.
-    parametric : bool
-        Whether to perform parametric tests.
-    bottom : scalar
-        Bottom of the space to use for the connectors (in data coordinates, i.e.
-        highest point reached by the data plot).
-    y_unit : scalar
-        Suggested scale for half the vertical distance between connectors (only used
-        if top is None).
-    corr : None | 'hochberg' | 'bonferroni' | 'holm'
-        Method for multiple comparison correction.
-    trend : str
-        Symbol to mark trends.
-    markers : bool
-        Plot markers indicating significance level (stars).
-    ...
-    top : scalar
-        Impose a fixed top end of the y-axis.
-
-    Returns
-    -------
-    top : scalar
-        The top most value on the y axis.
-    """
+def _mark_plot_pairwise(  # Mark pairwise significance
+        ax: matplotlib.axes.Axes,
+        ct: Celltable,  # Data for the tests
+        parametric: bool,  # Whether to perform parametric tests
+        pos: Sequence[float],  # position of items on x axis
+        bottom: float,  # Bottom of the space to use for the connectors (in data coordinates, i.e. highest point reached by the data plot)
+        y_unit: float,  # Suggested scale for half the vertical distance between connectors (only used if top is None)
+        corr: Union[str, None],
+        trend: str,
+        markers: bool,  # Plot markers indicating significance level (stars)
+        levels: Union[dict, bool] = True,
+        pwcolors: Sequence = None,
+        top: float = None,  # Impose a fixed top end of the y-axis
+) -> float:  # The top most value on the y axis
     # visual parameters
     if pwcolors is None:
         pwcolors = PAIRWISE_COLORS[1 - bool(trend):]
@@ -104,8 +85,8 @@ def _mark_plot_pairwise(ax, ct, parametric, bottom, y_unit, corr, trend, markers
         c = pwcolors[stars - 1]
         y1 = bottom + y_unit * (level * 2 + 1)
         y2 = y1 + y_unit
-        x1 = (x0 + i) + .025
-        x2 = (x0 + j) - .025
+        x1 = pos[i] + .025
+        x2 = pos[j] - .025
         ax.plot([x1, x1, x2, x2], [y1, y2, y2, y1], color=c)
         if markers:
             symbol = tests['symbols'][index]
@@ -115,20 +96,25 @@ def _mark_plot_pairwise(ax, ct, parametric, bottom, y_unit, corr, trend, markers
     return top
 
 
-def _mark_plot_1sample(ax, ct, par, y_min, y_unit, popmean=0, corr='Hochberg',
-                       trend=False, levels=True, pwcolors=None, x0=0, tail=0):
-    """Mark significance for one-sample test
-
-    Returns
-    -------
-    y_max : float
-        Top of space used on y axis.
-    """
+def _mark_plot_1sample(  # Mark significance for one-sample test
+        ax: matplotlib.axes.Axes,
+        ct: Celltable,  # Data for the tests
+        parametric: bool,  # Whether to perform parametric tests
+        pos: Sequence[float],  # position of items on x axis
+        bottom: float,  # Bottom of the space to use for the stars
+        y_unit: float,  # Distance from bottom to stars
+        popmean: float,
+        corr: Union[str, None],
+        trend: str,
+        levels: Union[dict, bool] = True,
+        pwcolors: Sequence = None,
+        tail: int = 0,
+) -> float:  # Top of space used on y axis 
     # tests
     if pwcolors is None:
         pwcolors = PAIRWISE_COLORS[1 - bool(trend):]
     # mod
-    if par:
+    if parametric:
         ps = [test.TTestOneSample(d, popmean=popmean, tail=tail).p for d in ct.get_data()]
     else:
         raise NotImplementedError("nonparametric 1-sample test")
@@ -137,15 +123,14 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, popmean=0, corr='Hochberg',
     stars_str = test.star(ps_adjusted, str, levels, trend)
     font_size = mpl.rcParams['font.size'] * 1.5
     if any(stars):
-        y_stars = y_min + 1.75 * y_unit
+        y_stars = bottom + 1.75 * y_unit
         for i, n_stars in enumerate(stars):
             if n_stars > 0:
                 c = pwcolors[n_stars - 1]
-                ax.text(x0 + i, y_stars, stars_str[i], color=c, size=font_size,
-                        ha='center', va='center', clip_on=False)
-        return y_min + 4. * y_unit
+                ax.text(pos[i], y_stars, stars_str[i], color=c, size=font_size, ha='center', va='center', clip_on=False)
+        return bottom + 4. * y_unit
     else:
-        return y_min
+        return bottom
 
 
 class PairwiseLegend(EelFigure):
@@ -539,12 +524,12 @@ class _plt_uv_base:
         if test is True:
             if tail:
                 raise ValueError(f"tail={tail} for pairwise test")
-            y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit, corr, trend, test_markers, top=top)
+            y_top = _mark_plot_pairwise(ax, ct, par, pos, plot_max, y_unit, corr, trend, test_markers, top=top)
         elif (test is False) or (test is None):
             y_top = plot_max + y_unit
         else:
             ax.axhline(test, color='black')
-            y_top = _mark_plot_1sample(ax, ct, par, plot_max, y_unit, test, corr, trend, tail=tail)
+            y_top = _mark_plot_1sample(ax, ct, par, pos, plot_max, y_unit, test, corr, trend, tail=tail)
 
         if top is not None:
             y_top = top
