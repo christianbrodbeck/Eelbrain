@@ -70,6 +70,12 @@ class Splits(PickleableDataClass):
         items = ', '.join(items)
         return f"<Splits: {desc} split into {len(self.split_segments)} sections{items}>"
 
+    def plot(self, **kwargs):
+        """Plot data splits (see :class:`plot.SplitFigure` for parameters)"""
+        from ..plot import DataSplit
+
+        return DataSplit(self, **kwargs)
+
 
 def split_data(
         segments: np.ndarray,  # (n, 2) array of [start, stop] indices

@@ -380,6 +380,14 @@ Plot sensor layout maps:
    plot.SensorMaps
 
 
+Method plots
+
+.. autosummary::
+   :toctree: generated
+
+   plot.DataSplit
+
+
 xax parameter
 =============
 
