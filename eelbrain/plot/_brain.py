@@ -1,9 +1,10 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from dataclasses import dataclass
 from enum import Enum
 from functools import partial
 from itertools import product
 from numbers import Number
-from typing import Sequence
+from typing import Any, Sequence
 
 import matplotlib
 import mne
@@ -1074,36 +1075,28 @@ class SPPlotType(Enum):
     FUNC = 3
 
 
+@dataclass
 class SequencePlotterLayer:
+    kind: SPLayer
+    ndvar: NDVar
+    args: tuple
+    kwargs: dict
+    label: Sequence[str] = None
+    index: int = None  # when adding multiple items, index of the item
+    plot_type: SPPlotType = SPPlotType.DATA
 
-    def __init__(
-            self,
-            kind: SPLayer,
-            ndvar: NDVar,
-            args: tuple,
-            kwargs: dict,
-            label: Sequence[str] = None,
-            index: int = None,  # when adding multiple items, index of the item
-            plot_type: SPPlotType = SPPlotType.DATA
-    ):
-        if label is not None:
-            if kind == SPLayer.SEQUENCE:
-                if not isinstance(label, (tuple, list)):
-                    raise TypeError(f"label={label!r}; list or tuple of str expected")
+    def __post_init__(self):
+        if self.label is not None:
+            if self.kind == SPLayer.SEQUENCE:
+                if not isinstance(self.label, (tuple, list)):
+                    raise TypeError(f"label={self.label!r}; list or tuple of str expected")
             else:
-                if not isinstance(label, str):
-                    raise TypeError(f"label={label!r}; str expected")
-        if kind == SPLayer.ITEM:
-            assert isinstance(index, int)
+                if not isinstance(self.label, str):
+                    raise TypeError(f"label={self.label!r}; str expected")
+        if self.kind == SPLayer.ITEM:
+            assert isinstance(self.index, int)
         else:
-            assert index is None
-        self.kind = kind
-        self.ndvar = ndvar
-        self.args = args
-        self.kwargs = kwargs
-        self.label = label
-        self.index = index
-        self.plot_type = plot_type
+            assert self.index is None
 
     def plot(self, brain):
         if self.plot_type == SPPlotType.DATA:
@@ -1203,6 +1196,15 @@ class SequencePlotter:
         if scale is not None:
             self._parallel_view['scale'] = scale
 
+    def _index(self, index: int) -> int:
+        # index arg to valid index
+        if index is None:
+            return self._n_items()
+        elif index < 0:
+            return self._n_items() + index
+        else:
+            return index
+
     def add_function(self, func, label=None, overlay=False):
         "Custom modification of the brain object (calls ``func(brain)``)"
         args = (func,)
@@ -1256,10 +1258,7 @@ class SequencePlotter:
             # apply defaults
             if static is None:
                 static = True if self._frame_dim else False  # None: unset or use multiple NDVars
-            if index is None:
-                index = self._n_items()
-            elif index < 0:
-                index = self._n_items() + index
+            index = self._index(index)
             # extract
             if static:
                 kind = SPLayer.OVERLAY
@@ -1291,15 +1290,40 @@ class SequencePlotter:
 
         self._data.append(layer)
 
-    def add_ndvar_label(self, ndvar, color=(1, 0, 0), borders=False, name=None, alpha=None, lighting=False, overlay=False, label=None):
-        "See :meth:`~._brain_object.Brain.add_ndvar_label`"
+    def add_ndvar_label(
+            self,
+            ndvar: NDVar,
+            color: Any = (1, 0, 0),
+            borders: int = False,
+            name: str = None,
+            alpha: float = None,
+            lighting: bool = False,
+            overlay: bool = False,
+            index: int = None,
+            label: str = None,
+    ):
+        """Add a boolean label to the brain plot
+
+        Parameters
+        ----------
+        ...
+            See :meth:`~._brain_object.Brain.add_ndvar_label`
+        overlay
+            Plot the label over all plots in the sequence.
+        index
+            When adding separate frames (rows/columns), explicitly specify the
+            frame index (the default is to add a frame at the end; use -1 to
+            add an overlay to the most recent frame).
+        label
+            Label when adding multiple separate NDVars. Labels for bins when
+            adding ``ndvar`` with multiple bins.
+        """
         self.set_brain(ndvar.get_dim('source'))
         args = (color, borders, name, alpha, lighting)
         if overlay:
-            index = None
             kind = SPLayer.OVERLAY
         else:
-            index = self._n_items()
+            index = self._index(index)
             kind = SPLayer.ITEM
         layer = SequencePlotterLayer(kind, ndvar, args, {}, label, index, SPPlotType.LABEL)
         self._data.append(layer)
@@ -1499,6 +1523,7 @@ class SequencePlotter:
                                 cmap_data = l.ndvar
                     self._capture(b, hemi_rows, views, mode, antialiased)
                     b.remove_data()
+                    b.remove_labels()
             else:
                 raise NotImplementedError(f"{self._bin_kind}")
             im_rows += hemi_rows
