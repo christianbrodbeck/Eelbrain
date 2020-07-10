@@ -52,6 +52,7 @@ import sys
 from io import BytesIO, StringIO
 import tempfile
 import time
+from types import MappingProxyType
 from typing import Union, Iterable, List as ListType, Sequence, Tuple
 import webbrowser
 
@@ -68,7 +69,7 @@ from ._utils import ui
 # types
 FMTextLike = Union['FMTextElement', str, ListType['FMTextLike'], Tuple['FMTextLike']]
 
-
+ENV = MappingProxyType({})
 preferences = dict(
                    keep_recent=3,  # number of recent tables to keep in memory
                    html_tables_in_fig=True,
@@ -375,16 +376,16 @@ def copy_tex(fmtext: FMTextLike):
     ui.copy_text(txt)
 
 
-def html(text, env={}):
+def html(text: FMTextLike, env: dict = ENV):
     """Generate HTML for any object with a string representation
 
     Parameters
     ----------
-    text : any
+    text
         Object to be converted to HTML. If the object has a ``.get_html()``
         method the result of this method is returned, otherwise ``str(text)``.
-    env : dict
-        Environment for HTML.
+    env
+        Environment for nested HTML.
     """
     if hasattr(text, 'get_html'):
         return text.get_html(env)
@@ -619,7 +620,7 @@ class FMTextElement:
         "HTML representation of everything inside the tag"
         return escape_html(self._get_core(env))
 
-    def get_rtf(self, env={}) -> str:
+    def get_rtf(self, env: dict = ENV) -> str:
         if self.tag in _RTF_SUBS:
             return _RTF_SUBS[self.tag] % self._get_rtf_core(env)
         else:
@@ -628,7 +629,7 @@ class FMTextElement:
     def _get_rtf_core(self, env):
         return self._get_core(env)
 
-    def get_str(self, env={}) -> str:
+    def get_str(self, env: dict = ENV) -> str:
         "String representation"
         if self.tag in _STR_SUBS:
             return _STR_SUBS[self.tag] % self._get_str_core(env)
@@ -894,7 +895,7 @@ class Math(FMTextElement):
             items.append("equation=True")
         return "Math(%s)" % ', '.join(items)
 
-    def get_html(self, env={}):
+    def get_html(self, env: dict = ENV):
         im = Image("LaTeX Equation", 'svg', self.content)
         math_to_image("$%s$" % self.content, im, format='svg')
         if self._equation:
@@ -1034,7 +1035,7 @@ class List(FMTextElement):
         self.add_item(sublist)
         return sublist
 
-    def get_html(self, env={}):
+    def get_html(self, env: dict = ENV):
         items = []
         if self.head is not None:
             items.append(self.head.get_html(env))
@@ -1048,7 +1049,7 @@ class List(FMTextElement):
         items.append('</%s>' % tag)
         return '\n'.join(items)
 
-    def get_str(self, env={}):
+    def get_str(self, env: dict = ENV):
         out = []
         if self.head is not None:
             out.append(self.head.get_str(env))
@@ -1104,7 +1105,7 @@ class Cell(FMText):
     def __len__(self):
         return self.width
 
-    def get_html(self, align: str, env={}):
+    def get_html(self, align: str, env: dict = ENV):
         html_repr = FMText.get_html(self, env)
         options = []
         # width
@@ -1124,10 +1125,10 @@ class Cell(FMText):
         html_repr = ' %s%s</td>' % (start_tag, html_repr)
         return html_repr
 
-    def get_rtf(self, env={}):
+    def get_rtf(self, env: dict = ENV):
         return "%s\\intbl\\cell" % FMText.get_rtf(self, env)
 
-    def get_tex(self, env={}):
+    def get_tex(self, env: dict = ENV):
         tex_repr = FMText.get_tex(self, env)
         if self.width > 1 or self.just:
             tex_repr = r"\multicolumn{%s}{%s}{%s}" % (self.width, self.just,
@@ -1231,7 +1232,7 @@ class Row(list):
         for cell in cells:
             self.cell(cell, **kwargs)
 
-    def get_html(self, c_just: Sequence[str], env={}):
+    def get_html(self, c_just: Sequence[str], env: dict = ENV):
         col = 0
         items = ['<tr>']
         for cell in self:
@@ -1240,10 +1241,10 @@ class Row(list):
         items.append('</tr>')
         return '\n'.join(items)
 
-    def get_rtf(self, env={}):
+    def get_rtf(self, env: dict = ENV):
         return '\n'.join([cell.get_rtf(env) for cell in self] + ['\\row'])
 
-    def get_str(self, c_width, c_just, delimiter='   ', env={}):
+    def get_str(self, c_width, c_just, delimiter='   ', env: dict = ENV):
         "String of the row using column spacing ``c_width``"
         col = 0
         out = []
@@ -1476,7 +1477,7 @@ class Table(FMTextElement):
         # result can be inspected without assigning the Table to a variable.
         return self.__str__()
 
-    def get_html(self, env={}):
+    def get_html(self, env: dict = ENV):
         if self._title is None:
             title = None
         else:
@@ -1523,7 +1524,7 @@ class Table(FMTextElement):
 
         return txt
 
-    def get_rtf(self, env={}):
+    def get_rtf(self, env: dict = ENV):
         # header
         rows = ['\cellx%i000' % i for i in range(len(self.columns))]
         rows.insert(0, '\\trowd')
@@ -1537,7 +1538,7 @@ class Table(FMTextElement):
                 rows.append(row.get_rtf(env))
         return '\n'.join(rows)
 
-    def get_str(self, env={}, delim='   ', linesep='\n'):
+    def get_str(self, env: dict = ENV, delim='   ', linesep='\n'):
         """Convert Table to str
 
         Parameters
@@ -1819,7 +1820,7 @@ class Image(FMTextElement, BytesIO):
             meta = {}
         return base64.b64encode(self.getvalue()).decode(), meta
 
-    def get_html(self, env={}):
+    def get_html(self, env: dict = ENV):
         resource_dir = env.get('resource_dir', None)
         if resource_dir is None:
             buf = self.getvalue()
@@ -1842,7 +1843,7 @@ class Image(FMTextElement, BytesIO):
         alt = html(self._alt)
         return f'<img src="{src}" alt="{alt}">'
 
-    def get_str(self, env={}):
+    def get_str(self, env: dict = ENV):
         return f"Image ({self._alt})"
 
     def save_image(self, dst):
@@ -1877,14 +1878,14 @@ class Figure(FMText):
         self._caption = asfmtext(caption)
         FMText.__init__(self, content, None, options)
 
-    def get_html(self, env={}):
+    def get_html(self, env: dict = ENV):
         body = FMText.get_html(self, env)
         if self._caption:
             caption = _html_element('figcaption', self._caption, env)
             body = '\n'.join((body, caption))
         return _html_element('figure', body, env, self.options)
 
-    def get_str(self, env={}):
+    def get_str(self, env: dict = ENV):
         body = FMText.get_str(self, env)
         if self._caption:
             caption = str(self._caption)
@@ -2018,7 +2019,7 @@ class Section(FMText):
         self.append(section)
         return section
 
-    def get_html(self, env={}):
+    def get_html(self, env: dict = ENV):
         env = env.copy()
 
         heading = self._get_html_section_heading(env)
@@ -2041,7 +2042,7 @@ class Section(FMText):
         env['level'] = level + 1
         return txt
 
-    def get_str(self, env={}):
+    def get_str(self, env: dict = ENV):
         level = env.get('level', (1,))
         number = '.'.join(map(str, level))
         title = ' '.join((number, str(self._heading)))
@@ -2112,7 +2113,7 @@ class Report(Section):
             out.append(repr(self._site_title))
         return out
 
-    def get_html(self, env={}):
+    def get_html(self, env: dict = ENV):
         # setup TOC in env
         env = env.copy()
         env['toc'] = []
@@ -2150,7 +2151,7 @@ class Report(Section):
         txt = '\n<br>\n'.join(content)
         return txt
 
-    def get_str(self, env={}):
+    def get_str(self, env: dict = ENV):
         content = []
         title = str(self._heading)
         underline = '^' * len(title)
