@@ -201,6 +201,36 @@ def rtf_document(fmtext):
     return "{\\rtf1\\ansi\\deff0\n\n%s\n}" % fmtext.get_rtf()
 
 
+def display(
+        fmtext: FMTextLike,
+        title: FMTextLike = None,
+):
+    """Display the FMText rendered to HTML in a GUI window
+
+    Parameters
+    ----------
+    fmtext : FMText
+        Object to display.
+    title : FMText
+        Window title.
+    """
+    from ._wxgui import get_app
+    from ._wxgui.text import HTMLFrame
+
+    if title is None:
+        if isinstance(fmtext, Section):
+            title = fmtext._heading
+        elif isinstance(fmtext, Table):
+            title = fmtext._title
+    if title is None:
+        title = 'FMText'
+    else:
+        title = str(title)
+
+    get_app()
+    HTMLFrame(None, title, html(fmtext))
+
+
 def save_html(
         fmtext: FMTextLike,
         path: PathArg = None,

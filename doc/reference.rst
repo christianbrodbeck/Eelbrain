@@ -641,6 +641,7 @@ See available export functions and the module documentation for details:
    fmtxt
    fmtxt.copy_pdf
    fmtxt.copy_tex
+   fmtxt.display
    fmtxt.save_html
    fmtxt.save_pdf
    fmtxt.save_rtf
