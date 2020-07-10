@@ -52,7 +52,7 @@ import sys
 from io import BytesIO, StringIO
 import tempfile
 import time
-from typing import Union, Iterable, List as ListType, Tuple
+from typing import Union, Iterable, List as ListType, Sequence, Tuple
 import webbrowser
 
 import numpy as np
@@ -111,9 +111,11 @@ _HTML_TAGS = {r'_': 'sub',
 
 _RTF_SUBS = {r'\emph': "\i %s\i0"}
 
-_html_alignments = {'l': 'left',
-                    'r': 'right',
-                    'c': 'center'}
+_html_alignments = {
+    'l': 'left',
+    'r': 'right',
+    'c': 'center',
+}
 
 _html_reserved_chars = {'<': '&lt;', '>': '&gt;', '&': '&amp;'}
 _html_escape_pattern = re.compile('|'.join(map(re.escape, _html_reserved_chars)))
@@ -1072,14 +1074,17 @@ class Cell(FMText):
     def __len__(self):
         return self.width
 
-    def get_html(self, env={}):
+    def get_html(self, align: str, env={}):
         html_repr = FMText.get_html(self, env)
         options = []
+        # width
         if self.width > 1:
             options.append('colspan="%i"' % self.width)
+        # alignment
         if self.just:
-            align = _html_alignments[self.just]
-            options.append('align="%s"' % align)
+            align = self.just
+        if align != 'l':
+            options.append(f'align="{_html_alignments[align]}"')
 
         if options:
             start_tag = '<td %s>' % ' '.join(options)
@@ -1196,10 +1201,14 @@ class Row(list):
         for cell in cells:
             self.cell(cell, **kwargs)
 
-    def get_html(self, env={}):
-        html = '\n'.join(cell.get_html(env) for cell in self)
-        html = '<tr>\n%s\n</tr>' % html
-        return html
+    def get_html(self, c_just: Sequence[str], env={}):
+        col = 0
+        items = ['<tr>']
+        for cell in self:
+            items.append(cell.get_html(c_just[col], env))
+            col += cell.width
+        items.append('</tr>')
+        return '\n'.join(items)
 
     def get_rtf(self, env={}):
         return '\n'.join([cell.get_rtf(env) for cell in self] + ['\\row'])
@@ -1465,7 +1474,7 @@ class Table(FMTextElement):
                     pass
 #                     table.append('<tr style="border-bottom:1px solid black">')
             else:
-                table.append(row.get_html(env))
+                table.append(row.get_html(self.columns, env))
         body = '\n'.join(table)
 
         # table frame

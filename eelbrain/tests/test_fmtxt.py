@@ -143,6 +143,11 @@ def test_table():
         'a1 & b1 \\\\\na2 & b2 \\\\\n'
         '\\bottomrule\n\\end{tabular}\n\\end{center}')
 
+    # right-align
+    table.columns = 'lr'
+    assert html(table) == '<figure><table border="1" cellpadding="2" frame="hsides" rules="none"><tr>\n <td>A</td>\n <td align="right">B</td>\n</tr>\n<tr>\n <td>a1</td>\n <td align="right">b1</td>\n</tr>\n<tr>\n <td>a2</td>\n <td align="right">b2</td>\n</tr></table></figure>'
+    table.columns = 'll'
+
     # empty table
     str(fmtxt.Table(''))
 
