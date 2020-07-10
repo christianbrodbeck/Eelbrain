@@ -920,7 +920,7 @@ def ask_to_delete_ica_files(raw, status, filenames):
     command = ask(
         "%s Delete %i files?" % (msg, len(filenames)),
         (('abort', 'abort to fix the raw definition and try again'),
-         ('delete', 'delete the invalid fils'),
+         ('delete', 'delete the invalid files'),
          ('ignore', 'pretend that the files are valid; you will not be warned again')))
 
     if command == 'delete':

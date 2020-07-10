@@ -1284,7 +1284,8 @@ class Var(Named):
         x = np.asarray(x)
         if x.dtype.kind in 'OUSV':
             alt_type = 'Factor' if x.dtype.kind == 'S' else 'Datalist'
-            raise TypeError(f"x with numpy dtype.kind={x.dtype.kind!r}: Var needs numerical data type. Consider using a {alt_type} instead.")
+            type_name = np.typename(x.dtype.char)
+            raise TypeError(f"x of type {type_name} (dtype {x.dtype!r}): Var needs numerical data type. Consider using a {alt_type} instead.")
         elif x.ndim > 1:
             if sum(i > 1 for i in x.shape) <= 1:
                 x = np.ravel(x)
@@ -4279,9 +4280,18 @@ class NDVar(Named):
 
         Notes
         -----
-        Together, the labels in the ``clusters.x`` array and the identifiers in
+        Together, the labels in the ``clusters`` array and the identifiers in
         ``clusters.info['cids']`` can be used as input for :mod:`scipy.ndimage`
-        functions.
+        functions. For example, count the number of elements in each label
+        of a binary ``mask``::
+
+            >>> from scipy import ndimage
+            >>> labels = mask.label_clusters()
+            >>> ns = ndimage.measurements.sum(mask, labels, labels.info['cids'])
+            >>> dict(zip(labels.info['cids'], ns))
+            {1: 35.0, 6: 1.0, 37: 1.0}
+            >>> (labels == 1).sum()  # confirm count in label 1
+            35
         """
         from ._stats.testnd import Connectivity, label_clusters
 
