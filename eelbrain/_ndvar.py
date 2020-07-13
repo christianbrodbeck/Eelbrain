@@ -19,7 +19,7 @@ import numpy as np
 from scipy import linalg, ndimage, signal, stats
 
 from . import _info, mne_fixes
-from ._data_obj import NDVar, Case, Categorial, Dimension, Scalar, UTS, asndvar, op_name
+from ._data_obj import NDVar, Var, Case, Categorial, Dimension, Scalar, UTS, asndvar, isnumeric, op_name
 from ._exceptions import DimensionMismatchError
 from ._external.colorednoise import powerlaw_psd_gaussian
 from ._info import merge_info
@@ -27,6 +27,10 @@ from ._stats.connectivity import Connectivity
 from ._stats.connectivity import find_peaks as _find_peaks
 from ._trf._boosting_opt import l1
 from ._utils.numpy_utils import aslice, newaxis
+
+
+NDNumeric = Union[NDVar, Var, np.ndarray, float]
+SequenceOfNDNumeric = Sequence[NDNumeric]
 
 
 class Alignement:
@@ -691,27 +695,38 @@ def label_operator(labels, operation='mean', exclude=None, weights=None,
     return NDVar(x, (label_dim, dim), labels.name)
 
 
-def _sequence_elementwise(ndvars: Sequence[Union[NDVar, float]], np_func: Callable, name: str):
-    true_ndvars = [x for x in ndvars if isinstance(x, NDVar)]
-    if not true_ndvars:
-        raise TypeError(f"Need at least one NDVar")
-    info = merge_info(true_ndvars)
-    ndvar = true_ndvars.pop(0)
-    dims = ndvar.dims
-    if any(x.dims != dims for x in true_ndvars):
-        raise NotImplementedError("NDVars with mismatching dimensions")
-    xs = [x.x if isinstance(x, NDVar) else x for x in ndvars]
+def _sequence_elementwise(items: SequenceOfNDNumeric, np_func: Callable, name: str):
+    ndvars = [x for x in items if isinstance(x, NDVar)]
+    vars_ = [x for x in items if isinstance(x, Var)]
+    if ndvars or vars_:
+        info = merge_info(ndvars + vars_)
+    else:
+        info = None
+
+    if ndvars:
+        ndvar = ndvars.pop(0)
+        dims = ndvar.dims
+        if any(x.dims != dims for x in ndvars):
+            raise NotImplementedError("NDVars with mismatching dimensions")
+    else:
+        dims = None
+    xs = [x.x if isnumeric(x) else x for x in items]
     x = np_func(*xs)
-    return NDVar(x, dims, name, info)
+    if info is None:
+        return x
+    elif dims is None:
+        return Var(x, name, info)
+    else:
+        return NDVar(x, dims, name, info)
 
 
-def maximum(ndvars: Sequence[Union[NDVar, float]], name: str = None):
-    "Element-wise maximum of multiple :class:`NDVar` objects"
+def maximum(ndvars: SequenceOfNDNumeric, name: str = None):
+    "Element-wise maximum of multiple array-like objects"
     return _sequence_elementwise(ndvars, np.maximum, name)
 
 
-def minimum(ndvars: Sequence[Union[NDVar, float]], name: str = None):
-    "Element-wise minimum of multiple :class:`NDVar` objects"
+def minimum(ndvars: SequenceOfNDNumeric, name: str = None):
+    "Element-wise minimum of multiple array-like objects"
     return _sequence_elementwise(ndvars, np.minimum, name)
 
 
