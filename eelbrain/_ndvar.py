@@ -711,7 +711,7 @@ def _sequence_elementwise(items: SequenceOfNDNumeric, np_func: Callable, name: s
     else:
         dims = None
     xs = [x.x if isnumeric(x) else x for x in items]
-    x = np_func(*xs)
+    x = reduce(np_func, xs)
     if info is None:
         return x
     elif dims is None:
