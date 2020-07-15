@@ -85,7 +85,7 @@ class VectorL1(Evaluator):
 
     def add_y(self, i, y, y_pred):
         y_pred_error = norm(y - y_pred, axis=0)
-        self.x[i] = y_pred_error.mean(-1)
+        self.x[i] = y_pred_error.sum(-1)
 
 
 class VectorL2(Evaluator):
@@ -96,7 +96,7 @@ class VectorL2(Evaluator):
     def add_y(self, i, y, y_pred):
         dist = y - y_pred
         dist **= 2
-        self.x[i] = y.sum() / y.shape[1]
+        self.x[i] = y.sum()
 
 
 class VectorCorrelation(Evaluator):
