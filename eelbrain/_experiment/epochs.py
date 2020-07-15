@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from copy import deepcopy
+import inspect
 
 from .._exceptions import DefinitionError
 from .._text import enumeration
@@ -58,6 +59,13 @@ class EpochBase(Definition):
     trigger_shift = None
     post_baseline_trigger_shift = None
     decim = None
+
+    def _repr_args(self):
+        return []
+
+    def __repr__(self):
+        args = ', '.join(self._repr_args())
+        return f"{self.__class__.__name__}({args})"
 
     def _link(self, name, epochs):
         out = deepcopy(self)
@@ -122,6 +130,14 @@ class Epoch(EpochBase):
         self.post_baseline_trigger_shift = post_baseline_trigger_shift
         self.post_baseline_trigger_shift_min = post_baseline_trigger_shift_min
         self.post_baseline_trigger_shift_max = post_baseline_trigger_shift_max
+
+    def _repr_args(self):
+        args = []
+        for name, param in inspect.signature(self).parameters.items():
+            value = getattr(self, name)
+            if value != param.default:
+                args.append(f'{name}={value!r}')
+        return args
 
     def as_dict_24(self):
         "Dict to be compared with Eelbrain 0.24 cache"
@@ -211,6 +227,13 @@ class PrimaryEpoch(Epoch):
         self.n_cases = typed_arg(n_cases, int)
         self.sessions = (session,)
 
+    def _repr_args(self):
+        args = [repr(self.session)]
+        if self.sel is not None:
+            args.append(repr(self.sel))
+        args.extend(Epoch._repr_args(self))
+        return args
+
     def _link(self, name, epochs):
         out = Epoch._link(self, name, epochs)
         out.rej_file_epochs = (name,)
@@ -246,6 +269,13 @@ class SecondaryEpoch(Epoch):
         self.sel_epoch = base
         self.sel = typed_arg(sel, str)
         self._kwargs = kwargs
+
+    def _repr_args(self):
+        args = [repr(self.sel_epoch)]
+        if self.sel is not None:
+            args.append(repr(self.sel))
+        args.extend(Epoch._repr_args(self))
+        return args
 
     def _can_link(self, epochs):
         return self.sel_epoch in epochs
@@ -289,6 +319,9 @@ class SuperEpoch(Epoch):
     def __init__(self, sub_epochs, **kwargs):
         self.sub_epochs = tuple(sub_epochs)
         self._kwargs = kwargs
+
+    def _repr_args(self):
+        return [repr(self.sub_epochs), *[f'{k}={v!r}' for k, v in self._kwargs.items()]]
 
     def _can_link(self, epochs):
         return all(name in epochs for name in self.sub_epochs)
@@ -353,6 +386,9 @@ class EpochCollection(EpochBase):
     def __init__(self, collect):
         self.collect = collect
         EpochBase.__init__(self)
+
+    def _repr_args(self):
+        return [repr(self.collect)]
 
     def _can_link(self, epochs):
         return all(name in epochs for name in self.collect)
