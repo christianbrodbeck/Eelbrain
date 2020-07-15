@@ -226,28 +226,25 @@ class RevCorrData:
     ):
         y = asndvar(y, ds=ds)
         if isinstance(x, (tuple, list, Iterator)):
-            x = (asndvar(x_, ds=ds) for x_ in x)
+            multiple_x = True
+            xs = [asndvar(x_, ds=ds) for x_ in x]
+            if len(xs) == 0:
+                raise ValueError(f"x={x!r} of length 0")
+            x_name = [x_.name for x_ in xs]
         else:
-            x = asndvar(x, ds=ds)
+            multiple_x = False
+            xs = [asndvar(x, ds=ds)]
+            x_name = xs[0].name
 
         # check y and x
-        if isinstance(x, NDVar):
-            x_name = x.name
-            x = (x,)
-            multiple_x = False
-        else:
-            x = tuple(x)
-            assert all(isinstance(x_, NDVar) for x_ in x)
-            x_name = tuple(x_.name for x_ in x)
-            multiple_x = True
         time_dim = y.get_dim('time')
-        if any(x_.get_dim('time') != time_dim for x_ in x):
+        if any(x_.get_dim('time') != time_dim for x_ in xs):
             raise ValueError("Not all NDVars have the same time dimension")
         n_times = len(time_dim)
 
         # determine cases (used as segments)
         n_cases = segments = None
-        for x_ in x:
+        for x_ in xs:
             # determine cases
             if n_cases is None:
                 if x_.has_case:
@@ -265,7 +262,7 @@ class RevCorrData:
                     segments = np.array([[0, n_times]], np.int64)
             elif n_cases:
                 if len(x_) != n_cases:
-                    raise ValueError(f'x={x}: not all components have same number of cases')
+                    raise ValueError(f'x={xs}: not all components have same number of cases')
             else:
                 assert not x_.has_case, 'some but not all x have case'
         case_to_segments = n_cases > 0
@@ -307,7 +304,7 @@ class RevCorrData:
         x_meta = []
         x_names = []
         n_x = 0
-        for x_ in x:
+        for x_ in xs:
             ndim = x_.ndim - bool(n_cases)
             if ndim == 1:
                 xdim = None
