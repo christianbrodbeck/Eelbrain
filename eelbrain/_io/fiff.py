@@ -20,8 +20,7 @@ from mne.minimum_norm import prepare_inverse_operator, apply_inverse_raw
 
 from .. import _info
 from .._types import PathArg
-from .._data_obj import (Var, NDVar, Dataset, Case, Sensor, Space, SourceSpace,
-                         VolumeSourceSpace, UTS, _matrix_graph)
+from .._data_obj import Factor, Var, NDVar, Dataset, Case, Sensor, Space, SourceSpace, VolumeSourceSpace, UTS, _matrix_graph
 from .._info import BAD_CHANNELS
 from .._text import n_of
 from .._utils import ui
@@ -184,6 +183,7 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
         else:
             name = None
 
+    labels = None
     if events is None:
         if annotations is None:
             regex = re.compile('(bad|edge)', re.IGNORECASE)
@@ -191,7 +191,8 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
             if any(index):
                 annotations = raw.annotations[index]
         if annotations:
-            evts, _ = mne.events_from_annotations(raw, int)
+            evts, event_ids = mne.events_from_annotations(raw)
+            labels = {event_id: key for key, event_id in event_ids.items()}
         else:
             raw.load_data()
             if merge is None:
@@ -204,10 +205,13 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
     else:
         evts = mne.read_events(events)
 
-    i_start = Var(evts[:, 0], name='i_start')
-    trigger = Var(evts[:, 2], name='trigger')
-    info = {'raw': raw}
-    return Dataset((trigger, i_start), name, info=info)
+    ds = Dataset({
+        'i_start': Var(evts[:, 0]),
+        'trigger': Var(evts[:, 2]),
+    }, name, info={'raw': raw})
+    if labels is not None:
+        ds['label'] = Factor(ds['trigger'], labels=labels)
+    return ds
 
 
 def find_mne_channel_types(info):
