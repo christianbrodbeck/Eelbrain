@@ -883,7 +883,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         info = _sensor_info(data, None, raw.info)
     else:
         assert data is None
-        dim = SourceSpace.from_mne_source_spaces(inv['src'], src, subjects_dir, parc, label)
+        dim = SourceSpace.from_file(subjects_dir, subject, src, parc, label, inv['src'])
         inv = prepare_inverse_operator(inv, 1, lambda2, method)
         info = {}  # FIXME
 
@@ -1122,12 +1122,13 @@ def forward_operator(fwd, src, subjects_dir=None, parc='aparc', name=None):
         name = 'fwd'
     sensor = sensor_dim(fwd['info'])
     assert np.all(sensor.names == fwd['sol']['row_names'])
+    subject = fwd['src'][0]['subject_his_id']
     if is_vol:
-        source = VolumeSourceSpace.from_mne_source_spaces(fwd['src'], src, subjects_dir, parc)
-        x = fwd['sol']['data'].reshape(((len(sensor), len(source), 3)))
+        source = VolumeSourceSpace.from_file(subjects_dir, subject, src, parc, label, fwd['src'])
+        x = fwd['sol']['data'].reshape((len(sensor), len(source), 3))
         dims = (sensor, source, Space('RAS'))
     else:
-        source = SourceSpace.from_mne_source_spaces(fwd['src'], src, subjects_dir, parc)
+        source = SourceSpace.from_file(subjects_dir, subject, src, parc, label, fwd['src'])
         x = fwd['sol']['data']
         dims = (sensor, source)
     return NDVar(x, dims, name)
@@ -1164,8 +1165,8 @@ def inverse_operator(inv, src, subjects_dir=None, parc='aparc', name=None):
         name = 'inv'
     sensor = sensor_dim(inv['info'], _picks(inv['info'], True, 'bads'))
     assert np.all(sensor.names == inv['eigen_fields']['col_names'])
-    source = SourceSpace.from_mne_source_spaces(inv['src'], src, subjects_dir,
-                                                parc)
+    subject = inv['src'][0]['subject_his_id']
+    source = SourceSpace.from_file(subjects_dir, subject, src, parc, source_spaces=inv['src'])
     inv = mne.minimum_norm.prepare_inverse_operator(inv, 1, 1., 'MNE')
     k = mne.minimum_norm.inverse._assemble_kernel(inv, None, 'MNE', False)[0]
     return NDVar(k, (source, sensor), {}, name)

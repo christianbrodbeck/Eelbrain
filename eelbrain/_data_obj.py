@@ -9301,25 +9301,58 @@ class SourceSpaceBase(Dimension):
         self._n_vert = sum(len(v) for v in self.vertices)
 
     @classmethod
-    def from_file(cls, subjects_dir, subject, src, parc=None):
+    def from_file(
+            cls,
+            subjects_dir: PathArg,
+            subject: str,
+            src: str,
+            parc: str = None,
+            label: mne.Label = None,
+            source_spaces: mne.SourceSpaces = None,  # speeds up initialization
+    ):
         """SourceSpace dimension from MNE source space file"""
-        if parc is None:
-            parc = cls._default_parc
-        filename = Path(subjects_dir) / subject / 'bem' / f'{subject}-{src}-src.fif'
-        source_spaces = mne.read_source_spaces(str(filename))
-        return cls.from_mne_source_spaces(source_spaces, src, subjects_dir, parc)
+        if source_spaces is None:
+            filename = Path(subjects_dir) / subject / 'bem' / f'{subject}-{src}-src.fif'
+            source_spaces = mne.read_source_spaces(str(filename))
+        return cls._from_mne(subjects_dir, subject, src, parc, label, source_spaces)
 
     @classmethod
-    def from_mne_source_spaces(cls, source_spaces, src, subjects_dir, parc=None, label=None):
-        """SourceSpace dimension from MNE SourceSpaces object"""
+    def from_mne_source_spaces(
+            cls,
+            source_spaces: mne.SourceSpaces,
+            src: str,
+            subjects_dir: PathArg,
+            parc: str = None,
+            label: mne.Label = None,
+    ):
+        """SourceSpace dimension from :cls:`mne.SourceSpaces` object
+
+        Notes
+        -----
+        The ``source_spaces`` are permanently stored, which can increase file
+        size when pickling. To avoid this, use :meth:`from_file` instead.
+        """
+        subject = source_spaces[0]['subject_his_id']
+        return cls._from_mne(subjects_dir, subject, src, parc, label, source_spaces, filename=source_spaces)
+
+    @classmethod
+    def _from_mne(
+            cls,
+            subjects_dir: PathArg,
+            subject: str,
+            src: str,
+            parc: str = None,
+            label: mne.Label = None,
+            source_spaces: mne.SourceSpaces = None,  # speeds up initialization
+            **kwargs,
+    ):
         if parc is None:
             parc = cls._default_parc
         if label is None:
             vertices = [ss['vertno'] for ss in source_spaces]
         else:
             vertices, _ = label_src_vertno_sel(label, source_spaces)
-
-        return cls(vertices, source_spaces[0]['subject_his_id'], src, subjects_dir, parc, filename=source_spaces)
+        return cls(vertices, subject, src, subjects_dir, parc, **kwargs)
 
     @LazyProperty
     def subjects_dir(self):
