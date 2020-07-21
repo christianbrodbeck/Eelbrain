@@ -9427,6 +9427,8 @@ class SourceSpaceBase(Dimension):
     def _copy(self, subject=None, parc=None):
         if subject is None:
             subject = self.subject
+        elif not isinstance(self._filename, str):
+            raise ValueError(f"Can't change subject on {self.__class__.__name__} with embedded MNE.SourceSpace")
         if parc is None:
             parc = self.parc
         return self.__class__(self.vertices, subject, self.src, self.subjects_dir, parc, self._subgraph(), self.name, self._filename)
