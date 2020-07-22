@@ -1124,11 +1124,11 @@ def forward_operator(fwd, src, subjects_dir=None, parc='aparc', name=None):
     assert np.all(sensor.names == fwd['sol']['row_names'])
     subject = fwd['src'][0]['subject_his_id']
     if is_vol:
-        source = VolumeSourceSpace.from_file(subjects_dir, subject, src, parc, label, fwd['src'])
+        source = VolumeSourceSpace.from_file(subjects_dir, subject, src, parc, source_spaces=fwd['src'])
         x = fwd['sol']['data'].reshape((len(sensor), len(source), 3))
         dims = (sensor, source, Space('RAS'))
     else:
-        source = SourceSpace.from_file(subjects_dir, subject, src, parc, label, fwd['src'])
+        source = SourceSpace.from_file(subjects_dir, subject, src, parc, source_spaces=fwd['src'])
         x = fwd['sol']['data']
         dims = (sensor, source)
     return NDVar(x, dims, name)

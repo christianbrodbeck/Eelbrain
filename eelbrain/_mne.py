@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import re
 import packaging.version
+from typing import Union, List
 import warnings
 
 import numpy as np
@@ -373,38 +374,46 @@ def labels_from_mni_coords(seeds, extent=30., subject='fsaverage',
     return labels
 
 
-def morph_source_space(ndvar, subject_to=None, vertices_to=None, morph_mat=None,
-                       copy=False, parc=True, xhemi=False, mask=None):
+def morph_source_space(
+        ndvar: NDVar,
+        subject_to: str = None,
+        vertices_to: Union[List, str] = None,
+        morph_mat: sp.sparse.spmatrix = None,
+        copy: bool = False,
+        parc: Union[bool, str] = True,
+        xhemi: bool = False,
+        mask: bool = None,
+):
     """Morph source estimate to a different MRI subject
 
     Parameters
     ----------
-    ndvar : NDVar
+    ndvar
         NDVar with SourceSpace dimension.
-    subject_to : str
+    subject_to
         Name of the subject on which to morph (by default this is the same as
         the current subject for ``xhemi`` morphing).
-    vertices_to : None | list of array of int | 'lh' | 'rh'
+    vertices_to : list of array of int | 'lh' | 'rh'
         The vertices on the destination subject's brain. If ndvar contains a
         whole source space, vertices_to can be automatically loaded, although
         providing them as argument can speed up processing by a second or two.
         Use 'lh' or 'rh' to target vertices from only one hemisphere.
-    morph_mat : None | sparse matrix
+    morph_mat
         The morphing matrix. If ndvar contains a whole source space, the morph
         matrix can be automatically loaded, although providing a cached matrix
         can speed up processing by a second or two.
-    copy : bool
+    copy
         Make sure that the data of ``morphed_ndvar`` is separate from
         ``ndvar`` (default False).
-    parc : bool | str
+    parc
         Parcellation for target source space. The default is to keep the
         parcellation from ``ndvar``. Set to ``False`` to load no parcellation.
         If the annotation files are missing for the target subject an IOError
         is raised.
-    xhemi : bool
+    xhemi
         Mirror hemispheres (i.e., project data from the left hemisphere to the
         right hemisphere and vice versa).
-    mask : bool
+    mask
         Restrict output to known sources. If the parcellation of ``ndvar`` is
         retained keep only sources with labels contained in ``ndvar``, otherwise
         remove only sourves with ``”unknown-*”`` label (default is True unless
