@@ -2511,7 +2511,7 @@ class MneExperiment(FileTree):
             del ds['epochs']
         return ds
 
-    def load_events(self, subject=None, add_bads=True, data_raw=True, **kwargs):
+    def load_events(self, subject=None, add_bads=True, data_raw=False, **kwargs):
         """
         Load events from a raw file.
 
