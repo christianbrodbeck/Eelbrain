@@ -53,13 +53,13 @@ def test_convolve():
 
     xc = convolve(h1, x1)
     xc_np = np.convolve(h1.x, x1.x)
-    assert_array_equal(xc.x, xc_np[:100])
+    assert_allclose(xc.x, xc_np[:100], atol=1e-14)
 
     # add dimension through kernel
     xc = convolve(h2, x1)
     xc_np = np.vstack((np.convolve(h2.x[0], x1.x)[:100],
                        np.convolve(h2.x[1], x1.x)[:100]))
-    assert_array_equal(xc.x, xc_np)
+    assert_allclose(xc.x, xc_np, atol=1e-14)
 
 
 def test_correlation_coefficient():

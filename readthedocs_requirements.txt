@@ -7,6 +7,7 @@ mne >=0.17
 nibabel >2.3.0  # read_annot bug
 nilearn
 numpy >=1.11
+numba
 pillow
 sphinx_rtd_theme
 sphinx >=3
