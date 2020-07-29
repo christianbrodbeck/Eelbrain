@@ -165,7 +165,8 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
     events : Dataset
         A Dataset with the following variables:
          - *i_start*: the index of the event in the raw file.
-         - *trigger*: the event value.
+         - *trigger*: the event value/id.
+         - *event*: the event label (only for events from annotations).
         The Dataset's info dictionary contains the following values:
          - *raw*: the mne Raw object.
 
@@ -210,7 +211,7 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
         'trigger': Var(evts[:, 2]),
     }, name, info={'raw': raw})
     if labels is not None:
-        ds['label'] = Factor(ds['trigger'], labels=labels)
+        ds['event'] = Factor(ds['trigger'], labels=labels)
     return ds
 
 
