@@ -953,7 +953,7 @@ class ANOVA:
     def __str__(self):
         return str(self.table())
 
-    def _asfmtext(self):
+    def _asfmtext(self, rasterize: bool = None):
         return self.table()
 
     def print_log(self):

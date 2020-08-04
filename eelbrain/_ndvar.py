@@ -231,16 +231,17 @@ def parallel_convolve(
     n_times = x_flat.shape[2]
     # loop through x and h dimensions
     out_indexes = [(ix, ih) for ix in range(len(x_flat)) for ih in range(len(h_flat))]
+    n_shared = x_flat.shape[1]
     for i_out in prange(len(out_indexes)):
-        ix, ih = out_indexes[i_out]
-        for x_, h_ in zip(x_flat[ix], h_flat[ih]):
+        i_x, i_h = out_indexes[i_out]
+        for i_shared in range(n_shared):
             # actual convolution
             for t in range(n_times):
                 for i_tau, tau in enumerate(range(i_start, i_stop)):
                     t_tau = t + tau
                     if t_tau < 0 or t_tau >= n_times:
                         continue
-                    out_flat[ix, ih, t_tau] += h_[i_tau] * x_[t]
+                    out_flat[i_x, i_h, t_tau] += h_flat[i_h, i_shared, i_tau] * x_flat[i_x, i_shared, t]
 
 
 def correlation_coefficient(x, y, dim=None, name=None):

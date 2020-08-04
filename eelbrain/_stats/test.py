@@ -97,7 +97,7 @@ class Correlation:
     def __repr__(self):
         return f"<Correlation: {self._y} ~ {self._x}; {self._asfmtext()}> "
 
-    def _asfmtext(self):
+    def _asfmtext(self, rasterize: bool = None):
         return fmtxt.FMText([fmtxt.eq('r', self.r, self.df), ', ', fmtxt.peq(self.p)])
 
 
@@ -550,7 +550,7 @@ class TTest:
         self.p = stats.ttest_p(self.t, self.df, tail)
         self.tail = tail
 
-    def _asfmtext(self):
+    def _asfmtext(self, rasterize: bool = None):
         return fmtxt.FMText([fmtxt.eq('t', self.t, self.df), ', ', fmtxt.peq(self.p)])
 
 
@@ -795,7 +795,7 @@ class MannWhitneyU:
             desc = f"{self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
         return f"<MannWhitneyU: {desc}; {self._asfmtext()}>"
 
-    def _asfmtext(self):
+    def _asfmtext(self, rasterize: bool = None):
         return fmtxt.FMText([fmtxt.eq('U', self.u), ', ', fmtxt.peq(self.p)])
 
 
@@ -1002,7 +1002,7 @@ class WilcoxonSignedRank:
             desc = f"{self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
         return f"<WilcoxonSignedRank: {desc}; {self._asfmtext()}>"
 
-    def _asfmtext(self):
+    def _asfmtext(self, rasterize: bool = None):
         return fmtxt.FMText([fmtxt.eq('W', self.w), ', ', fmtxt.peq(self.p)])
 
 

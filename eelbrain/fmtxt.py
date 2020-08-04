@@ -484,19 +484,35 @@ def _html_element(tag, body, env, options=None):
     return txt
 
 
-def asfmtext(content, tag=None):
-    "Convert non-FMText objects to FMText"
+def asfmtext(content, tag: str = None, rasterize: bool = None):
+    """Convert non-FMText objects to FMText
+
+    Parameters
+    ----------
+    content
+        Objects to convert to FMText.
+    tag
+        Tag to nest ``content`` in.
+    rasterize
+        Prefer rasterized graphics to vector graphics.
+    """
     if isinstance(content, (FMTextElement, FMTextConstant)):
         if tag:
             return FMTextElement(content, tag)
         else:
             return content
     elif hasattr(content, '_asfmtext'):
-        return asfmtext(content._asfmtext(), tag)
+        return asfmtext(content._asfmtext(rasterize), tag)
     elif isinstance(content, (list, tuple)):
         return FMText(content, tag)
     elif isinstance(content, matplotlib.figure.Figure):
-        image = Image()
+        if rasterize is None:
+            format = None
+        elif rasterize:
+            format = 'png'
+        else:
+            format = 'svg'
+        image = Image(format=format)
         content.savefig(image)
         return image
     else:

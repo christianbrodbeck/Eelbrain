@@ -194,7 +194,7 @@ class NDTest:
         tstop = self._time_dim.tstop if self.tstop is None else self.tstop
         return f"{_text.ms(tstart)} - {_text.ms(tstop)} ms"
 
-    def _asfmtext(self):
+    def _asfmtext(self, rasterize: bool = None):
         p = self.p.min()
         max_stat = self._max_statistic()
         return FMText((fmtxt.eq(self._statistic, max_stat, 'max', stars=p), ', ', fmtxt.peq(p)))
@@ -1474,7 +1474,7 @@ class MultiEffectNDTest(NDTest):
             args.append("%r: %s" % (cdist.name, ', '.join(effect_args)))
         return args
 
-    def _asfmtext(self):
+    def _asfmtext(self, rasterize: bool = None):
         table = fmtxt.Table('llll')
         table.cells('Effect', fmtxt.symbol(self._statistic, 'max'), fmtxt.symbol('p'), 'sig')
         table.midrule()

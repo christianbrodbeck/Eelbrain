@@ -1800,8 +1800,14 @@ class EelFigure:
         if not enable:
             self._remove_crosshairs(True)
 
-    def _asfmtext(self):
-        return self.image()
+    def _asfmtext(self, rasterize: bool = None):
+        if rasterize is None:
+            format = None
+        elif rasterize:
+            format = 'png'
+        else:
+            format = 'svg'
+        return self.image(format=format)
 
     def image(self, name=None, format=None):
         """Create FMTXT Image from the figure

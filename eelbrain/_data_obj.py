@@ -5929,7 +5929,7 @@ class Dataset(dict):
 
         return table
 
-    def _asfmtext(self):
+    def _asfmtext(self, rasterize: bool = None):
         return self.as_table()
 
     def eval(self, expression):
