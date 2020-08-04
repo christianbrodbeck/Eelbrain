@@ -149,8 +149,12 @@ class TTestIndependent(Test):
     Sample test definitions, assuming that the experiment has two groups called
     ``'younger'`` and ``'older'``::
 
+        variables = {
+            'age': GroupVar(['younger', 'older']),
+        }
         tests = {
-            'old=young': TTestIndependent('group', 'older', 'younger', vars={'group': GroupVar(['younger', 'older'])}),
+            'old=young': TTestIndependent('group', 'older', 'younger'),
+            'old>young': TTestIndependent('group', 'older', 'younger', tail=1),
         }
     """
     kind = 'ttest_ind'
