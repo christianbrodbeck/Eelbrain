@@ -502,38 +502,22 @@ class Boosting:
 
         evaluators, evaluators_s, evaluators_v = get_evaluators(metrics, self.data)
 
-        # buffer for cropped y_pred for evaluation
-        n_eval = np.sum(eval_segments[:, 1] - eval_segments[:, 0])
-        if evaluators_s:
-            y_buffer = np.empty(n_eval, np.float64)
-            y_pred_buffer = np.empty(n_eval, np.float64)
-        else:
-            y_buffer = y_pred_buffer = None
-        if evaluators_v:
-            y_buffer_vec = np.empty((n_vec, n_eval), np.float64)
-            y_pred_buffer_vec = np.empty((n_vec, n_eval), np.float64)
-        else:
-            y_buffer_vec = y_pred_buffer_vec = None
-
         # fit and evaluate each y
         for i_y, y_pred_i in enumerate(y_pred_iter):
+            # for cross-validation, different segments are predicted by different h:
             for h, segments in hs:
                 convolve(h[i_y], self.data.x, self.data.x_pads, self._i_start, segments, y_pred_i)
 
             if evaluators_s:
-                np.concatenate([self.data.y[i_y, a:b] for a, b in eval_segments], 0, y_buffer)
-                np.concatenate([y_pred_i[a:b] for a, b in eval_segments], 0, y_pred_buffer)
                 for e in evaluators_s:
-                    e.add_y(i_y, y_buffer, y_pred_buffer)
+                    e.add_y(i_y, self.data.y[i_y], y_pred_i, eval_segments)
 
             if evaluators_v and i_y % n_vec == n_vec - 1:
                 i_vec = i_y // n_vec
                 i_y_vec = slice(i_y-n_vec+1, i_y+1)
                 y_pred_i_vec = y_pred[i_y_vec] if debug else y_pred
-                np.concatenate([self.data.y[i_y_vec, a:b] for a, b in eval_segments], 1, y_buffer_vec)
-                np.concatenate([y_pred_i_vec[:, a:b] for a, b in eval_segments], 1, y_pred_buffer_vec)
                 for e in evaluators_v:
-                    e.add_y(i_vec, y_buffer_vec, y_pred_buffer_vec)
+                    e.add_y(i_vec, self.data.y[i_y_vec], y_pred_i_vec, eval_segments)
 
         # Package evaluators
         evaluations = {e.attr: self.data.package_value(e.x, e.name, meas=e.meas) for e in evaluators}

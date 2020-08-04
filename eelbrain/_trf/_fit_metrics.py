@@ -24,11 +24,19 @@ class Evaluator:
             n //= len(data.vector_dim)
         self.x = np.empty(n, np.float64)
 
+    @classmethod
+    def _y_1_segment(cls, y, y_pred, segments):
+        if len(segments) > 1:
+            raise NotImplementedError(f"{cls.__class__.__name__} for segmented data")
+        istart, istop = segments[0]
+        return y[..., istart: istop], y_pred[..., istart: istop]
+
     def add_y(
             self,
             i: int,  # y index (row in data.y)
             y: np.ndarray,  # actual data
             y_pred: np.ndarray,  # data predicted by model
+            segments: np.ndarray,  # segments on which to evaluate
     ):
         raise NotImplementedError
 
@@ -40,18 +48,28 @@ class L1(Evaluator):
     attr = 'residual'
     name = 'L1 residuals'
 
-    def add_y(self, i, y, y_pred):
-        index = np.array(((0, len(y)),), np.int64)
-        self.x[i] = l1(y - y_pred, index)
+    def add_y(
+            self,
+            i: int,  # y index (row in data.y)
+            y: np.ndarray,  # actual data
+            y_pred: np.ndarray,  # data predicted by model
+            segments: np.ndarray,  # segments on which to evaluate
+    ):
+        self.x[i] = l1(y - y_pred, segments)
 
 
 class L2(Evaluator):
     attr = 'residual'
     name = 'L2 residuals'
 
-    def add_y(self, i, y, y_pred):
-        index = np.array(((0, len(y)),), np.int64)
-        self.x[i] = l2(y - y_pred, index)
+    def add_y(
+            self,
+            i: int,  # y index (row in data.y)
+            y: np.ndarray,  # actual data
+            y_pred: np.ndarray,  # data predicted by model
+            segments: np.ndarray,  # segments on which to evaluate
+    ):
+        self.x[i] = l2(y - y_pred, segments)
 
 
 class Correlation(Evaluator):
@@ -59,7 +77,14 @@ class Correlation(Evaluator):
     name = 'Correlation'
     meas = 'r'
 
-    def add_y(self, i, y, y_pred):
+    def add_y(
+            self,
+            i: int,  # y index (row in data.y)
+            y: np.ndarray,  # actual data
+            y_pred: np.ndarray,  # data predicted by model
+            segments: np.ndarray,  # segments on which to evaluate
+    ):
+        y, y_pred = self._y_1_segment(y, y_pred, segments)
         with catch_warnings():
             filterwarnings('ignore', "invalid value encountered", RuntimeWarning)
             r = np.corrcoef(y, y_pred)[0, 1]
@@ -71,7 +96,14 @@ class RankCorrelation(Evaluator):
     name = 'Rank correlation'
     meas = 'r'
 
-    def add_y(self, i, y, y_pred):
+    def add_y(
+            self,
+            i: int,  # y index (row in data.y)
+            y: np.ndarray,  # actual data
+            y_pred: np.ndarray,  # data predicted by model
+            segments: np.ndarray,  # segments on which to evaluate
+    ):
+        y, y_pred = self._y_1_segment(y, y_pred, segments)
         with catch_warnings():
             filterwarnings('ignore', "invalid value encountered", RuntimeWarning)
             r = spearmanr(y, y_pred)[0]
@@ -83,7 +115,14 @@ class VectorL1(Evaluator):
     attr = 'residual'
     name = 'Vector l1 residuals'
 
-    def add_y(self, i, y, y_pred):
+    def add_y(
+            self,
+            i: int,  # y index (row in data.y)
+            y: np.ndarray,  # actual data
+            y_pred: np.ndarray,  # data predicted by model
+            segments: np.ndarray,  # segments on which to evaluate
+    ):
+        y, y_pred = self._y_1_segment(y, y_pred, segments)
         y_pred_error = norm(y - y_pred, axis=0)
         self.x[i] = y_pred_error.sum(-1)
 
@@ -93,7 +132,14 @@ class VectorL2(Evaluator):
     attr = 'residual'
     name = 'Vector l2 residuals'
 
-    def add_y(self, i, y, y_pred):
+    def add_y(
+            self,
+            i: int,  # y index (row in data.y)
+            y: np.ndarray,  # actual data
+            y_pred: np.ndarray,  # data predicted by model
+            segments: np.ndarray,  # segments on which to evaluate
+    ):
+        y, y_pred = self._y_1_segment(y, y_pred, segments)
         dist = y - y_pred
         dist **= 2
         self.x[i] = y.sum()
@@ -109,7 +155,14 @@ class VectorCorrelation(Evaluator):
         self.y_scale = data.scale_data
         Evaluator.__init__(self, data)
 
-    def add_y(self, i, y, y_pred):
+    def add_y(
+            self,
+            i: int,  # y index (row in data.y)
+            y: np.ndarray,  # actual data
+            y_pred: np.ndarray,  # data predicted by model
+            segments: np.ndarray,  # segments on which to evaluate
+    ):
+        y, y_pred = self._y_1_segment(y, y_pred, segments)
         self.x[i] = self._r(y, y_pred)
 
     def _r(self, y, y_pred):
