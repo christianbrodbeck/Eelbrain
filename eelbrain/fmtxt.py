@@ -110,7 +110,7 @@ _HTML_TAGS = {r'_': 'sub',
               'code': 'code',
               'font': 'font'}
 
-_RTF_SUBS = {r'\emph': "\i %s\i0"}
+_RTF_SUBS = {r'\emph': r"\i %s\i0"}
 
 _html_alignments = {
     'l': 'left',
@@ -1542,7 +1542,7 @@ class Table(FMTextElement):
 
     def get_rtf(self, env: dict = ENV):
         # header
-        rows = ['\cellx%i000' % i for i in range(len(self.columns))]
+        rows = [r'\cellx%i000' % i for i in range(len(self.columns))]
         rows.insert(0, '\\trowd')
         rows.append('\\row')
         # body
