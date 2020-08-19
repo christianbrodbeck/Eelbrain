@@ -194,14 +194,10 @@ class RevCorrData:
     x : NDVar | sequence of NDVar
         Predictors.
     segments : np.ndarray
-        ``(n_segments, 2)`` array of segment ``[start, stop]`` indices.
-    cv_segments : np.ndarray
-        Segmentation used for cross-validation.
+        ``(n_segments, 2)`` array of segment ``[start, stop]`` indices. The
+        segments delimit chunks of continuous data, such as trials.
     splits : list of Split
         Cross-validation scheme.
-    cv_indexes : Sequence
-        Only available for segmented data. For each partition, the index into
-        :attr:`.segments` used as test set.
     """
     # data
     x_mean = None

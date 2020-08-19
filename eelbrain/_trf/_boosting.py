@@ -17,7 +17,7 @@ x2 = ds['x2']
 %prun -s cumulative res = boosting(y, x1, 0, 1)
 
 """
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field
 import inspect
 from itertools import chain, product, repeat
 from multiprocessing.sharedctypes import RawArray
@@ -138,6 +138,7 @@ class BoostingResult(PickleableDataClass):
     n_samples: int = None
     _y_info: dict = field(default_factory=dict)
     # fit metrics
+    i_test: int = None  # test partition for fit metrics
     residual: NDVar = None
     r: Union[float, NDVar] = None
     r_rank: Union[float, NDVar] = None
@@ -309,6 +310,21 @@ class SplitResult:
 
 
 class Boosting:
+    """Object-oriented API for boosting
+
+    Examples
+    --------
+    Standard usage of the object-oriented API for a model with
+    cross-validation, comparable to the :func:`boosting` function::
+
+        data = RevCorrData(y, x, ds)
+        data.apply_basis(0.05, 'hamming'')
+        data.normalize('l1')
+        data.initialize_cross_validation(5, test=1)
+        model = Boosting(data)
+        model.fit(0, 0.500, selective_stopping=1, error='l1')
+        result = model.evaluate_fit()
+    """
     # fit parameters
     tstart = None
     tstart_h = None
@@ -451,12 +467,34 @@ class Boosting:
 
     def evaluate_fit(
             self,
+            i_test: int = None,
             metrics: Sequence[str] = None,
             cross_fit: bool = None,
             debug: bool = False,
     ):
+        """Compute average TRF and fit metrics
+
+        Parameters
+        ----------
+        i_test
+            Test partition index (only applies for models fit with
+            cross-validation). By default, ``y`` in each test segment is
+            predicted from the averaged model from the corresponding training
+            sets, and all test segments are pooled for computing fit metrics.
+            Set ``i_test`` with an integer to compute fit metrics for a single
+            test partition.
+        metrics
+            Which model fit metrics to compute (default depends on the data).
+        cross_fit
+            Compute fit metrics from cross-validation (only applies to model
+            with cross-validation; default ``True``).
+        debug
+            Add additional attributes to the returned result.
+        """
         if cross_fit is None:
             cross_fit = bool(self.data.splits.n_test)
+        elif cross_fit and not self.data.splits.n_test:
+            raise ValueError(f"cross_fit={cross_fit!r} for model without cross-validation")
 
         # fit evaluation
         if metrics is None:
@@ -467,10 +505,21 @@ class Boosting:
             else:
                 metrics = [self.error, 'r', 'r_rank']
 
+        # test sets to use
+        if cross_fit:
+            if i_test is None:
+                i_tests = self._get_i_tests()
+            else:
+                i_tests = [i_test]
+        elif i_test is not None:
+            raise ValueError(f"i_test={i_test!r} without cross_fit")
+        else:
+            i_tests = None
+
         # hs: [(h, segments), ...]
         if cross_fit:
-            hs = [self._get_h(True, i_test) for i_test in self._get_i_tests()]
-            all_segments = np.sort(np.vstack([s for _, s in hs]), 0)
+            hs = [self._get_h(True, i) for i in i_tests]
+            all_segments = np.sort(np.vstack([segments for _, segments in hs]), 0)
             eval_segments = merge_segments(all_segments, True)
         else:
             hs = [self._get_h(True)]
@@ -543,7 +592,7 @@ class Boosting:
             # advanced data properties
             self.data.y.shape[1], self.data.y_info,
             algorithm_version=0,
-            **evaluations)
+            i_test=i_test, **evaluations)
 
 
 @user_activity
