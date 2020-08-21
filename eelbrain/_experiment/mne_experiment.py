@@ -6316,14 +6316,14 @@ class MneExperiment(FileTree):
         if data.source is True:
             if parc is None:
                 if mask:
-                    folder = "%s masked" % mask
+                    folder = f"{mask} masked"
                     kwargs['parc'] = mask
                     if pmin is None:
                         # When not doing clustering, parc does not affect
                         # results, so we don't need to distinguish parc and mask
                         kwargs['test_dims'] = mask
                     else:  # parc means disconnecting
-                        kwargs['test_dims'] = '%s-mask' % mask
+                        kwargs['test_dims'] = f'{mask}-mask'
                 else:
                     folder = "Whole Brain"
                     # only compute unmasked test once (probably rare anyways)
@@ -6332,10 +6332,7 @@ class MneExperiment(FileTree):
             elif mask:
                 raise ValueError("Can't specify mask together with parc")
             elif pmin is None or pmin == 'tfce':
-                raise NotImplementedError(
-                    "Threshold-free test (pmin=%r) is not implemented for "
-                    "parcellation (parc parameter). Use a mask instead, or do "
-                    "a cluster-based test." % pmin)
+                raise NotImplementedError(f"Threshold-free test (pmin={pmin!r}) is not implemented for parcellation (parc parameter). Use a mask instead, or do a cluster-based test.")
             else:
                 folder = parc
                 kwargs['parc'] = parc
@@ -6371,19 +6368,19 @@ class MneExperiment(FileTree):
             if baseline is True or baseline == epoch_baseline:
                 items.append('snsbl')
             elif baseline:
-                items.append('snsbl=%s' % _time_window_str(baseline))
+                items.append(f'snsbl={_time_window_str(baseline)}')
 
             if src_baseline is True or src_baseline == epoch_baseline:
                 items.append('srcbl')
             else:
-                items.append('srcbl=%s' % _time_window_str(src_baseline))
+                items.append(f'srcbl={_time_window_str(src_baseline)}')
         else:
             if not baseline:
                 items.append('nobl')
             elif baseline is True or baseline == epoch_baseline:
                 pass
             else:
-                items.append('bl=%s' % _time_window_str(baseline))
+                items.append(f'bl={_time_window_str(baseline)}')
 
         # pmin
         if pmin is not None:
