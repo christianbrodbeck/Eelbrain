@@ -173,8 +173,7 @@ class BoostingResult(PickleableDataClass):
                 if state['r_rank'] is None:
                     state['residual'] *= state['n_samples']
             if version < 13:
-                args = [state.pop(arg) for arg in ['_partitions_arg', 'partitions', 'validate', 'test', 'model']]
-                state['splits'] = Splits(None, *args)
+                state['splits'] = Splits(None, state.pop('_partitions_arg'), state.pop('partitions'), state.pop('validate', 1), state.pop('test', 0), state.pop('model'))
         self.__init__(**state)
 
     def __repr__(self):
