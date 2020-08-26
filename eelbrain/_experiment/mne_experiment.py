@@ -1692,61 +1692,6 @@ class MneExperiment(FileTree):
         for src, dst in pairs:
             shutil.copy2(src, dst)
 
-    def clear_cache(self, level=1):
-        """Remove cached files.
-
-        Parameters
-        ----------
-        level : int
-            Level up to which to clear the cache (see notes below). The default
-            is 1, which deletes all cached files.
-
-        Notes
-        -----
-        Each lower level subsumes the higher levels:
-
-        ``1``
-            Delete all cached files.
-        ``2``
-            Epoched files - these need to be cleared when anything about the
-            epoch definition changes (tmin, tmax, event inclusion, ...). Note
-            that you might also have to manually update epoch rejection files
-            with the :meth:`MneExperiment.make_epoch_selection` method.
-        ``5``
-            tests - these need to be cleared when the members of the relevant
-            subject groups change.
-
-        Examples
-        --------
-        To delete only test files, after adding raw data for a new subject to
-        the experiment::
-
-            >>> e.clear_cache(5)
-
-        To delete cached data files after changing the selection criteria for
-        a secondary epoch::
-
-            >>> e.clear_cache(2)
-
-        If criteria on a primary epoch are changed, the trial rejection has to
-        be re-done in addition to clearing the cache.
-
-        To delete all cached files and clear up hard drive space::
-
-            >>> e.clear_cache(1)
-        """
-        if level <= 1:
-            self.rm('cache-dir', confirm=True)
-            print("All cached data cleared.")
-        else:
-            if level <= 2:
-                self.rm('evoked-dir', confirm=True)
-                self.rm('cov-dir', confirm=True)
-                print("Cached epoch data cleared")
-            if level <= 5:
-                self.rm('test-dir', confirm=True)
-                print("Cached tests cleared.")
-
     def get_field_values(self, field, exclude=(), **state):
         """Find values for a field taking into account exclusion
 
