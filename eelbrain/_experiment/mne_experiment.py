@@ -66,11 +66,13 @@ from .variable_def import GroupVar, Variables
 
 
 # current cache state version
-CACHE_STATE_VERSION = 13
+CACHE_STATE_VERSION = 14
 # History:
 #  10:  input_state: share forward-solutions between sessions
 #  11:  add samplingrate to epochs
 #  12:  store test-vars as Variables object
+#  13:  store cell in evoked files
+#  14:  avoid directories ending in spaces and double spaces in names
 
 # paths
 LOG_FILE = join('{root}', 'eelbrain {name}.log')
@@ -411,7 +413,7 @@ class MneExperiment(FileTree):
 
             # evoked
             'evoked-dir': join('{cache-dir}', 'evoked'),
-            'evoked-file': join('{evoked-dir}', '{subject}', '{sns_kind} {epoch_visit} {model} {evoked_kind}-ave.fif'),
+            'evoked-file': join('{evoked-dir}', '{subject}', '{sns_kind} {evoked_desc}-ave.fif'),
 
             # forward modeling:
             'fwd-file': join('{raw-cache-dir}', '{recording}-{mrisubject}-{src}-fwd.fif'),
@@ -421,7 +423,7 @@ class MneExperiment(FileTree):
             'cov-file': '{cov-base}-cov.fif',
             'cov-info-file': '{cov-base}-info.txt',
             # inverse solution
-            'inv-file': join('{raw-cache-dir}', 'inv', '{mrisubject} {src} {recording} {sns_kind} {cov} {rej} {inv-cache}-inv.fif'),
+            'inv-file': join('{raw-cache-dir}', 'inv', '{mrisubject} {src} {recording} {inv_kind}-inv.fif'),
             # MRIs
             'common_brain': 'fsaverage',
             # MRI base files
@@ -474,8 +476,8 @@ class MneExperiment(FileTree):
             # MRAT
             'mrat_condition': '',
             'mrat-root': join('{root}', 'mrat'),
-            'mrat-sns-root': join('{mrat-root}', '{sns_kind}', '{epoch_visit} {model} {evoked_kind}'),
-            'mrat-src-root': join('{mrat-root}', '{src_kind}', '{epoch_visit} {model} {evoked_kind}'),
+            'mrat-sns-root': join('{mrat-root}', '{sns_kind}', '{evoked_desc}'),
+            'mrat-src-root': join('{mrat-root}', '{src_kind}', '{evoked_desc}'),
             'mrat-sns-file': join('{mrat-sns-root}', '{mrat_condition}', '{mrat_condition}_{subject}-ave.fif'),
             'mrat_info-file': join('{mrat-root}', '{subject} info.txt'),
             'mrat-src-file': join('{mrat-src-root}', '{mrat_condition}', '{mrat_condition}_{subject}'),
@@ -679,13 +681,17 @@ class MneExperiment(FileTree):
 
         # compounds
         self._register_compound('sns_kind', ('raw',))
+        self._register_compound('inv_kind', ('sns_kind', 'cov', 'rej', 'inv-cache'))
         self._register_compound('src_kind', ('sns_kind', 'cov', 'mri', 'src-name', 'inv'))
         self._register_compound('recording', ('session', 'visit'))
         self._register_compound('subject_visit', ('subject', 'visit'))
         self._register_compound('mrisubject_visit', ('mrisubject', 'visit'))
         self._register_compound('epoch_visit', ('epoch', 'visit'))
         self._register_compound('evoked_kind', ('rej', 'equalize_evoked_count'))
-        self._register_compound('test_desc', ('epoch', 'visit', 'test', 'test_options'))
+        self._register_compound('evoked_sns_kind', ('sns_kind', 'evoked_kind'))
+        self._register_compound('evoked_src_kind', ('src_kind', 'evoked_kind'))
+        self._register_compound('evoked_desc', ('epoch_visit', 'model', 'evoked_kind'))
+        self._register_compound('test_desc', ('epoch_visit', 'test', 'test_options'))
 
         # Define make handlers
         self._bind_cache('cov-file', self.make_cov)
@@ -903,6 +909,7 @@ class MneExperiment(FileTree):
                 log.debug("Updating cache-state %i -> %i", cache_state_v, CACHE_STATE_VERSION)
                 save_state = deepcopy(save_state)
                 self._state_backwards_compat(cache_state_v, new_state, cache_state)
+                self._migrate_cache(cache_state_v, cache_dir)
             elif cache_state_v > CACHE_STATE_VERSION:
                 raise RuntimeError(f"The cache is from a newer version of Eelbrain than you are currently using. Either upgrade Eelbrain or delete the cache folder.")
 
@@ -1068,6 +1075,13 @@ class MneExperiment(FileTree):
                         params['vars'] = None
                 else:
                     params['vars'] = None
+
+    @staticmethod
+    def _migrate_cache(cache_state_v, cache_dir):
+        "Modify cache structure"
+        if cache_state_v < 14:
+            from .migration import squeeze_spaces_in_paths
+            squeeze_spaces_in_paths(cache_dir)
 
     def _check_cache(self, new_state, cache_state, root):
         invalid_cache = defaultdict(set)
@@ -6250,9 +6264,9 @@ class MneExperiment(FileTree):
         data = TestDims.coerce(data)
         # data kind (sensor or source space)
         if data.sensor:
-            analysis = '{sns_kind} {evoked_kind}'
+            analysis = '{evoked_sns_kind}'
         elif data.source:
-            analysis = '{src_kind} {evoked_kind}'
+            analysis = '{evoked_src_kind}'
         else:
             raise RuntimeError(f"data={data.string!r}")
 
