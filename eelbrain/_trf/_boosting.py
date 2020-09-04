@@ -484,6 +484,7 @@ class Boosting:
             test partition.
         metrics
             Which model fit metrics to compute (default depends on the data).
+            If no metrics are needed, ``metrics=()`` is faster.
         cross_fit
             Compute fit metrics from cross-validation (only applies to model
             with cross-validation; default ``True``).
@@ -530,45 +531,51 @@ class Boosting:
                 if not np.all(valid):
                     eval_segments = eval_segments[valid]
 
-        # y dimensions
-        n_y = len(self.data.y)
-        if self.data.vector_dim:
-            n_vec = len(self.data.vector_dim)
-            n_vecs = n_y // n_vec
+        if metrics:
+            # y dimensions
+            n_y = len(self.data.y)
+            if self.data.vector_dim:
+                n_vec = len(self.data.vector_dim)
+                n_vecs = n_y // n_vec
+            else:
+                n_vec = n_vecs = 0
+
+            # predicted y
+            if debug:
+                y_pred_iter = y_pred = np.empty(self.data.y.shape)
+            elif n_vecs:
+                y_pred = np.empty((n_vec, *self.data.y.shape[1:]))
+                y_pred_iter = chain.from_iterable(repeat(tuple(y_pred), n_vecs))
+            else:
+                y_pred = np.empty(self.data.y.shape[1:])
+                y_pred_iter = repeat(y_pred, n_y)
+
+            evaluators, evaluators_s, evaluators_v = get_evaluators(metrics, self.data)
+
+            # fit and evaluate each y
+            for i_y, y_pred_i in enumerate(y_pred_iter):
+                # for cross-validation, different segments are predicted by different h:
+                for h, segments in hs:
+                    convolve(h[i_y], self.data.x, self.data.x_pads, self._i_start, segments, y_pred_i)
+
+                if evaluators_s:
+                    for e in evaluators_s:
+                        e.add_y(i_y, self.data.y[i_y], y_pred_i, eval_segments)
+
+                if evaluators_v and i_y % n_vec == n_vec - 1:
+                    i_vec = i_y // n_vec
+                    i_y_vec = slice(i_y-n_vec+1, i_y+1)
+                    y_pred_i_vec = y_pred[i_y_vec] if debug else y_pred
+                    for e in evaluators_v:
+                        e.add_y(i_vec, self.data.y[i_y_vec], y_pred_i_vec, eval_segments)
+
+            # Package evaluators
+            evaluations = {e.attr: self.data.package_value(e.x, e.name, meas=e.meas) for e in evaluators}
+            if debug:
+                evaluations['y_pred'] = self.data.package_y_like(y_pred, 'y-pred')
         else:
-            n_vec = n_vecs = 0
+            evaluations = {}
 
-        # predicted y
-        if debug:
-            y_pred_iter = y_pred = np.empty(self.data.y.shape)
-        elif n_vecs:
-            y_pred = np.empty((n_vec, *self.data.y.shape[1:]))
-            y_pred_iter = chain.from_iterable(repeat(tuple(y_pred), n_vecs))
-        else:
-            y_pred = np.empty(self.data.y.shape[1:])
-            y_pred_iter = repeat(y_pred, n_y)
-
-        evaluators, evaluators_s, evaluators_v = get_evaluators(metrics, self.data)
-
-        # fit and evaluate each y
-        for i_y, y_pred_i in enumerate(y_pred_iter):
-            # for cross-validation, different segments are predicted by different h:
-            for h, segments in hs:
-                convolve(h[i_y], self.data.x, self.data.x_pads, self._i_start, segments, y_pred_i)
-
-            if evaluators_s:
-                for e in evaluators_s:
-                    e.add_y(i_y, self.data.y[i_y], y_pred_i, eval_segments)
-
-            if evaluators_v and i_y % n_vec == n_vec - 1:
-                i_vec = i_y // n_vec
-                i_y_vec = slice(i_y-n_vec+1, i_y+1)
-                y_pred_i_vec = y_pred[i_y_vec] if debug else y_pred
-                for e in evaluators_v:
-                    e.add_y(i_vec, self.data.y[i_y_vec], y_pred_i_vec, eval_segments)
-
-        # Package evaluators
-        evaluations = {e.attr: self.data.package_value(e.x, e.name, meas=e.meas) for e in evaluators}
         # package h
         h_xs = [h for h, _ in hs]
         h_x = h_xs[0] if len(h_xs) == 1 else np.mean(h_xs, 0)
@@ -576,7 +583,6 @@ class Boosting:
         # package model parameters
         y_mean, y_scale, x_mean, x_scale = self.data.data_scale_ndvars()
         if debug:
-            evaluations['y_pred'] = self.data.package_y_like(y_pred, 'y-pred')
             evaluations['fit'] = self
         t_run = self.t_fit_done - self.t_fit_start
         return BoostingResult(
