@@ -33,7 +33,7 @@ from tqdm import tqdm
 from .._config import CONFIG, mpc
 from .._data_obj import Dataset, NDVar, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
-from .._ndvar import parallel_convolve
+from .._ndvar import convolve_jit
 from .._utils import LazyProperty, PickleableDataClass, user_activity
 from ._boosting_opt import l1, l2, generate_options, update_error
 from .shared import RevCorrData, Split, Splits, merge_segments
@@ -1012,15 +1012,10 @@ def convolve(
         for i in range(pad_tail_n_times):
             pad_tail[i:] += h_pad[i]
 
-    # prepare shapes for parallel_convolve
-    h = np.expand_dims(h, 0)
-    x = np.expand_dims(x, 0)
-    out_ = np.expand_dims(out, (0, 1))
-
     for start, stop in segments:
         if pad_head_n_times:
             out[start: start + pad_head_n_times] += pad_head
         if pad_tail_n_times:
             out[stop - pad_tail_n_times: stop] += pad_tail
-        parallel_convolve(h, x[:, :, start:stop], out_[:, :, start:stop], h_i_start, h_i_stop)
+        convolve_jit(h, x[:, start:stop], out[start:stop], h_i_start, h_i_stop)
     return out
