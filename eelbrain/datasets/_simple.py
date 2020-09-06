@@ -39,16 +39,25 @@ def permute(variables):
     return Dataset.from_caselist(names, cases)
 
 
-def _get_continuous(n_samples=100, ynd=False, seed=0):
+def _get_continuous(
+        n_samples: int = 100,
+        ynd: bool = False,
+        seed: int = 0,
+        xn: int = 0,
+):
     """Generate continuous data for reverse correlation
 
     Parameters
     ----------
-    n_samples : int
+    n_samples
         Number of samples to simulate.
-    seed : int
+    ynd
+        Include 3d ``y``.
+    seed
         Seed for :func:`numpy.random.seed` (``None`` to skip seeding random
         state; default us 0).
+    xn
+        Number of rows in ``xn``.
 
     Returns
     -------
@@ -83,7 +92,13 @@ def _get_continuous(n_samples=100, ynd=False, seed=0):
         out['h1nd'] = h1 = concatenate([h1, -h1], dim, 'h1')
         out['h2nd'] = h2 = concatenate([h2, h2 * 0], dim, 'h2')
         out['ynd'] = convolve(h1, x1) + convolve(h2, x2)
-    return out
+    if xn:
+        xn_dim = Scalar('xdim', range(xn))
+        out['xn'] = NDVar(random.normal(0, 1, (xn, n_samples)), (xn_dim, time))
+        out['hn'] = NDVar(random.normal(0, 1, (xn, 10)), (xn_dim, h_time))
+        out['yn'] = convolve(out['hn'], out['xn'])
+        out['yn'] += random.normal(0, 1, (n_samples,))
+    return Dataset(out)
 
 
 def get_loftus_masson_1994():
