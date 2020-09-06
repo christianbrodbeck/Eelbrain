@@ -28,13 +28,12 @@ from typing import Any, Union, Tuple, Sequence
 import warnings
 
 import numpy as np
-from numpy import newaxis
-import scipy.signal
 from tqdm import tqdm
 
 from .._config import CONFIG, mpc
 from .._data_obj import Dataset, NDVar, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
+from .._ndvar import parallel_convolve
 from .._utils import LazyProperty, PickleableDataClass, user_activity
 from ._boosting_opt import l1, l2, generate_options, update_error
 from .shared import RevCorrData, Split, Splits, merge_segments
@@ -962,7 +961,14 @@ def put_jobs(queue, n_y, n_splits, stop):
         queue.put((JOB_TERMINATE, None))
 
 
-def convolve(h, x, x_pads, h_i_start, segments=None, out=None):
+def convolve(
+        h: np.ndarray,
+        x: np.ndarray,
+        x_pads: np.ndarray,
+        h_i_start: int,
+        segments: np.ndarray = None,
+        out: np.ndarray = None,
+):
     """h * x with time axis matching x
 
     Parameters
@@ -983,48 +989,38 @@ def convolve(h, x, x_pads, h_i_start, segments=None, out=None):
     n_x, n_times = x.shape
     h_n_times = h.shape[1]
     if segments is None:
-        segments = ((0, n_times),)
+        segments = np.array(((0, n_times),), np.int64)
     if out is None:
         out = np.zeros(n_times)
     else:
         for a, b in segments:
             out[a:b] = 0
-
-    # determine valid section of convolution (cf. _ndvar.convolve())
-    h_i_max = h_i_start + h_n_times - 1
-    out_start = max(0, h_i_start)
-    out_stop = min(0, h_i_max)
-    conv_start = max(0, -h_i_start)
-    conv_stop = -h_i_start
+    h_i_stop = h_i_start + h_n_times
 
     # padding
-    h_pad = np.sum(h * x_pads[:, newaxis], 0)
+    h_pad = np.sum(h * x_pads.reshape((-1, 1)), 0)
     # padding for pre-
     pad_head_n_times = max(0, h_n_times + h_i_start)
     if pad_head_n_times:
         pad_head = np.zeros(pad_head_n_times)
         for i in range(min(pad_head_n_times, h_n_times)):
             pad_head[:pad_head_n_times - i] += h_pad[- i - 1]
-    else:
-        pad_head = None
     # padding for post-
     pad_tail_n_times = -min(0, h_i_start)
     if pad_tail_n_times:
         pad_tail = np.zeros(pad_tail_n_times)
         for i in range(pad_tail_n_times):
             pad_tail[i:] += h_pad[i]
-    else:
-        pad_tail = None
+
+    # prepare shapes for parallel_convolve
+    h = np.expand_dims(h, 0)
+    x = np.expand_dims(x, 0)
+    out_ = np.expand_dims(out, (0, 1))
 
     for start, stop in segments:
-        if pad_head is not None:
+        if pad_head_n_times:
             out[start: start + pad_head_n_times] += pad_head
-        if pad_tail is not None:
+        if pad_tail_n_times:
             out[stop - pad_tail_n_times: stop] += pad_tail
-
-        out_index = slice(start + out_start, stop + out_stop)
-        y_index = slice(conv_start, stop - start + conv_stop)
-        for ind in range(n_x):
-            out[out_index] += scipy.signal.convolve(h[ind], x[ind, start:stop])[y_index]
-
+        parallel_convolve(h, x[:, :, start:stop], out_[:, :, start:stop], h_i_start, h_i_stop)
     return out

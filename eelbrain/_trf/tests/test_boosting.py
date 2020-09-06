@@ -19,8 +19,7 @@ from eelbrain import (
 )
 
 from eelbrain.testing import assert_dataobj_equal
-from eelbrain._trf._boosting import Split, Splits, boost
-from eelbrain._trf._boosting import convolve as boosting_convolve
+from eelbrain._trf._boosting import Boosting, RevCorrData, Split, boost, convolve as boosting_convolve
 
 
 def assert_res_equal(res1, res):
@@ -143,6 +142,20 @@ def test_boosting_epochs():
     # vector
     res = boosting('v3d', [p0, p1], 0, 0.6, error='l1', model='A', ds=ds, partitions=3)
     assert res.residual.ndim == 0
+
+
+def test_boosting_oo():
+    ds = datasets._get_continuous(ynd=True)
+    data = RevCorrData('y', 'x2', ds)
+    data.apply_basis(0.2, 'hamming')
+    data.normalize('l1')
+    data.initialize_cross_validation(4, test=1)
+    model = Boosting(data)
+    model.fit(0, 1, selective_stopping=1, error='l1')
+    res_oo = model.evaluate_fit()
+
+    res_func = boosting('y', 'x2', 0, 1, ds=ds, error='l1', basis=0.2, partitions=4, test=1, selective_stopping=1)
+    assert res_oo.r == res_func.r
 
 
 def test_result():
