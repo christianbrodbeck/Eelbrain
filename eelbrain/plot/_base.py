@@ -85,7 +85,6 @@ import math
 from numbers import Number
 import os
 import re
-import sys
 import time
 from typing import Any, Callable, Dict, Iterator, List, Sequence, Tuple, Union
 import weakref
@@ -102,6 +101,7 @@ from .._celltable import Celltable
 from .._colorspaces import LocatedColormap, symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
 from .._config import CONFIG
 from .._data_obj import Dimension, Dataset, Factor, Interaction, NDVar, Case, UTS, NDVarArg, CategorialArg, IndexArg, CellArg, ascategorial, asndvar, assub, isnumeric, isdataobject, combine_cells, cellname
+from .._utils.notebooks import use_inline_backend
 from .._stats import testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._ndvar import erode, resample
@@ -190,15 +190,6 @@ del INITIAL_RC['backend']
 def reset_rc():
     "Reset matplotlib rc-parameters to state at Eelbrain initialization"
     mpl.rcParams.update(INITIAL_RC)
-
-
-def use_inline_backend():
-    "Check whether matplotlib is using an inline backend, e.g. for notebooks"
-    # mpl.get_backend() sets backend and imports pyplot; avoid that unless
-    # pyplot has already been imported
-    if 'matplotlib.pyplot' in sys.modules:
-        backend = mpl.get_backend()
-        return backend.endswith('inline') or backend == 'nbAgg'
 
 
 class AxisScale:
