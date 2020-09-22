@@ -471,11 +471,6 @@ class MneExperiment(FileTree):
             'res-plot-root': join('{root}', 'result plots'),
             'res-plot-dir': join('{res-plot-root}', '{analysis} {group}', '{folder}', '{test_desc}'),
 
-            # besa
-            'besa-root': join('{root}', 'besa'),
-            'besa-trig': join('{besa-root}', '{subject}', '{subject}_{recording}_{epoch_visit}_triggers.txt'),
-            'besa-evt': join('{besa-root}', '{subject}', '{subject}_{recording}_{epoch_visit}[{rej}].evt'),
-
             # MRAT
             'mrat_condition': '',
             'mrat-root': join('{root}', 'mrat'),
@@ -4018,47 +4013,6 @@ class MneExperiment(FileTree):
         bad_chs = nc.sensor.names[nc < r]
         if bad_chs:
             self.make_bad_channels(bad_chs)
-
-    def make_besa_evt(self, redo=False, **state):
-        """Make the trigger and event files needed for besa
-
-        Parameters
-        ----------
-        redo : bool
-            If besa files already exist, overwrite them.
-        ...
-            State parameters.
-
-        Notes
-        -----
-        Ignores the *decim* epoch parameter.
-
-        Target files are saved relative to the *besa-root* location.
-        """
-        self.set(**state)
-        rej = self.get('rej')
-        trig_dest = self.get('besa-trig', rej='', mkdir=True)
-        evt_dest = self.get('besa-evt', rej=rej, mkdir=True)
-        if not redo and exists(evt_dest) and exists(trig_dest):
-            return
-
-        # load events
-        ds = self.load_selected_events(reject='keep')
-
-        # save triggers
-        if redo or not exists(trig_dest):
-            save.meg160_triggers(ds, trig_dest, pad=1)
-            if not redo and exists(evt_dest):
-                return
-        else:
-            ds.index('besa_index', 1)
-
-        # reject bad trials
-        ds = ds.sub('accept')
-
-        # save evt
-        epoch = self._epochs[self.get('epoch')]
-        save.besa_evt(ds, tstart=epoch.tmin, tstop=epoch.tmax, dest=evt_dest)
 
     def make_copy(
             self,
