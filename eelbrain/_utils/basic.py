@@ -15,6 +15,13 @@ LOG_LEVELS = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO,
               'CRITICAL': logging.CRITICAL}
 
 
+def as_list(item):
+    if isinstance(item, list):
+        return item
+    else:
+        return [item]
+
+
 def as_sequence(items, item_type=str):
     if isinstance(items, item_type):
         return items,

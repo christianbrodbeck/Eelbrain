@@ -23,7 +23,7 @@ from .._types import PathArg
 from .._data_obj import Factor, Var, NDVar, Dataset, Case, Sensor, Space, SourceSpace, VolumeSourceSpace, UTS, _matrix_graph
 from .._info import BAD_CHANNELS
 from .._text import n_of
-from .._utils import ui
+from .._utils import ui, as_list
 from ..mne_fixes import MNE_EVOKED, MNE_RAW, MNE_VOLUME_STC
 
 
@@ -1234,27 +1234,33 @@ def stc_ndvar(
     # construct data array
     if isinstance(stc, _BaseSourceEstimate):
         case = False
-        x = stc.data
+        stcs = None
     else:
         case = True
         stcs = stc
         stc = stcs[0]
-        if check:
-            times = stc.times
-            vertices = stc.vertices
-            for stc_ in stcs[1:]:
-                assert np.array_equal(stc_.times, times)
-                for v1, v0 in zip_longest(stc_.vertices, vertices):
-                    assert np.array_equal(v1, v0)
+
+    vertices = as_list(stc.vertices)  # not always list for mne < 0.21
+    if stcs and check:
+        times = stc.times
+        for stc_ in stcs[1:]:
+            assert np.array_equal(stc_.times, times)
+            stc_vertices = as_list(stc_.vertices)
+            for v1, v0 in zip_longest(stc_vertices, vertices):
+                assert np.array_equal(v1, v0)
+
+    if stcs:
         x = np.array([s.data for s in stcs])
+    else:
+        x = stc.data
 
     # Construct NDVar Dimensions
     time = UTS(stc.tmin, stc.tstep, stc.times.size)
     if isinstance(stc, MNE_VOLUME_STC):
-        ss = VolumeSourceSpace([stc.vertices], subject, src, subjects_dir, None, filename=sss_filename)
+        ss = VolumeSourceSpace(vertices, subject, src, subjects_dir, None, filename=sss_filename)
         is_vector = stc.data.ndim == 3
     elif isinstance(stc, (mne.SourceEstimate, mne.VectorSourceEstimate)):
-        ss = SourceSpace(stc.vertices, subject, src, subjects_dir, parc, filename=sss_filename)
+        ss = SourceSpace(vertices, subject, src, subjects_dir, parc, filename=sss_filename)
         is_vector = isinstance(stc, mne.VectorSourceEstimate)
     else:
         raise TypeError(f"stc={stc!r}")
