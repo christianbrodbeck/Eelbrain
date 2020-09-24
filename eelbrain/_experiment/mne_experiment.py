@@ -4048,7 +4048,7 @@ class MneExperiment(FileTree):
         if exists(dst_path):
             if overwrite is False:
                 return
-            else:
+            elif overwrite is not True:
                 raise IOError(f"File already exists at {dst_path}; use the `overwrite` parameter")
 
         src_path = self.get(temp, **{field: src})
