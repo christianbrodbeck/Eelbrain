@@ -1,6 +1,4 @@
-# Authors: Denis Engemann <denis.engemann@gmail.com>
-#
-# License: BSD (3-clause)
+# Mostly retaining MNE-Python functions to compensate for API changes
 import logging
 
 import numpy as np
@@ -8,7 +6,10 @@ import numpy as np
 import mne
 from mne.bem import _fit_sphere
 from mne.channels.interpolation import _make_interpolation_matrix
-from mne.forward import _map_meg_channels
+try:
+    from mne.forward import _map_meg_or_eeg_channels
+except ImportError:  # mne < 0.21
+    from mne.forward import _map_meg_channels as _map_meg_or_eeg_channels
 from mne.io.pick import pick_types, pick_channels
 
 
@@ -16,7 +17,7 @@ from mne.io.pick import pick_types, pick_channels
 def map_meg_channels(inst, picks_good, picks_bad, mode):
     info_from = mne.pick_info(inst.info, picks_good, copy=True)
     info_to = mne.pick_info(inst.info, picks_bad, copy=True)
-    return _map_meg_channels(info_from, info_to, mode=mode, origin='auto')
+    return _map_meg_or_eeg_channels(info_from, info_to, mode=mode, origin='auto')
 
 
 # private in 0.9.0 (Epochs method)
