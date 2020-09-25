@@ -49,8 +49,7 @@ def get_smtpserver(password, new_password=False):
                 keyring.set_password(NOOB_DOMAIN, NOOB_ADDRESS, password)
             return smtpserver
         except smtplib.SMTPAuthenticationError:
-            password = ui.ask_str("Eelbrain notifier password invalid. Please "
-                                  "enter valid password.", "Notifier Password")
+            password = ui.ask_str("Eelbrain notifier password invalid. Please enter valid password.", "Notifier Password")
             if password:
                 new_password = True
             else:
@@ -114,8 +113,7 @@ class Notifier:
                     " - If this does not solve the issue, delete the item and repeat")
             raise
         if password is None:
-            password = ui.ask_str("Please enter the Eelbrain notifier "
-                                  "password.", "Notifier Password")
+            password = ui.ask_str("Please enter the Eelbrain notifier password.", "Notifier Password")
             # test it
             print("Validating password...")
             smtpserver = get_smtpserver(password, True)
@@ -182,21 +180,18 @@ class Notifier:
         if isinstance(info, str):
             body = info
         else:
-            body = '\n\n\n'.join(map(str, info))
+            body = '\n\n'.join(map(str, info))
 
         try:
             send_email(self.to, subject, body, self._password)
         except Exception as error:
-            print ("Could not send email because an error occurred, skipping "
-                   "notification. Check your internet connection.\n%s"
-                   % str(error))
+            print(f"Could not send email because an error occurred, skipping notification\n\n{error}s")
 
 
 class NotNotifier:
     # Helper to raise proper error message when user has not set owner attribute
     def __enter__(self):
-        raise AttributeError("The notifier is disabled because the .owner "
-                             "attribute was not set")
+        raise AttributeError("The notifier is disabled because the .owner attribute was not set")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
