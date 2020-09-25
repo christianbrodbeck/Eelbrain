@@ -1,6 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 "Internet communication utilities"
 from distutils.version import LooseVersion
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import keyring
 import smtplib
@@ -10,6 +11,7 @@ import traceback
 import xmlrpc.client
 
 from .system import user_activity
+from .. import fmtxt
 from . import ui
 
 
@@ -54,19 +56,6 @@ def get_smtpserver(password, new_password=False):
                 new_password = True
             else:
                 raise
-
-
-def send_email(to, subject, body, password):
-    """Send an email notification"""
-    msg = MIMEText(body)
-    msg['Subject'] = subject
-    host = socket.gethostname()
-    msg['From'] = 'Eelbrain on %s <%s>' % (host, NOOB_ADDRESS)
-    msg['To'] = to
-
-    smtpserver = get_smtpserver(password)
-    smtpserver.sendmail(NOOB_ADDRESS, to, msg.as_string())
-    smtpserver.close()
 
 
 class Notifier:
@@ -173,17 +162,31 @@ class Notifier:
         ----------
         subject : str
             Email subject line.
-        info : str | list of str
+        info : str | list of str | FMText
             Email body; if a list, successive entries are joined with three
             line breaks.
         """
-        if isinstance(info, str):
-            body = info
+        if isinstance(info, fmtxt.FMTextElement):
+            msg = MIMEMultipart('alternative')
+            # multipart message - the last part is preferred
+            part1 = MIMEText(str(info), 'plain')
+            part2 = MIMEText(fmtxt.html(info), 'html')
+            msg.attach(part1)
+            msg.attach(part2)
+        elif isinstance(info, str):
+            msg = MIMEText(info)
         else:
-            body = '\n\n'.join(map(str, info))
+            msg = MIMEText('\n\n'.join(map(str, info)))
+
+        host = socket.gethostname()
+        msg['Subject'] = subject
+        msg['From'] = f'Eelbrain on {host} <{NOOB_ADDRESS}>'
+        msg['To'] = self.to
 
         try:
-            send_email(self.to, subject, body, self._password)
+            smtpserver = get_smtpserver(self._password)
+            smtpserver.sendmail(NOOB_ADDRESS, self.to, msg.as_string())
+            smtpserver.close()
         except Exception as error:
             print(f"Could not send email because an error occurred, skipping notification\n\n{error}s")
 
