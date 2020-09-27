@@ -108,6 +108,7 @@ from .._ndvar import erode, resample
 from .._text import enumeration, ms
 from ..fmtxt import FMTextArg, Image, asfmtext_or_none
 from ..mne_fixes import MNE_EPOCHS
+from ..table import melt_ndvar
 from ._styles import Style, find_cell_styles
 from ._utils import adjust_hsv
 
@@ -1186,7 +1187,22 @@ class PlotData:
         x, x_dim = x_arg(x)
         xax, xax_dim = x_arg(xax)
         if x_dim or xax_dim:
-            raise NotImplementedError
+            if isinstance(y, NDVar):
+                varname = Dataset.as_key(y.name)
+            else:
+                varname = y
+
+            if x_dim:
+                dim = x_dim[1:]
+                ds = melt_ndvar(y, dim, ds=ds, varname=varname)
+                y = varname
+                x = combine_x_args(x, dim)
+
+            if xax_dim:
+                dim = xax_dim[1:]
+                ds = melt_ndvar(y, dim, ds=ds, varname=varname)
+                y = varname
+                xax = combine_x_args(xax, dim)
         x_full = combine_x_args(x, xax)
         ct = Celltable(y, x_full, match, sub, ds=ds)
         # data dimensions
