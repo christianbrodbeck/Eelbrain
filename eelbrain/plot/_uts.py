@@ -179,7 +179,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         for p in self._plots:
             p.set_ylim(ymin, ymax)
 
-        self._configure_axis(data.ct.y, ylabel, y=True)
+        self._configure_axis('y', data.ct.y, ylabel)
         self._configure_axis_dim('x', data.ct.y.get_dim(xdim), xlabel, xticklabels)
         XAxisMixin._init_with_data(self, ((data.ct.y,),), xdim, xlim)
         YLimMixin.__init__(self, self._plots)
@@ -342,7 +342,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
         self._configure_axis_dim('x', xdim, xlabel, xticklabels, data=data.data)
-        self._configure_axis(data, ylabel, y=True)
+        self._configure_axis('y', data, ylabel)
 
         self.plots = []
         legend_handles = {}
@@ -481,7 +481,7 @@ class UTSClusters(EelFigure):
             cax = _ax_uts_clusters(ax, stat, cs, colors[i], pmax, ptrend, xdim)
             self._caxes.append(cax)
 
-        self._configure_axis(data, True, y=True)
+        self._configure_axis('y', data, True)
         self._configure_axis_dim('x', xdim, True, xticklabels, data=data.data)
         self.clusters = clusters_
         self._show()

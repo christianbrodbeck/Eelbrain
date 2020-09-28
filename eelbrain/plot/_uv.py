@@ -288,7 +288,7 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         # sort out boxplot kwargs
         boxplot_args = {k: kwargs.pop(k) for k in BOXPLOT_KEYWORDS if k in kwargs}
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), **kwargs)
-        self._configure_axis(ct.y, ylabel, y=True)
+        self._configure_axis('y', ct.y, ylabel)
 
         self._plot = p = _plt_boxplot(self._ax, ct, styles, bottom, top, test, tail, par, corr, trend, test_markers, label_fliers, boxplot_args)
         p.set_ylim(p.bottom, p.top)
@@ -392,7 +392,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
             pool_error = ct.all_within
 
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), **kwargs)
-        self._configure_axis(ct.y, ylabel, y=True)
+        self._configure_axis('y', ct.y, ylabel)
 
         p = _plt_barplot(self._ax, ct, error, pool_error, styles, bottom, top, origin, pos, width, c, edgec, ec, test, tail, par, trend, corr, test_markers)
         p.set_ylim(p.bottom, p.top)
@@ -506,7 +506,7 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
 
         p = _plt_barplot(self._ax, ct, error, pool_error, styles, bottom, top, origin, pos, width, c, edgec, ec, test, tail, par, trend, corr, test_markers, horizontal=True)
         p.ax.set_ylim(p.left, p.right)
-        self._configure_axis(ct.y, ylabel)
+        self._configure_axis('x', ct.y, ylabel)
 
         XAxisMixin.__init__(self, p.bottom, p.top, axes=[p.ax])
         CategorialAxisMixin.__init__(self, self._ax, 'y', self._layout, xlabel, ct.x, xticks, xtick_delim, p.pos, ct.cells, p.origin)
@@ -811,8 +811,8 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         # get axes
         layout = Layout(1, 1, 5, **kwargs)
         EelFigure.__init__(self, frame_title(y, categories), layout)
-        self._configure_axis(y, ylabel, y=True)
-        self._configure_axis(time, xlabel)
+        self._configure_axis('y', y, ylabel)
+        self._configure_axis('x', time, xlabel)
 
         plot = _ax_timeplot(self._axes[0], y, categories, time, match, styles, line_plot, error, local_plot, timelabels, x_jitter, bottom, top)
 
@@ -992,8 +992,8 @@ class Correlation(EelFigure, LegendMixin):
         # figure
         layout = Layout(1, 1, 5, autoscale=True, **kwargs)
         EelFigure.__init__(self, frame_title(y, x, cat), layout)
-        self._configure_axis(y, ylabel, y=True)
-        self._configure_axis(x, xlabel)
+        self._configure_axis('y', y, ylabel)
+        self._configure_axis('x', x, xlabel)
 
         ax = self._axes[0]
         legend_handles = {}
@@ -1069,8 +1069,8 @@ class Regression(EelFigure, LegendMixin):
         # figure
         layout = Layout(1, 1, 5, autoscale=True, **kwargs)
         EelFigure.__init__(self, frame_title(y, x, cat), layout)
-        self._configure_axis(x, xlabel)
-        self._configure_axis(y, ylabel, y=True)
+        self._configure_axis('x', x, xlabel)
+        self._configure_axis('y', y, ylabel)
 
         ax = self._axes[0]
         legend_handles = {}
@@ -1263,10 +1263,10 @@ class Histogram(EelFigure):
             xlabel = False  # xlabel is used for test result
 
         if density:
-            self._configure_axis('p', 'probability density', y=True)
+            self._configure_axis('y', 'p', 'probability density')
         else:
-            self._configure_axis('n', 'count', y=True)
-        self._configure_axis(ct.y, xlabel)
+            self._configure_axis('y', 'n', 'count')
+        self._configure_axis('x', ct.y, xlabel)
         self._show()
 
 

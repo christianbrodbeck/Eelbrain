@@ -1698,15 +1698,21 @@ class EelFigure:
         else:
             return (self._axes[i] for i in axes)
 
-    def _configure_axis(self, data, label, axes=None, y=False):
+    def _configure_axis(
+            self,
+            axis: str,  # 'x' | 'y'
+            data: NDVar,  # data for default label
+            label: Union[bool, str],  # override label
+            axes: List[matplotlib.axes.Axes] = None,  # axes which to format
+    ):
         if axes is None:
             axes = self._axes
         scale = AxisScale(data, label)
         for ax in axes:
-            axis = ax.yaxis if y else ax.xaxis
-            axis.set_major_formatter(scale.formatter)
+            axis_ = ax.yaxis if axis == 'y' else ax.xaxis
+            axis_.set_major_formatter(scale.formatter)
 
-        set_label = self.set_ylabel if y else self.set_xlabel
+        set_label = self.set_ylabel if axis == 'y' else self.set_xlabel
         if isinstance(scale.label, str):
             set_label(scale.label)
         elif isinstance(scale.label, Iterable):
