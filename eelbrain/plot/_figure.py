@@ -86,6 +86,22 @@ class AbsoluteLayoutFigure(XAxisMixin, Figure):
             yaxis: bool = True,
             **kwargs,  # for matplotlib Axes
     ):
+        """Add axes based on y-axis (origin and extent in figure scaling)
+
+        Parameters
+        ----------
+        y_origin
+            Axes origin (y = 0) location from the bottom of the figure.
+        ylim
+            Data limits.
+        left
+            Left axes border from the left figure border.
+        width
+            Axes width.
+        **
+            General axes parameters and
+            :class:`matplotlib.figure.Figure.add_axes` parameters.
+        """
         if isinstance(ylim, tuple):
             ymin, ymax = ylim
         elif isinstance(ylim, Real):
@@ -116,6 +132,41 @@ class AbsoluteLayoutFigure(XAxisMixin, Figure):
         self._ylims.append(ylim)
         return ax
 
+    def add_axes_rect(
+            self,
+            left: Real,
+            bottom: Real,
+            width: Real,
+            height: Real,
+            **kwargs,
+    ):
+        """Add axes based on rectangle (all values in inches)
+
+        Parameters
+        ----------
+        left
+            Left axes border from the left figure border.
+        bottom
+            Axes bottom from the figure bottom.
+        width
+            Axes width.
+        height
+            Axes height.
+        **
+            :class:`matplotlib.figure.Figure.add_axes` parameters.
+        """
+        rect = [
+            left / self._layout.w,
+            bottom / self._layout.h,
+            width / self._layout.w,
+            height / self._layout.h,
+        ]
+        ax = self.figure.add_axes(rect, **kwargs)
+        ax.patch.set_visible(False)
+        self._axes.append(ax)
+        self._ylims.append(None)
+        return ax
+
     def finalize(
             self,
             outline: bool = False,
@@ -131,7 +182,8 @@ class AbsoluteLayoutFigure(XAxisMixin, Figure):
             elements rather than actual figure size.
         """
         for ax, ylim in zip(self._axes, self._ylims):
-            ax.set_ylim(ylim)
+            if ylim is not None:
+                ax.set_ylim(ylim)
         XAxisMixin.__init__(self, None, None, self._xlim, self._axes)
 
         if outline:
