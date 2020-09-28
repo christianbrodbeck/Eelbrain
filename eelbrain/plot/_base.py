@@ -526,6 +526,8 @@ def find_vlim_args(ndvar, vmin=None, vmax=None):
         if np.ma.isMaskedArray(xmin):
             xmin = xmin.data
         abs_max = max(abs(xmax), abs(xmin)) or 1e-14
+        if np.isnan(abs_max):
+            raise ValueError(f"Can't plot all NaN input")
         scale = math.floor(np.log10(abs_max))
         if vmax is None:
             vmax = math.ceil(xmax * 10 ** -scale) * 10 ** scale
