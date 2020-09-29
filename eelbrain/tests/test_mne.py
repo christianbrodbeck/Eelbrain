@@ -204,9 +204,9 @@ def test_morphing():
     m = mne.compute_source_morph(stc, 'sample', 'fsaverage', subjects_dir)
     stc_fsa = m.apply(stc)
     y_fsa = morph_source_space(y, 'fsaverage')
-    assert_array_equal(y_fsa.x, stc_fsa.data)
+    assert_allclose(y_fsa.x, stc_fsa.data)
     stc_fsa_ndvar = load.fiff.stc_ndvar(stc_fsa, 'fsaverage', 'ico-5', subjects_dir, 'dSPM', False, 'src', parc=None)
-    assert_dataobj_equal(stc_fsa_ndvar, y_fsa)
+    assert_dataobj_equal(stc_fsa_ndvar, y_fsa, decimal=6)
 
     # scaled to fsaverage
     y_scaled = datasets.get_mne_stc(True, subject='fsaverage_scaled')

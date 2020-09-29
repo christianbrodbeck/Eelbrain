@@ -612,11 +612,10 @@ def mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, i_start='i_start',
             stop_index = int(round(tstop * sfreq))
             tmax = tmin + (stop_index - start_index - 1) / sfreq
     elif tstop is not None:
-        raise TypeError("tmax and tstop can not both be specified at the same "
-                        "time, got tmax=%s, tstop=%s" % (tmax, tstop))
+        raise TypeError(f"tmax and tstop can not both be specified at the same time, got tmax={tmax}, tstop={tstop}")
 
     if drop_bad_chs and picks is None and raw.info['bads']:
-        picks = mne.pick_types(raw.info, eeg=True, eog=True, ref_meg=False)
+        picks = mne.pick_types(raw.info, meg=True, eeg=True, eog=True, ref_meg=False)
 
     events = _mne_events(ds=ds, i_start=i_start)
 
