@@ -403,6 +403,10 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
         Specify which axes should be annotated with x-axis tick labels.
         Use ``int`` for a single axis, a sequence of ``int`` for multiple
         specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
+    yticklabels
+        Specify which axes should be annotated with y-axis tick labels.
+        Use ``int`` for a single axis, a sequence of ``int`` for multiple
+        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
     color : matplotlib color | dict
         Either a color for all lines, or a dictionary mapping levels of the 
         line dimension to colors. The default is to use ``NDVar.info['color']``
@@ -462,6 +466,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
             xlabel=True,
             ylabel=True,
             xticklabels: Union[str, int, Sequence[int]] = 'bottom',
+            yticklabels: Union[str, int, Sequence[int]] = 'left',
             color=None,
             linewidth=None,
             ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
@@ -472,7 +477,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
         self._configure_axis_dim('x', xdim, xlabel, xticklabels, data=data.data)
-        self._configure_axis('y', data.y0, ylabel)
+        self._configure_axis_data('y', data.y0, ylabel, yticklabels)
 
         if clip is None:
             clip = layout.frame is True

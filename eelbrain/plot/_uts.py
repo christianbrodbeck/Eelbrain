@@ -66,6 +66,10 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         Specify which axes should be annotated with x-axis tick labels.
         Use ``int`` for a single axis, a sequence of ``int`` for multiple
         specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
+    yticklabels
+        Specify which axes should be annotated with y-axis tick labels.
+        Use ``int`` for a single axis, a sequence of ``int`` for multiple
+        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
     invy
         Invert the y axis (if ``bottom`` and/or ``top`` are specified explicitly
         they take precedence; an inverted y-axis can also be produced by
@@ -136,6 +140,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             xlabel: Union[bool, str] = True,
             ylabel: Union[bool, str] = True,
             xticklabels: Union[str, int, Sequence[int]] = 'bottom',
+            yticklabels: Union[str, int, Sequence[int]] = 'left',
             invy: bool = False,
             bottom: float = None,
             top: float = None,
@@ -179,7 +184,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         for p in self._plots:
             p.set_ylim(ymin, ymax)
 
-        self._configure_axis('y', data.ct.y, ylabel)
+        self._configure_axis_data('y', data.ct.y, ylabel, yticklabels)
         self._configure_axis_dim('x', data.ct.y.get_dim(xdim), xlabel, xticklabels)
         XAxisMixin._init_with_data(self, ((data.ct.y,),), xdim, xlim)
         YLimMixin.__init__(self, self._plots)
@@ -293,6 +298,10 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         Specify which axes should be annotated with x-axis tick labels.
         Use ``int`` for a single axis, a sequence of ``int`` for multiple
         specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
+    yticklabels
+        Specify which axes should be annotated with y-axis tick labels.
+        Use ``int`` for a single axis, a sequence of ``int`` for multiple
+        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
     bottom, top : scalar
         Y-axis limits.
     legend : str | int | 'fig' | None
@@ -329,6 +338,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
             xlabel=True,
             ylabel=True,
             xticklabels: Union[str, int, Sequence[int]] = 'bottom',
+            yticklabels: Union[str, int, Sequence[int]] = 'left',
             bottom: float = None,
             top: float = None,
             legend='upper right',
@@ -342,7 +352,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
         self._configure_axis_dim('x', xdim, xlabel, xticklabels, data=data.data)
-        self._configure_axis('y', data, ylabel)
+        self._configure_axis_data('y', data, ylabel, yticklabels)
 
         self.plots = []
         legend_handles = {}
@@ -439,6 +449,10 @@ class UTSClusters(EelFigure):
         Specify which axes should be annotated with x-axis tick labels.
         Use ``int`` for a single axis, a sequence of ``int`` for multiple
         specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
+    yticklabels
+        Specify which axes should be annotated with y-axis tick labels.
+        Use ``int`` for a single axis, a sequence of ``int`` for multiple
+        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -449,6 +463,7 @@ class UTSClusters(EelFigure):
             self, res, pmax=0.05, ptrend=0.1, axtitle=True, cm=None,
             overlay=False,
             xticklabels: Union[str, int, Sequence[int]] = 'bottom',
+            yticklabels: Union[str, int, Sequence[int]] = 'left',
             **kwargs):
         clusters_ = res.clusters
 
@@ -481,7 +496,7 @@ class UTSClusters(EelFigure):
             cax = _ax_uts_clusters(ax, stat, cs, colors[i], pmax, ptrend, xdim)
             self._caxes.append(cax)
 
-        self._configure_axis('y', data, True)
+        self._configure_axis_data('y', data, True, yticklabels)
         self._configure_axis_dim('x', xdim, True, xticklabels, data=data.data)
         self.clusters = clusters_
         self._show()

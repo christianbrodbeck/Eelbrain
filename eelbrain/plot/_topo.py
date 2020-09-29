@@ -320,6 +320,10 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         Specify which axes should be annotated with x-axis tick labels.
         Use ``int`` for a single axis, a sequence of ``int`` for multiple
         specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
+    yticklabels
+        Specify which axes should be annotated with y-axis tick labels.
+        Use ``int`` for a single axis, a sequence of ``int`` for multiple
+        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
@@ -368,6 +372,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
                  # layout
                  xlabel=True, ylabel=True,
                  xticklabels: Union[str, int, Sequence[int]] = -1,
+                 yticklabels: Union[str, int, Sequence[int]] = 'left',
                  axtitle=True, frame=True, xlim=None,
                  **kwargs):
         data = PlotData.from_args(y, ('sensor', None), xax, ds, sub)
@@ -411,7 +416,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
 
         # decorate axes
         self._configure_axis_dim('x', data.time_dim, xlabel, xticklabels, self.bfly_axes)
-        self._configure_axis('y', data, ylabel, self.bfly_axes)
+        self._configure_axis_data('y', data, ylabel, yticklabels, self.bfly_axes)
 
         # setup callback
         XAxisMixin._init_with_data(self, data.data, xdim, xlim, self.bfly_axes)

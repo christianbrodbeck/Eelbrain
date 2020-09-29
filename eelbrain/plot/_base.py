@@ -1700,35 +1700,10 @@ class EelFigure:
     def _configure_axis(
             self,
             axis: str,  # 'x' | 'y'
-            data: NDVar,  # data for default label
-            label: Union[bool, str],  # override label
-            axes: List[matplotlib.axes.Axes] = None,  # axes which to format
-    ):
-        if axes is None:
-            axes = self._axes
-        scale = AxisScale(data, label)
-        for ax in axes:
-            axis_ = ax.yaxis if axis == 'y' else ax.xaxis
-            axis_.set_major_formatter(scale.formatter)
-
-        set_label = self.set_ylabel if axis == 'y' else self.set_xlabel
-        if isinstance(scale.label, str):
-            set_label(scale.label)
-        elif isinstance(scale.label, Iterable):
-            for i, l in enumerate(scale.label):
-                set_label(l, i)
-
-    def _configure_axis_dim(
-            self,
-            axis: str,  # 'x' | 'y'
-            dim: Union[str, Dimension],  # The dimension assigned to the axis
-            label: Union[bool, str],  # axis labale
             ticklabels: Union[str, int, Sequence[int]],  # where to show tick-labels
+            params: Iterable,  # (formatter, locator, label) list
             axes: List[matplotlib.axes.Axes] = None,  # axes which to format
-            scalar: bool = True,
-            data: List = None,
     ):
-        "Configure an axis based on a dimension"
         if axes is None:
             axes = self._axes
 
@@ -1753,21 +1728,16 @@ class EelFigure:
             show_ticklabels = [False] * nax
             for i in ticklabels:
                 show_ticklabels[i] = True
+
         # parameter for hiding tick-labels
         if axis == 'y':
             tick_params = {'labelleft': False}
         else:
             tick_params = {'labelbottom': False}
-        # Dimension objects
-        if isinstance(dim, str):
-            dims = [layers[0].get_dim(dim) for layers in data]
-        else:
-            dims = repeat(dim)
 
         # format ticks
         labels = []
-        for ax, dim, show_ticklabels_ in zip(axes, dims, show_ticklabels):
-            formatter, locator, label_ = dim._axis_format(scalar, label)
+        for ax, (formatter, locator, label_), show_ticklabels_ in zip(axes, params, show_ticklabels):
             axis_ = ax.yaxis if axis == 'y' else ax.xaxis
             if locator:
                 axis_.set_major_locator(locator)
@@ -1780,6 +1750,7 @@ class EelFigure:
         # set labels
         if any(labels):
             if len(set(labels)) == 1:
+                # default positioning
                 if axis == 'y':
                     self.set_ylabel(labels[0])
                 else:
@@ -1791,6 +1762,43 @@ class EelFigure:
                             ax.set_ylabel(label)
                         else:
                             ax.set_xlabel(label)
+
+    def _configure_axis_data(
+            self,
+            axis: str,  # 'x' | 'y'
+            data: NDVar,  # data for default label
+            label: Union[bool, str],  # override label
+            ticklabels: Union[str, int, Sequence[int]] = True,  # where to show tick-labels
+            axes: List[matplotlib.axes.Axes] = None,  # axes which to format
+    ):
+        "Configure an axis based on data"
+        scale = AxisScale(data, label)
+        formatters = repeat(scale.formatter)
+        if not isinstance(scale.label, str) and isinstance(scale.label, Iterable):
+            labels = chain(scale.label, repeat(None))
+        else:
+            labels = repeat(scale.label)
+        params = zip(formatters, repeat(None), labels)
+        self._configure_axis(axis, ticklabels, params, axes)
+
+    def _configure_axis_dim(
+            self,
+            axis: str,  # 'x' | 'y'
+            dim: Union[str, Dimension],  # The dimension assigned to the axis
+            label: Union[bool, str],  # axis labale
+            ticklabels: Union[str, int, Sequence[int]],  # where to show tick-labels
+            axes: List[matplotlib.axes.Axes] = None,  # axes which to format
+            scalar: bool = True,
+            data: List = None,
+    ):
+        "Configure an axis based on a dimension"
+        # Dimension objects
+        if isinstance(dim, str):
+            dims = [layers[0].get_dim(dim) for layers in data]
+        else:
+            dims = repeat(dim)
+        params = (dim._axis_format(scalar, label) for dim in dims)
+        self._configure_axis(axis, ticklabels, params, axes)
 
     def draw(self):
         "(Re-)draw the figure (after making manual changes)."
