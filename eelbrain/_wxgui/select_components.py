@@ -22,6 +22,7 @@ from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot, fmtxt
 from .._data_obj import Factor, NDVar, asndvar, Categorial, Scalar
+from .._io.fiff import _picks
 from .._utils.parse import POS_FLOAT_PATTERN
 from .._utils.system import IS_OSX
 from ..plot._base import AxisData, DataLayer, PlotType
@@ -103,16 +104,17 @@ class Document(FileDocument):
         self.epochs = epochs = ds['epochs']
         self.epochs_ndvar = load.fiff.epochs_ndvar(epochs, sysname=sysname, connectivity=connectivity)
         self.ds = ds
+        # for 3d-data, pick magnetometers
+        picks = _picks(ica.info, None, 'bads')
 
+        # components
         data = np.dot(ica.mixing_matrix_.T, ica.pca_components_[:ica.n_components_])
         ic_dim = Scalar('component', np.arange(len(data)))
-        self.components = NDVar(data, (ic_dim, self.epochs_ndvar.sensor),
-                                info={'meas': 'component', 'cmap': 'xpolar'})
+        self.components = NDVar(data[:, picks], (ic_dim, self.epochs_ndvar.sensor), 'components', {'meas': 'component', 'cmap': 'xpolar'})
 
         # sources
         data = ica.get_sources(epochs).get_data()
-        self.sources = NDVar(data, ('case', ic_dim, self.epochs_ndvar.time),
-                             {'meas': 'component', 'cmap': 'xpolar'}, 'sources')
+        self.sources = NDVar(data, ('case', ic_dim, self.epochs_ndvar.time), 'sources', {'meas': 'component', 'cmap': 'xpolar'})
 
         # find unique epoch labels
         if 'index' in ds:
@@ -128,7 +130,7 @@ class Document(FileDocument):
             global_mean = ica.pca_mean_ * ica.pre_whitener_[:, 0]
         else:
             global_mean = np.dot(linalg.pinv(ica.pre_whitener_), ica.pca_mean_)
-        self.global_mean = NDVar(global_mean, (self.epochs_ndvar.sensor,))
+        self.global_mean = NDVar(global_mean[picks], (self.epochs_ndvar.sensor,))
 
         # publisher
         self.callbacks.register_key('case_change')

@@ -8,7 +8,6 @@ import mne
 PATH = 'test-ica.fif'
 
 ds = datasets.get_mne_sample()
-ds['epochs'] = ds['epochs'].pick_types('mag')
 if os.path.exists(PATH):
     ica = mne.preprocessing.read_ica(PATH)
 else:

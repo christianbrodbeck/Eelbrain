@@ -16,7 +16,7 @@ def test_select_components():
 
     data_path = mne.datasets.testing.data_path()
     raw_path = join(data_path, 'MEG', 'sample', 'sample_audvis_trunc_raw.fif')
-    raw = mne.io.Raw(raw_path, preload=True).pick_types('mag', stim=True)
+    raw = mne.io.Raw(raw_path, preload=True)
     ds = load.fiff.events(raw)
     ds['epochs'] = load.fiff.mne_epochs(ds, tmax=0.1)
     ica = mne.preprocessing.ICA(0.95, max_iter=1)

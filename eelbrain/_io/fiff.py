@@ -268,6 +268,8 @@ def _guess_ndvar_data_type(info):
 
 
 def _picks(info, data, exclude):
+    if data is None:
+        data = _guess_ndvar_data_type(info)
     if data == 'eeg':
         meg = False
         eeg = True
