@@ -9416,7 +9416,7 @@ class SourceSpaceBase(Dimension):
         elif self.src != other.src:
             raise IndexError(f"Source spaces of different types ({self.src} vs {other.src})")
         elif self.subjects_dir != other.subjects_dir:
-            raise IndexError(f"Source spaces have differing subjects_dir:\n{self.subjects_dir}\n{other.subjects_dir}")
+            raise IndexError(f"Source spaces have differing subjects_dir:\n{self.subjects_dir}\n{other.subjects_dir}\nUse load.update_subjects_dir to set a common directory.")
 
     def __getitem__(self, index):
         raise NotImplementedError

@@ -2389,8 +2389,8 @@ class MneExperiment(FileTree):
         decim : int
             Data decimation factor (alternative to ``samplingrate``).
         pad : scalar
-            Pad the epochs with this much time (in seconds; e.g. for spectral
-            analysis).
+            Pad the epoch's data by extending ``tmin`` and ``tmax`` (specify
+            ``pad`` time in seconds).
         ndvar : bool
             Add the source estimates as :class:`NDVar` named "src" instead of a list of
             :class:`mne.SourceEstimate` objects named "stc" (default True).

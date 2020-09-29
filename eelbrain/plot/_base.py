@@ -100,7 +100,7 @@ import numpy as np
 from .._celltable import Celltable
 from .._colorspaces import LocatedColormap, symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
 from .._config import CONFIG
-from .._data_obj import Dimension, Dataset, Factor, Interaction, NDVar, Case, UTS, NDVarArg, CategorialArg, IndexArg, CellArg, ascategorial, asndvar, assub, isnumeric, isdataobject, combine_cells, cellname
+from .._data_obj import Dimension, Dataset, Factor, Interaction, NDVar, Var, Case, UTS, NDVarArg, CategorialArg, IndexArg, CellArg, ascategorial, asndvar, assub, isnumeric, isdataobject, combine_cells, cellname
 from .._utils.notebooks import use_inline_backend
 from .._stats import testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
@@ -198,20 +198,17 @@ class AxisScale:
 
     Parameters
     ----------
-    v : PlotData | NDVar | Var | str | scalar
+    v
         Display unit or scale of the axis, or daat to infer these. See
         ``unit_format`` dict above for options.
-    label : bool | str
+    label
         If ``label is True``, try to infer a label from ``v``.
-
-    Returns
-    -------
-    tick_formatter : Formatter
-        Matplotlib axis tick formatter.
-    label : str | None
-        Axis label.
     """
-    def __init__(self, v, label=True):
+    def __init__(
+            self,
+            v: Union[NDVar, Var, Number, str, 'PlotData'],
+            label: Union[bool, str, Sequence[str]] = True,
+    ):
         if isinstance(v, str):
             data_unit = None
             meas = None
@@ -230,7 +227,7 @@ class AxisScale:
                 meas = v.meas
                 data_unit = v.unit
             else:
-                raise TypeError("unit=%s" % repr(v))
+                raise TypeError(f"unit={v!r}")
 
             if data_unit in DISPLAY_UNIT:
                 unit = DISPLAY_UNIT[data_unit]
@@ -240,12 +237,12 @@ class AxisScale:
             else:
                 scale = 1
                 unit = data_unit
-        self.data_unit = data_unit
+        self.data_unit = data_unit  # None | str
         self.display_unit = unit
         # ScalarFormatter: disabled because it always used e notation in status bar
         # (needs separate instance because it adapts to data)
         # fmt = ScalarFormatter() if scale == 1 else scale_formatters[scale]
-        self.formatter = SCALE_FORMATTERS[scale]
+        self.formatter = SCALE_FORMATTERS[scale]  # Matplotlib tick formatter
 
         if label is True:
             if meas and unit and meas != unit:

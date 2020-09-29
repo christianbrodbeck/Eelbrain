@@ -7,9 +7,11 @@ New in 0.33
 -----------
 
 * API :func:`load.fiff.events`:  The merge parameter is now by default inferred based on the raw data
+* Boosting: plot data partitioning scheme (``BoostingResult.splits.plot()``)
 * Experiment :mod:`pipeline`:
 
   - New :atr:`MneExperiment.merge_events` attribute
+  - Windows compatibility
 
 
 New in 0.32
