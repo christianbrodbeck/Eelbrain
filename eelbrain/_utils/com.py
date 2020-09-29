@@ -4,6 +4,7 @@ from distutils.version import LooseVersion
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import keyring
+from keyring.errors import KeyringError
 import smtplib
 import socket
 import sys
@@ -88,19 +89,21 @@ class Notifier:
         # get the password
         try:
             password = keyring.get_password(NOOB_DOMAIN, NOOB_ADDRESS)
-        except Exception as exception:
-            if exception.args[0] == -25293:
-                raise KeychainError(
-                    "Notifier password could not be retrieved from Keychain. Try the following:\n"
-                    " - Open the Keychain application\n"
-                    " - Search for an item with the name 'Eelbrain'\n"
-                    " - Open the information on this item (select it and use the menu command \n"
-                    "   'File'/'Get Info')\n"
-                    " - Select the 'Access Control' panel"
-                    " - Select 'Allow all applications to access this item'\n"
-                    " - Save changes, exit, and try again\n\n"
-                    " - If this does not solve the issue, delete the item and repeat")
-            raise
+        except KeyringError as error:
+            raise KeychainError(f"""{error}
+
+Notifier password could not be retrieved from Keychain. Try the following:
+
+ - Open the Keychain application
+ - Search for an item with the name 'Eelbrain'
+ - Open the information on this item (select it and press command-i, or use the
+   menu command 'File'/'Get Info')
+ - Select the 'Access Control' panel
+ - Select 'Allow all applications to access this item'
+ - Save changes, exit, and try again
+ 
+If this does not solve the issue, delete the item and repeat.
+""")
         if password is None:
             password = ui.ask_str("Please enter the Eelbrain notifier password.", "Notifier Password")
             # test it
