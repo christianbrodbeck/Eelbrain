@@ -1355,6 +1355,12 @@ def test_ndvar_indexing():
     assert_array_equal(x.x[30, 1], x.x[0, 2])
     with pytest.raises(ValueError):
         x[:, '1'] = x[6]
+    # slice
+    x_sub = NDVar(np.ones(10), UTS(0, 0.01, 10))
+    x[0, '0'][0: 0.1] = x_sub
+    assert_array_equal(x.x[0, 0, 20:30], 1)
+    x[1, '0', 0: 0.1] = -x_sub
+    assert_array_equal(x.x[1, 0, 20:30], -1)
 
 
 def test_ndvar_summary_methods():

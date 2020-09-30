@@ -3284,7 +3284,7 @@ class NDVar(Named):
             return other.x.reshape(shape)
         elif isinstance(other, NDVar):
             # filter out dimensions that are skipped in assignment
-            if index is None:
+            if index is None or isinstance(index, slice):
                 self_dims = self.dimnames
             elif isinstance(index, INT_TYPES):
                 self_dims = self.dimnames[1:]
