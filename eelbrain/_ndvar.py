@@ -1150,6 +1150,10 @@ def set_tmin(ndvar, tmin=0.):
     -------
     out_ndvar : NDVar
         Shallow copy of ``ndvar`` with updated time axis.
+
+    See Also
+    --------
+    set_time : Pad/crop the :class:`NDVar`
     """
     axis = ndvar.get_axis('time')
     old = ndvar.dims[axis]
@@ -1176,6 +1180,10 @@ def set_time(
         How to pad ``ndvar``, see :func:`numpy.pad`.
     **
         See :func:`numpy.pad`.
+
+    See Also
+    --------
+    set_tmin : Shift the :class:`NDVar` on the time axis
     """
     if isinstance(time, NDVar):
         time = time.get_dim('time')

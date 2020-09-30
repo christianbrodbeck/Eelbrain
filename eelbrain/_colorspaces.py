@@ -26,7 +26,7 @@ UNAMBIGUOUS_COLORS = {
     'bluish green': (0.00, 0.60, 0.50),
     'yellow': (0.95, 0.90, 0.25),
     'blue': (0.00, 0.45, 0.70),
-    'vermillion': (0.80, 0.40, 0.00),
+    'vermilion': (0.80, 0.40, 0.00),
     'reddish purple': (0.80, 0.60, 0.70),
 }
 

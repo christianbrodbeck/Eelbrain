@@ -6,16 +6,19 @@ Changes
 New in 0.33
 -----------
 
-* API :func:`load.fiff.events`:  The merge parameter is now by default inferred based on the raw data
-* Boosting: plot data partitioning scheme (``BoostingResult.splits.plot()``)
-* Experiment :mod:`pipeline`:
+* API :func:`load.fiff.events`:  The merge parameter is now by default inferred based on the raw data.
+* Boosting: plot data partitioning scheme (``BoostingResult.splits.plot()``).
+* .. currentmodule:: eelbrain.pipeline
+  Experiment :mod:`pipeline`:
 
-  - New :atr:`MneExperiment.merge_events` attribute
-  - Windows compatibility
+  - New :attr:`MneExperiment.merge_events` attribute.
+  - Compatibility with Microsoft Windows.
 
 
 New in 0.32
 -----------
+
+.. currentmodule:: eelbrain
 
 * Requires at least `Python 3.7 <https://docs.python.org/3.7/>`_
 * API changes:
@@ -43,8 +46,6 @@ New in 0.32
 
 New in 0.31
 -----------
-
-.. currentmodule:: eelbrain
 
 * API changes:
 
