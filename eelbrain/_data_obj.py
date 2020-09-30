@@ -10235,6 +10235,12 @@ class UTS(Dimension):
         tstep = 1. / sfreq
         return cls(tmin, tstep, nsamples)
 
+    @classmethod
+    def from_range(cls, tstart, tstop, tstep):
+        """Create time axis from interval and samplingrate"""
+        n_samples = int((tstop - tstart) // tstep)
+        return cls(tstart, tstep, n_samples)
+
     def __getstate__(self):
         out = Dimension.__getstate__(self)
         out.update(tmin=self.tmin, tstep=self.tstep, nsamples=self.nsamples)
