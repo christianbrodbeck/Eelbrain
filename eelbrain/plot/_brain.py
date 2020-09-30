@@ -1188,7 +1188,7 @@ class SequencePlotter:
             'parallel': parallel, 'cortex': cortex, 'mask': mask}
 
     def set_parallel_view(self, forward=None, up=None, scale=None):
-        "Set view for all plots (see :meth:`~._brain_obj.Brain.set_parallel_view`"
+        "Set view for all plots (see :meth:`~.brain_object.Brain.set_parallel_view`"
         if forward is not None:
             self._parallel_view['forward'] = forward
         if up is not None:

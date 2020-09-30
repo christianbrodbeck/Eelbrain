@@ -173,7 +173,7 @@ An initial check for noisy channels can be done by looking at the raw data (see
 If this inspection reveals bad channels, they can be excluded using
 :meth:`MneExperiment.make_bad_channels`.
 
-Another good check for bad channels is plotting the average evoked response,,
+Another good check for bad channels is plotting the average evoked response,
 and looking for channels which are uncorrelated with neighboring
 channels. To plot the average before trial rejection, use::
 
