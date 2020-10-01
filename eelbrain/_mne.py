@@ -50,31 +50,42 @@ def switch_hemi_tag(name):
     return name
 
 
-def complete_source_space(ndvar, fill=0., mask=None):
+def complete_source_space(
+        ndvar: NDVar,
+        fill: float = 0.,
+        mask: bool = None,
+        to: SourceSpace = None,
+) -> NDVar:
     """Fill in missing vertices on an NDVar with a partial source space
 
     Parameters
     ----------
-    ndvar : NDVar  (..., source, ...)
+    ndvar
         NDVar with SourceSpace dimension that is missing some vertices.
-    fill : scalar
+    fill
         Value to fill in for missing vertices.
-    mask : bool
+    mask
         Mask vertices that are missing in ``ndvar``. By default, vertices are
         masked only if ``ndvar`` already has a mask.
+    to
+        Source space with the vertices that should be added (by default,
+        all vertices from the original source space are added).
 
     Returns
     -------
-    completed_ndvar : NDVar
+    completed_ndvar
         Copy of ``ndvar`` with its SourceSpace dimension completed.
     """
-    if not mask is None or isinstance(mask, bool):
-        raise TypeError(f"mask={mask}")
+    if mask and not isinstance(mask, bool):
+        raise TypeError(f"mask={mask!r}")
     source = ndvar.get_dim('source')
     axis = ndvar.get_axis('source')
     is_masked = isinstance(ndvar.x, np.ma.masked_array)
     # determine source and target vertices
-    vertices = source_space_vertices(source.kind, source.grade, source.subject, source.subjects_dir)
+    if to:
+        vertices = to.vertices
+    else:
+        vertices = source_space_vertices(source.kind, source.grade, source.subject, source.subjects_dir)
     vertex_indices = [np.in1d(v, src_v, True) for v, src_v in zip(vertices, source.vertices)]
     index = (slice(None,),) * axis + (np.concatenate(vertex_indices),)
     # generate target array
