@@ -569,8 +569,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
             brain.add_ndvar(ndvar, cmap, vmin, vmax, smoothing_steps, colorbar, time_label)
 
     if mask is not False:
-        color = (0, 0, 0, 0.5) if mask is True else mask
-        brain.add_mask(source, color, smoothing_steps, None, subjects_dir)
+        brain.add_mask(source, mask, smoothing_steps, None, subjects_dir)
 
     if parallel:
         brain.set_parallel_view(scale=True)
