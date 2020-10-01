@@ -5,6 +5,7 @@ from functools import partial
 import os
 import sys
 from tempfile import mkdtemp
+from typing import Sequence
 from time import time, sleep
 from warnings import warn
 
@@ -303,6 +304,8 @@ class Brain(TimeSlicer, surfer.Brain):
             Use this directory as the subjects directory.
         """
         source = self._check_source_space(source)
+        if color is True:
+            color = (0, 0, 0, 0.5)
         color = to_rgba(color, alpha)
         if smoothing_steps is not None:
             # generate LUT
@@ -313,8 +316,7 @@ class Brain(TimeSlicer, surfer.Brain):
             lut = np.round(lut).astype(np.uint8)
             # generate mask Label
             mask_ndvar = source._mask_ndvar(subjects_dir)
-            self.add_ndvar(mask_ndvar, lut, 0., 1., smoothing_steps, False,
-                           None, False)
+            self.add_ndvar(mask_ndvar, lut, 0., 1., smoothing_steps, False, None, False)
         else:
             lh, rh = source._mask_label(subjects_dir)
             if self._hemi == 'lh':
@@ -930,23 +932,32 @@ class Brain(TimeSlicer, surfer.Brain):
         del self.__data[:]
         self._time_dim = None
 
-    def remove_labels(self, labels=None):
-        """Remove labels shown with ``Brain.add_ndvar_label``"""
-        if labels is None:
-            pass
+    def remove_labels(
+            self,
+            labels: Sequence[str] = None,
+            mask: bool = False,
+    ):
+        """Remove labels shown with ``Brain.add_ndvar_label``
+
+        Parameters
+        ----------
+        labels
+            Labels to remove.
+        mask
+            Also remove the mask (labels with names starting with ``mask-``).
+        """
+        if labels is None and not mask:
+            labels = [l for l in self.__labels if not l.startswith('mask-')]
         elif isinstance(labels, str):
-            labels = (labels,)
+            labels = [labels]
         else:
-            if not isinstance(labels, tuple):
-                labels = tuple(labels)
+            labels = list(labels)
             if not all(isinstance(l, str) for l in labels):
                 raise TypeError("labels=%r" % (labels,))
-        surfer.Brain.remove_labels(self, labels)
-        if labels is None:
-            self.__labels.clear()
-        else:
-            for label in labels:
-                del self.__labels[label]
+        surfer_labels = set(labels).intersection(self._label_dicts)
+        surfer.Brain.remove_labels(self, surfer_labels)
+        for label in labels:
+            del self.__labels[label]
 
     def save_image(self, filename, mode='rgb', antialiased=False):
         """Save view from all panels to disk
