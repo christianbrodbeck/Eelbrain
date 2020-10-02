@@ -1179,12 +1179,9 @@ class SequencePlotter:
         self._bin_kind = SPLayer.ITEM
         return 0
 
-    def set_brain_args(self, surf='inflated', foreground=None, background=None,
-                       parallel=True, cortex='classic', mask=True):
+    def set_brain_args(self, surf='inflated', foreground=None, background=None, parallel=True, cortex='classic', mask=True):
         "Set parameters for anatomical plot (see :func:`.brain`)"
-        self._brain_args = {
-            'surf': surf, 'foreground': foreground, 'background': background,
-            'parallel': parallel, 'cortex': cortex, 'mask': mask}
+        self._brain_args = {'surf': surf, 'foreground': foreground, 'background': background, 'parallel': parallel, 'cortex': cortex, 'mask': mask}
 
     def set_parallel_view(self, forward=None, up=None, scale=None):
         "Set view for all plots (see :meth:`~.brain_object.Brain.set_parallel_view`"

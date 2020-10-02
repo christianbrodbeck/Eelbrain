@@ -267,7 +267,7 @@ def _guess_ndvar_data_type(info):
         raise ValueError("No MEG, EEG or EOG channel found in data")
 
 
-def _picks(info, data, exclude):
+def _picks(info, data, exclude) -> np.ndarray:
     if data is None:
         data = _guess_ndvar_data_type(info)
     if data == 'eeg':
@@ -626,8 +626,7 @@ def mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, i_start='i_start',
     else:
         events = events[event_index]
 
-    epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, picks,
-                        preload=True, reject=reject, decim=decim, **kwargs)
+    epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, picks, preload=True, reject=reject, decim=decim, **kwargs)
     if reject is None and len(epochs) != len(events):
         getLogger('eelbrain').warning("%s: MNE generated only %i Epochs for %i events. The raw file might end before the end of the last epoch.", raw.filenames[0], len(epochs), len(events))
 
@@ -651,18 +650,23 @@ def mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, i_start='i_start',
     return epochs
 
 
-def sensor_dim(info, picks=None, sysname=None, connectivity=None):
+def sensor_dim(
+        info: mne.Info,
+        picks: np.ndarray = None,
+        sysname: str = None,
+        connectivity: Union[str, Sequence] = None,
+):
     """Create a :class:`Sensor` dimension from an :class:`mne.Info` object.
 
     Parameters
     ----------
-    info : mne.Info
+    info
         Measurement info dictionary (or mne-python object that has a ``.info``
         attribute that contains measurement info).
-    picks : array of int
-        Channel picks (as used in mne-python). By default all MEG and EEG
-        channels are included.
-    sysname : str
+    picks
+        Channel picks (integer array, as used in mne-python).
+        By default all MEG and EEG channels are included.
+    sysname
         Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
         inferred automatically for KIT data converted with a recent version of
         MNE-Python).
@@ -696,13 +700,8 @@ def sensor_dim(info, picks=None, sysname=None, connectivity=None):
         picks = np.asarray(picks, int)
 
     chs = [info['chs'][i] for i in picks]
-    ch_locs = []
-    ch_names = []
-    for ch in chs:
-        x, y, z = ch['loc'][:3]
-        ch_name = ch['ch_name']
-        ch_locs.append((x, y, z))
-        ch_names.append(ch_name)
+    ch_locs = [ch['loc'][:3] for ch in chs]
+    ch_names = [ch['ch_name'] for ch in chs]
 
     # use KIT system ID if available
     sysname = KIT_NEIGHBORS.get(info.get('kit_system_id'), sysname)
@@ -788,10 +787,7 @@ def variable_length_mne_epochs(ds, tmin, tmax, baseline=None, allow_truncation=F
     return out
 
 
-def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads',
-              sysname=None,  connectivity=None,
-              inv=None, lambda2=1, method='dSPM', pick_ori=None, src=None,
-              subjects_dir=None, parc='aparc', label=None):
+def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads', sysname=None,  connectivity=None):
     """Raw data as NDVar
 
     Parameters
@@ -828,24 +824,6 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         - ``"grid"`` to use adjacency in the sensor names
 
         If unspecified, it is inferred from ``sysname`` if possible.
-    inv : InverseOperator
-        MNE inverse operator to transform data to source space (by default, data
-        are loaded in sensor space). If ``inv`` is specified, subsequent
-        parameters are required to construct the right source space.
-    lambda2 : scalar
-        Inverse solution parameter: lambda squared parameter.
-    method : str
-        Inverse solution parameter: noise normalization method.
-    pick_ori : bool
-        Inverse solution parameter.
-    src : str
-        Source space descriptor (e.g. ``'ico-4'``).
-    subjects_dir : str
-        MRI subjects directory.
-    parc : str
-        Parcellation to load for the source space.
-    label : Label
-        Restrict source estimate to this label.
 
     Returns
     -------
@@ -869,9 +847,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
     stop_scalar = i_stop is None or isinstance(i_stop, int)
     if start_scalar or stop_scalar:
         if not start_scalar and stop_scalar:
-            raise TypeError(
-                "i_start and i_stop must either both be scalar or both "
-                "iterable, got i_start=%r, i_stop=%s" % (i_start, i_stop))
+            raise TypeError(f"i_start and i_stop must either both be scalar or both iterable, got i_start={i_start!r}, i_stop={i_stop!r}")
         i_start = (i_start,)
         i_stop = (i_stop,)
         scalar = True
@@ -883,25 +859,15 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
     i_stop = tuple(i if i is None else i - raw.first_samp for i in i_stop)
 
     # target dimension
-    if inv is None:
-        if data is None:
-            data = _guess_ndvar_data_type(raw.info)
-        picks = _picks(raw.info, data, exclude)
-        dim = sensor_dim(raw, picks, sysname, connectivity)
-        info = _sensor_info(data, None, raw.info)
-    else:
-        assert data is None
-        dim = SourceSpace.from_file(subjects_dir, subject, src, parc, label, inv['src'])
-        inv = prepare_inverse_operator(inv, 1, lambda2, method)
-        info = {}  # FIXME
+    if data is None:
+        data = _guess_ndvar_data_type(raw.info)
+    picks = _picks(raw.info, data, exclude)
+    dim = sensor_dim(raw, picks, sysname, connectivity)
+    info = _sensor_info(data, None, raw.info)
 
     out = []
     for start, stop in zip(i_start, i_stop):
-        if inv is None:
-            x = raw[picks, start:stop][0]
-        else:
-            x = apply_inverse_raw(raw, inv, lambda2, method, label, start,
-                                  stop, pick_ori=pick_ori, prepared=True).data
+        x = raw[picks, start:stop][0]
 
         if decim != 1:
             x = x[:, ::decim]

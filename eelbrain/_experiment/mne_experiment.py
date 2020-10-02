@@ -4825,13 +4825,9 @@ class MneExperiment(FileTree):
                     self._log.debug("Report up to date: %s", desc)
                     return True
                 else:
-                    self._log.debug("Report file used %s samples, recomputing "
-                                    "with %i: %s", meta['samples'], samples,
-                                    desc)
+                    self._log.debug("Report file used %s samples, recomputing with %i: %s", meta['samples'], samples, desc)
             else:
-                self._log.debug("Report created prior to Eelbrain 0.25, can "
-                                "not check number of samples. Delete manually "
-                                "to recompute: %s", desc)
+                self._log.debug("Report created prior to Eelbrain 0.25, can not check number of samples. Delete manually to recompute: %s", desc)
                 return True
 
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=None,
