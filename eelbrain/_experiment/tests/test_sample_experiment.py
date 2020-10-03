@@ -351,3 +351,23 @@ def test_sample_sessions():
     with catch_warnings():
         filterwarnings('ignore', "FastICA did not converge", UserWarning)
         assert e.make_ica() == join(root, 'meg', 'R0000', 'R0000 ica-ica.fif')
+
+
+@requires_mne_sample_data
+def test_sample_neuromag():
+    set_log_level('warning', 'mne')
+    SampleExperiment = import_attr(sample_path / 'sample_experiment.py', 'SampleExperiment')
+    tempdir = TempDir()
+    datasets.setup_samples_experiment(tempdir, n_subjects=1, pick='')
+
+    class Experiment(SampleExperiment):
+        defaults = {'raw': '1-40'}
+        # raw = {'1-40': RawFilter('raw', 1, 40)}
+
+    root = join(tempdir, 'SampleExperiment')
+    e = Experiment(root)
+    assert e.get('raw') == '1-40'
+
+    e.make_epoch_selection(auto={'mag': 2e-12, 'grad': 5e-11, 'eeg': 1.5e-4})
+    ds = e.load_selected_events(reject='keep')
+    assert ds['accept'].sum() == 69

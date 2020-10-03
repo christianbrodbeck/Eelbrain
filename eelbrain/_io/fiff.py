@@ -236,7 +236,8 @@ def find_mne_channel_types(info):
     if mag:
         out.append('mag')
     if grad:
-        out.append('grad')
+        out.append('planar1')
+        out.append('planar2')
     if eeg:
         out.append('eeg')
     if eog:
@@ -282,7 +283,7 @@ def _picks(info, data, exclude) -> np.ndarray:
         meg = False
         eeg = True
         eog = True
-    elif data in ['grad', 'mag']:
+    elif data in ['grad', 'mag', 'planar1', 'planar2']:
         meg = data
         eeg = False
         eog = False
@@ -291,7 +292,7 @@ def _picks(info, data, exclude) -> np.ndarray:
         eeg = True
         eog = False
     else:
-        raise ValueError("data=%r (needs to be 'eeg', 'grad' or 'mag')" % data)
+        raise ValueError(f"data={data!r} (needs to be one of: eeg, eog, mag, grad, planar1, planar2)")
     return mne.pick_types(info, meg, eeg, False, eog, ref_meg=False, exclude=exclude)
 
 
@@ -316,7 +317,7 @@ def _sensor_info(data, vmax, mne_info, user_info=None, mult=1):
         info = _info.for_meg(vmax, mult)
         summary_vmax = 0.1 * vmax if vmax else None
         summary_info = _info.for_meg(summary_vmax, mult)
-    elif data == 'grad':
+    elif data in ['grad', 'planar1', 'planar2']:
         info = _info.for_meg(vmax, mult, 'T/cm', '∆U')
         summary_vmax = 0.1 * vmax if vmax else None
         summary_info = _info.for_meg(summary_vmax, mult, 'T/cm', '∆U')
@@ -705,32 +706,40 @@ def sensor_dim(
 
     # use KIT system ID if available
     sysname = KIT_NEIGHBORS.get(info.get('kit_system_id'), sysname)
-    if sysname == 'neuromag':
+    if sysname and sysname.startswith('neuromag'):
         ch_unit = {ch['unit'] for ch in chs}
         if len(ch_unit) > 1:
-            raise RuntimeError(f"More than one channel kind for sysname='neuromag': {tuple(ch_unit)}")
+            raise RuntimeError(f"More than one channel kind for sysname={sysname!r}: {tuple(ch_unit)}")
         ch_unit = ch_unit.pop()
         if ch_unit == FIFF.FIFF_UNIT_T_M:
             sysname = 'neuromag306planar'
         elif ch_unit == FIFF.FIFF_UNIT_T:
             sysname = 'neuromag306mag'
+        elif ch_unit == FIFF.FIFF_UNIT_V:
+            sysname = 'neuromag306eeg'
+            if connectivity is None:
+                connectivity = 'auto'
         else:
-            raise ValueError(f"Unknown channel unit for sysname='neuromag': {ch_unit!r}")
+            raise ValueError(f"Unknown channel unit for sysname={sysname!r}: {ch_unit!r}")
 
     if connectivity is None:
         connectivity = sysname  # or 'auto'
 
-    if isinstance(connectivity, str):
-        if connectivity in ('grid', 'none'):
-            pass
-        elif connectivity == 'auto':
-            ch_type = _guess_ndvar_data_type(info)
+    if connectivity in ('grid', 'none'):
+        pass
+    elif isinstance(connectivity, str):
+        if connectivity == 'auto':
+            ch_type = _guess_ndvar_data_type({'chs': chs})
             c_matrix, names = mne.channels.find_ch_connectivity(info, ch_type)
         else:
             c_matrix, names = mne.channels.read_ch_connectivity(connectivity)
-            # fix channel names
             if connectivity.startswith('neuromag'):
-                names = [n[:3] + ' ' + n[3:] for n in names]
+                vec_ids = {name[-1] for name in ch_names}
+                if len(vec_ids) > 1:
+                    raise NotImplementedError("Connectivity for Neuromag vector data")
+                vec_id = vec_ids.pop()
+                # fix channel names
+                names = [f'MEG {n[3:-1]}{vec_id}' for n in names]
 
         # fix channel order
         if names != ch_names:
@@ -809,7 +818,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         If 'bads' (default), exclude channels in info['bads'].
         If empty do not exclude any.
     sysname : str
-        Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
+        Name of the sensor system to load sensor connectivity (e.g. 'neuromag306',
         inferred automatically for KIT data converted with a recent version of
         MNE-Python).
     connectivity : str | list of (str, str) | array of int, (n_edges, 2)
@@ -909,7 +918,7 @@ def epochs_ndvar(epochs, name=None, data=None, exclude='bads', mult=1,
     vmax : None | scalar
         Set a default range for plotting.
     sysname : str
-        Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
+        Name of the sensor system to load sensor connectivity (e.g. 'neuromag306',
         inferred automatically for KIT data converted with a recent version of
         MNE-Python).
     connectivity : str | list of (str, str) | array of int, (n_edges, 2)
@@ -966,7 +975,7 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
     vmax : None | scalar
         Set a default range for plotting.
     sysname : str
-        Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
+        Name of the sensor system to load sensor connectivity (e.g. 'neuromag306',
         inferred automatically for KIT data converted with a recent version of
         MNE-Python).
     connectivity : str | list of (str, str) | array of int, (n_edges, 2)

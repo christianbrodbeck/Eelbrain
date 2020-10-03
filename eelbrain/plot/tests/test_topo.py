@@ -54,9 +54,8 @@ def test_plot_topomap_mne():
     p = plot.Topomap(ds['meg'].summary(time=(.1, .12)), proj='left')
     p.close()
     # grad
-    ds = datasets.get_mne_sample(sub=[0], sns='grad')
-    with pytest.raises(NotImplementedError), pytest.warns(RuntimeWarning):
-        plot.Topomap('meg.sub(time=.1)', ds=ds)
+    ds = datasets.get_mne_sample(sub=[0], sns='planar1')
+    plot.Topomap('meg.sub(time=.1)', ds=ds)
 
 
 @hide_plots

@@ -13,6 +13,7 @@ import numpy as np
 from .. import _info, load
 from .._data_obj import Dataset, Factor, Var, NDVar, Case, Categorial, Scalar, Sensor, Space, UTS
 from .._ndvar import concatenate, convolve
+from .._types import PathArg
 
 
 def permute(variables):
@@ -337,7 +338,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     if sns:
         ds['meg'] = load.fiff.epochs_ndvar(ds['epochs'],
                                            data='mag' if sns is True else sns,
-                                           sysname='neuromag')
+                                           sysname='neuromag306')
 
     if not src:
         return ds
@@ -535,29 +536,43 @@ def get_sensor(n):
     return sensor
 
 
-def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1, n_visits=1, name='SampleExperiment', mris=False, mris_only=False):
-    """Setup up file structure for the SampleExperiment class
+def setup_samples_experiment(
+        dst: PathArg,
+        n_subjects: int = 3,
+        n_segments: int = 4,
+        n_sessions: int = 1,
+        n_visits: int = 1,
+        name: str = 'SampleExperiment',
+        mris: bool = False,
+        mris_only: bool = False,
+        pick: str = 'mag',
+):
+    """Setup up file structure for the ``SampleExperiment`` class
+
+    Corresponding to the pipeline in ``examples/experiment``.
 
     Parameters
     ----------
-    dst : str
+    dst
         Path. ``dst`` should exist, a new folder called ``name`` will be
         created within ``dst``.
-    n_subjects : int
+    n_subjects
         Number of subjects.
-    n_segments : int
+    n_segments
         Number of data segments to include in each file.
-    n_sessions : int
+    n_sessions
         Number of sessions.
-    n_visits : int
+    n_visits
         Number of visits.
-    name : str
+    name
         Name for the directory for the new experiment (default
         ``'SampleExperiment'``).
-    mris : bool
+    mris
         Set up MRIs.
-    mris_only : bool
+    mris_only
         Only create MRIs, skip MEG data (add MRIs to existing experiment data).
+    pick
+        Pick a certain channel type (``''`` to copy all channels).
     """
     # find data source
     data_path = Path(mne.datasets.sample.data_path())
@@ -659,5 +674,6 @@ def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1, n_vi
             start, stop = segs.pop()
             raw_ = raw.copy().crop(start, stop)
             raw_.load_data()
-            raw_.pick_types('mag', stim=True, exclude=[])
+            if pick:
+                raw_.pick_types(pick, stim=True, exclude=[])
             raw_.save(str(meg_dir / f'{subject}_{session}-raw.fif'))

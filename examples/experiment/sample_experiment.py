@@ -22,7 +22,7 @@ class SampleExperiment(MneExperiment):
 
     owner = "me@nyu.edu"
 
-    meg_system = 'neuromag306mag'
+    meg_system = 'neuromag306'
 
     sessions = 'sample'
 

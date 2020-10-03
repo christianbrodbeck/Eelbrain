@@ -2326,7 +2326,10 @@ class MneExperiment(FileTree):
             for data_kind in data_to_ndvar:
                 sysname = pipe.get_sysname(info, ds.info['subject'], data_kind)
                 connectivity = pipe.get_connectivity(data_kind)
-                name = 'meg' if data_kind == 'mag' else data_kind
+                if data_kind == 'mag' and 'planar1' not in data_to_ndvar:
+                    name = 'meg'
+                else:
+                    name = data_kind
                 if variable_tmax:
                     ys = [load.fiff.epochs_ndvar(e, data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude)[0] for e in ds['epochs']]
                     if isinstance(data.sensor, str):
@@ -4701,7 +4704,14 @@ class MneExperiment(FileTree):
         pipe = self._raw[self.get('raw')]
         pipe.cache(self.get('subject'), self.get('recording'))
 
-    def make_epoch_selection(self, samplingrate=None, decim=None, auto=None, overwrite=None, **state):
+    def make_epoch_selection(
+            self,
+            samplingrate: int = None,
+            data: str = None,
+            auto: Union[float, dict] = None,
+            overwrite: bool = None,
+            decim: int = None,
+            **state):
         """Open :func:`gui.select_epochs` for manual epoch selection
 
         The GUI is opened with the correct file name; if the corresponding
@@ -4710,22 +4720,27 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        samplingrate : int
+        samplingrate
             Samplingrate in Hz for the visualization (set to a lower value to
-            improve GUI performance; for raw data, the default is ~100 Hz, for
-            epochs the default is theepoch setting).
-        decim : int
-            Data decimation factor (alternative to ``samplingrate``).
+            improve GUI performance; the default is the epoch setting).
+        data
+            For data with multiple channel types, specify the channel type to
+            display (``mag``, ``planar1``, ``planar2``).
         auto : scalar (optional)
             Perform automatic rejection instead of showing the GUI by supplying
             a an absolute threshold (for example, ``1e-12`` to reject any epoch
             in which the absolute of at least one channel exceeds 1 picotesla).
             If a rejection file already exists also set ``overwrite=True``.
+            When working with data from multiple sensor types, use a dictionary
+            to set levels for all types,
+            e.g. ``{'mag': 2e-12, 'grad': 5e-11, 'eeg': 1.5e-4}``.
         overwrite : bool
             If ``auto`` is specified and a rejection file already exists,
             overwrite the old file. The default is to raise an :exc:`IOError` if
             the file exists (``None``). Set to ``False`` to quietly keep the
             exising file.
+        decim
+            Data decimation factor (alternative to ``samplingrate``).
         ...
             State parameters.
 
@@ -4765,27 +4780,40 @@ class MneExperiment(FileTree):
             else:
                 raise TypeError(f"overwrite={overwrite!r}")
 
-        ds = self.load_epochs(reject=False, trigger_shift=False, samplingrate=samplingrate, decim=decim)
-        has_meg = 'meg' in ds
-        has_grad = 'grad' in ds
-        has_eeg = 'eeg' in ds
-        if sum((has_meg, has_grad, has_eeg)) > 1:
-            raise NotImplementedError("Rejection GUI for multiple channel types")
-        elif has_meg:
-            y_name = 'meg'
-            vlim = 2e-12
-        elif has_grad:
-            raise NotImplementedError("Rejection GUI for gradiometer data")
-        elif has_eeg:
-            y_name = 'eeg'
-            vlim = 1.5e-4
+        ndvar = data is None
+        ds = self.load_epochs(ndvar=ndvar, reject=False, trigger_shift=False, samplingrate=samplingrate, decim=decim)
+        if data is None:
+            ch_types = ['meg', 'mag', 'grad', 'planar1', 'planar2', 'eeg']
+            ch_types = [t for t in ch_types if t in ds]
+            if len(ch_types) > 1 and not auto:
+                raise NotImplementedError(f"Found multiple channel types: {enumeration(ch_types)}. Rejection GUI for multiple channel types is not implemented. Use the `data` parameter to visualize one channel type at a time.")
+            elif not ch_types:
+                raise RuntimeError("No data found")
+            y_name = ch_types.pop()
+        elif data == 'grad':
+            raise NotImplementedError("Epoch selection for vector data; use data='planar1' and data='planar2'")
         else:
-            raise RuntimeError("No data found")
+            y_name = data
+            ds[data] = load.fiff.epochs_ndvar(ds['epochs'], data=data)
 
         if auto is not None:
+            if isinstance(auto, dict):
+                auto_dict = auto.copy()
+                missing = {key for key in auto_dict if key not in ds}
+                if 'grad' in missing:
+                    grad_threshold = auto_dict.pop('grad')
+                    for key in ds:
+                        if re.match('planar[12]', key):
+                            auto_dict[key] = grad_threshold
+                elif missing:
+                    raise ValueError(f"auto={auto!r}: channel types {enumeration(missing)} not in data")
+            else:
+                auto_dict = {y_name: auto}
             # create rejection
             rej_ds = new_rejection_ds(ds)
-            rej_ds[:, 'accept'] = ds[y_name].abs().max(('sensor', 'time')) <= auto
+            rej_ds[:, 'accept'] = True
+            for key, threshold in auto_dict.items():
+                rej_ds['accept'] &= ds[key].abs().max(('sensor', 'time')) <= threshold
             # create description for info
             args = [f"auto={auto!r}"]
             if overwrite is True:
@@ -4799,9 +4827,11 @@ class MneExperiment(FileTree):
             save.pickle(rej_ds, path)
             # print info
             n_rej = rej_ds.eval("sum(accept == False)")
-            print(self.format(f"{n_rej} of {rej_ds.n_cases} epochs rejected with threshold {auto} for {{subject}}, epoch {{epoch}}"))
+            desc = self.format("{subject}, epoch {epoch}")
+            print(f"{n_rej} of {rej_ds.n_cases} epochs rejected with threshold {auto} for {desc}")
             return
 
+        vlim = {'meg': 2e-12, 'mag': 2e-12, 'eeg': 1.5e-4, 'planar1': 5e-11, 'planar2': 5e-11}[y_name]
         eog_sns = self._eog_sns.get(ds[y_name].sensor.sysname, ())
         # don't mark eog sns if it is bad
         bad_channels = self.load_bad_channels()
