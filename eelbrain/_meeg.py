@@ -22,7 +22,7 @@ def new_rejection_ds(ds):
     out = Dataset(info={BAD_CHANNELS: []})
     out['trigger'] = ds['trigger']
     out[:, 'accept'] = True
-    out[:, 'tag'] = ''
+    out[:, 'rej_tag'] = ''
     return out
 
 
