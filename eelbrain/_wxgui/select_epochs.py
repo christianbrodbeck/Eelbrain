@@ -382,6 +382,10 @@ class Document(FileDocument):
         else:
             raise ValueError(f"Unknown file extension for rejections: {path}")
 
+        # fix
+        if 'tag' in ds and 'rej_tag' not in ds:
+            ds['rej_tag'] = ds.pop('tag')
+
         # check file contents
         needed = ['trigger', 'accept', 'rej_tag']
         if INTERPOLATE_CHANNELS in ds:
