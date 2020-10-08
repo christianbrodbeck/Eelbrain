@@ -154,6 +154,7 @@ functions. See also :class:`NDVar` methods.
    maximum
    minimum
    morph_source_space
+   normalize_in_cells
    neighbor_correlation
    psd_welch
    resample

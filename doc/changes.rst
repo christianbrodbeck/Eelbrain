@@ -3,6 +3,12 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.34
+-----------
+
+* Added: :func:`normalize_in_cells`.
+
+
 New in 0.33
 -----------
 

@@ -20,7 +20,7 @@ import numpy as np
 from scipy import linalg, ndimage, signal, stats
 
 from . import _info, mne_fixes
-from ._data_obj import NDVar, Var, Case, Categorial, Dimension, Scalar, UTS, asndvar, isnumeric, op_name
+from ._data_obj import NDVarArg, CategorialArg, Dataset, NDVar, Var, Case, Categorial, Dimension, Scalar, UTS, ascategorial, asndvar, isnumeric, op_name
 from ._exceptions import DimensionMismatchError
 from ._external.colorednoise import powerlaw_psd_gaussian
 from ._info import merge_info
@@ -802,6 +802,50 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
         y[i] = np.mean(cc[i, neighbors[i]])
     info = _info.for_stat_map('r', old=x.info)
     return NDVar(y, (dim_obj,), name or x.name, info)
+
+
+def normalize_in_cells(
+        y: NDVarArg,
+        for_dim: str,
+        in_cells: CategorialArg,
+        ds: Dataset = None,
+):
+    """Normalize data in cells to make it appropriate for ANOVA [1]
+
+    Parameters
+    ----------
+    y
+        Dependent variable which should be normalized.
+    for_dim
+        Dimension which will be included as factor in the ANOVA (e.g.,
+        ``''sensor'``).
+    in_cells
+        Model defining the cells within which to normalize (normally the factors
+        that will be used as fixed effects in the ANOVA).
+    ds
+        Dataset containing the data.
+
+
+    Notes
+    -----
+    A common example is a by sensor interaction effect in EEG data.
+    ANOVA interaction effects assume additivity, but EEG topographies depend on
+    source strength in a multiplicative fashion, which can lead to spurious
+    interaction effects. Normalizing in each cell of the ANOVA model controls
+    for this (see [1] for details).
+
+
+    References
+    ----------
+    .. [1] McCarthy, G., & Wood, C. C. (1985). Scalp Distributions of Event-Related Potentials—An Ambiguity Associated with Analysis of Variance Models. Electroencephalography and Clinical Neurophysiology, 61, S226–S227. `10.1016/0013-4694(85)90858-2 <https://doi.org/10.1016/0013-4694(85)90858-2>`_
+    """
+    y = asndvar(y, ds=ds).copy()
+    x = ascategorial(in_cells, ds=ds)
+    for cell in x.cells:
+        index = x == cell
+        y[index] -= y[index].min(('case', for_dim))
+        y[index] /= y[index].max(('case', for_dim))
+    return y
 
 
 def powerlaw_noise(dims, exponent):
