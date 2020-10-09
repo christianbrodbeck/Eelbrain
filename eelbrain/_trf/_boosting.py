@@ -24,7 +24,7 @@ from multiprocessing.sharedctypes import RawArray
 import os
 import time
 from threading import Event, Thread
-from typing import Any, Union, Tuple, Sequence
+from typing import Any, List, Union, Tuple, Sequence
 import warnings
 
 import numpy as np
@@ -132,7 +132,7 @@ class BoostingResult(PickleableDataClass):
     # advanced parameters
     basis: float
     basis_window: str
-    splits: Splits
+    splits: Splits = None
     # advanced data properties
     n_samples: int = None
     _y_info: dict = field(default_factory=dict)
@@ -142,6 +142,7 @@ class BoostingResult(PickleableDataClass):
     r: Union[float, NDVar] = None
     r_rank: Union[float, NDVar] = None
     r_l1: NDVar = None
+    partition_results: List['BoostingResult'] = None
     # store the version of the boosting algorithm with which model was fit
     version: int = 13  # file format (updates when re-saving)
     algorithm_version: int = -1  # does not change when re'saving
@@ -152,7 +153,10 @@ class BoostingResult(PickleableDataClass):
     prefit: str = None
 
     def __post_init__(self):
-        self.partitions = self.splits.n_partitions
+        if self.splits is None:
+            self.partitions = None
+        else:
+            self.partitions = self.splits.n_partitions
 
     def __setstate__(self, state: dict):
         # backwards compatibility
@@ -468,6 +472,7 @@ class Boosting:
             i_test: int = None,
             metrics: Sequence[str] = None,
             cross_fit: bool = None,
+            partition_results: bool = False,
             debug: bool = False,
     ):
         """Compute average TRF and fit metrics
@@ -487,6 +492,8 @@ class Boosting:
         cross_fit
             Compute fit metrics from cross-validation (only applies to model
             with cross-validation; default ``True``).
+        partition_results
+            Keep results (TRFs and model evaluation) for each test-partition.
         debug
             Add additional attributes to the returned result.
         """
@@ -494,6 +501,8 @@ class Boosting:
             cross_fit = bool(self.data.splits.n_test)
         elif cross_fit and not self.data.splits.n_test:
             raise ValueError(f"cross_fit={cross_fit!r} for model without cross-validation")
+        if partition_results and not cross_fit:
+            raise ValueError(f"partition_results={partition_results!r} with cross_fit={cross_fit!r}")
 
         # fit evaluation
         if metrics is None:
@@ -549,7 +558,7 @@ class Boosting:
                 y_pred = np.empty(self.data.y.shape[1:])
                 y_pred_iter = repeat(y_pred, n_y)
 
-            evaluators, evaluators_s, evaluators_v = get_evaluators(metrics, self.data)
+            all_evaluators, evaluators_s, evaluators_v = get_evaluators(metrics, self.data)
 
             # fit and evaluate each y
             for i_y, y_pred_i in enumerate(y_pred_iter):
@@ -569,7 +578,7 @@ class Boosting:
                         e.add_y(i_vec, self.data.y[i_y_vec], y_pred_i_vec, eval_segments)
 
             # Package evaluators
-            evaluations = {e.attr: self.data.package_value(e.x, e.name, meas=e.meas) for e in evaluators}
+            evaluations = {e.attr: self.data.package_value(e.x, e.name, meas=e.meas) for e in all_evaluators}
             if debug:
                 evaluations['y_pred'] = self.data.package_y_like(y_pred, 'y-pred')
         else:
@@ -584,6 +593,12 @@ class Boosting:
         if debug:
             evaluations['fit'] = self
         t_run = self.t_fit_done - self.t_fit_start
+        # partition-specific results
+        if partition_results:
+            partition_hs = [self.data.package_kernel(h_, self.tstart_h) for h_ in h_xs]
+            partition_results_list = [BoostingResult(self.data.y_name, self.data.x_name, self.tstart, self.tstop, bool(self.data.scale_data), self.delta, self.mindelta, self.error, self.selective_stopping, y_mean, y_scale, x_mean, x_scale, h_i, self._get_h_failed(i), None, self.data.basis, self.data.basis_window, None, self.data.y.shape[1], self.data.y_info, algorithm_version=0, i_test=i) for i, h_i in zip(i_tests, partition_hs)]
+        else:
+            partition_results_list = None
         return BoostingResult(
             # basic parameters
             self.data.y_name, self.data.x_name, self.tstart, self.tstop, bool(self.data.scale_data), self.delta, self.mindelta, self.error, self.selective_stopping,
@@ -595,6 +610,7 @@ class Boosting:
             self.data.basis, self.data.basis_window, self.data.splits,
             # advanced data properties
             self.data.y.shape[1], self.data.y_info,
+            partition_results=partition_results_list,
             algorithm_version=0,
             i_test=i_test, **evaluations)
 
@@ -617,6 +633,7 @@ def boosting(
         test: int = 0,  # Number of segments in test set
         ds: Dataset = None,
         selective_stopping: int = 0,
+        partition_results: bool = False,
         debug: bool = False,
 ):
     """Estimate a linear filter with coordinate descent
@@ -693,6 +710,8 @@ def boosting(
         increase in testing error, and continues until all predictors are
         stopped. The integer value of ``selective_stopping`` determines after
         how many steps with error increases each predictor is excluded.
+    partition_results
+        Keep results (TRFs and model evaluation) for each test-partition.
     debug : bool
         Add additional attributes to the returned result.
 
@@ -743,7 +762,7 @@ def boosting(
 
     fit = Boosting(data)
     fit.fit(tstart, tstop, selective_stopping, error, delta, mindelta)
-    return fit.evaluate_fit(debug=debug)
+    return fit.evaluate_fit(debug=debug, partition_results=partition_results)
 
 
 class BoostingStep:

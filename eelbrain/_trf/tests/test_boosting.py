@@ -14,7 +14,7 @@ import scipy.io
 import scipy.stats
 from eelbrain import (
     datasets, configure,
-    boosting, convolve, correlation_coefficient, epoch_impulse_predictor,
+    boosting, combine, convolve, correlation_coefficient, epoch_impulse_predictor,
     NDVar, UTS, Scalar,
 )
 
@@ -156,6 +156,16 @@ def test_boosting_oo():
 
     res_func = boosting('y', 'x2', 0, 1, ds=ds, error='l1', basis=0.2, partitions=4, test=1, selective_stopping=1)
     assert res_oo.r == res_func.r
+
+    res_part = model.evaluate_fit(partition_results=True)
+    assert len(res_part.partition_results) == 4
+    # h with basis
+    h_part = combine([res.h for res in res_part.partition_results])
+    assert len(h_part) == 4
+    assert_dataobj_equal(h_part.mean('case'), res_oo.h, decimal=10)
+    # raw h
+    h_part = combine([res._h for res in res_part.partition_results])
+    assert_dataobj_equal(h_part.mean('case'), res_oo._h)
 
 
 def test_result():
