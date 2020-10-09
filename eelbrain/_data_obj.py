@@ -5433,7 +5433,7 @@ def as_legal_dataset_key(key):
         if legal_dataset_key_re.match(key):
             return key
         else:
-            raise RuntimeError("Could not convert %r to legal dataset key")
+            raise RuntimeError(f"Could not convert {key!r} to legal dataset key")
 
 
 def cases_arg(cases, n_cases) -> Iterable:
@@ -7612,7 +7612,7 @@ class Dimension:
         attrs = {getattr(dim, attr) for dim in dims}
         if len(attrs) > 1:
             desc = ', '.join(map(repr, attrs))
-            raise DimensionMismatchError(f"Different values for {attrs}: {desc}")
+            raise DimensionMismatchError(f"Different values for {attr}: {desc}")
         return attrs.pop()
 
     def _as_scalar_array(self):

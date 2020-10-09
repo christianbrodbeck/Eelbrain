@@ -3529,9 +3529,7 @@ class MneExperiment(FileTree):
                     if INTERPOLATE_CHANNELS in ds_sel:
                         ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
                     else:
-                        ds[INTERPOLATE_CHANNELS] = Datalist([[]] * ds.n_cases,
-                                                            INTERPOLATE_CHANNELS,
-                                                            'strlist')
+                        ds[INTERPOLATE_CHANNELS] = Datalist([[]] * ds.n_cases, INTERPOLATE_CHANNELS, 'strlist')
                 else:
                     ds.info[INTERPOLATE_CHANNELS] = False
 

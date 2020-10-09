@@ -18,9 +18,16 @@ The :class:`MneExperiment` Pipeline
 Introduction
 ============
 
-The :class:`MneExperiment` class is a template for an MEG/EEG analysis pipeline.
-The pipeline is adapted to a specific experiment by creating a subclass, and
-specifying properties of the experiment as attributes.
+The :class:`MneExperiment` class is a template for an MEG/EEG analysis pipeline. The pipeline is adapted to a specific experiment by creating a subclass, and specifying properties of the experiment as attributes.
+
+Once set up, an :class:`MneExperiment` subclass instance provides access into the pipeline at different stages of analysis through its methods:
+
+ - ``.load_...`` methods are for loading data.
+ - ``.make_...`` methods are for generating various intermediate results. Most of these methods don't have to be called by the user, but they are used internally when needed. The exception are those that require user input, like ICA component selection, which are mentioned below.
+ - ``.show_...`` methods are for retrieving and displaying information at different stages.
+ - ``.plot_...`` methods are for generating plots of the data.
+
+An :class:`MneExperiment` instance has a state, which determines what data and settings it is currently using. Not all settings are always relevant. For example, :ref:`state-subject` is relevenat for steps applied separately to each subject, like :meth:`~MneExperiment.make_ica_selection`, whereas :ref:`state-group` defines the group of subjects in group level analysis, such as in :meth:`~MneExperiment.load_test`. For more information, see :ref:`state-parameters`.
 
 
 Step by step
@@ -387,10 +394,7 @@ Subjects
 
 .. py:attribute:: MneExperiment.subject_re
 
-Subjects are identified by looking for folders in the subjects-directory whose
-name matches the ``subject_re`` regular expression (see :mod:`re`). By
-default, this is ``'(R|A|Y|AD|QP)(\d{3,})$'``, which matches R-numbers like
-``R1234``, but also numbers prefixed by ``A``, ``Y``, ``AD`` or ``QP``.
+Subjects are identified on initialization by looking for folders in the data directory (``meg`` by default) whose name matches the :attr:`MneExperiment.subject_re` regular expression. By default, this is ``'(R|A|Y|AD|QP)(\d{3,})$'``, which matches R-numbers like ``R1234``, but also numbers prefixed by ``A``, ``Y``, ``AD`` or ``QP`` (for information about how to define a different regular expression, see :mod:`re`).
 
 
 Defaults
@@ -633,8 +637,7 @@ initialized to affect the analysis, for example::
     >>> my_experiment = MneExperiment()
     >>> my_experiment.set(raw='1-40', cov='noreg')
 
-sets up ``my_experiment`` to use raw files filtered with a 1-40 Hz band-pass
-filter, and to use sensor covariance matrices without regularization.
+sets up ``my_experiment`` to use a 1-40 Hz band-pass filter as preprocessing, and to use sensor covariance matrices without regularization. Most methods also accept state parameters, so :meth:`MneExperiment.set` does not have to be used separately.
 
 .. contents:: Contents
    :local:
@@ -665,6 +668,14 @@ Which visit to work with (one of :attr:`MneExperiment.visits`)
 Select the preprocessing pipeline applied to the continuous data. Options are
 all the processing steps defined in :attr:`MneExperiment.raw`, as well as
 ``"raw"`` for using unprocessed raw data.
+
+
+.. _state-subject:
+
+``subject``
+-----------
+
+Any subject in the experiment (subjects are identified based on :attr:`MneExperiment.subject_re`).
 
 
 .. _state-group:

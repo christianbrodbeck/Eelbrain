@@ -32,7 +32,11 @@ def named_list(items, name='item'):
         return "%ss (%s)" % (name, ', '.join(map(repr, items)))
 
 
-def n_of(n, of, plural_for_0=False):
+def n_of(
+        n: int,
+        of: str,
+        plural_for_0: bool = False,
+):
     "n_of(3, 'epoch') -> '3 epochs'"
     if n == 0:
         return f"no {plural(of, not plural_for_0)}"
