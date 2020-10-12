@@ -29,7 +29,7 @@ dependencies:
 - ipdb
 - ipython
 - colormath >= 2.1
-- tqdm >= 4.19
+- tqdm >= 4.40
 - keyring >= 5
 - wxpython >= 4.0.3
 # building

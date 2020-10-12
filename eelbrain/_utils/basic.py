@@ -180,7 +180,6 @@ class ScreenHandler(logging.StreamHandler):
         if formatter is None:
             formatter = logging.Formatter("%(levelname)-8s:  %(message)s")
         self.setFormatter(formatter)
-        tqdm(disable=True, total=0)  # https://github.com/tqdm/tqdm/issues/457
 
     def emit(self, record):
         tqdm.write(self.format(record))
