@@ -2904,7 +2904,7 @@ class MneExperiment(FileTree):
         stcs = []
         invs = {}
         mm_cache = CacheDict(self.load_morph_matrix, 'mrisubject')
-        for subject, evoked in tqdm(ds.zip('subject', 'evoked'), "Localize", ds.n_cases):
+        for subject, evoked in tqdm(ds.zip('subject', 'evoked'), "Localize", ds.n_cases, leave=False):
             # get inv
             if subject in invs:
                 inv = invs[subject]
