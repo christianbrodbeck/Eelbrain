@@ -4826,7 +4826,7 @@ class MneExperiment(FileTree):
             # print info
             n_rej = rej_ds.eval("sum(accept == False)")
             desc = self.format("{subject}, epoch {epoch}")
-            print(f"{n_rej} of {rej_ds.n_cases} epochs rejected with threshold {auto} for {desc}")
+            self._log.info(f"make_epoch_selection: {n_rej} of {rej_ds.n_cases} epochs rejected with threshold {auto} for {desc}")
             return
 
         vlim = {'meg': 2e-12, 'mag': 2e-12, 'eeg': 1.5e-4, 'planar1': 5e-11, 'planar2': 5e-11}[y_name]
