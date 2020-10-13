@@ -3284,12 +3284,14 @@ class NDVar(Named):
             return other.x.reshape(shape)
         elif isinstance(other, NDVar):
             # filter out dimensions that are skipped in assignment
-            if index is None or isinstance(index, slice):
+            if index is None or isinstance(index, (slice, list, np.ndarray)):
                 self_dims = self.dimnames
             elif isinstance(index, INT_TYPES):
                 self_dims = self.dimnames[1:]
-            else:
+            elif isinstance(index, tuple):
                 self_dims = [dim for i, dim in zip_longest(index, self.dimnames) if not isinstance(i, INT_TYPES)]
+            else:
+                raise NotImplementedError(f"Index {index!r} of type {type(index)}")
             # make sure other does not have dimensions not in self
             missing = set(other.dimnames).difference(self_dims)
             if missing:

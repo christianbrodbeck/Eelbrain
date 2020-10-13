@@ -1329,11 +1329,26 @@ def test_ndvar_indexing():
     r2 = x * u
     assert_array_equal(r2.x, r.x)
 
-    # set NDVar elements
+    # assign NDVar
     x = ds['uts'].copy()
+    # slice
     x[:3, :.0] = 0
     assert_array_equal(x.x[:3, :20], 0.)
     assert_array_equal(x.x[3:, 20:], ds['uts'].x[3:, 20:])
+    # list
+    x[[4, 5]] = 1
+    assert_array_equal(x.x[4:6], 1)
+    # array
+    x[np.array([10, 11, 12])] = 3
+    assert_array_equal(x.x[10:13], 3)
+    # list, slice
+    x[[4, 5], :.0] = 2
+    assert_array_equal(x.x[4:6, :20], 2)
+    assert_array_equal(x.x[4:6, 20:], 1)
+    # array, slice
+    x[np.array([10, 11, 12]), .0:] = 6
+    assert_array_equal(x.x[10:13, 20:], 6)
+    assert_array_equal(x.x[10:13, :20], 3)
     # set with index NDVar
     x = ds['uts'].copy()
     index = x.mean('case') < 0
@@ -1344,13 +1359,15 @@ def test_ndvar_indexing():
     with pytest.raises(DimensionMismatchError):
         index[x != 0] = 0.
 
-    # set to NDVar
+    # assign NDVar from NDVar
     x = ds['utsnd'].copy()
+    # int
     x[0] = x[1]
     assert_array_equal(x[0].x, x[1].x)
     x3 = NDVar(x[3].x.swapaxes(0, 1), x.dims[:0:-1])
     x[2] = x3
     assert_array_equal(x[2].x, x[3].x)
+    # full slice
     x[:, '1'] = x[0, '2']
     assert_array_equal(x.x[30, 1], x.x[0, 2])
     with pytest.raises(ValueError):
@@ -1361,6 +1378,14 @@ def test_ndvar_indexing():
     assert_array_equal(x.x[0, 0, 20:30], 1)
     x[1, '0', 0: 0.1] = -x_sub
     assert_array_equal(x.x[1, 0, 20:30], -1)
+    # list
+    x = ds['utsnd'].copy()
+    x[[1, 2, 3]] = x[9]
+    assert_array_equal(x.x[1], x.x[9])
+    assert_array_equal(x.x[2], x.x[9])
+    x[np.array([5, 6])] = x[9]
+    assert_array_equal(x.x[5], x.x[9])
+    assert_array_equal(x.x[6], x.x[9])
 
 
 def test_ndvar_summary_methods():
