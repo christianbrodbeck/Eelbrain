@@ -4,7 +4,7 @@ from enum import Enum
 from functools import partial
 from itertools import product
 from numbers import Number
-from typing import Any, Sequence
+from typing import Any, Sequence, Union
 
 import matplotlib
 import mne
@@ -1324,11 +1324,13 @@ class SequencePlotter:
         layer = SequencePlotterLayer(kind, ndvar, args, {}, label, index, SPPlotType.LABEL)
         self._data.append(layer)
 
-    def add_pmap(self, res: NDTest, label=None, **kwargs):
+    def add_pmap(self, res: Union[NDTest, NDVar], label=None, **kwargs):
         "See :meth:`~._brain_object.Brain.add_ndvar_p_map`"
         # interpret NDTest subtypes
         if isinstance(res, MultiEffectNDTest):
             iterator = zip(res.p, res._statistic_map, res.effects)
+        elif isinstance(res, NDVar):
+            iterator = [res, None, res.name]
         else:
             if isinstance(res, NDDifferenceTest):
                 desc = res.difference.name
