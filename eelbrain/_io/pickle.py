@@ -6,7 +6,7 @@ import os
 
 from .._data_obj import Dataset, NDVar, Var, SourceSpaceBase, ismodelobject
 from .._types import PathArg
-from .._utils import ui
+from .._utils import tqdm, ui
 
 
 class EelUnpickler(Unpickler):
@@ -174,3 +174,37 @@ def update_subjects_dir(obj, subjects_dir, depth=0):
 
         for v in values:
             update_subjects_dir(v, subjects_dir, depth - 1)
+
+
+def convert_pickle_protocol(
+        root: PathArg = None,
+        to_protocol: int = 4,
+        pattern: str = '**/*.pickle',
+):
+    """Re-save all pickle files with a specific protocol
+
+    Parameters
+    ----------
+    root
+        Root directory to look for pickle files.
+    to_protocol
+        Protocol to re-save with.
+    pattern
+        Filename pattern used to find pickle files.
+
+    Notes
+    -----
+    Python 3.8 introduced a new pickle protocol 5, which Python 3.7 can's read.
+    This function converts such files in order to make them readable with older
+    version of Python.
+    """
+    if root is None:
+        root = ui.ask_dir("Select folder", "Select folder to search for pickle files")
+        if root is False:
+            raise RuntimeError("User canceled")
+        else:
+            print(f"Searching {root}")
+    root = Path(root)
+    for path in tqdm(root.glob(pattern), "Converted", unit=' files'):
+        obj = unpickle(path)
+        pickle(obj, path, to_protocol)

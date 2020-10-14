@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from .basic import (
+    tqdm,
     PickleableDataClass,
     as_list, as_sequence, ask, deprecated, _deprecated_alias, deprecated_attribute, intervals,
     LazyProperty, keydefaultdict, n_decimals, natsorted,

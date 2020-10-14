@@ -12,9 +12,10 @@ New in 0.34
 
 * Added:
 
- - :func:`normalize_in_cells`.
  - :func:`boosting`: Option to store TRFs for the different test partitions
    (``partition_results``).
+ - :func:`normalize_in_cells`
+ - :func:`load.convert_pickle_protocol`
 
 
 New in 0.33

@@ -58,9 +58,8 @@ File I/O
 
 Eelbrain objects can be
 `pickled <https://docs.python.org/library/pickle.html>`_. Eelbrain's own
-pickle I/O functions provide backwards compatibility for Eelbrain objects
-(although files saved in Python 3 can only be opened in Python 2 if they are
-saved with ``protocol<=2``):
+pickle I/O functions provide backwards compatibility for pickled Eelbrain
+objects:
 
 .. autosummary::
    :toctree: generated
@@ -70,6 +69,7 @@ saved with ``protocol<=2``):
    load.arrow
    save.arrow
    load.update_subjects_dir
+   load.convert_pickle_protocol
 
 
 Import
