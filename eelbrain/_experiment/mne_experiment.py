@@ -3513,8 +3513,10 @@ class MneExperiment(FileTree):
 
             # rejection
             if ds_sel is not None:
-                # check file length - if epochs exceed the raw data, epoch-selection will quietly drop those epochs and they will be missing from the selction file
-                test_passed = False
+                # file length - if epochs exceed the raw data, epoch-selection will quietly drop those epochs and they will be missing from the selction file
+                if ds_sel.info.get('epochs.selection') is not None:
+                    ds = ds[ds_sel.info['epochs.selection']]
+                # older files don't have 'epochs.selection'
                 if ds_sel.n_cases != ds.n_cases:
                     if np.all(ds[:ds_sel.n_cases, 'trigger'] == ds_sel['trigger']):
                         ds = ds[:ds_sel.n_cases]

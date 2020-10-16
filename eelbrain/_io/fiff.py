@@ -1278,5 +1278,6 @@ def _trim_ds(ds, epochs):
     """
     if len(epochs) < ds.n_cases:
         ds = ds.sub(epochs.selection)
+        ds.info['epochs.selection'] = epochs.selection
 
     return ds

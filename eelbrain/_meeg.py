@@ -19,7 +19,7 @@ def _out(out, epochs):
 
 def new_rejection_ds(ds):
     """Create a rejection Dataset from a Dataset with epochs"""
-    out = Dataset(info={BAD_CHANNELS: []})
+    out = Dataset(info={BAD_CHANNELS: [], 'epochs.selection': ds.info.get('epochs.selection')})
     out['trigger'] = ds['trigger']
     out[:, 'accept'] = True
     out[:, 'rej_tag'] = ''

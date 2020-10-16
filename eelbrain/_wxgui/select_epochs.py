@@ -253,6 +253,7 @@ class Document(FileDocument):
         self.blink = blink
         self.bad_channels = []  # list of int
         self.good_channels = None
+        self.epochs_selection = ds.info.get('epochs.selection')
 
         # cache
         self._good_sensor_indices = {}
@@ -453,8 +454,8 @@ class Document(FileDocument):
         _, ext = os.path.splitext(self.path)
 
         # create Dataset to save
-        info = {BAD_CHANNELS: self.bad_channel_names}
-        ds = Dataset((self.trigger, self.accept, self.tag, self.interpolate), info=info)
+        info = {BAD_CHANNELS: self.bad_channel_names, 'epochs.selection': self.epochs_selection}
+        ds = Dataset([self.trigger, self.accept, self.tag, self.interpolate], info=info)
 
         if ext == '.pickled':
             save.pickle(ds, self.path)
