@@ -230,8 +230,7 @@ class Document(FileDocument):
             if 'edf' in ds.info:
                 tmin = data.time.tmin
                 tmax = data.time.tmax
-                _, blink = load.eyelink.artifact_epochs(ds, tmin, tmax,
-                                                        esacc=False)
+                _, blink = load.eyelink.artifact_epochs(ds, tmin, tmax, esacc=False)
             else:
                 wx.MessageBox("No eye tracker data was found in ds.info['edf']. Use load.eyelink.add_edf(ds) to add an eye tracker file to a Dataset ds.", "Eye Tracker Data Not Found")
                 blink = None
@@ -437,10 +436,9 @@ class Document(FileDocument):
                     for l in interpolate:
                         del l[:]
                 else:
-                    raise RuntimeError("File with interpolation when Interpolation is disabled")
+                    raise RuntimeError("File with interpolation when interpolation is disabled")
         else:
-            interpolate = Datalist([[]] * self.n_epochs, INTERPOLATE_CHANNELS,
-                                   'strlist')
+            interpolate = Datalist([[]] * self.n_epochs, INTERPOLATE_CHANNELS, 'strlist')
 
         if BAD_CHANNELS in ds.info:
             bad_channels = self.epochs.sensor._array_index(ds.info[BAD_CHANNELS])
