@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 from typing import Sequence, Union
+import warnings
 
 import numpy as np
 
@@ -619,7 +620,9 @@ def mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, i_start='i_start',
         picks = mne.pick_types(raw.info, meg=True, eeg=True, eog=True, ref_meg=False)
 
     events = _mne_events(ds=ds, i_start=i_start)
-    epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, picks, preload=True, reject=reject, decim=decim, **kwargs)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
+        epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, picks, preload=True, reject=reject, decim=decim, **kwargs)
     if reject is None and len(epochs) != len(events):
         getLogger('eelbrain').warning("%s: MNE generated only %i Epochs for %i events. The raw file might end before the end of the last epoch.", raw.filenames[0], len(epochs), len(events))
 

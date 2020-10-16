@@ -110,13 +110,13 @@ def test_sample():
     tstop = ep['meg'].time.tstop + shift
     assert_almost_equal(evs[1, 'meg'].x, ep[1, 'meg'].sub(time=(None, tstop)).x, decimal=19)
 
-    # post_baseline_trigger_shift & multiple epochs with same time stamp
+    # post_baseline_trigger_shift
     class Experiment(SampleExperiment):
         epochs = {
             **SampleExperiment.epochs,
-            'v1': {'base': 'visual', 'vars': {'shift': 'Var([0.0], repeat=len(side))'}},
-            'v2': {'base': 'visual', 'vars': {'shift': 'Var([0.1], repeat=len(side))'}},
-            'vc': {'sub_epochs': ('v1', 'v2'), 'post_baseline_trigger_shift': 'shift', 'post_baseline_trigger_shift_max': 0.1, 'post_baseline_trigger_shift_min': 0.0},
+            'v_shift': SecondaryEpoch('visual', vars={'shift': 'Var([0.0], repeat=len(side))'}),
+            'a_shift': SecondaryEpoch('auditory', vars={'shift': 'Var([0.1], repeat=len(side))'}),
+            'av_shift': SuperEpoch(('v_shift', 'a_shift'), post_baseline_trigger_shift='shift', post_baseline_trigger_shift_max=0.1, post_baseline_trigger_shift_min=0.0),
         }
         groups = {
             'group0': Group(['R0000']),
@@ -127,11 +127,14 @@ def test_sample():
             **SampleExperiment.variables,
         }
     e = Experiment(root)
-    events = e.load_selected_events(epoch='vc')
-    ds = e.load_epochs(baseline=True, epoch='vc')
-    v1 = ds.sub("epoch=='v1'", 'meg').sub(time=(0, 0.199))
-    v2 = ds.sub("epoch=='v2'", 'meg').sub(time=(-0.1, 0.099))
-    assert_almost_equal(v1.x, v2.x, decimal=20)
+    events = e.load_selected_events(epoch='av_shift')
+    ds = e.load_epochs(baseline=True, epoch='av_shift')
+    v = ds.sub("epoch=='v_shift'", 'meg')
+    v_target = e.load_epochs(baseline=True, epoch='visual')['meg'].sub(time=(-0.1, v.time.tstop))
+    assert_almost_equal(v.x, v_target.x)
+    a = ds.sub("epoch=='a_shift'", 'meg').sub(time=(-0.1, 0.099))
+    a_target = e.load_epochs(baseline=True, epoch='auditory')['meg'].sub(time=(0, 0.199))
+    assert_almost_equal(a.x, a_target.x, decimal=20)
 
     # duplicate subject
     class BadExperiment(SampleExperiment):

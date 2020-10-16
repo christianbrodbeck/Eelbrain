@@ -44,7 +44,7 @@ from .._ndvar import concatenate, cwt_morlet, neighbor_correlation
 from ..fmtxt import List, Report, Image, read_meta
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
-from .._text import enumeration, plural
+from .._text import enumeration, n_of, plural
 from .._utils import IS_WINDOWS, ask, intervals, subp, keydefaultdict, log_level, ScreenHandler
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .._utils.notebooks import tqdm
@@ -2268,9 +2268,10 @@ class MneExperiment(FileTree):
             ds['epochs'] = load.fiff.variable_length_mne_epochs(ds, tmin, tmax, baseline, allow_truncation=True, decim=decim)
             epochs_list = ds['epochs']
         else:
-            with warnings.catch_warnings():
-                warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
-                ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim, drop_bad_chs=False, tstop=tstop)
+            n = ds.n_cases
+            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim, drop_bad_chs=False, tstop=tstop)
+            if ds.n_cases != n:
+                self._log.warning(f"{n_of(n - ds.n_cases, 'epoch')} missing for {subject}/{epoch_name}")
 
             # post baseline-correction trigger shift
             if trigger_shift and epoch.post_baseline_trigger_shift:
@@ -3512,17 +3513,19 @@ class MneExperiment(FileTree):
 
             # rejection
             if ds_sel is not None:
-                # check file
-                if not np.all(ds['trigger'] == ds_sel['trigger']):
-                    #  TODO:  this warning should be given in make_epoch_selection already
-                    if np.all(ds[:-1, 'trigger'] == ds_sel['trigger']):
-                        ds = ds[:-1]
-                        self._log.warning(self.format("Last epoch for {subject} is missing"))
-                    elif np.all(ds[1:, 'trigger'] == ds_sel['trigger']):
-                        ds = ds[1:]
-                        self._log.warning(self.format("First epoch for {subject} is missing"))
-                    else:
-                        raise RuntimeError(f"The epoch selection file contains different events (trigger IDs) from the data loaded from the raw file. If the events included in the epoch were changed intentionally,  redo epoch rejection for {rej_file}")
+                # check file length - if epochs exceed the raw data, epoch-selection will quietly drop those epochs and they will be missing from the selction file
+                test_passed = False
+                if ds_sel.n_cases != ds.n_cases:
+                    if np.all(ds[:ds_sel.n_cases, 'trigger'] == ds_sel['trigger']):
+                        ds = ds[:ds_sel.n_cases]
+                        test_passed = True
+                    elif np.all(ds[-ds_sel.n_cases:, 'trigger'] == ds_sel['trigger']):
+                        ds = ds[-ds_sel.n_cases:]
+                        test_passed = True
+                elif np.all(ds['trigger'] == ds_sel['trigger']):
+                    test_passed = True
+                if not test_passed:
+                    raise RuntimeError(f"The epoch selection file contains different events (trigger IDs) from the data loaded from the raw file. If the events included in the epoch were changed intentionally,  redo epoch selection for {subject}/{epoch.name}")
 
                 if rej_params['interpolation']:
                     ds.info[INTERPOLATE_CHANNELS] = True
