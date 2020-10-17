@@ -14,7 +14,7 @@ class DataSplit(EelFigure, LegendMixin):
     def __init__(
             self,
             splits: Splits,
-            legend: Union[str, bool] = 'upper right',
+            legend: Union[str, int, bool] = 'upper right',
             colors: dict = None,
             **kwargs,
     ):

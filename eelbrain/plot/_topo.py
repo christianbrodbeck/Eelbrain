@@ -314,8 +314,10 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         Sensors which to mark.
     mcolor : matplotlib color
         Color for marked sensors.
-    xlabel, ylabel : bool | string
-        Labels for x and y axes. If True, labels are automatically chosen.
+    xlabel
+        X-axis label. By default the label is inferred from the data.
+    ylabel
+        Y-axis label. By default the label is inferred from the data.
     xticklabels
         Specify which axes should be annotated with x-axis tick labels.
         Use ``int`` for a single axis, a sequence of ``int`` for multiple
@@ -370,7 +372,8 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
                  # sensor-map args
                  sensorlabels=None, mark=None, mcolor=None,
                  # layout
-                 xlabel=True, ylabel=True,
+                 xlabel: Union[bool, str] = True,
+                 ylabel: Union[bool, str] = True,
                  xticklabels: Union[str, int, Sequence[int]] = -1,
                  yticklabels: Union[str, int, Sequence[int]] = 'left',
                  axtitle=True, frame=True, xlim=None,

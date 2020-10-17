@@ -1,5 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Style specification"""
+from __future__ import annotations
+
 from collections.abc import Iterator
 from dataclasses import dataclass, replace
 from functools import reduce
@@ -13,7 +15,7 @@ import matplotlib as mpl
 from matplotlib.colors import LinearSegmentedColormap, to_rgb, to_rgba
 
 from .._colorspaces import LocatedListedColormap, lch_to_rgb, rgb_to_lch, oneway_colors, twoway_colors, symmetric_cmaps
-from .._data_obj import Factor, Interaction, CellArg
+from .._data_obj import CategorialVariable, Factor, Interaction, CellArg
 from .._exceptions import KeysMissing
 from .._utils import LazyProperty
 
@@ -70,19 +72,24 @@ class Style:
             return cls(arg)
 
 
-def to_styles_dict(colors: Dict[CellArg, Any]) -> 'StylesDict':
+def to_styles_dict(colors: Dict[CellArg, Any]) -> StylesDict:
     return {cell: Style._coerce(spec) for cell, spec in colors.items()}
 
 
-def find_cell_styles(x, colors, cells=None, fallback: bool = True) -> 'StylesDict':
+def find_cell_styles(
+        x: CategorialVariable,
+        colors: ColorsArg,
+        cells: Sequence[CellArg] = None,
+        fallback: bool = True,
+) -> StylesDict:
     """Process the colors arg from plotting functions
 
     Parameters
     ----------
-    x : categorial
+    x
         Model for which colors are needed. ``None`` if only a single value is
         plotted.
-    colors : str | list | dict
+    colors
         Colors for the plots if multiple categories of data are plotted.
         **str**: A colormap name; cells are mapped onto the colormap in
         regular intervals.
@@ -90,9 +97,9 @@ def find_cell_styles(x, colors, cells=None, fallback: bool = True) -> 'StylesDic
         **dict**: A dictionary mapping each cell to a color.
         Colors are specified as `matplotlib compatible color arguments
         <http://matplotlib.org/api/colors_api.html>`_.
-    cells : tuple of str
+    cells
         In case only a subset of cells is used.
-    fallback : bool
+    fallback
         If a cell is missing, fall back on partial cells (on by default).
     """
     if x is None:
@@ -262,7 +269,10 @@ def colors_for_twoway(
     return dict(zip(product(x1_cells, x2_cells), clist))
 
 
-def colors_for_nway(cell_lists, hue_start=0.2):
+def colors_for_nway(
+        cell_lists: Sequence[CellArg],
+        hue_start: float = 0.2,
+):
     """Define cell colors for a two-way design
 
     Parameters
@@ -306,7 +316,7 @@ def colors_for_nway(cell_lists, hue_start=0.2):
         return {}
 
 
-def single_hue_colormap(hue):
+def single_hue_colormap(hue: ColorArg):
     """Colormap based on single hue
 
     Parameters
@@ -326,30 +336,36 @@ def single_hue_colormap(hue):
     return LinearSegmentedColormap.from_list(name, (start, stop))
 
 
-def soft_threshold_colormap(cmap, threshold, vmax, subthreshold=None, symmetric=None):
+def soft_threshold_colormap(
+        cmap: str,
+        threshold: float,
+        vmax: float,
+        subthreshold: ColorArg = None,
+        symmetric: bool = None,
+) -> mpl.colors.ListedColormap:
     """Soft-threshold a colormap to make small values transparent
 
     Parameters
     ----------
-    cmap : str
+    cmap
         Base colormap.
-    threshold : scalar
+    threshold
         Value at which to threshold the colormap (i.e., the value at which to
         start the colormap).
-    vmax : scalar
+    vmax
         Intended largest value of the colormap (used to infer the location of
         the ``threshold``).
     subthreshold : matplotlib color
         Color of sub-threshold values (the default is the end or middle of
         the colormap, depending on whether it is symmetric).
-    symmetric : bool
+    symmetric
         Whether the ``cmap`` is symmetric (ranging from ``-vmax`` to ``vmax``)
         or not (ranging from ``0`` to ``vmax``). The default is ``True`` for
         known symmetric colormaps and ``False`` otherwise.
 
     Returns
     -------
-    thresholded_cmap : matplotlib ListedColormap
+    thresholded_cmap
         Soft-thresholded colormap.
     """
     assert vmax > threshold >= 0
@@ -380,4 +396,6 @@ def soft_threshold_colormap(cmap, threshold, vmax, subthreshold=None, symmetric=
     return out
 
 
+ColorArg = Union[str, Sequence[float]]
+ColorsArg = Union[ColorArg, Dict[CellArg, ColorArg], Sequence[ColorArg]]
 StylesDict = Dict[CellArg, Style]

@@ -395,10 +395,10 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
-    xlabel : str | bool
-        X-axis labels. By default the label is inferred from the data.
-    ylabel : str | bool
-        Y-axis labels. By default the label is inferred from the data.
+    xlabel
+        X-axis label. By default the label is inferred from the data.
+    ylabel
+        Y-axis label. By default the label is inferred from the data.
     xticklabels
         Specify which axes should be annotated with x-axis tick labels.
         Use ``int`` for a single axis, a sequence of ``int`` for multiple
@@ -463,8 +463,8 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
 
     def __init__(
             self, y, xax=None, sensors=None, axtitle=True,
-            xlabel=True,
-            ylabel=True,
+            xlabel: Union[bool, str] = True,
+            ylabel: Union[bool, str] = True,
             xticklabels: Union[str, int, Sequence[int]] = 'bottom',
             yticklabels: Union[str, int, Sequence[int]] = 'left',
             color=None,

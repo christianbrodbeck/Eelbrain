@@ -1112,25 +1112,34 @@ class SequencePlotter:
 
     Examples
     --------
-    Plotting an evoked response in 50 ms bins:
+    Plot an evoked response or TRF (time by source ``ndvar``) in 50 ms bins::
 
-    >>> ndvar_binned = ndvar.bin(0.05, 0, 0.3, 'extrema')
-    >>> sp = SequencePlotter()
-    >>> sp.set_brain_args(surf='smoothwm')
-    >>> sp.add_ndvar(ndvar_binned)
-    >>> p = sp.plot_table(view='lateral')
-    >>> p.save('Figure.pdf')
+        ndvar_binned = ndvar.bin(0.05, 0, 0.3, 'extrema')
+        sp = plot.brain.SequencePlotter()
+        sp.set_brain_args(surf='smoothwm')
+        sp.add_ndvar(ndvar_binned)
+        p = sp.plot_table(view='lateral')
+        p.save('Figure.pdf')
 
-    Plotting a test result:
+    Plot specific time points in an evoked response or TRF (``ndvar``)::
 
-    >>> res = testnd.TTestRelated('srcm', 'condition')
-    >>> vmax = 3  # explicitly set vmax to make sure that the color-maps agree
-    >>> sp = plot.brain.SequancePlotter()
-    >>> sp.set_brain_args(surf='inflated')
-    >>> sp.add_ndvar(res.c1_mean, vmax=vmax, label='a')
-    >>> sp.add_ndvar(res.c0_mean, vmax=vmax, label = 'b')
-    >>> sp.add_ndvar(res.masked_difference(), vmax=vmax, label='a - b')
-    >>> p = sp.plot_table(view='lateral', orientation='vertical')
+        cmap = plot.soft_threshold_colormap('xpolar-a', 0.0001, 0.010)
+        sp = plot.brain.SequencePlotter()
+        sp.set_brain_args(surf='smoothwm')
+        for t in [0.050, 0.100, 0.200]:
+            sp.add_ndvar(ndvar.sub(time=t), cmap=cmap, label=f'{int(t*1000)} ms')
+        p = sp.plot_table(view='lateral', orientation='vertical')
+
+    Plot a test result::
+
+        res = testnd.TTestRelated('srcm', 'condition')
+        vmax = 3  # explicitly set vmax to make sure that the color-maps agree
+        sp = plot.brain.SequancePlotter()
+        sp.set_brain_args(surf='inflated')
+        sp.add_ndvar(res.c1_mean, vmax=vmax, label='a')
+        sp.add_ndvar(res.c0_mean, vmax=vmax, label = 'b')
+        sp.add_ndvar(res.masked_difference(), vmax=vmax, label='a - b')
+        p = sp.plot_table(view='lateral', orientation='vertical')
     """
     max_n_bins = 25
 

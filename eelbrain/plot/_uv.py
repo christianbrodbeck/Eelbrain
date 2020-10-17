@@ -3,7 +3,7 @@
 import inspect
 from itertools import chain
 import logging
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import scipy.linalg
@@ -13,7 +13,7 @@ from matplotlib.artist import setp
 import matplotlib as mpl
 
 from .._celltable import Celltable
-from .._data_obj import VarArg, CategorialArg, IndexArg, Dataset, Var, asuv, asvar, ascategorial, assub, cellname
+from .._data_obj import VarArg, CategorialArg, IndexArg, CellArg, Dataset, Var, asuv, asvar, ascategorial, assub, cellname
 from .._stats import test, stats
 from ._base import EelFigure, Layout, LegendMixin, CategorialAxisMixin, XAxisMixin, YLimMixin, frame_title
 from ._styles import find_cell_styles
@@ -192,36 +192,34 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
 
     Parameters
     ----------
-    y : Var
+    y
         Dependent variable.
-    x : categorial
+    x
         Category definition (draw one box for every cell in ``x``).
-    match : None | categorial
+    match
         Match cases for a repeated measures design.
-    sub : index-array
+    sub
         Use a subset of the data.
-    cells : None | sequence of cells of x
+    cells
         Cells to plot (optional). All entries have to be cells of ``x``). Can be
         used to change the order of the bars or plot only certain cells.
-    bottom : scalar
+    bottom
         Lowest possible value on the y axis (default is 0 or slightly
         below the lowest value).
-    top : scalar
+    top
         Set the upper x axis limit (default is to fit all the data).
-    ylabel : str | None
-        Y axis label (default is inferred from the data).
-    xlabel : str | bool
-        X axis label (default is ``x.name``).
-    xticks : None | sequence of str | dict
+    xlabel
+        X-axis label. By default the label is inferred from the data.
+    ylabel
+        Y-axis label. By default the label is inferred from the data.
+    xticks
         X-axis tick labels describing the categories.
         The default is to use the cell names from ``x``.
         Use list of labels or ``{cell: label}`` :class:`dict` for custom labels.
         None to plot no labels.
-    xtick_delim : str
+    xtick_delim
         Delimiter for x axis category descriptors (default is ``'\n'``,
         i.e. the level on each Factor of ``x`` on a separate line).
-    titlekwargs : dict
-        Keyword arguments for the figure title.
     test : bool | scalar
         ``True`` (default): perform pairwise tests; ``False``: no tests;
         scalar: 1-sample tests against this value.
@@ -252,17 +250,17 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     """
     def __init__(
             self,
-            y,
-            x=None,
-            match=None,
-            sub=None,
-            cells=None,
-            bottom=None,
-            top=None,
-            ylabel=True,
-            xlabel=True,
-            xticks=True,
-            xtick_delim='\n',
+            y: VarArg,
+            x: CategorialArg = None,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            cells: Sequence[CellArg] = None,
+            bottom: float = None,
+            top: float = None,
+            xlabel: Union[bool, str] = True,
+            ylabel: Union[bool, str] = True,
+            xticks: Union[bool, dict, Sequence[str]] = True,
+            xtick_delim: str = '\n',
             test=True,
             tail=0,
             par=True,
@@ -728,10 +726,10 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         Lower end of the y axis (default is 0).
     top : scalar
         Upper end of the y axis (default is determined from the data).
-    ylabel : str | None
-        y axis label (default is inferred from the data).
-    xlabel : str | bool
-        x axis label (default is inferred from the data).
+    xlabel
+        X-axis label. By default the label is inferred from the data.
+    ylabel
+        Y-axis label. By default the label is inferred from the data.
     timelabels : sequence | dict | 'all'
         Labels for the x (time) axis. Exact labels can be specified in the form 
         of a list of labels corresponsing to all unique values of ``time``, or a 
@@ -769,8 +767,8 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
             bottom=None,
             top=None,
             # labelling
-            ylabel=True,
-            xlabel=True,
+            xlabel: Union[bool, str] = True,
+            ylabel: Union[bool, str] = True,
             timelabels=None,
             legend='upper right',
             labels=None,
@@ -1055,28 +1053,30 @@ class Regression(EelFigure, LegendMixin):
 
     parameters
     ----------
-    y : Var
+    y
         Variable for the y-axis.
-    x : Var
+    x
         Variable for the x-axis.
-    cat : categorial
+    cat
         Plot the regression separately for different categories.
-    match : None | categorial
+    match
         Match cases for a repeated measures design.
-    sub : index-array
+    sub
         Use a subset of the data.
-    ds : Dataset
+    ds
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
-    ylabel : str
-        Y-axis label (default is ``y.name``).
-    alpha : scalar
+    xlabel
+        X-axis label. By default the label is inferred from the data.
+    ylabel
+        Y-axis label. By default the label is inferred from the data.
+    alpha
         alpha for individual data points (to control visualization of
         overlap)
-    legend : str | int | 'fig' | None
+    legend
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
-    labels : dict
+    labels
         Alternative labels for legend as ``{cell: label}`` dictionary (preserves
         order).
     c : color | sequence of colors
@@ -1087,10 +1087,21 @@ class Regression(EelFigure, LegendMixin):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, y, x, cat=None, match=None, sub=None, ds=None,
-                 xlabel=True, ylabel=True, alpha=.2, legend='upper right', labels=None,
-                 c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'],
-                 **kwargs):
+    def __init__(
+            self,
+            y: VarArg,
+            x: VarArg,
+            cat: CategorialArg = None,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            xlabel: Union[bool, str] = True,
+            ylabel: Union[bool, str] = True,
+            alpha: float = .2,
+            legend: Union[str, int, bool] = 'upper right',
+            labels: dict = None,
+            c: Any = ('#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'),
+            **kwargs):
         sub, n = assub(sub, ds, return_n=True)
         y, n = asvar(y, sub, ds, n, return_n=True)
         x = asvar(x, sub, ds, n)

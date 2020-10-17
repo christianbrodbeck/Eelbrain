@@ -4097,9 +4097,9 @@ class MneExperiment(FileTree):
             cov = mne.cov.regularize(cov, info, **reg)
         elif reg == 'best':
             if mne.pick_types(epochs.info, meg='grad', eeg=True, ref_meg=False).size:
-                raise NotImplementedError("EEG or gradiometer sensors")
+                raise NotImplementedError(f"cov={cov!r}: 'best' regularization is not implemented for EEG or gradiometer sensors; use a different setting for cov.")
             elif epochs is None:
-                raise NotImplementedError("reg='best' for raw covariance")
+                raise NotImplementedError(f"cov={cov!r}: 'best' regularization is not implemented for covariance based on raw data; use a different setting for cov.")
             reg_vs = np.arange(0, 0.21, 0.01)
             covs = [mne.cov.regularize(cov, epochs.info, mag=v, rank=None) for v in reg_vs]
 

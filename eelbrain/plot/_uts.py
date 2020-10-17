@@ -134,7 +134,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             main: Callable = np.mean,
             error: str = 'sem',
             pool_error: bool = None,
-            legend: Union[str, bool] = 'upper right',
+            legend: Union[str, int, bool] = 'upper right',
             labels: Dict[CellArg, str] = None,
             axtitle: Union[bool, Sequence[str]] = True,
             xlabel: Union[bool, str] = True,
@@ -237,27 +237,36 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             enable = not all(p.cluster_plt.clusters is None for p in self._plots)
             self._cluster_btn.Enable(enable)
 
-    def set_clusters(self, clusters, pmax=0.05, ptrend=None, color='.7', ax=None, y=None, dy=None):
+    def set_clusters(
+            self,
+            clusters: Union[Dataset, None],
+            pmax: float = 0.05,
+            ptrend: float = None,
+            color: Any = '.7',
+            ax: int = None,
+            y: Union[float, Dict] = None,
+            dy: float = None,
+    ):
         """Add clusters from a cluster test to the plot (as shaded area).
 
         Parameters
         ----------
-        clusters : None | Dataset
+        clusters
             The clusters, as stored in test results' :py:attr:`.clusters`.
             Use ``None`` to remove the clusters plotted on a given axis.
-        pmax : scalar
+        pmax
             Only plot clusters with ``p <= pmax``.
-        ptrend : scalar
+        ptrend
             Maximum p-value of clusters to plot as trend.
         color : matplotlib color | dict
             Color for the clusters, or a ``{effect: color}`` dict.
         ax : None | int
             Index of the axes to which the clusters are to be added. If None,
             add the clusters to all axes.
-        y : scalar | dict
+        y
             Y level at which to plot clusters (default is boxes spanning the
             whole y-axis).
-        dy : scalar
+        dy
             Height of bars.
         """
         axes = range(len(self._axes)) if ax is None else [ax]
@@ -280,8 +289,8 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     Parameters
     ----------
     y : (list of) NDVar
-        Uts data  to plot.
-    xax : None | categorial
+        Uts data to plot.
+    xax : categorial
         Make separate axes for each category in this categorial model.
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
@@ -291,9 +300,10 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         names of Dataset variables.
     sub : str | array
         Specify a subset of the data.
-    xlabel, ylabel : str | None
-        X- and y axis labels. By default the labels will be inferred from
-        the data.
+    xlabel
+        X-axis label. By default the label is inferred from the data.
+    ylabel
+        Y-axis label. By default the label is inferred from the data.
     xticklabels
         Specify which axes should be annotated with x-axis tick labels.
         Use ``int`` for a single axis, a sequence of ``int`` for multiple
@@ -302,15 +312,17 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         Specify which axes should be annotated with y-axis tick labels.
         Use ``int`` for a single axis, a sequence of ``int`` for multiple
         specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
-    bottom, top : scalar
-        Y-axis limits.
-    legend : str | int | 'fig' | None
+    bottom
+        The lower end of the plot's y axis.
+    top
+        The upper end of the plot's y axis.
+    legend
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
-    labels : dict
+    labels
         Alternative labels for legend as ``{cell: label}`` dictionary (preserves
         order).
-    xlim : scalar | (scalar, scalar)
+    xlim
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).
     tight : bool
@@ -334,16 +346,21 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
      - ``c``: y-axis zoom out (increase y-axis range)
     """
     def __init__(
-            self, y, xax=None, axtitle=True, ds=None, sub=None,
-            xlabel=True,
-            ylabel=True,
+            self,
+            y: Union[NDVarArg, Sequence],
+            xax: CategorialArg = None,
+            axtitle: Union[bool, Sequence[str]] = True,
+            ds: Dataset = None,
+            sub: IndexArg = None,
+            xlabel: Union[bool, str] = True,
+            ylabel: Union[bool, str] = True,
             xticklabels: Union[str, int, Sequence[int]] = 'bottom',
             yticklabels: Union[str, int, Sequence[int]] = 'left',
             bottom: float = None,
             top: float = None,
-            legend='upper right',
-            labels=None,
-            xlim=None,
+            legend: Union[str, int, bool] = 'upper right',
+            labels: Dict[CellArg, str] = None,
+            xlim: Union[float, Tuple[float, float]] = None,
             colors=None,
             **kwargs):
         data = PlotData.from_args(y, (None,), xax, ds, sub)
@@ -592,23 +609,21 @@ class _ax_uts_clusters:
 
 
 class _plt_uts_clusters:
-    """UTS cluster plot
-
-    Parameters
-    ----------
-    ax : Axes
-        Axes.
-    clusters : Dataset
-        Dataset with entries for 'tstart', 'tstop' and 'p'.
-    """
-    def __init__(self, ax, clusters, pmax, ptrend, color=None, hatch='/'):
+    """UTS cluster plot"""
+    def __init__(
+            self,
+            ax: matplotlib.axes.Axes,
+            clusters: Dataset,  # 'tstart', 'tstop', 'p', 'effect'
+            pmax: float,
+            ptrend: float,
+            color: Any = None,
+    ):
         self.pmax = pmax
         self.ptrend = ptrend
         self.h = []
         self.ax = ax
         self.clusters = clusters
         self.color = color
-        self.hatch = hatch
         self.y = None
         self.dy = None
         self.update()

@@ -245,28 +245,14 @@ Mass-Univariate Statistics
    testnd.Vector
    testnd.VectorDifferenceRelated
 
-By default the tests in this module produce maps of statistical parameters
-along with maps of p-values uncorrected for multiple comparison. Using different
-parameters, different methods for multiple comparison correction can be applied
-(for more details and options see the documentation for individual tests):
+The tests in this module produce maps of statistical parameters, and implement different methods to compute corresponding maps of *p*-values that are corrected for multiple comparison:
 
-**1: permutation for maximum statistic** (``samples=n``)
-    Look for the maximum
-    value of the test statistic in ``n`` permutations and calculate a p-value
-    for each data point based on this distribution of maximum statistics.
-**2: Threshold-based clusters** (``samples=n, pmin=p``)
-    Find clusters of data
-    points where the original statistic exceeds a value corresponding to an
-    uncorrected p-value of ``p``. For each cluster, calculate the sum of the
-    statistic values that are part of the cluster. Do the same in ``n``
-    permutations of the original data and retain for each permutation the value
-    of the largest cluster. Evaluate all cluster values in the original data
-    against the distributiom of maximum cluster values (see [1]_).
-**3: Threshold-free cluster enhancement** (``samples=n, tfce=True``)
-    Similar to
-    (1), but each statistical parameter map is first processed with the
-    cluster-enhancement algorithm (see [2]_). This is the most computationally
-    intensive option.
+Permutation for maximum statistic (``samples=n``)
+    Compute ``n`` parameter maps corresponding to ``n`` permutations of the data. In each permutation, store the maximum value of the test statistic across the map. This is the distribution of the maximum parameter in a map under the null hypothesis. Then, calculate a *p*-value for each data point in the original parameter map based on where it lies in this distribution.
+Threshold-based clusters [1]_ (``samples=n, pmin=p``)
+    Find clusters of data points where the original statistic exceeds a value corresponding to an uncorrected *p*-value of ``p``. For each cluster, calculate the sum of the statistic values that are part of the cluster (the *cluster mass*). Do the same in ``n`` permutations of the original data and retain for each permutation the value of the largest cluster. Evaluate all cluster values in the original data against the distributiom of maximum cluster values.
+Threshold-free cluster enhancement [2]_ (``samples=n, tfce=True``)
+    Similar to permutation for maximum statstic, but each statistical parameter map is first processed with the cluster enhancement algorithm.
 
 
 Two-stage tests
