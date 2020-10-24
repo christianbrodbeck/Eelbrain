@@ -53,7 +53,7 @@ from io import BytesIO, StringIO
 import tempfile
 import time
 from types import MappingProxyType
-from typing import Union, Iterable, List as ListType, Sequence, Tuple
+from typing import Any, Union, Iterable, List as ListType, Sequence, Tuple
 import webbrowser
 
 import numpy as np
@@ -484,7 +484,12 @@ def _html_element(tag, body, env, options=None):
     return txt
 
 
-def asfmtext(content, tag: str = None, rasterize: bool = None):
+def asfmtext(
+        content: Any,
+        tag: str = None,
+        rasterize: bool = None,
+        close_figures: bool = None,
+):
     """Convert non-FMText objects to FMText
 
     Parameters
@@ -495,26 +500,25 @@ def asfmtext(content, tag: str = None, rasterize: bool = None):
         Tag to nest ``content`` in.
     rasterize
         Prefer rasterized graphics to vector graphics.
+    close_figures
+        When encountering figures, close them after rendering. The is mainly
+        to prevent the figures to show up separately in notebooks, and is
+        enabled by default when in a ``matplotlib inline`` environment.
     """
     if isinstance(content, (FMTextElement, FMTextConstant)):
         if tag:
             return FMTextElement(content, tag)
         else:
             return content
-    elif hasattr(content, '_asfmtext'):
-        return asfmtext(content._asfmtext(rasterize), tag)
     elif isinstance(content, (list, tuple)):
         return FMText(content, tag)
     elif isinstance(content, matplotlib.figure.Figure):
-        if rasterize is None:
-            format = None
-        elif rasterize:
-            format = 'png'
-        else:
-            format = 'svg'
-        image = Image(format=format)
-        content.savefig(image)
-        return image
+        from .plot._base import MatplotlibFigure
+        content = MatplotlibFigure(content)
+
+    if hasattr(content, '_asfmtext'):
+        im = content._asfmtext(rasterize=rasterize, close_figures=close_figures)
+        return asfmtext(im, tag)
     else:
         return Text(content, tag)
 

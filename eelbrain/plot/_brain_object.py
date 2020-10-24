@@ -250,7 +250,7 @@ class Brain(TimeSlicer, surfer.Brain):
             args.append(f"{self.n_times} time points {ms(self._time_dim.tmin)}-{ms(self._time_dim.tstop)} ms")
         return f"<plot.brain.Brain: {', '.join(args)}>"
 
-    def _asfmtext(self, rasterize: bool = None):
+    def _asfmtext(self, **_):
         return self.image()
 
     # pysurfer 0.10

@@ -1411,7 +1411,54 @@ def frame_title(y, x=None, xax=None):
         return "%s ~ %s | %s" % (y, x, xax)
 
 
-class EelFigure:
+class MatplotlibFigure:
+    """Wrap a matplotlib figure for FMText"""
+    def __init__(self, figure):
+        self.figure = figure
+
+    def _asfmtext(
+            self,
+            rasterize: bool = None,
+            close_figures: bool = None,
+    ):
+        if rasterize is None:
+            format = None
+        elif rasterize:
+            format = 'png'
+        else:
+            format = 'svg'
+        im = self.image(format=format)
+        if close_figures or (close_figures is None and use_inline_backend()):
+            self.close()
+        return im
+
+    def close(self):
+        from matplotlib import pyplot
+        pyplot.close(self.figure)
+
+    def image(self, name=None, format=None):
+        """Create FMTXT Image from the figure
+
+        Parameters
+        ----------
+        name : str
+            Name for the file (without extension; default is 'image').
+        format : str
+            File format (default 'png').
+
+        Returns
+        -------
+        image : fmtxt.Image
+            Image FMTXT object.
+        """
+        if format is None:
+            format = CONFIG['format']
+        image = Image(name, format)
+        self.figure.savefig(image, format=format)
+        return image
+
+
+class EelFigure(MatplotlibFigure):
     """Parent class for Eelbrain figures.
 
     In order to subclass:
@@ -1472,8 +1519,8 @@ class EelFigure:
             axes = []
 
         # store attributes
+        MatplotlibFigure.__init__(self, figure)
         self._frame = frame
-        self.figure = figure
         self._axes = axes
         self.canvas = frame.canvas
         self._layout = layout
@@ -1819,37 +1866,6 @@ class EelFigure:
         self._draw_crosshairs = enable
         if not enable:
             self._remove_crosshairs(True)
-
-    def _asfmtext(self, rasterize: bool = None):
-        if rasterize is None:
-            format = None
-        elif rasterize:
-            format = 'png'
-        else:
-            format = 'svg'
-        return self.image(format=format)
-
-    def image(self, name=None, format=None):
-        """Create FMTXT Image from the figure
-
-        Parameters
-        ----------
-        name : str
-            Name for the file (without extension; default is 'image').
-        format : str
-            File format (default 'png').
-
-        Returns
-        -------
-        image : fmtxt.Image
-            Image FMTXT object.
-        """
-        if format is None:
-            format = CONFIG['format']
-
-        image = Image(name, format)
-        self.figure.savefig(image, format=format)
-        return image
 
     def save(self, *args, **kwargs):
         "Short-cut for Matplotlib's :meth:`~matplotlib.figure.Figure.savefig()`"
