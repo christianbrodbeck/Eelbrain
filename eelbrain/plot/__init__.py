@@ -14,5 +14,5 @@ from ._topo import TopoArray, TopoButterfly, Topomap, TopomapBins
 from ._split import DataSplit
 from ._uts import UTSStat, UTS, UTSClusters
 from ._utsnd import Array, Butterfly
-from ._uv import Barplot, BarplotHorizontal, Boxplot, Correlation, Histogram, PairwiseLegend, Regression, Timeplot
+from ._uv import Barplot, BarplotHorizontal, Boxplot, Scatter, Histogram, PairwiseLegend, Regression, Timeplot
 from . import brain

@@ -93,13 +93,13 @@ def test_boxplot():
 
 
 @hide_plots
-def test_correlation():
-    "Test plot.Correlation()"
+def test_scatter():
+    "Test plot.Scatter()"
     ds = datasets.get_uv()
 
-    plot.Correlation('fltvar', 'fltvar2', ds=ds)
-    plot.Correlation('fltvar', 'fltvar2', 'A', ds=ds)
-    plot.Correlation('fltvar', 'fltvar2', 'A%B', ds=ds)
+    plot.Scatter('fltvar', 'fltvar2', ds=ds)
+    plot.Scatter('fltvar', 'fltvar2', 'A', ds=ds)
+    plot.Scatter('fltvar', 'fltvar2', 'A%B', ds=ds)
 
 
 @hide_plots

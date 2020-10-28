@@ -319,7 +319,7 @@ Plot univariate data (:class:`Var` objects):
    plot.BarplotHorizontal
    plot.Boxplot
    plot.PairwiseLegend
-   plot.Correlation
+   plot.Scatter
    plot.Histogram
    plot.Regression
    plot.Timeplot

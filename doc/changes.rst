@@ -6,6 +6,10 @@ Changes
 New in 0.34
 -----------
 
+* API:
+
+ - :calls:`plot.Correlation` renamed to :class:`plot.Scatter` with some parameter changes for improved functionality
+
 * Added:
 
  - :func:`normalize_in_cells`.

@@ -84,15 +84,15 @@ variable like ``autoname``: 0 -> keep but augment; 1 -> replace
 
 ```
 ds['y'] = Var(y, name='Cluster value')
-plot.Correlation('y', ..., ds=ds)  # -> 'Cluster value'
-plot.Correlation('y.log()', ..., ds=ds)  # -> 'log(Cluster value)'
+plot.Scatter('y', ..., ds=ds)  # -> 'Cluster value'
+plot.Scatter('y.log()', ..., ds=ds)  # -> 'log(Cluster value)'
 
 # This situation is ambiguous / could go either way
 ds['ydiv'] = 1 / ds['y']
-plot.Correlation('ydiv', ..., ds=ds)  # -> '1 / Cluster value'
+plot.Scatter('ydiv', ..., ds=ds)  # -> '1 / Cluster value'
 # This is probably more conservative:
 ds['Realname'] = 1 / ds['y']
-plot.Correlation('Realname', ..., ds=ds)  # -> 'Realname'
+plot.Scatter('Realname', ..., ds=ds)  # -> 'Realname'
 ```
 """
 from collections.abc import Iterable, Iterator

@@ -13,7 +13,7 @@ from matplotlib.artist import setp
 import matplotlib as mpl
 
 from .._celltable import Celltable
-from .._data_obj import asvar, ascategorial, assub, cellname
+from .._data_obj import VarArg, CategorialArg, IndexArg, Dataset, Var, asuv, asvar, ascategorial, assub, cellname
 from .._stats import test, stats
 from ._base import EelFigure, Layout, LegendMixin, CategorialAxisMixin, XAxisMixin, YLimMixin, frame_title
 from ._styles import find_cell_styles
@@ -948,50 +948,86 @@ def _reg_line(y, reg):
     return regline_x, regline_y
 
 
-class Correlation(EelFigure, LegendMixin):
-    """Plot the correlation between two variables
+class Scatter(EelFigure, LegendMixin):
+    """Scatter-plot
 
     Parameters
     ----------
-    y : Var
+    y
         Variable for the y-axis.
-    x : Var
+    x
         Variable for the x-axis.
-    cat : categorial
+    color
         Plot the correlation separately for different categories.
-    sub : index-array
+    size
+        Size of the markers.
+    sub
         Use a subset of the data.
-    ds : Dataset
+    ds
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
-    c : list
-        List of colors for cells.
-    legend : str | int | 'fig' | None
-        Matplotlib figure legend location argument or 'fig' to plot the
+    colors
+        If ``color`` is continuous, a colormap to assign color to values. If
+        ``color`` is discrete, a dictionary of colors for values in ``color``.
+    vmin
+        Lower bound of the colormap.
+    vmax
+        Upper bound of the colormap.
+    markers
+        Marker shape (see :mod:`matplotlib.markers`).
+    legend
+        Matplotlib figure legend location argument, or ``'fig'`` to plot the
         legend in a separate figure.
-    labels : dict
+    labels
         Alternative labels for legend as ``{cell: label}`` dictionary (preserves
         order).
-    xlabel, ylabel : str
-        Label for the x- and y-axis (default based on data).
-    tight : bool
-        Use matplotlib's tight_layout to expand all axes to fill the figure
-        (default True)
+    xlabel
+        Labels for x-axis; the default is determined from the data.
+    ylabel
+        Labels for y-axis; the default is determined from the data.
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, y, x, cat=None, sub=None, ds=None,
-                 c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], legend='upper right',
-                 labels=None, xlabel=True, ylabel=True, **kwargs):
+    def __init__(
+            self,
+            y: VarArg,
+            x: VarArg,
+            color: Union[CategorialArg, Var] = None,
+            size: Union[VarArg, float] = None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            colors: Union[dict, str] = None,
+            vmin: str = None,
+            vmax: str = None,
+            markers: str = None,
+            legend: Union[str, int, bool] = 'upper right',
+            labels: dict = None,
+            alpha: float = 1.,
+            xlabel: Union[bool, str] = True,
+            ylabel: Union[bool, str] = True,
+            **kwargs):
         sub, n = assub(sub, ds, return_n=True)
         y, n = asvar(y, sub, ds, n, return_n=True)
         x = asvar(x, sub, ds, n)
-        if cat is not None:
-            cat = ascategorial(cat, sub, ds, n)
+
+        # colors
+        cmap = color_values = cat = styles = None
+        if color is not None:
+            color = asuv(color, sub, ds, n, interaction=True)
+            if isinstance(color, Var) and not isinstance(colors, dict):
+                color_values = color.x
+                cmap = colors
+            else:
+                cat = color
+                styles = find_cell_styles(color, colors)
+
+        # size
+        if size is not None:
+            size = asvar(size, sub, ds, n).x
 
         # figure
         layout = Layout(1, 1, 5, autoscale=True, **kwargs)
-        EelFigure.__init__(self, frame_title(y, x, cat), layout)
+        EelFigure.__init__(self, frame_title(y, x), layout)
         self._configure_axis_data('y', y, ylabel)
         self._configure_axis_data('x', x, xlabel)
 
@@ -999,13 +1035,13 @@ class Correlation(EelFigure, LegendMixin):
         legend_handles = {}
         if cat is None:
             legend = False
-            ax.scatter(x.x, y.x, alpha=.5)
+            ax.scatter(x.x, y.x, size, color_values, markers, cmap, vmin=vmin, vmax=vmax, alpha=alpha)
         else:
-            for color, cell in zip(c, cat.cells):
-                idx = (cat == cell)
+            for cell in cat.cells:
                 label = cellname(cell)
-                h = ax.scatter(x[idx].x, y[idx].x, c=color, label=label, alpha=.5)
-                legend_handles[label] = h
+                idx = (cat == cell)
+                size_i = size[idx] if isinstance(size, np.ndarray) else size
+                legend_handles[label] = ax.scatter(x.x[idx], y.x[idx], size_i, styles[cell].color, markers, alpha=alpha, label=label)
 
         LegendMixin.__init__(self, legend, legend_handles, labels)
         self._show()
