@@ -127,11 +127,7 @@ def test_table():
     table.midrule()
     table.cells('a1', 'b1', 'a2', 'b2')
     assert str(table) == 'A    B \n-------\na1   b1\na2   b2'
-    assert html(table) == (
-        '<figure><table border="1" cellpadding="2" frame="hsides" rules="none"><tr>\n'
-        ' <td>A</td>\n <td>B</td>\n</tr>\n<tr>\n'
-        ' <td>a1</td>\n <td>b1</td>\n</tr>\n<tr>\n'
-        ' <td>a2</td>\n <td>b2</td>\n</tr></table></figure>')
+    assert html(table) == '<figure><table border="1" frame="hsides" rules="none" cellpadding="2"><tr>\n<td style="text-align:left">A</td>\n<td style="text-align:left">B</td>\n</tr>\n<tr>\n<td style="text-align:left">a1</td>\n<td style="text-align:left">b1</td>\n</tr>\n<tr>\n<td style="text-align:left">a2</td>\n<td style="text-align:left">b2</td>\n</tr></table></figure>'
     assert table.get_rtf() ==(
         '\\trowd\n\\cellx0000\n\\cellx1000\n\\row\n'
         'A\\intbl\\cell\nB\\intbl\\cell\n\\row\n'
@@ -145,7 +141,7 @@ def test_table():
 
     # right-align
     table.columns = 'lr'
-    assert html(table) == '<figure><table border="1" cellpadding="2" frame="hsides" rules="none"><tr>\n <td>A</td>\n <td align="right">B</td>\n</tr>\n<tr>\n <td>a1</td>\n <td align="right">b1</td>\n</tr>\n<tr>\n <td>a2</td>\n <td align="right">b2</td>\n</tr></table></figure>'
+    assert html(table) == '<figure><table border="1" frame="hsides" rules="none" cellpadding="2"><tr>\n<td style="text-align:left">A</td>\n<td style="text-align:right">B</td>\n</tr>\n<tr>\n<td style="text-align:left">a1</td>\n<td style="text-align:right">b1</td>\n</tr>\n<tr>\n<td style="text-align:left">a2</td>\n<td style="text-align:right">b2</td>\n</tr></table></figure>'
     table.columns = 'll'
 
     # empty table
@@ -156,17 +152,7 @@ def test_table():
     # HTML
     path = os.path.join(tempdir, 'test.html')
     table.save_html(path)
-    assert open(path).read() == (
-        '<!DOCTYPE html>\n<html>\n<head>\n'
-        '    <title>Untitled</title>\n'
-        '<style>\n\n.float {\n    float:left\n}\n\n'
-        '</style>\n</head>\n\n'
-        '<body>\n\n<figure>'
-        '<table border="1" cellpadding="2" frame="hsides" rules="none"><tr>\n'
-        ' <td>A</td>\n <td>B</td>\n</tr>\n<tr>\n'
-        ' <td>a1</td>\n <td>b1</td>\n</tr>\n<tr>\n'
-        ' <td>a2</td>\n <td>b2</td>\n</tr>'
-        '</table></figure>\n\n</body>\n</html>\n')
+    assert open(path).read() == '<!DOCTYPE html>\n<html>\n<head>\n    <title>Untitled</title>\n<style>\n\n.float {\n    float:left\n}\n\n</style>\n</head>\n\n<body>\n\n%s\n\n</body>\n</html>\n' % html(table)
     # rtf
     path = os.path.join(tempdir, 'test.rtf')
     table.save_rtf(path)

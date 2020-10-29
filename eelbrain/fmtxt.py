@@ -387,7 +387,9 @@ def html(text: FMTextLike, env: dict = ENV):
     env
         Environment for nested HTML.
     """
-    if hasattr(text, 'get_html'):
+    if isinstance(text, str):
+        return text
+    elif hasattr(text, 'get_html'):
         return text.get_html(env)
     else:
         return str(text)
@@ -462,22 +464,22 @@ _html_temp = '<{tag}>{body}</{tag}>'
 _html_temp_opt = '<{tag} {options}>{body}</{tag}>'
 
 
-def _html_element(tag, body, env, options=None):
+def _html_element(tag: str, body: FMTextLike, env: dict, options: dict = None):
     """Format an HTML element
 
     Parameters
     ----------
-    tag : str
+    tag
         The HTML tag.
-    body : FMText
+    body
         The main content between the tags.
-    env : dict
+    env
         Environment for FMTXT compilation.
-    options : dict
+    options
         HTML options to be inserted in the start tag.
     """
     if options:
-        opt = ' '.join('%s="%s"' % (k, options[k]) for k in sorted(options))
+        opt = ' '.join('%s="%s"' % item for item in options.items())
         txt = _html_temp_opt.format(tag=tag, options=opt, body=html(body, env))
     else:
         txt = _html_temp.format(tag=tag, body=html(body, env))
@@ -1124,23 +1126,15 @@ class Cell(FMText):
 
     def get_html(self, align: str, env: dict = ENV):
         html_repr = FMText.get_html(self, env)
-        options = []
+        options = {}
         # width
         if self.width > 1:
-            options.append('colspan="%i"' % self.width)
+            options['colspan'] = self.width
         # alignment
         if self.just:
             align = self.just
-        if align != 'l':
-            options.append(f'align="{_html_alignments[align]}"')
-
-        if options:
-            start_tag = '<td %s>' % ' '.join(options)
-        else:
-            start_tag = '<td>'
-
-        html_repr = ' %s%s</td>' % (start_tag, html_repr)
-        return html_repr
+        options['style'] = f"text-align:{_html_alignments[align]}"
+        return _html_element('td', html_repr, env, options)
 
     def get_rtf(self, env: dict = ENV):
         return "%s\\intbl\\cell" % FMText.get_rtf(self, env)
