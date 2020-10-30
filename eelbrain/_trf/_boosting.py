@@ -195,19 +195,21 @@ class BoostingResult(PickleableDataClass):
                 continue
             elif name == 'debug':
                 continue
+            elif name == 'partition_results':
+                value = bool(self.partition_results)
             elif name == 'partitions':
-                value = self.splits.partitions_arg
+                value = None if self.splits is None else self.splits.partitions_arg
             elif name == 'model':
-                if self.splits.model is None:
+                if self.splits is None or self.splits.model is None:
                     continue
                 value = dataobj_repr(self.splits.model)
             elif name == 'validate':
-                value = self.splits.n_validate
+                value = None if self.splits is None else self.splits.n_validate
             elif name == 'test':
-                value = self.splits.n_test
+                value = None if self.splits is None else self.splits.n_test
             else:
                 value = getattr(self, name)
-            if value != param.default and value is not None:
+            if value is not None and value != param.default:
                 items.append(f'{name}={value}')
         return f"<{', '.join(items)}>"
 
