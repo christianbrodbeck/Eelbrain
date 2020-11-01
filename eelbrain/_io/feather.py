@@ -19,6 +19,11 @@ def load_feather(file_path=None, columns=None):
     -------
     data : Dataset
         Data read from the file.
+
+    Notes
+    -----
+    This function might need to be updated ot work with recent versions of
+    :mod:`pyarrow`.
     """
     from .feather_reader import Reader
 
