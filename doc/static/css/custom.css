@@ -78,12 +78,15 @@ h2 {
 /*
 Autodoc parameters
 ------------------
+Enumeration
 */
 .rst-content dl:not(.docutils) dt {
     font-size: 90%;
     font-family: monospace;
     font-weight: normal;
     line-height: normal;
+    border-top: 0;
+    background: none;
 }
 
 tbody tr.field td.field-body dl.docutils dt {
