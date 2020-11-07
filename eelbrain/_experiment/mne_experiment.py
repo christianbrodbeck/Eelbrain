@@ -223,6 +223,7 @@ class MneExperiment(FileTree):
     cache_inv = True  # Whether to cache inverse solution
     # moderate speed gain for loading source estimates (34 subjects: 20 vs 70 s)
     # hard drive space ~ 100 mb/file
+    check_raw_mtime = True  # check raw input files' mtime for change
 
     # Customize data locations, relative to root:
     # Main data files (MEG/EEG)
@@ -2548,7 +2549,8 @@ class MneExperiment(FileTree):
         raw_mtime = self._raw_mtime(bad_chs=False, subject=subject)
         if exists(evt_file):
             ds = load.unpickle(evt_file)
-            if ds.info['raw-mtime'] != raw_mtime:
+            if self.check_raw_mtime and ds.info['raw-mtime'] != raw_mtime:
+                self._log.debug("Raw file  %s %s %s modification time changed %s -> %s", self.get('raw'), subject, self.get('recording'), ds.info['raw-mtime'], raw_mtime)
                 ds = None
         else:
             ds = None
