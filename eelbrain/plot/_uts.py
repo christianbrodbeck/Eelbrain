@@ -3,6 +3,7 @@
 from typing import Any, Callable, Dict, Sequence, Tuple, Union
 
 import matplotlib.axes
+import matplotlib.colors
 import matplotlib as mpl
 import numpy as np
 
@@ -325,6 +326,8 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     xlim
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).
+    stem
+        Plot as stem-plot (default is a line-plot).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -362,6 +365,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
             labels: Dict[CellArg, str] = None,
             xlim: Union[float, Tuple[float, float]] = None,
             colors=None,
+            stem: bool = False,
             **kwargs):
         data = PlotData.from_args(y, (None,), xax, ds, sub)
         xdim = data.dims[0]
@@ -384,7 +388,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
             colors_ = (colors,) * n_colors
 
         for ax, layers in zip(self._axes, data.data):
-            h = _ax_uts(ax, layers, xdim, vlims, colors_)
+            h = _ax_uts(ax, layers, xdim, vlims, colors_, stem)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
@@ -540,7 +544,7 @@ class UTSClusters(EelFigure):
 
 class _ax_uts:
 
-    def __init__(self, ax, layers, xdim, vlims, colors):
+    def __init__(self, ax, layers, xdim, vlims, colors, stem):
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
         if isinstance(colors, dict):
             colors = [colors[l.name] for l in layers]
@@ -548,7 +552,7 @@ class _ax_uts:
         self.legend_handles = {}
         for l, color in zip(layers, colors):
             color = l.info.get('color', color)
-            p = _plt_uts(ax, l, xdim, color)
+            p = _plt_uts(ax, l, xdim, color, stem)
             self.legend_handles[longname(l)] = p.plot_handle
             contours = l.info.get('contours', None)
             if contours:
@@ -567,10 +571,18 @@ class _ax_uts:
 
 class _plt_uts:
 
-    def __init__(self, ax, ndvar, xdim, color):
+    def __init__(self, ax, ndvar, xdim, color, stem=False):
         y = ndvar.get_data((xdim,))
         x = ndvar.get_dim(xdim)._axis_data()
-        self.plot_handle = ax.plot(x, y, color=color, label=longname(ndvar))[0]
+        label = longname(ndvar)
+        if stem:
+            nonzero = y != 0
+            nonzero[0] = True
+            nonzero[-1] = True
+            color = matplotlib.colors.to_hex(color)
+            self.plot_handle = ax.stem(x[nonzero], y[nonzero], bottom=0, linefmt=color, markerfmt=' ', basefmt=f'#808080', use_line_collection=True, label=label)
+        else:
+            self.plot_handle = ax.plot(x, y, color=color, label=label)[0]
 
         for y, kwa in _base.find_uts_hlines(ndvar):
             if color is not None:
