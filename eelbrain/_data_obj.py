@@ -10200,14 +10200,14 @@ class UTS(Dimension):
 
     """
     _default_connectivity = 'grid'
-    unit = 's'
     _tol = 0.000001  # tolerance for deciding if time values are equal
 
-    def __init__(self, tmin, tstep, nsamples):
+    def __init__(self, tmin: float, tstep: float, nsamples: int, unit: str = 's'):
         Dimension.__init__(self, 'time', 'grid')
         self.tmin = float(tmin)  # Python float has superior precision
         self.tstep = float(tstep)
         self.nsamples = int(nsamples)
+        self.unit = unit
         self._init_secondary()
 
     def _init_secondary(self):
@@ -10245,7 +10245,7 @@ class UTS(Dimension):
 
     def __getstate__(self):
         out = Dimension.__getstate__(self)
-        out.update(tmin=self.tmin, tstep=self.tstep, nsamples=self.nsamples)
+        out.update(tmin=self.tmin, tstep=self.tstep, nsamples=self.nsamples, unit=self.unit)
         return out
 
     def __setstate__(self, state):
@@ -10257,10 +10257,15 @@ class UTS(Dimension):
         self.tmin = state['tmin']
         self.tstep = state['tstep']
         self.nsamples = state['nsamples']
+        self.unit = state.get('unit', 's')
         self._init_secondary()
 
     def __repr__(self):
-        return "UTS(%s, %s, %s)" % (self.tmin, self.tstep, self.nsamples)
+        args = [self.tmin, self.tstep, self.nsamples]
+        if self.unit != 's':
+            args.append(self.unit)
+        args = ', '.join(map(repr, args))
+        return f"UTS({args})"
 
     def _as_scalar_array(self):
         return self.times
@@ -10272,20 +10277,26 @@ class UTS(Dimension):
         return self.tmin - 0.5 * self.tstep, self.tmax + 0.5 * self.tstep
 
     def _axis_format(self, scalar, label):
-        use_s = max(self.tmax, -self.tmin) >= 10.
-        if label is True:
-            label = "Time [%s]" % ('s' if use_s else 'ms')
+        # display s -> ms
+        s_to_ms = (self.unit == 's') and (max(self.tmax, -self.tmin) < 10.) and not (self.tstep % 1.)
 
-        if use_s:
-            if scalar:
-                fmt = FuncFormatter(lambda x, pos: '%.5g' % x)
+        if label is True:
+            if s_to_ms:
+                unit = 'ms'
             else:
-                fmt = FuncFormatter(lambda x, pos: '%.5g' % self.times[x])
-        elif scalar:
-            fmt = FuncFormatter(lambda x, pos: '%i' % round(1e3 * x))
+                unit = self.unit
+            label = f"Time [{unit}]"
+
+        if s_to_ms:
+            if scalar:
+                fmt = FuncFormatter(lambda x, pos: f'{1e3 * x:.0f}')
+            else:
+                fmt = FuncFormatter(lambda x, pos: f'{1e3 * self.times[int(round(x))]:.0f}')
         else:
-            fmt = FuncFormatter(lambda x, pos:
-                                '%i' % round(1e3 * self.times[int(round(x))]))
+            if scalar:
+                fmt = FuncFormatter(lambda x, pos: f'{x:.5g}')
+            else:
+                fmt = FuncFormatter(lambda x, pos: f'{self.times[x]:.5g}')
         return fmt, None, label
 
     def _bin(self, start, stop, step, nbins, label):

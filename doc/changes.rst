@@ -16,6 +16,7 @@ New in 0.34
    (``partition_results``).
  - :func:`normalize_in_cells`
  - :func:`load.convert_pickle_protocol`
+ - :class:`UTS`: ``unit`` parameter to represent time in units other than seconds
 
 
 New in 0.33

@@ -619,7 +619,7 @@ class RevCorrData:
         h : array  (n_y, n_x, n_times)
             Kernel data.
         """
-        h_time = UTS(tstart, self.time.tstep, h.shape[-1])
+        h_time = UTS(tstart, self.time.tstep, h.shape[-1], self.time.unit)
         hs = []
         if self.scale_data:
             info = _info.for_normalized_data(self.y_info, 'Response')
