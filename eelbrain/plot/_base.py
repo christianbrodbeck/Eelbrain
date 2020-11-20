@@ -1427,24 +1427,25 @@ class MatplotlibFigure:
             format = 'png'
         else:
             format = 'svg'
-        im = self.image(format=format)
-        if close_figures or (close_figures is None and use_inline_backend()):
-            self.close()
-        return im
+        return self.image(format=format, close=close_figures)
 
     def close(self):
         from matplotlib import pyplot
         pyplot.close(self.figure)
 
-    def image(self, name=None, format=None):
+    def image(self, name: str = None, format: str = None, close: bool = None):
         """Create FMTXT Image from the figure
 
         Parameters
         ----------
-        name : str
+        name
             Name for the file (without extension; default is 'image').
-        format : str
+        format
             File format (default 'png').
+        close
+            Close the figure after writing to the ``image``. By default, this is
+            ``True`` when in an inline context (Jupyter notebook), ``False``
+            otherwise).
 
         Returns
         -------
@@ -1455,6 +1456,8 @@ class MatplotlibFigure:
             format = CONFIG['format']
         image = Image(name, format)
         self.figure.savefig(image, format=format)
+        if close or (close is None and use_inline_backend()):
+            self.close()
         return image
 
 
