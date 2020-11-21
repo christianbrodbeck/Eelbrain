@@ -434,7 +434,7 @@ class ColorBar(EelFigure):
         else:
             boundaries = None
 
-        colorbar = ColorbarBase(ax, cm, norm, boundaries=boundaries, orientation=orientation, ticklocation=ticklocation, ticks=tick_locs, label=label, format=formatter)
+        colorbar = ColorbarBase(ax, cmap=cm, norm=norm, boundaries=boundaries, orientation=orientation, ticklocation=ticklocation, ticks=tick_locs, label=label, format=formatter)
 
         # label position/rotation
         if label_position is not None:

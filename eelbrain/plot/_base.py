@@ -2603,8 +2603,14 @@ class ColorBarMixin:
     param_func : func
         Function that returns color-bar parameters.
     """
-    def __init__(self, param_func, data):
+    def __init__(
+            self,
+            param_func: Callable = None,  # function to get cmap, vmin, vmax
+            data: Union[NDVar, Var, Number, str, 'PlotData'] = None,  # to infer unit
+            mappable: Any = None,  # matplotlib mappable object
+    ):
         self.__get_params = param_func
+        self.__mappable = mappable
         if data is None:
             self.__scale = AxisScale(1)
         else:
@@ -2646,8 +2652,16 @@ class ColorBarMixin:
         colorbar : plot.ColorBar
             ColorBar plot object.
         """
+        # cf. matplorlib.colorbar.Colorbar transforming mappable to color-map
         from . import ColorBar
-        cmap, vmin, vmax = self.__get_params()
+        if self.__mappable is not None:
+            cmap = self.__mappable.cmap
+            vmin = self.__mappable.norm
+            vmax = None
+        elif self.__get_params is not None:
+            cmap, vmin, vmax = self.__get_params()
+        else:
+            raise RuntimeError(f"No colormap on {self}")
         return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation, clipmin, clipmax, orientation, self.__scale, (), *args, **kwargs)
 
 

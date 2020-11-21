@@ -15,7 +15,7 @@ import matplotlib as mpl
 from .._celltable import Celltable
 from .._data_obj import VarArg, CategorialArg, IndexArg, CellArg, Dataset, Var, asuv, asvar, ascategorial, assub, cellname
 from .._stats import test, stats
-from ._base import EelFigure, Layout, LegendMixin, CategorialAxisMixin, XAxisMixin, YLimMixin, frame_title
+from ._base import EelFigure, Layout, LegendMixin, CategorialAxisMixin, ColorBarMixin, XAxisMixin, YLimMixin, frame_title
 from ._styles import find_cell_styles
 
 
@@ -946,7 +946,7 @@ def _reg_line(y, reg):
     return regline_x, regline_y
 
 
-class Scatter(EelFigure, LegendMixin):
+class Scatter(EelFigure, LegendMixin, ColorBarMixin):
     """Scatter-plot
 
     Parameters
@@ -1009,11 +1009,12 @@ class Scatter(EelFigure, LegendMixin):
         x = asvar(x, sub, ds, n)
 
         # colors
-        cmap = color_values = cat = styles = None
+        cmap = color_obj = color_data = cat = styles = None
         if color is not None:
             color = asuv(color, sub, ds, n, interaction=True)
             if isinstance(color, Var) and not isinstance(colors, dict):
-                color_values = color.x
+                color_obj = color
+                color_data = color.x
                 cmap = colors
             else:
                 cat = color
@@ -1033,8 +1034,9 @@ class Scatter(EelFigure, LegendMixin):
         legend_handles = {}
         if cat is None:
             legend = False
-            ax.scatter(x.x, y.x, size, color_values, markers, cmap, vmin=vmin, vmax=vmax, alpha=alpha)
+            mappable = ax.scatter(x.x, y.x, size, color_data, markers, cmap, vmin=vmin, vmax=vmax, alpha=alpha)
         else:
+            mappable = None
             for cell in cat.cells:
                 label = cellname(cell)
                 idx = (cat == cell)
@@ -1042,10 +1044,12 @@ class Scatter(EelFigure, LegendMixin):
                 legend_handles[label] = ax.scatter(x.x[idx], y.x[idx], size_i, styles[cell].color, markers, alpha=alpha, label=label)
 
         LegendMixin.__init__(self, legend, legend_handles, labels)
+        ColorBarMixin.__init__(self, data=color_obj, mappable=mappable)
         self._show()
 
     def _fill_toolbar(self, tb):
         LegendMixin._fill_toolbar(self, tb)
+        ColorBarMixin._fill_toolbar(self, tb)
 
 
 class Regression(EelFigure, LegendMixin):

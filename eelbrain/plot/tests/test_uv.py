@@ -101,6 +101,10 @@ def test_scatter():
     plot.Scatter('fltvar', 'fltvar2', 'A', ds=ds)
     plot.Scatter('fltvar', 'fltvar2', 'A%B', ds=ds)
 
+    # colormap
+    p = plot.Scatter('fltvar', 'fltvar2', 'intvar', ds=ds)
+    p.plot_colorbar()
+
 
 @hide_plots
 def test_histogram():
