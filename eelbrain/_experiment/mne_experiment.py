@@ -1360,9 +1360,16 @@ class MneExperiment(FileTree):
         -----
         Could be problematic if expecting eelfarm results.
         """
+        while self._cleanup_cache_pass():
+            pass
+
+    def _cleanup_cache_pass(self):
+        removed_any = False
         for dirpath, dirnames, filenames in os.walk(self.get('cache-dir'), topdown=False):
             if len(dirnames) + len(filenames) == 0:
                 os.rmdir(dirpath)
+                removed_any = True
+        return removed_any
 
     # mtime methods
     # -------------
