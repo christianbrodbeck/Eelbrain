@@ -20,7 +20,7 @@ import numpy as np
 from scipy import linalg, ndimage, signal, stats
 
 from . import _info, mne_fixes
-from ._data_obj import NDVarArg, CategorialArg, Dataset, NDVar, Var, Case, Categorial, Dimension, Scalar, UTS, ascategorial, asndvar, isnumeric, op_name
+from ._data_obj import NDVarArg, CategorialArg, Dataset, NDVar, Var, Factor, Case, Categorial, Dimension, Scalar, SourceSpace, SourceSpaceBase, UTS, ascategorial, asndvar, isnumeric, op_name
 from ._exceptions import DimensionMismatchError
 from ._external.colorednoise import powerlaw_psd_gaussian
 from ._info import merge_info
@@ -1154,32 +1154,39 @@ def segment(continuous, times, tstart, tstop, decim=1):
                  continuous.info.copy(), continuous.name)
 
 
-def set_parc(ndvar, parc, dim='source'):
-    """Change the parcellation of an :class:`NDVar` with SourceSpace dimension
+def set_parc(
+        data: Union[NDVar, SourceSpace],
+        parc: Union[str, Factor],
+        dim: str = 'source',
+) -> Union[NDVar, SourceSpace]:
+    """Change the parcellation of an :class:`NDVar` or :class:`SourceSpace` dimension
 
     Parameters
     ----------
-    ndvar : NDVar
-        NDVar with SourceSpace dimension.
-    parc : None | str | Factor
-        Parcellation to identify source space vertex locations.
-        Can be specified as Factor assigning a label to each source, or a
-        string specifying a FreeSurfer parcellation (stored as ``*.annot``
-        files with the MRI).
-    dim : str
-        Name of the dimension to operate on (usually 'source', the default).
+    data
+        :class:`NDVar` or :class:`SourceSpace` for which to set the
+        parcellation.
+    parc
+        New parcellation. Can be specified as :class:`Factor` assigning a label
+        to each source vertex, or a string specifying a FreeSurfer parcellation
+        (stored as ``*.annot`` files in the subject's ``label`` directory).
+    dim
+        Name of the dimension to operate on (usually ``'source'``, the default).
 
     Returns
     -------
-    out_ndvar : NDVar
-        Shallow copy of ``ndvar`` with the source space parcellation set to
+    data_with_parc
+        Shallow copy of ``data`` with the source space parcellation set to
         ``parc``.
     """
-    axis = ndvar.get_axis(dim)
-    old = ndvar.dims[axis]
-    new = old._copy(parc=parc)
-    dims = (*ndvar.dims[:axis], new, *ndvar.dims[axis + 1:])
-    return NDVar(ndvar.x, dims, ndvar.name, ndvar.info)
+    if isinstance(data, SourceSpaceBase):
+        return data._copy(parc=parc)
+    elif not isinstance(data, NDVar):
+        raise TypeError(data)
+    axis = data.get_axis(dim)
+    source = set_parc(data.dims[axis], parc)
+    dims = (*data.dims[:axis], source, *data.dims[axis + 1:])
+    return NDVar(data.x, dims, data.name, data.info)
 
 
 def set_tmin(ndvar, tmin=0.):
