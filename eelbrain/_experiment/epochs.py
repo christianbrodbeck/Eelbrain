@@ -61,7 +61,14 @@ class EpochBase(Definition):
     decim = None
 
     def _repr_args(self):
-        return []
+        args = []
+        for name, param in inspect.signature(self.__class__).parameters.items():
+            value = getattr(self, name)
+            if param.default is param.empty:
+                args.append(repr(value))
+            elif value != param.default:
+                args.append(f'{name}={value!r}')
+        return args
 
     def __repr__(self):
         args = ', '.join(self._repr_args())
@@ -130,14 +137,6 @@ class Epoch(EpochBase):
         self.post_baseline_trigger_shift = post_baseline_trigger_shift
         self.post_baseline_trigger_shift_min = post_baseline_trigger_shift_min
         self.post_baseline_trigger_shift_max = post_baseline_trigger_shift_max
-
-    def _repr_args(self):
-        args = []
-        for name, param in inspect.signature(self).parameters.items():
-            value = getattr(self, name)
-            if value != param.default:
-                args.append(f'{name}={value!r}')
-        return args
 
     def as_dict_24(self):
         "Dict to be compared with Eelbrain 0.24 cache"
@@ -231,7 +230,10 @@ class PrimaryEpoch(Epoch):
         args = [repr(self.session)]
         if self.sel is not None:
             args.append(repr(self.sel))
-        args.extend(Epoch._repr_args(self))
+        for name, param in inspect.signature(Epoch).parameters.items():
+            value = getattr(self, name)
+            if value != param.default:
+                args.append(f'{name}={value!r}')
         return args
 
     def _link(self, name, epochs):
@@ -274,7 +276,7 @@ class SecondaryEpoch(Epoch):
         args = [repr(self.sel_epoch)]
         if self.sel is not None:
             args.append(repr(self.sel))
-        args.extend(Epoch._repr_args(self))
+        args.extend([f'{key}={value!r}' for key, value in self._kwargs.items()])
         return args
 
     def _can_link(self, epochs):
