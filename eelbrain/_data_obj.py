@@ -96,7 +96,7 @@ plot.Scatter('Realname', ..., ds=ds)  # -> 'Realname'
 ```
 """
 from collections.abc import Iterable, Iterator
-from copy import deepcopy
+from copy import copy, deepcopy
 import fnmatch
 from functools import partial
 from itertools import chain, product, repeat, zip_longest
@@ -4694,6 +4694,23 @@ class NDVar(Named):
             dims = (Case(repeats),) + self.dims
         return NDVar(x, dims, name or self.name, self.info)
 
+    def rename_dim(self, dim: str, to: str, name: str = None):
+        """Rename one of the dimensions
+
+        Parameters
+        ----------
+        dim
+            Current name.
+        to
+            New name.
+        name
+            Name of the output NDVar (default is the current name).
+        """
+        axis = self.get_axis(dim)
+        dims = list(self.dims)
+        dims[axis] = dims[axis]._rename(to)
+        return NDVar(self.x, dims, name or self.name, self.info)
+
     def residuals(self, x, name=None):
         """
         The residuals of sample-wise ordinary least squares regressions
@@ -7866,6 +7883,11 @@ class Dimension:
                                    index_to_int_array(index, len(self)))
         return self._connectivity_type
 
+    def _rename(self, to):
+        out = copy(self)
+        out.name = to
+        return out
+
 
 class Case(Dimension):
     """Case dimension
@@ -7962,6 +7984,9 @@ class Case(Dimension):
 
     def _dim_index(self, arg):
         return arg
+
+    def _rename(self, to):
+        return Categorial(to, map(str, range(self.n)))
 
 
 class Space(Dimension):
@@ -10604,3 +10629,4 @@ FactorArg = Union[Factor, str]
 CellArg = Union[str, Tuple[str, ...]]
 IndexArg = Union[Var, np.ndarray, str]
 ModelArg = Union[Model, Var, CategorialArg]
+UVArg = Union[VarArg, CategorialArg]
