@@ -95,6 +95,8 @@ ds['Realname'] = 1 / ds['y']
 plot.Scatter('Realname', ..., ds=ds)  # -> 'Realname'
 ```
 """
+from __future__ import annotations
+
 from collections.abc import Iterable, Iterator
 from copy import copy, deepcopy
 import fnmatch
@@ -109,7 +111,7 @@ import operator
 import os
 import re
 import string
-from typing import Collection, Union, Sequence, Tuple, List
+from typing import Collection, Optional, Union, Sequence, Tuple, List
 from warnings import warn
 
 from matplotlib.ticker import (
@@ -3085,7 +3087,7 @@ class NDVar(Named):
     def __init__(
             self,
             x: np.ndarray,
-            dims: Union['Dimension', Sequence['Dimension']],
+            dims: Union[Dimension, Sequence[Dimension]],
             name: str = None,
             info: dict = None,
     ):
@@ -4132,7 +4134,7 @@ class NDVar(Named):
         dim = self.dims[0]
         return [dim._dim_index(index) for index in np.flatnonzero(self.x)]
 
-    def get_axis(self, name):
+    def get_axis(self, name: str) -> int:
         "Return the data axis for a given dimension name"
         if self.has_dim(name):
             return self._dim_2_ax[name]
@@ -4185,27 +4187,32 @@ class NDVar(Named):
 
         return x
 
-    def get_dim(self, name):
+    def get_dim(self, name: str) -> Dimension:
         "Return the Dimension object named ``name``"
         return self.dims[self.get_axis(name)]
 
-    def get_dimnames(self, names=None, first=None, last=None):
+    def get_dimnames(
+            self,
+            names: Sequence[Optional[str]] = None,
+            first: Union[str, Sequence[Optional[str]]] = None,
+            last: Union[str, Sequence[Optional[str]]] = None,
+    ) -> Tuple[str, ...]:
         """Fill in a partially specified tuple of Dimension names
 
         Parameters
         ----------
-        names : sequence of {str | None}
+        names
             Dimension names. Names specified as ``None`` are inferred.
-        first : str | sequence of str
+        first
             Instead of ``names``, specify a constraint on the initial
             dimension(s) only.
-        last : str | sequence of str
+        last
             Instead of ``names``, specify a constraint on the last
             dimension(s) only.
 
         Returns
         -------
-        inferred_names : tuple of str
+        inferred_names
             Dimension names in the same order as in ``names``.
         """
         if first is not None or last is not None:
@@ -4239,29 +4246,34 @@ class NDVar(Named):
         else:
             return tuple(names)
 
-    def get_dims(self, names=None, first=None, last=None):
+    def get_dims(
+            self,
+            names: Sequence[Optional[str]] = None,
+            first: Union[str, Sequence[Optional[str]]] = None,
+            last: Union[str, Sequence[Optional[str]]] = None,
+    ) -> Tuple[Dimension]:
         """Return a tuple with the requested Dimension objects
 
         Parameters
         ----------
-        names : sequence of {str | None}
+        names
             Names of the dimension objects. If ``None`` is inserted in place of
             names, these dimensions are inferred.
-        first : str | sequence of str
+        first
             Instead of ``names``, specify a constraint on the initial
             dimension(s) only.
-        last : str | sequence of str
+        last
             Instead of ``names``, specify a constraint on the last
             dimension(s) only.
 
         Returns
         -------
-        dims : tuple of Dimension
+        dims
             Dimension objects in the same order as in ``names``.
         """
         if first or last or names is None or None in names:
             names = self.get_dimnames(names, first, last)
-        return tuple(self.get_dim(name) for name in names)
+        return tuple([self.get_dim(name) for name in names])
 
     def has_dim(self, name):
         return name in self._dim_2_ax

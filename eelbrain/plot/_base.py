@@ -71,6 +71,7 @@ Figure components
     TimeController, ...)
 
 """
+from __future__ import annotations
 import __main__
 
 from collections.abc import Iterable
@@ -86,7 +87,7 @@ from numbers import Number
 import os
 import re
 import time
-from typing import Any, Callable, Dict, Iterator, List, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Tuple, Union
 import weakref
 
 import matplotlib as mpl
@@ -1481,14 +1482,14 @@ class EelFigure(MatplotlibFigure):
     _can_set_xlim = False
     _has_frame = False
 
-    def __init__(self, data_desc, layout):
+    def __init__(self, data_desc: Optional[str], layout: BaseLayout):
         """Parent class for Eelbrain figures.
 
         Parameters
         ----------
-        data_desc : None | str
+        data_desc
             Data description for frame title.
-        layout : Layout
+        layout
             Layout that determines figure dimensions.
         """
         name = self.__class__.__name__

@@ -366,6 +366,13 @@ Plot sensor layout maps:
    plot.SensorMap
    plot.SensorMaps
 
+Method related plots:
+
+.. autosummary::
+   :toctree: generated
+
+   plot.DataSplit
+
 
 xax parameter
 =============

@@ -444,10 +444,12 @@ class TContrastRelated(NDTest):
         this dimension. For threshold-based test, the regions are disconnected.
     force_permutation: bool
         Conduct permutations regardless of whether there are any clusters.
-    mintime : scalar
-        Minimum duration for clusters (in seconds).
-    minsource : int
-        Minimum number of sources per cluster.
+    min...
+        Minimum cluster size criteria: ``min`` followed by the simension name,
+        for example:
+        ``mintime=0.050`` for minimum duration of 50 ms;
+        ``minsource=10`` to require at least 10 sources;
+        ``minsensor=10`` to requre at least 10 sensors).
 
     See Also
     --------

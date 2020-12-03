@@ -326,6 +326,9 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     xlim
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).
+    colors
+        Dictionary mapping ``y`` names to color, or a single color to use for
+        all lines.
     stem
         Plot as stem-plot (default is a line-plot).
     tight : bool
@@ -364,7 +367,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
             legend: Union[str, int, bool] = 'upper right',
             labels: Dict[CellArg, str] = None,
             xlim: Union[float, Tuple[float, float]] = None,
-            colors=None,
+            colors: Union[Any, dict] = None,
             stem: bool = False,
             **kwargs):
         data = PlotData.from_args(y, (None,), xax, ds, sub)

@@ -30,7 +30,7 @@ import warnings
 import numpy as np
 
 from .._config import CONFIG, mpc
-from .._data_obj import Dataset, NDVar, NDVarArg, dataobj_repr
+from .._data_obj import Dataset, NDVar, CategorialArg, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
 from .._ndvar import convolve_jit
 from .._utils import LazyProperty, PickleableDataClass, user_activity
@@ -106,6 +106,7 @@ class BoostingResult(PickleableDataClass):
         Scale by which ``x`` was divided.
     splits : Splits
         Data splits used for cross-validation.
+        Use :meth:`.splits.plot` to visualize the cross-validation scheme.
     algorithm_version : int
         Version of the algorithm with which the model was estimated; ``-1`` for
         results from before this attribute was added.
@@ -630,7 +631,7 @@ def boosting(
         basis: float = 0,
         basis_window: str = 'hamming',
         partitions: int = None,  # Number of partitionings for cross-validation
-        model: str = None,
+        model: CategorialArg = None,
         validate: int = 1,  # Number of segments in validation set
         test: int = 0,  # Number of segments in test set
         ds: Dataset = None,
@@ -674,13 +675,13 @@ def boosting(
 
         For vector ``y``, the error is defined based on the distance in space
         for each data point.
-    basis : scalar
+    basis
         Use a basis of windows with this length for the kernel (by default,
         impulses are used).
     basis_window : str | scalar | tuple
         Basis window (see :func:`scipy.signal.get_window` for options; default
         is ``'hamming'``).
-    partitions : int
+    partitions
         Divide the data into this many ``partitions`` for cross-validation-based
         early stopping. In each partition, ``n - 1`` segments are used for
         training, and the remaining segment is used for validation.
@@ -689,15 +690,15 @@ def boosting(
         If data has cases, cases are divided with ``[::partitions]`` slices
         (default ``min(n_cases, 10)``; if ``model`` is specified, ``n_cases``
         is the lowest number of cases in any cell of the model).
-    model : Categorial
+    model
         If data has cases, divide cases into different categories (division
         for crossvalidation is done separately for each cell).
-    ds : Dataset
+    ds
         If provided, other parameters can be specified as string for items in
         ``ds``.
-    validate : int
+    validate
         Number of segments in validation dataset (currently has to be 1).
-    test : int
+    test
         By default (``test=0``), the boosting algorithm uses all available data
         to estimate the kernel. Set ``test=1`` to perform *k*-fold cross-
         validation instead (with *k* = ``partitions``):
@@ -705,7 +706,7 @@ def boosting(
         ``k-1`` partitions are used to estimate the kernel. The resulting model
         fit metrics reflect the re-combination of all partitions, each one
         predicted from the corresponding, independent training set.
-    selective_stopping : int
+    selective_stopping
         By default, the boosting algorithm stops when the testing error stops
         decreasing. With ``selective_stopping=True``, boosting continues but
         excludes the predictor (one time-series in ``x``) that caused the
@@ -714,7 +715,7 @@ def boosting(
         how many steps with error increases each predictor is excluded.
     partition_results
         Keep results (TRFs and model evaluation) for each test-partition.
-    debug : bool
+    debug
         Add additional attributes to the returned result.
 
     Returns
