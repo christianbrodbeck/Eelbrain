@@ -4220,31 +4220,25 @@ class NDVar(Named):
                 raise TypeError("Can only specify names or first/last, not both")
             head = () if first is None else (first,) if isinstance(first, str) else first
             tail = () if last is None else (last,) if isinstance(last, str) else last
-            dims = list(self.dimnames)
-            for dim in chain(head, tail):
-                try:
-                    dims.remove(dim)
-                except ValueError:
-                    raise ValueError(f"NDVar has no {dim} dimension")
-            for dim in reversed(head):
-                dims.insert(0, dim)
-            for dim in tail:
-                dims.append(dim)
-            return tuple(dims)
-
-        if not all(n is None or n in self.dimnames for n in names):
-            raise ValueError(f"{names} contains dimension not in {self}")
+            n_mid = len(self.dims) - len(head) - len(tail)
+            if n_mid < 0:
+                raise ValueError(f"first={first!r}, last={last!r}: more arguments than dimensions ({', '.join(self.dimnames)})")
+            out = [*head, *repeat(None, n_mid), *tail]
         elif len(names) != len(self.dims):
-            raise ValueError(f"{names}: wrong number of dimensions for {self}")
-        elif any(names.count(n) > 1 for n in names if n is not None):
-            raise ValueError(f"{names}: duplicate name")
-        elif None in names:
-            if len(names) != len(self.dims):
-                raise ValueError(f"{names}: ambiguous (more than one unspecified dimension)")
-            none_dims = [n for n in self.dimnames if n not in names]
-            return tuple(n if n is not None else none_dims.pop(0) for n in names)
+            raise ValueError(f"{names!r}: wrong number of dimensions for {self}")
         else:
-            return tuple(names)
+            out = list(names)
+
+        dims = [dim for dim in self.dimnames if dim not in out]
+        for i in range(len(out)):
+            if out[i] is None:
+                out[i] = dims.pop(0)
+            elif out[i] not in self.dimnames:
+                raise ValueError(f"NDVar has no {out[i]} dimension")
+        if len(set(out)) != len(out):
+            arg_repr = f'{names!r}' if names else f"first={first!r}, last={last!r}"
+            raise ValueError(f"{arg_repr}: duplicate name")
+        return tuple(out)
 
     def get_dims(
             self,
