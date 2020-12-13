@@ -24,6 +24,7 @@ from ._data_obj import NDVarArg, CategorialArg, Dataset, NDVar, Var, Factor, Cas
 from ._exceptions import DimensionMismatchError
 from ._external.colorednoise import powerlaw_psd_gaussian
 from ._info import merge_info
+from ._mne import complete_source_space
 from ._stats.connectivity import Connectivity
 from ._stats.connectivity import find_peaks as _find_peaks
 from ._trf._boosting_opt import l1
@@ -125,20 +126,25 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
         dims = ndvar.dims[:ndvar.has_case] + (dim,) + ndvar.dims[ndvar.has_case:]
     else:
         axis = ndvar.get_axis(dim)
-        dim_names = ndvar.get_dimnames((None,) * axis + (dim,) +
-                                       (None,) * (ndvar.ndim - axis - 1))
-        x = np.concatenate([v.get_data(dim_names) for v in ndvars], axis)
+        dim_names = ndvar.get_dimnames(first=[*repeat(None, axis), dim])
         dim_obj = ndvar.dims[axis]
-        if isinstance(dim_obj, UTS):
-            if isinstance(tmin, str):
-                if tmin == 'first':
-                    tmin = ndvar.time.tmin
-                else:
-                    raise ValueError(f"tmin={tmin!r}")
-            out_dim = UTS(tmin, ndvar.time.tstep, x.shape[axis])
+        if isinstance(dim_obj, SourceSpace):
+            out_dim = SourceSpace._concatenate([v.get_dim(dim) for v in ndvars])
+            ndvars = [complete_source_space(v, to=out_dim) for v in ndvars]
+            x = sum([v.get_data(dim_names) for v in ndvars], 0)
         else:
-            out_dim = dim_obj._concatenate(v.get_dim(dim) for v in ndvars)
-        dims = ndvar.dims[:axis] + (out_dim,) + ndvar.dims[axis + 1:]
+            x = np.concatenate([v.get_data(dim_names) for v in ndvars], axis)
+            if isinstance(dim_obj, UTS):
+                if isinstance(tmin, str):
+                    if tmin == 'first':
+                        tmin = ndvar.time.tmin
+                    else:
+                        raise ValueError(f"tmin={tmin!r}")
+                out_dim = UTS(tmin, ndvar.time.tstep, x.shape[axis])
+            else:
+                out_dim = dim_obj._concatenate(v.get_dim(dim) for v in ndvars)
+        dims = ndvar.get_dims(dim_names)
+        dims = (*dims[:axis], out_dim, *dims[axis+1:])
     return NDVar(x, dims, name or ndvar.name, info)
 
 

@@ -41,8 +41,11 @@ def assert_label_equal(l0, l1, comment=True, color=True):
 def test_source_estimate():
     "Test SourceSpace dimension"
     mne.set_log_level('warning')
+    # load data
     ds = datasets.get_mne_sample(src='ico')
     dsa = ds.aggregate('side')
+    src = ds['src']
+    source = src.source
 
     # test auto-conversion
     asndvar('epochs', ds=ds)
@@ -54,18 +57,15 @@ def test_source_estimate():
     assert res.clusters.n_cases == 52
 
     # test disconnecting parc
-    src = ds['src']
-    source = src.source
-    parc = source.parc
     orig_conn = set(map(tuple, source.connectivity()))
     disc_conn = set(map(tuple, source.connectivity(True)))
     assert len(disc_conn) < len(orig_conn)
     for pair in orig_conn:
         s, d = pair
         if pair in disc_conn:
-            assert parc[s] == parc[d]
+            assert source.parc[s] == source.parc[d]
         else:
-            assert parc[s] != parc[d]
+            assert source.parc[s] != source.parc[d]
 
     # threshold-based test with parc
     srcl = src.sub(source='lh')
@@ -102,6 +102,12 @@ def test_source_estimate():
     # concatenate
     src_reconc = concatenate((src.sub(source='lh'), src.sub(source='rh')), 'source')
     assert_dataobj_equal(src_reconc, src)
+    # label
+    src_sm = src.sub(source=['superiortemporal-lh', 'middletemporal-lh'])
+    src_s = src.sub(source='superiortemporal-lh')
+    src_m = src.sub(source='middletemporal-lh')
+    src_conc = concatenate([src_s, src_m], 'source')
+    assert_dataobj_equal(src_conc, src_sm)
 
 
 @requires_mne_sample_data

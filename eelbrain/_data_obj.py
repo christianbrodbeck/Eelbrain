@@ -9856,20 +9856,24 @@ class SourceSpace(SourceSpaceBase):
     @classmethod
     def _concatenate(cls, dims):
         dims = list(dims)
-        if len(dims) != 2 or dims[0].rh_n != 0 or dims[1].lh_n != 0:
-            raise NotImplementedError("Can only concatenate SourceSpace with exactly two NDVars, one for lh and one for rh (in this order)")
         subject = cls._concatenate_attr(dims, 'subject')
         src = cls._concatenate_attr(dims, 'src')
         subjects_dir = cls._concatenate_attr(dims, 'subjects_dir')
         name = cls._concatenate_attr(dims, 'name')
         filename = cls._concatenate_attr(dims, '_filename')
+        # vertices
+        dims_vertices = [dim.vertices for dim in dims]
+        vertices = [np.concatenate(vertices) for vertices in zip(*dims_vertices)]
+        if any(len(np.unique(v)) < len(v) for v in vertices):
+            raise ValueError("Can't concatenate SourceSpace that overlap")
+        vertices = [np.sort(v) for v in vertices]
         # parc
         lh, rh = dims
         if lh.parc is None or rh.parc is None:
             parc = None
         else:
             parc = combine((lh.parc, rh.parc))
-        return SourceSpace([lh.lh_vertices, rh.rh_vertices], subject, src, subjects_dir, parc, name=name, filename=filename)
+        return SourceSpace(vertices, subject, src, subjects_dir, parc, name=name, filename=filename)
 
     def _link_midline(self, maxdist=0.015):
         """Link sources in the left and right hemispheres
