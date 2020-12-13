@@ -8,11 +8,11 @@ operations that operate on more than one NDVar.
 from collections import defaultdict
 from copy import copy
 from functools import reduce
-from itertools import repeat
+from itertools import groupby, repeat
 from math import floor
 from numbers import Real
 import operator
-from typing import Callable, Sequence, Union
+from typing import Any, Callable, Sequence, Union
 
 import mne
 from numba import njit, prange
@@ -110,6 +110,9 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
         ndvars = list(ndvars)
         ndvar = ndvars[0]
 
+    if hasattr(ndvar, '_eelbrain_concatenate'):
+        return ndvar._eelbrain_concatenate(ndvars, dim)
+
     if info is None:
         if isinstance(ndvars, NDVar):
             info = ndvars.info
@@ -146,6 +149,33 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
         dims = ndvar.get_dims(dim_names)
         dims = (*dims[:axis], out_dim, *dims[axis+1:])
     return NDVar(x, dims, name or ndvar.name, info)
+
+
+def _concatenate_values(
+        values: Sequence[Any],
+        dim: str,
+        key: str,  # for error message
+):
+    if isinstance(values[0], (NDVar, np.ndarray)):
+        if isinstance(values[0], NDVar) and values[0].has_dim(dim):
+            return concatenate(values, dim)
+        elif not all((v == values[0]).all() for v in values[1:]):
+            raise ValueError(f'Inconsistent values for {key}: {values}')
+        else:
+            return values[0]
+    elif isinstance(values[0], (tuple, list)) and isinstance(values[0][0], (NDVar, np.ndarray)):
+        if isinstance(values[0][0], NDVar) and values[0][0].has_dim(dim):
+            items = [concatenate(items, dim) for items in zip(*values)]
+            if isinstance(values[0], tuple):
+                items = tuple(items)
+            return items
+        elif not all(all((vji == v0i).all() for vji, v0i in zip(values_j, values[0])) for values_j in values[1:]):
+            raise ValueError(f'Inconsistent values for {key}: {values}')
+        else:
+            return values[0]
+    elif len(list(groupby(values))) > 1:
+        raise ValueError(f'Inconsistent values for {key}: {values}')
+    return values[0]
 
 
 def convolve(h, x, ds=None, name=None):

@@ -17,7 +17,9 @@ x2 = ds['x2']
 %prun -s cumulative res = boosting(y, x1, 0, 1)
 
 """
-from dataclasses import dataclass, field
+from __future__ import annotations
+
+from dataclasses import dataclass, field, fields
 import inspect
 from itertools import chain, product, repeat
 from multiprocessing.sharedctypes import RawArray
@@ -32,7 +34,7 @@ import numpy as np
 from .._config import CONFIG, mpc
 from .._data_obj import Dataset, NDVar, CategorialArg, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
-from .._ndvar import convolve_jit
+from .._ndvar import _concatenate_values, convolve_jit
 from .._utils import LazyProperty, PickleableDataClass, user_activity
 from .._utils.notebooks import tqdm
 from ._boosting_opt import l1, l2, generate_options, update_error
@@ -143,7 +145,7 @@ class BoostingResult(PickleableDataClass):
     r: Union[float, NDVar] = None
     r_rank: Union[float, NDVar] = None
     r_l1: NDVar = None
-    partition_results: List['BoostingResult'] = None
+    partition_results: List[BoostingResult] = None
     # store the version of the boosting algorithm with which model was fit
     version: int = 13  # file format (updates when re-saving)
     algorithm_version: int = -1  # does not change when re'saving
@@ -288,6 +290,34 @@ class BoostingResult(PickleableDataClass):
 
         for attr in ('h', 'r', 'r_rank', 'residual', 'y_mean', 'y_scale'):
             setattr(self, attr, sub_func(getattr(self, attr)))
+
+    @classmethod
+    def _eelbrain_concatenate(
+            cls,
+            results: Sequence[BoostingResult],
+            dim: str = 'source',
+    ):
+        "Combine multiple complementary source-space BoostingResult objects"
+        # result = results[0]
+        out = {}
+        for field in fields(cls):
+            if field.name == 'version':
+                continue
+            elif field.name == '_isnan':
+                out['_isnan'] = None
+                continue
+            values = [getattr(result, field.name) for result in results]
+            if field.name == 't_run':
+                out['t_run'] = sum(values)
+                continue
+            if field.name == 'partition_results' and any(v is not None for v in values):
+                if not all(v is not None for v in values):
+                    raise ValueError(f'partition_results avaiable for some but not all part-results')
+                new_values = [cls._concatenate(p_results) for p_results in zip(*values)]
+            else:
+                new_values = _concatenate_values(values, dim, field.name)
+            out[field.name] = new_values
+        return cls(**out)
 
 
 class SplitResult:

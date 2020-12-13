@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from functools import reduce
 from operator import mul
 from typing import List, Union
@@ -14,8 +14,28 @@ from .._utils import LazyProperty, PickleableDataClass
 from .._utils.numpy_utils import newaxis
 
 
-@dataclass
-class Split(PickleableDataClass):
+class EQMixIn:
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        for field in fields(self):
+            a, b = getattr(self, field.name), getattr(other, field.name)
+            if isinstance(a, b.__class__):
+                if isinstance(a, np.ndarray):
+                    if not np.array_equal(a, b):
+                        break
+                elif a != b:
+                    break
+            else:
+                break
+        else:
+            return True
+        return False
+
+
+@dataclass(eq=False)
+class Split(PickleableDataClass, EQMixIn):
     train: np.ndarray  # (, 2) array of int, segment (start, stop)
     validate: np.ndarray = None
     test: np.ndarray = None
@@ -44,8 +64,8 @@ def merge_segments(
     return np.vstack(out_segments)
 
 
-@dataclass
-class Splits(PickleableDataClass):
+@dataclass(eq=False)
+class Splits(PickleableDataClass, EQMixIn):
     splits: List[Split]
     partitions_arg: Union[int, None]
     n_partitions: int
