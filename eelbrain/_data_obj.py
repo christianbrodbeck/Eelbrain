@@ -5226,6 +5226,19 @@ class NDVar(Named):
         """
         return tuple(dim._dim_index(index) for dim, index in zip(self.dims, self.x.nonzero()))
 
+    @classmethod
+    def zeros(
+            cls,
+            dims: Union[Dimension, Sequence[Dimension]],
+            name: str = None,
+            info: dict = None,
+    ):
+        """A new :class:`NDVar` initialized with 0"""
+        if isinstance(dims, Dimension):
+            dims = (dims,)
+        shape = [len(dim) for dim in dims]
+        return cls(np.zeros(shape), dims, name, info)
+
 
 def extrema(x, axis=None):
     "Extract the extreme values in x"
