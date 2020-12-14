@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass, replace
 from functools import reduce
-from itertools import product
+from itertools import chain, product
 from math import ceil
 import operator
 from typing import Any, Dict, Sequence, Tuple, Union
@@ -121,10 +121,12 @@ def find_cell_styles(
         if missing:
             if fallback:
                 for cell in missing[:]:
-                    n = len(cell) if isinstance(cell, tuple) else 0
-                    for i in range(1, n):
-                        if cell[:-i] in out:
-                            out[cell] = out[cell[:-i]]
+                    if isinstance(cell, str):
+                        continue
+                    super_cells = chain((cell[:-i] for i in range(1, len(cell))), (cell[0],))
+                    for super_cell in super_cells:
+                        if super_cell in out:
+                            out[cell] = out[super_cell]
                             missing.remove(cell)
                             break
             if missing:
