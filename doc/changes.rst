@@ -17,6 +17,7 @@ New in 0.34
  - :func:`normalize_in_cells`
  - :func:`load.convert_pickle_protocol`
  - :class:`UTS`: ``unit`` parameter to represent time in units other than seconds
+ - :mod:`report` submodule with shortcuts for data summary and visualization
 
 
 New in 0.33

@@ -31,6 +31,7 @@ from . import datasets
 from . import gui
 from . import load
 from . import plot
+from . import report
 from . import save
 from . import table
 from . import test

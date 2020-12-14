@@ -593,14 +593,29 @@ information in open windows is saved.
     gui.run
 
 
-^^^^^^^^^^^^^^
+^^^^^^^
+Reports
+^^^^^^^
+
+.. py:module:: report
+.. currentmodule:: eelbrain
+
+The :mod:`report` submodule contains shortcuts for producing data summaries and
+visualizations.
+
+.. autosummary::
+   :toctree: generated
+
+   report.scatter_table
+
+
 Formatted Text
-^^^^^^^^^^^^^^
+==============
 
 .. py:module:: fmtxt
 .. currentmodule:: eelbrain
 
-The :mod:`fmtxt` submodule provides tools for exporting results. Most eelbrain
+The :mod:`fmtxt` submodule provides elements and tools for reports. Most eelbrain
 functions and methods that print tables in fact return :mod:`fmtxt` objects,
 which can be exported in different formats, for example::
 
