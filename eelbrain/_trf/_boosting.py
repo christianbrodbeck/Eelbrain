@@ -471,8 +471,8 @@ class Boosting:
     def _get_h(
             self,
             skip_failed: bool = False,
-            i_test: int = None,
-    ):
+            i_test: int = None,  # test partition
+    ):  # kernel and sgements on which to evaluate
         if i_test is None:
             split_results = self.split_results
             segments = self.data.segments
@@ -557,11 +557,14 @@ class Boosting:
         else:
             i_tests = None
 
-        # hs: [(h, segments), ...]
+        # hs: [(h, test_segments), ...]
         if cross_fit:
             hs = [self._get_h(True, i) for i in i_tests]
             all_segments = np.sort(np.vstack([segments for _, segments in hs]), 0)
-            eval_segments = merge_segments(all_segments, True)
+            eval_segments = [merge_segments(all_segments, True)]
+            if partition_results:
+                for _, test_segments in hs:
+                    eval_segments.append(merge_segments(test_segments, True))
         else:
             hs = [self._get_h(True)]
             eval_segments = merge_segments(self.data.segments, True)
@@ -571,6 +574,7 @@ class Boosting:
                 valid = eval_segments[:, 1] - eval_segments[:, 0] > 0
                 if not np.all(valid):
                     eval_segments = eval_segments[valid]
+            eval_segments = [eval_segments]
 
         if metrics:
             # y dimensions
@@ -591,7 +595,7 @@ class Boosting:
                 y_pred = np.empty(self.data.y.shape[1:])
                 y_pred_iter = repeat(y_pred, n_y)
 
-            all_evaluators, evaluators_s, evaluators_v = get_evaluators(metrics, self.data)
+            all_evaluators, evaluators_s, evaluators_v = get_evaluators(metrics, self.data, eval_segments)
 
             # fit and evaluate each y
             for i_y, y_pred_i in enumerate(y_pred_iter):
@@ -601,21 +605,26 @@ class Boosting:
 
                 if evaluators_s:
                     for e in evaluators_s:
-                        e.add_y(i_y, self.data.y[i_y], y_pred_i, eval_segments)
+                        e.add_y(i_y, self.data.y[i_y], y_pred_i)
 
                 if evaluators_v and i_y % n_vec == n_vec - 1:
                     i_vec = i_y // n_vec
                     i_y_vec = slice(i_y-n_vec+1, i_y+1)
                     y_pred_i_vec = y_pred[i_y_vec] if debug else y_pred
                     for e in evaluators_v:
-                        e.add_y(i_vec, self.data.y[i_y_vec], y_pred_i_vec, eval_segments)
+                        e.add_y(i_vec, self.data.y[i_y_vec], y_pred_i_vec)
 
             # Package evaluators
-            evaluations = {e.attr: self.data.package_value(e.x, e.name, meas=e.meas) for e in all_evaluators}
+            evaluations = {e.attr: e.get() for e in all_evaluators}
             if debug:
                 evaluations['y_pred'] = self.data.package_y_like(y_pred, 'y-pred')
+            if partition_results:
+                partition_evaluations = {i: {e.attr: e.get(i) for e in all_evaluators} for i in i_tests}
+            else:
+                partition_evaluations = None
         else:
             evaluations = {}
+            partition_evaluations = {i: {} for i in i_tests}
 
         # package h
         h_xs = [h for h, _ in hs]
@@ -628,8 +637,18 @@ class Boosting:
         t_run = self.t_fit_done - self.t_fit_start
         # partition-specific results
         if partition_results:
-            partition_hs = [self.data.package_kernel(h_, self.tstart_h) for h_ in h_xs]
-            partition_results_list = [BoostingResult(self.data.y_name, self.data.x_name, self.tstart, self.tstop, bool(self.data.scale_data), self.delta, self.mindelta, self.error, self.selective_stopping, y_mean, y_scale, x_mean, x_scale, h_i, self._get_h_failed(i), None, self.data.basis, self.data.basis_window, None, self.data.y.shape[1], self.data.y_info, algorithm_version=0, i_test=i) for i, h_i in zip(i_tests, partition_hs)]
+            partition_results_list = []
+            for i in i_tests:
+                h_i = self.data.package_kernel(h_xs[i], self.tstart_h)
+                evaluations_i = partition_evaluations[i]
+                result = BoostingResult(
+                    self.data.y_name, self.data.x_name, self.tstart, self.tstop, bool(self.data.scale_data), self.delta, self.mindelta, self.error, self.selective_stopping,
+                    y_mean, y_scale, x_mean, x_scale,
+                    h_i, self._get_h_failed(i), 0,
+                    self.data.basis, self.data.basis_window, None,
+                    self.data.y.shape[1], self.data.y_info,
+                    algorithm_version=0, i_test=i, **evaluations_i)
+                partition_results_list.append(result)
         else:
             partition_results_list = None
         return BoostingResult(

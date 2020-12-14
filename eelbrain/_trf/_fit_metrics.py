@@ -16,32 +16,45 @@ class Evaluator:
     name = NotImplemented
     meas = None
 
-    def __init__(self, data: RevCorrData):
+    def __init__(
+            self,
+            data: RevCorrData,
+            segments: List[np.ndarray] = None,  # evaluations for different test-segments
+    ):
         n = len(data.y)
         if self.vector:
             if not data.vector_dim:
                 raise ValueError(f"{self.__class__.__name__}: Vector evaluator for non-vector data")
             n //= len(data.vector_dim)
-        self.x = np.empty(n, np.float64)
+        self.data = data
+        self.segments = segments
+        self.xs = [np.empty(n, np.float64) for _ in segments]
 
     @classmethod
-    def _y_1_segment(cls, y, y_pred, segments):
-        if len(segments) > 1:
-            raise NotImplementedError(f"{cls.__class__.__name__} for segmented data")
-        istart, istop = segments[0]
-        return y[..., istart: istop], y_pred[..., istart: istop]
+    def _crop_y(cls, segments, *ys):
+        "For error functions that require one contiguous segment"
+        if len(segments) == 1:
+            istart, istop = segments[0]
+            out = [y[..., istart: istop] for y in ys]
+        else:
+            # OPT: avoid new array creation
+            out = [np.concatenate([y[..., i_start:i_stop] for i_start, i_stop in segments], axis=-1) for y in ys]
+        return out[0] if len(out) == 1 else out
+
 
     def add_y(
             self,
             i: int,  # y index (row in data.y)
             y: np.ndarray,  # actual data
             y_pred: np.ndarray,  # data predicted by model
-            segments: np.ndarray,  # segments on which to evaluate
     ):
         raise NotImplementedError
 
     def __repr__(self):
         return f"<{self.__class__.__name__} evaluator>"
+
+    def get(self, i_test: int = -1):
+        return self.data.package_value(self.xs[i_test + 1], self.name, meas=self.meas)
 
 
 class L1(Evaluator):
@@ -53,9 +66,10 @@ class L1(Evaluator):
             i: int,  # y index (row in data.y)
             y: np.ndarray,  # actual data
             y_pred: np.ndarray,  # data predicted by model
-            segments: np.ndarray,  # segments on which to evaluate
     ):
-        self.x[i] = l1(y - y_pred, segments)
+        err = y - y_pred
+        for x, segments in zip(self.xs, self.segments):
+            x[i] = l1(err, segments)
 
 
 class L2(Evaluator):
@@ -67,9 +81,10 @@ class L2(Evaluator):
             i: int,  # y index (row in data.y)
             y: np.ndarray,  # actual data
             y_pred: np.ndarray,  # data predicted by model
-            segments: np.ndarray,  # segments on which to evaluate
     ):
-        self.x[i] = l2(y - y_pred, segments)
+        err = y - y_pred
+        for x, segments in zip(self.xs, self.segments):
+            x[i] = l2(err, segments)
 
 
 class Correlation(Evaluator):
@@ -82,13 +97,13 @@ class Correlation(Evaluator):
             i: int,  # y index (row in data.y)
             y: np.ndarray,  # actual data
             y_pred: np.ndarray,  # data predicted by model
-            segments: np.ndarray,  # segments on which to evaluate
     ):
-        y, y_pred = self._y_1_segment(y, y_pred, segments)
-        with catch_warnings():
-            filterwarnings('ignore', "invalid value encountered", RuntimeWarning)
-            r = np.corrcoef(y, y_pred)[0, 1]
-        self.x[i] = 0 if np.isnan(r) else r
+        for x, segments in zip(self.xs, self.segments):
+            y_i, y_pred_i = self._crop_y(segments, y, y_pred)
+            with catch_warnings():
+                filterwarnings('ignore', "invalid value encountered", RuntimeWarning)
+                r = np.corrcoef(y_i, y_pred_i)[0, 1]
+            x[i] = 0 if np.isnan(r) else r
 
 
 class RankCorrelation(Evaluator):
@@ -101,13 +116,13 @@ class RankCorrelation(Evaluator):
             i: int,  # y index (row in data.y)
             y: np.ndarray,  # actual data
             y_pred: np.ndarray,  # data predicted by model
-            segments: np.ndarray,  # segments on which to evaluate
     ):
-        y, y_pred = self._y_1_segment(y, y_pred, segments)
-        with catch_warnings():
-            filterwarnings('ignore', "invalid value encountered", RuntimeWarning)
-            r = spearmanr(y, y_pred)[0]
-        self.x[i] = 0 if np.isnan(r) else r
+        for x, segments in zip(self.xs, self.segments):
+            y_i, y_pred_i = self._crop_y(segments, y, y_pred)
+            with catch_warnings():
+                filterwarnings('ignore', "invalid value encountered", RuntimeWarning)
+                r = spearmanr(y_i, y_pred_i)[0]
+            x[i] = 0 if np.isnan(r) else r
 
 
 class VectorL1(Evaluator):
@@ -120,11 +135,11 @@ class VectorL1(Evaluator):
             i: int,  # y index (row in data.y)
             y: np.ndarray,  # actual data
             y_pred: np.ndarray,  # data predicted by model
-            segments: np.ndarray,  # segments on which to evaluate
     ):
-        y, y_pred = self._y_1_segment(y, y_pred, segments)
-        y_pred_error = norm(y - y_pred, axis=0)
-        self.x[i] = y_pred_error.sum(-1)
+        err = norm(y - y_pred, axis=0)
+        for x, segments in zip(self.xs, self.segments):
+            err_i = self._crop_y(segments, err)
+            x[i] = err_i.sum(-1)
 
 
 class VectorL2(Evaluator):
@@ -137,12 +152,13 @@ class VectorL2(Evaluator):
             i: int,  # y index (row in data.y)
             y: np.ndarray,  # actual data
             y_pred: np.ndarray,  # data predicted by model
-            segments: np.ndarray,  # segments on which to evaluate
     ):
-        y, y_pred = self._y_1_segment(y, y_pred, segments)
-        dist = y - y_pred
-        dist **= 2
-        self.x[i] = y.sum()
+        err = y - y_pred
+        err **= 2
+        err = err.sum(0)
+        for x, segments in zip(self.xs, self.segments):
+            err_i = self._crop_y(segments, err)
+            x[i] = err_i.sum()
 
 
 class VectorCorrelation(Evaluator):
@@ -151,19 +167,15 @@ class VectorCorrelation(Evaluator):
     name = 'Vector correlation'
     meas = 'r'
 
-    def __init__(self, data: RevCorrData):
-        self.y_scale = data.scale_data
-        Evaluator.__init__(self, data)
-
     def add_y(
             self,
             i: int,  # y index (row in data.y)
             y: np.ndarray,  # actual data
             y_pred: np.ndarray,  # data predicted by model
-            segments: np.ndarray,  # segments on which to evaluate
     ):
-        y, y_pred = self._y_1_segment(y, y_pred, segments)
-        self.x[i] = self._r(y, y_pred)
+        for x, segments in zip(self.xs, self.segments):
+            y, y_pred = self._crop_y(segments, y, y_pred)
+            x[i] = self._r(y, y_pred)
 
     def _r(self, y, y_pred):
         # shape (space, time)
@@ -178,7 +190,7 @@ class VectorCorrelation(Evaluator):
         y_scale = (y_norm ** 2).mean() ** 0.5
         if y_scale == 0:
             return 0
-        elif self.y_scale == 'l2':
+        elif self.data.scale_data == 'l2':
             y_l2 = y
         else:
             y_l2 = y / y_scale
@@ -205,7 +217,7 @@ class VectorCorrelationL1(VectorCorrelation):
         y_scale = y_norm.mean()
         if y_scale == 0:
             return 0
-        elif self.y_scale == 'l1':
+        elif self.data.scale_data == 'l1':
             y_l1 = y
         else:
             y_l1 = y / y_scale
@@ -220,7 +232,7 @@ class VectorCorrelationL1(VectorCorrelation):
         return yy.mean()
 
 
-evaluators = {
+EVALUATORS = {
     'l1': L1,
     'l2': L2,
     'r': Correlation,
@@ -232,18 +244,12 @@ evaluators = {
 }
 
 
-def get_evaluator(
-        key: str,
-        data: RevCorrData,
-) -> Evaluator:
-    return evaluators[key](data)
-
-
 def get_evaluators(
         keys: List[str],
         data: RevCorrData,
+        segments: List[np.ndarray] = None,  # evaluations for different test-segments
 ) -> (List[Evaluator], List[Evaluator], List[Evaluator]):
-    evaluators = [get_evaluator(key, data) for key in keys]
+    evaluators = [EVALUATORS[key](data, segments) for key in keys]
     # split into scalar and vector evaluators
     evaluators_s = [e for e in evaluators if not e.vector]
     evaluators_v = [e for e in evaluators if e.vector]
