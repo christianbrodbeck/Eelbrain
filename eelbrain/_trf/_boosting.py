@@ -764,6 +764,7 @@ def boosting(
         how many steps with error increases each predictor is excluded.
     partition_results
         Keep results (TRFs and model evaluation) for each test-partition.
+        This is disabled by default to reduce file size when saving results.
     debug
         Add additional attributes to the returned result.
 

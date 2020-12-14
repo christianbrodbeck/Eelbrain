@@ -3,7 +3,7 @@
 import inspect
 from itertools import chain
 import logging
-from typing import Any, Sequence, Union
+from typing import Any, Callable, Dict, Sequence, Union
 
 import numpy as np
 import scipy.linalg
@@ -13,10 +13,10 @@ from matplotlib.artist import setp
 import matplotlib as mpl
 
 from .._celltable import Celltable
-from .._data_obj import VarArg, CategorialArg, IndexArg, CellArg, Dataset, Var, asuv, asvar, ascategorial, assub, cellname
+from .._data_obj import VarArg, CategorialArg, UVArg, IndexArg, CellArg, Dataset, Var, asuv, asvar, ascategorial, assub, cellname
 from .._stats import test, stats
 from ._base import EelFigure, Layout, LegendMixin, CategorialAxisMixin, ColorBarMixin, XAxisMixin, YLimMixin, frame_title
-from ._styles import find_cell_styles
+from ._styles import ColorsArg, find_cell_styles
 
 
 # keys for sorting kwargs
@@ -696,23 +696,23 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
 
     Parameters
     ----------
-    y : Var
+    y
         Dependent variable.
-    time : Var
+    time
         Variable assigning the time to each case.
-    categories : categorial
+    categories
         Plot ``y`` separately for different categories.
-    match : categorial
+    match
         Match cases for a repeated measures design.
-    sub : index-array
+    sub
         Use a subset of the data.
-    ds : Dataset
+    ds
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     main : numpy function
         draw lines to connect values across time (default: np.mean).
         Can be 'bar' for barplots or False.
-    error : str | False
+    error
         How to indicate estimate error. For complete within-subject designs,
         the within-subject measures are displayed (see Loftus & Masson, 1994).
         Options:
@@ -754,36 +754,36 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
     """
     def __init__(
             self,
-            y,
-            time,
-            categories=None,
-            match=None,
-            sub=None,
-            ds=None,
+            y: VarArg,
+            time: UVArg,
+            categories: CategorialArg = None,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
             # data plotting
-            main=np.mean,
-            error='sem',
-            x_jitter=False,
-            bottom=None,
-            top=None,
+            main: Callable = np.mean,
+            error: str = 'sem',
+            x_jitter: bool = False,
+            bottom: float = None,
+            top: float = None,
             # labelling
             xlabel: Union[bool, str] = True,
             ylabel: Union[bool, str] = True,
-            timelabels=None,
-            legend='upper right',
-            labels=None,
-            colors=None,
+            timelabels: Union[Sequence, Dict, str] = None,
+            legend: Union[str, int, bool] = 'upper right',
+            labels: Dict = None,
+            colors: ColorsArg = None,
             **kwargs,
     ):
-        sub = assub(sub, ds)
-        y = asvar(y, sub, ds)
-        time = asvar(time, sub, ds)
+        sub, n = assub(sub, ds, return_n=True)
+        y, n = asvar(y, sub, ds, n, return_n=True)
+        x = asuv(time, sub, ds, n)
         if categories is None:
             legend = False
         else:
-            categories = ascategorial(categories, sub, ds)
+            categories = ascategorial(categories, sub, ds, n)
         if match is not None:
-            match = ascategorial(match, sub, ds)
+            match = ascategorial(match, sub, ds, n)
 
         # transform to 3 kwargs:
         # - local_plot ('bar' or 'box')
@@ -810,9 +810,9 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         layout = Layout(1, 1, 5, **kwargs)
         EelFigure.__init__(self, frame_title(y, categories), layout)
         self._configure_axis_data('y', y, ylabel)
-        self._configure_axis_data('x', time, xlabel)
+        self._configure_axis_data('x', x, xlabel)
 
-        plot = _ax_timeplot(self._axes[0], y, categories, time, match, styles, line_plot, error, local_plot, timelabels, x_jitter, bottom, top)
+        plot = _ax_timeplot(self._axes[0], y, categories, x, match, styles, line_plot, error, local_plot, timelabels, x_jitter, bottom, top)
 
         YLimMixin.__init__(self, (plot,))
         LegendMixin.__init__(self, legend, plot.legend_handles, labels)

@@ -120,9 +120,9 @@ To inspect raw data for a given pre-processing stage use::
 
     >>> e.set(raw='1-40')
     >>> y = e.load_raw(ndvar=True)
-    >>> p = plot.TopoButterfly(y, xlim=5)
+    >>> p = plot.TopoButterfly(y, xlim=10, w=0)
 
-Which will plot 5 s excerpts and allow scrolling through the data.
+Which will plot a 10 s excerpt and allow scrolling through the data.
 
 
 .. _MneExperiment-events:

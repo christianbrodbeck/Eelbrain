@@ -26,7 +26,7 @@ def test_uts_stat():
     p.close()
 
     # error
-    p = plot.UTSStat('uts', 'A', match='rm', ds=ds, error=False)
+    p = plot.UTSStat('uts', 'A', match='rm', ds=ds, error='none')
     p.close()
     p = plot.UTSStat('uts', 'A', match='rm', ds=ds, error='all')
     p.close()
@@ -99,6 +99,11 @@ def test_uts():
     p = plot.UTS(y1, rm)
     p.close()
     p = plot.UTS([y1, y2], rm)
+    p.close()
+
+    # axtitle from Factor
+    ds1 = ds[:3]
+    p = plot.UTS('uts', xax='.case', axtitle=ds1['rm'], ds=ds1, ncol=1, w=2)
     p.close()
 
 

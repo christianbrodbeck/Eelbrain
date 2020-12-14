@@ -10,7 +10,6 @@ from ._text import ms
 from .fmtxt import Section, linebreak
 
 
-
 def sensor_results(res, ds, color):
     report = Section("Results")
     if res._kind == 'cluster':

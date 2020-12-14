@@ -1557,20 +1557,27 @@ class EelFigure(MatplotlibFigure):
         from IPython.display import display
         display(self.figure)
 
-    def _set_axtitle(self, axtitle, data=None, axes=None, names=None, **kwargs):
+    def _set_axtitle(
+            self,
+            axtitle: Union[bool, str, Sequence[str]] = None,
+            data: PlotData = None,
+            axes: Union[List[matplotlib.axes.Axes], int] = None,
+            names: Sequence[str] = None,
+            **kwargs,
+    ):
         """Set axes titles automatically
 
         Parameters
         ----------
-        axtitle : bool | str | sequence of str
+        axtitle
             Plot parameter.
-        data : PlotData
+        data
             Plotted data (if available).
-        axes : list of axes | int
+        axes
             Axes for which to set title (default is self._axes). If an int,
             (n axes) the method does not set axes title but returns ``None``
             or a tuple of titles.
-        names : sequence of str
+        names
             Instead of using ``epochs`` name attributes, use these names.
         ...
             Matplotlib ``Axes.set_title()`` parameters.
