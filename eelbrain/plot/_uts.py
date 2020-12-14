@@ -173,7 +173,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             legend_handles.update(p.legend_handles)
             ymin = p.vmin if ymin is None else min(ymin, p.vmin)
             ymax = p.vmax if ymax is None else max(ymax, p.vmax)
-        self._set_axtitle(axtitle, names=map(cellname, data.ct.cells))
+        self._set_axtitle(axtitle, names=[ax_data.title for ax_data in data.plot_data])
 
         # axes limits
         if top is not None:

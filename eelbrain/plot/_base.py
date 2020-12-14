@@ -931,6 +931,7 @@ class StatLayer(Layer):
 class AxisData:
     """Represent one axis (multiple layers)"""
     layers: List[Layer]
+    title: str = None
 
     def __iter__(self):
         return iter(self.layers)
@@ -942,10 +943,10 @@ class AxisData:
         raise IndexError("No data")
 
     def for_plot(self, plot_type: PlotType) -> 'AxisData':
-        return AxisData([l for layer in self.layers for l in layer.for_plot(plot_type)])
+        return replace(self, layers=[l for layer in self.layers for l in layer.for_plot(plot_type)])
 
     def bin(self, bin_length, tstart, tstop):
-        return AxisData([l.bin(bin_length, tstart, tstop) for l in self.layers])
+        return replace(self, layers=[l.bin(bin_length, tstart, tstop) for l in self.layers])
 
     def sub_time(self, time: float, data_only: bool = False):
         axis = []
@@ -955,7 +956,7 @@ class AxisData:
         if data_only:
             return axis
         else:
-            return AxisData(axis)
+            return replace(self, layers=axis)
 
 
 def x_arg(x: CategorialArg):
@@ -1241,7 +1242,7 @@ class PlotData:
                 cells = [combine_cells(x_cell, ax_cell) for x_cell in x_cells]
                 cells = [cell for cell in cells if cell in ct.data]
             layers = [StatLayer(ct.data[cell], style=styles[cell], ct=ct, cell=cell, mask=masks[cell]) for cell in cells]
-            axes.append(AxisData(layers))
+            axes.append(AxisData(layers, cellname(ax_cell)))
         return cls(axes, dims, title, ct=ct, x=x, xax=xax)
 
     @classmethod
