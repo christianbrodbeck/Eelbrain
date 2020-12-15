@@ -62,6 +62,7 @@ napoleon_use_ivar = True
 napoleon_use_keyword = True
 napoleon_use_rtype = True
 
+bibtex_bibfiles = ['publications.bib']
 
 qualname_overrides = {
     "eelbrain._data_obj.NDVar": "eelbrain.NDVar",
