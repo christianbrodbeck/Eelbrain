@@ -326,6 +326,9 @@ Color tools for plotting:
    plot.ColorGrid
    plot.ColorList
 
+.. seealso::
+    Example with :ref:`exa-colormaps`
+
 
 Plot uniform time-series:
 

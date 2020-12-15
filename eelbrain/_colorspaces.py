@@ -360,8 +360,10 @@ def pigtailed_cmap(cmap, swap_order=('green', 'red', 'blue')):
 
 
 def make_cmaps():
-    """Create some custom colormaps and register them with matplotlib"""
-    # polar:  blue-white-red
+    """Create custom colormaps and register them with matplotlib"""
+    # Polar
+    # -----
+    # bi-polar, blue-white-red based
     cmap = LinearSegmentedColormap.from_list(
         "polar", (
             (0.0, (0.0, 0.0, 1.0)),
@@ -407,7 +409,166 @@ def make_cmaps():
     cmap.set_bad('w', alpha=0.)
     register_cmap(cmap=cmap)
 
+    # extra-polar light: ends are light instead of dark
+    cmap = LinearSegmentedColormap.from_list(
+        "lpolar", (
+            (0.0, (0.5, 1.0, 1.0, 1.0)),
+            (0.1, (0.0, 1.0, 1.0, 1.0)),
+            (0.3, (0.0, 0.0, 1.0, 1.0)),
+            (0.5, (0.0, 0.0, 0.0, 1.0)),
+            (0.5, (0.0, 0.0, 0.0, 1.0)),
+            (0.7, (1.0, 0.0, 0.0, 1.0)),
+            (0.9, (1.0, 1.0, 0.0, 1.0)),
+            (1.0, (1.0, 1.0, 0.5, 1.0)),
+        ))
+    cmap.set_bad('w', alpha=0.)
+    register_cmap(cmap=cmap)
+    # -alpha
+    cmap = LinearSegmentedColormap.from_list(
+        "lpolar-a", (
+            (0.0, (0.5, 1.0, 1.0, 1.0)),
+            (0.1, (0.0, 1.0, 1.0, 1.0)),
+            (0.3, (0.0, 0.0, 1.0, 1.0)),
+            (0.5, (0.0, 0.0, 1.0, 0.0)),
+            (0.5, (1.0, 0.0, 0.0, 0.0)),
+            (0.7, (1.0, 0.0, 0.0, 1.0)),
+            (0.9, (1.0, 1.0, 0.0, 1.0)),
+            (1.0, (1.0, 1.0, 0.5, 1.0)),
+        ))
+    cmap.set_bad('w', alpha=0.)
+    register_cmap(cmap=cmap)
+    # version with alpha higher up
+    cmap = LinearSegmentedColormap.from_list(
+        "lpolar-aa", (
+            (0.0, (0.5, 1.0, 1.0, 1.0)),
+            (0.1, (0.0, 1.0, 1.0, 1.0)),
+            (0.3, (0.0, 0.0, 1.0, 0.5)),
+            (0.5, (0.0, 0.0, 1.0, 0.0)),
+            (0.5, (1.0, 0.0, 0.0, 0.0)),
+            (0.7, (1.0, 0.0, 0.0, 0.5)),
+            (0.9, (1.0, 1.0, 0.0, 1.0)),
+            (1.0, (1.0, 1.0, 0.5, 1.0)),
+        ))
+    cmap.set_bad('w', alpha=0.)
+    register_cmap(cmap=cmap)
+
+    # Lux
+    # ---
+    # lux:  cyan vs orange
+    cmap = LinearSegmentedColormap.from_list(
+        "lux", (
+            (0.0, (1.0, 1.0, 1.0, 1.0)),
+            (0.15, (0.0, 1.0, 1.0, 1.0)),
+            (0.4, (0.0, 0.3, 1.0, 1.0)),
+            (0.5, (0.0, 0.0, 0.0, 1.0)),
+            (0.5, (0.0, 0.0, 0.0, 1.0)),
+            (0.6, (1.0, 0.3, 0.0, 1.0)),
+            (0.85, (1.0, 1.0, 0.0, 1.0)),
+            (1.0, (1.0, 1.0, 1.0, 1.0)),
+        ))
+    cmap.set_bad('w', alpha=0.)
+    register_cmap(cmap=cmap)
+    # -alpha
+    cmap = LinearSegmentedColormap.from_list(
+        "lux-a", (
+            (0.0, (1.0, 1.0, 1.0, 1.0)),
+            (0.15, (0.0, 1.0, 1.0, 1.0)),
+            (0.4, (0.0, 0.3, 1.0, 1.0)),
+            (0.5, (0.0, 0.0, 1.0, 0.0)),
+            (0.5, (1.0, 0.0, 0.0, 0.0)),
+            (0.6, (1.0, 0.3, 0.0, 1.0)),
+            (0.85, (1.0, 1.0, 0.0, 1.0)),
+            (1.0, (1.0, 1.0, 1.0, 1.0)),
+        ))
+    cmap.set_bad('w', alpha=0.)
+    register_cmap(cmap=cmap)
+
+    # polar-lux:  polar on the inside, blend to lux
+    cmap = LinearSegmentedColormap.from_list(
+        "polar-lux", (
+            (0.0, (1.0, 1.0, 1.0, 1.0)),
+            (0.1, (0.0, 1.0, 1.0, 1.0)),
+            (0.4, (0.0, 0.0, 1.0, 1.0)),
+            (0.5, (0.0, 0.0, 0.0, 1.0)),
+            (0.5, (0.0, 0.0, 0.0, 1.0)),
+            (0.6, (1.0, 0.0, 0.0, 1.0)),
+            (0.9, (1.0, 1.0, 0.0, 1.0)),
+            (1.0, (1.0, 1.0, 1.0, 1.0)),
+        ))
+    cmap.set_bad('w', alpha=0.)
+    register_cmap(cmap=cmap)
+    # -alpha
+    cmap = LinearSegmentedColormap.from_list(
+        "polar-lux-a", (
+            (0.0, (1.0, 1.0, 1.0, 1.0)),
+            (0.1, (0.0, 1.0, 1.0, 1.0)),
+            (0.4, (0.0, 0.0, 1.0, 1.0)),
+            (0.5, (0.0, 0.0, 1.0, 0.0)),
+            (0.5, (1.0, 0.0, 0.0, 0.0)),
+            (0.6, (1.0, 0.0, 0.0, 1.0)),
+            (0.9, (1.0, 1.0, 0.0, 1.0)),
+            (1.0, (1.0, 1.0, 1.0, 1.0)),
+        ))
+    cmap.set_bad('w', alpha=0.)
+    register_cmap(cmap=cmap)
+
+    # lux-purple:  on the negative side, blend into purple instead of cyan
+    cmap = LinearSegmentedColormap.from_list(
+        "lux-purple", (
+            (0.0, (1.0, 1.0, 1.0, 1.0)),
+            (0.15, (1.0, 0.0, 1.0, 1.0)),
+            (0.4, (0.3, 0.0, 1.0, 1.0)),
+            (0.5, (0.0, 0.0, 0.0, 1.0)),
+            (0.5, (0.0, 0.0, 0.0, 1.0)),
+            (0.6, (1.0, 0.3, 0.0, 1.0)),
+            (0.85, (1.0, 1.0, 0.0, 1.0)),
+            (1.0, (1.0, 1.0, 1.0, 1.0)),
+        ))
+    cmap.set_bad('w', alpha=0.)
+    register_cmap(cmap=cmap)
+    cmap = LinearSegmentedColormap.from_list(
+        "lux-purple-a", (
+            (0.0, (1.0, 1.0, 1.0, 1.0)),
+            (0.15, (1.0, 0.0, 1.0, 1.0)),
+            (0.4, (0.3, 0.0, 1.0, 1.0)),
+            (0.5, (0.0, 0.0, 1.0, 0.0)),
+            (0.5, (1.0, 0.0, 0.0, 0.0)),
+            (0.6, (1.0, 0.3, 0.0, 1.0)),
+            (0.85, (1.0, 1.0, 0.0, 1.0)),
+            (1.0, (1.0, 1.0, 1.0, 1.0)),
+        ))
+    cmap.set_bad('w', alpha=0.)
+    register_cmap(cmap=cmap)
+
+    cmap = LinearSegmentedColormap.from_list(
+        "polar-lux-purple", (
+            (0.0, (1.0, 1.0, 1.0, 1.0)),
+            (0.1, (1.0, 0.0, 1.0, 1.0)),
+            (0.4, (0.0, 0.0, 1.0, 1.0)),
+            (0.5, (0.0, 0.0, 0.0, 1.0)),
+            (0.5, (0.0, 0.0, 0.0, 1.0)),
+            (0.6, (1.0, 0.0, 0.0, 1.0)),
+            (0.9, (1.0, 1.0, 0.0, 1.0)),
+            (1.0, (1.0, 1.0, 1.0, 1.0)),
+        ))
+    cmap.set_bad('w', alpha=0.)
+    register_cmap(cmap=cmap)
+    cmap = LinearSegmentedColormap.from_list(
+        "polar-lux-purple-a", (
+            (0.0, (1.0, 1.0, 1.0, 1.0)),
+            (0.1, (1.0, 0.0, 1.0, 1.0)),
+            (0.4, (0.0, 0.0, 1.0, 1.0)),
+            (0.5, (0.0, 0.0, 1.0, 0.0)),
+            (0.5, (1.0, 0.0, 0.0, 0.0)),
+            (0.6, (1.0, 0.0, 0.0, 1.0)),
+            (0.9, (1.0, 1.0, 0.0, 1.0)),
+            (1.0, (1.0, 1.0, 1.0, 1.0)),
+        ))
+    cmap.set_bad('w', alpha=0.)
+    register_cmap(cmap=cmap)
+
     # phase
+    # -----
     cmap = LinearSegmentedColormap.from_list(
         "phase", (
             (0.0, (0.0, 0.0, 1.0)),
@@ -417,7 +578,9 @@ def make_cmaps():
     cmap.set_bad('w', alpha=0.)
     register_cmap(cmap=cmap)
 
-    # sig:  significance map for specific vmax=0.05
+    # Significance
+    # ------------
+    # sig: significance map for specific vmax=0.05
     cmap = LinearSegmentedColormap.from_list(
         "sig", (
             (0.0,  (1.0, 1.0, 1.0)),
@@ -440,12 +603,21 @@ make_cmaps()
 
 # https://matplotlib.org/tutorials/colors/colormaps.html
 mpl_diverging = ('PiYG', 'PRGn', 'BrBG', 'PuOr', 'RdGy', 'RdBu', 'RdYlBu', 'RdYlGn', 'Spectral', 'coolwarm', 'bwr', 'seismic')
-symmetric_cmaps = ['polar', 'polar-a', 'xpolar', 'xpolar-a']
+symmetric_cmaps = [
+    'polar', 'polar-a',
+    'xpolar', 'xpolar-a',
+    'lpolar', 'lpolar-a', 'lpolar-aa',
+    'lux', 'lux-a',
+    'lux-purple', 'lux-purple-a',
+    'polar-lux-purple', 'polar-lux-purple-a'
+    'polar-lux', 'polar-lux-a',
+]
 symmetric_cmaps.extend(mpl_diverging)
 symmetric_cmaps.extend(f'{name}_r' for name in mpl_diverging)
 zerobased_cmaps = ('sig',)
 # corresponding cmaps with transparency (alpha channel)
 ALPHA_CMAPS = {
+    'polar': 'polar-a',
     'xpolar': 'xpolar-a',
     'RdBu_r': 'xpolar-a',
 }
