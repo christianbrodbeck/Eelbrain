@@ -53,7 +53,7 @@ from .epochs import ContinuousEpoch, PrimaryEpoch, SecondaryEpoch, SuperEpoch, E
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
 from .groups import assemble_groups
-from .parc import SEEDED_PARC_RE, CombinationParc, EelbrainParc, FreeSurferParc, FSAverageParc, SeededParc, IndividualSeededParc, LabelParc, assemble_parcs
+from .parc import SEEDED_PARC_RE, CombinationParc, EelbrainParc, FreeSurferParc, FSAverageParc, SeededParc, IndividualSeededParc, LabelParc, SubParc, assemble_parcs
 from .preprocessing import (
     assemble_pipeline, RawSource, RawFilter, RawICA, RawApplyICA,
     compare_pipelines, ask_to_delete_ica_files)
@@ -1179,6 +1179,10 @@ class MneExperiment(FileTree):
                 # should automatically update if the user changes the
                 # fsaverage file.
                 continue
+            # SubParc label order change is permissible
+            if isinstance(new_parc, SubParc) and old_params['kind'] == 'combination':
+                if new_params['base'] == old_params['base'] and sorted(new_params['labels']) == sorted(old_params['labels']):
+                    continue
             log_dict_change(self._log, "Parc", parc, old_params, new_params)
             invalid_cache['parcs'].add(parc)
             if any(p['kind'].endswith('seeded') for p in (new_params, old_params)):
