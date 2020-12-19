@@ -114,8 +114,7 @@ import string
 from typing import Collection, Optional, Union, Sequence, Tuple, List
 from warnings import warn
 
-from matplotlib.ticker import (
-    FixedLocator, FormatStrFormatter, FuncFormatter, IndexFormatter)
+from matplotlib.ticker import FixedLocator, Formatter, FormatStrFormatter, FuncFormatter
 import mne
 from mne.source_space import label_src_vertno_sel
 import nibabel
@@ -166,6 +165,20 @@ _tex_wildcard = ("TeX (*.tex)", '*.tex')
 _tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
 _txt_wildcard = ("Plain Text (*.txt)", '*.txt')
 EVAL_CONTEXT = vars(np)  # updated at end of file
+
+
+class IndexFormatter(Formatter):
+    "Matplotlib tick-label formatter for categories"
+    def __init__(self, labels):
+        self.labels = labels
+        self.n = len(labels)
+
+    def __call__(self, x, pos=None):
+        i = int(round(x))
+        if i < 0 or i >= self.n:
+            return ''
+        else:
+            return self.labels[i]
 
 
 def _effect_eye(n):
@@ -7978,12 +7991,12 @@ class Case(Dimension):
 
     def _axis_format(self, scalar, label):
         if scalar:
-            fmt = FormatStrFormatter('%i')
+            locator = None
+            formatter = FormatStrFormatter('%i')
         else:
-            fmt = IndexFormatter(np.arange(self.n))
-        return (fmt,
-                None if scalar else FixedLocator(np.arange(len(self)), 10),
-                self._axis_label(label))
+            locator = FixedLocator(np.arange(len(self)), 10)
+            formatter = FormatStrFormatter('%.0f')
+        return formatter, locator, self._axis_label(label)
 
     def _array_index(self, arg):
         if isinstance(arg, self._DIMINDEX_RAW_TYPES):
@@ -8078,9 +8091,9 @@ class Space(Dimension):
 
     def _axis_format(self, scalar, label):
         # like Categorial
-        return (IndexFormatter(self._directions),
-                FixedLocator(np.arange(len(self._directions))),
-                self._axis_label(label))
+        locator = FixedLocator(np.arange(len(self._directions)))
+        formatter = IndexFormatter(self._directions)
+        return formatter, locator, self._axis_label(label)
 
     def _array_index(self, arg):
         if isinstance(arg, str):
@@ -8215,9 +8228,9 @@ class Categorial(Dimension):
         return Factor(self.values, name=self.name)
 
     def _axis_format(self, scalar, label):
-        return (IndexFormatter(self.values),
-                FixedLocator(np.arange(len(self))),
-                self._axis_label(label))
+        locator = FixedLocator(np.arange(len(self)))
+        formatter = IndexFormatter(self.values)
+        return formatter, locator, self._axis_label(label)
 
     def _array_index(self, arg):
         if isinstance(arg, str):
@@ -8378,7 +8391,8 @@ class Scalar(Dimension):
                 values = self.values
             else:
                 locations = np.arange(-0.5, len(self), 0.5)
-                values = chain(self.values, [self.values[-1]])
+                values = [*self.values, self.values[-1]]
+            locator = FixedLocator(locations, 10)
 
             if self.tick_format:
                 fmt = self.tick_format
@@ -8389,9 +8403,7 @@ class Scalar(Dimension):
                 else:
                     n_digits = int(log(1 / step, 10)) + 1
                 fmt = f'%.{n_digits}f'
-
-            formatter = IndexFormatter([fmt % v for v in values])
-            locator = FixedLocator(locations, 10)
+            formatter = FuncFormatter(lambda i, pos: fmt % values[int(round(i))])
         return formatter, locator, self._axis_label(label)
 
     def _bin(
@@ -8683,9 +8695,9 @@ class Sensor(Dimension):
         return Factor(self.names, name=self.name)
 
     def _axis_format(self, scalar, label):
-        return (IndexFormatter(self.names),
-                FixedLocator(np.arange(len(self)), 10),
-                self._axis_label(label))
+        locator = FixedLocator(np.arange(len(self)), 10)
+        formatter = IndexFormatter(self.names)
+        return formatter, locator, self._axis_label(label)
 
     def _cluster_properties(self, x):
         """Find cluster properties for this dimension

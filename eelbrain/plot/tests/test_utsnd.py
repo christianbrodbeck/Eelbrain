@@ -53,13 +53,13 @@ def test_plot_array():
     sgram = cwt_morlet(ds[0, 'uts'], np.arange(3, 7, 0.1) ** 2)
     p = plot.Array(sgram)
     labels = [l.get_text() for l in p.figure.axes[0].get_yticklabels()]
-    assert labels == ['9', '12', '15', '19', '23', '28', '32', '38', '44']
+    assert labels == ['9', '12', '15', '19', '23', '27', '32', '38', '44']
     p.close()
 
     sgram = cwt_morlet(ds[0, 'uts'], np.arange(3, 3.5, 0.01) ** 2)
     p = plot.Array(sgram)
     labels = [l.get_text() for l in p.figure.axes[0].get_yticklabels()]
-    assert labels == ['9.0', '9.4', '9.7', '10.0', '10.4', '10.8', '11.1', '11.5', '11.8', '12.2']
+    assert labels == ['9.0', '9.4', '9.7', '10.0', '10.4', '10.8', '11.1', '11.4', '11.8', '12.2']
     p.close()
 
     # Categorial dimension
