@@ -9868,9 +9868,7 @@ class SourceSpace(SourceSpaceBase):
                            parc, self._subgraph(int_index), self.name)
 
     def _as_uv(self):
-        return Factor(('%s%i' % (hemi, i) for hemi, vertices in
-                       zip(('L', 'R'), self.vertices) for i in vertices),
-                      name=self.name)
+        return Factor((f'{hemi}{i}' for hemi, vertices in zip(('L', 'R'), self.vertices) for i in vertices), name=self.name)
 
     def _cluster_properties(self, x):
         ds = SourceSpaceBase._cluster_properties(self, x)

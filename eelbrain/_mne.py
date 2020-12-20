@@ -540,11 +540,8 @@ def morph_source_space(
         raise ValueError("Can't mask source space without parcellation...")
     # check that annot files are available
     if parc_to:
-        fname = SourceSpace._ANNOT_PATH.format(
-            subjects_dir=subjects_dir, subject=subject_to, hemi='%s',
-            parc=parc_to)
-        fnames = tuple(fname % hemi for hemi in ('lh', 'rh'))
-        missing = tuple(fname for fname in fnames if not os.path.exists(fname))
+        fnames = [SourceSpace._ANNOT_PATH.format(subjects_dir=subjects_dir, subject=subject_to, hemi=hemi, parc=parc_to) for hemi in ('lh', 'rh')]
+        missing = [fname for fname in fnames if not os.path.exists(fname)]
         if missing:
             missing = '\n'.join(missing)
             raise IOError(f"Annotation files are missing for parc={parc_to!r}, subject={subject_to!r}. Use the parc parameter when morphing to set a different parcellation. The following files are missing:\n{missing}")
