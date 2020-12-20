@@ -1005,7 +1005,7 @@ def choose(choice, sources, name=None):
         for i, s in enumerate(sources):
             np.equal(choice, i, index_flat)
             np.copyto(x, s.x, where=index)
-        return NDVar(x, s0.dims, {}, name)
+        return NDVar(x, s0.dims, name, {})
     else:
         raise NotImplementedError
 
@@ -4032,7 +4032,7 @@ class NDVar(Named):
         if len(dims) == 1 and dims[0] is Case:
             return Var(x, name)
         else:
-            return NDVar(x, dims, {}, name)
+            return NDVar(x, dims, name, {})
 
     def envelope(self, dim='time', name=None):
         """Compute the Hilbert envelope of a signal
@@ -4143,7 +4143,7 @@ class NDVar(Named):
             freq = Scalar('frequency', freqs, 'Hz')
         dims = self.dims[:axis] + (freq,) + self.dims[axis + 1:]
         info = _info.default_info('Amplitude', self.info)
-        return NDVar(x, dims, info, name or self.name)
+        return NDVar(x, dims, name or self.name, info)
 
     def flatnonzero(self):
         """Return indices where a 1-d NDVar is non-zero

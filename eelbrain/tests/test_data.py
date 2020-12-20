@@ -1492,7 +1492,7 @@ def test_ndvar_timeseries_methods():
     ds = datasets.get_uts(True)
     x = ds['utsnd']
     case, sensor, time = x.dims
-    xs = NDVar(x.x.swapaxes(1, 2), (case, time, sensor), x.info.copy(), x.name)
+    xs = NDVar(x.x.swapaxes(1, 2), (case, time, sensor), x.name, x.info.copy())
 
     # envelope
     env = x.envelope()
