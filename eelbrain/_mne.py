@@ -687,6 +687,39 @@ def rename_label(labels, old, new):
                 label.name = new_
 
 
+def resample_ico_source_space(
+        data: Union[NDVar, SourceSpace],
+        to: int,
+):
+    """Sub-sample ICO source space
+
+    Parameters
+    ----------
+    data
+        Data or source-space to downsample.
+    to
+        Grade to which to downsample (i.e., ``3`` to downsample to ``ico-3``
+        source space).
+    """
+    if isinstance(data, NDVar):
+        source = data.get_dim('source')
+    elif isinstance(data, SourceSpace):
+        source, data = data, None
+    else:
+        raise TypeError(data)
+    if source.grade <= to:
+        raise ValueError(f"to={to!r}: data alread of grade {source.grade}")
+    vertices_to = source_space_vertices('ico', to, source.subject, source.subjects_dir)
+    # restrict to vertices in source
+    vertices_to = [np.intersect1d(vs_from, vs_to, True) for vs_from, vs_to in zip(source.vertices, vertices_to)]
+    # index into source
+    index = np.hstack([np.in1d(vs_from, vs_to, True) for vs_from, vs_to in zip(source.vertices, vertices_to)])
+    if data is None:
+        return source[index]
+    else:
+        return data.sub(source=index)
+
+
 def combination_label(name, exp, labels, subjects_dir):
     """Create a label based on combination of existing labels
 

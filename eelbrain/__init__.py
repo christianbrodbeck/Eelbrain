@@ -19,7 +19,7 @@ from ._config import configure
 from ._celltable import Celltable
 from ._data_obj import Datalist, Dataset, Var, Factor, Interaction, Model, NDVar, Case, Categorial, Scalar, Sensor, SourceSpace, VolumeSourceSpace, UTS, Space, choose, combine, align, align1, cellname, shuffled_index
 from ._experiment import MneExperiment
-from ._mne import complete_source_space, labels_from_clusters, morph_source_space, xhemi
+from ._mne import complete_source_space, labels_from_clusters, morph_source_space, resample_ico_source_space, xhemi
 from ._ndvar import Butterworth, concatenate, convolve, correlation_coefficient, cross_correlation, cwt_morlet, dss, filter_data, find_intervals, find_peaks, frequency_response, gaussian, label_operator, maximum, minimum, neighbor_correlation, normalize_in_cells, powerlaw_noise, psd_welch, rename_dim, resample, segment, set_parc, set_time, set_tmin
 from ._stats.testnd import NDTest, MultiEffectNDTest
 from ._trf._boosting import boosting, BoostingResult
