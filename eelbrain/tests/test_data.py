@@ -311,17 +311,17 @@ def test_datalist():
     assert dl[3] == 3
     x = dl[:3]
     assert isinstance(x, Datalist)
-    assert_array_equal(x, list(range(3)))
-    assert_array_equal(dl[8:], list(range(8, 10)))
+    assert_array_equal(x, np.arange(3))
+    assert_array_equal(dl[8:], np.arange(8, 10))
     x = dl[np.arange(10) < 3]
     assert isinstance(x, Datalist)
-    assert_array_equal(x, list(range(3)))
-    assert_array_equal(dl[np.arange(3)], list(range(3)))
+    assert_array_equal(x, np.arange(3))
+    assert_array_equal(dl[np.arange(3)], np.arange(3))
 
     # __add__
     x = dl + list(range(10, 12))
     assert isinstance(x, Datalist)
-    assert_array_equal(x, list(range(12)))
+    assert_array_equal(x, np.arange(12))
 
     # aggregate
     x = dl.aggregate(Factor('ab', repeat=5))
@@ -344,7 +344,7 @@ def test_datalist():
     # deepcopy
     ac = deepcopy(a)
     assert ac is not a
-    assert_array_equal(ac, a)
+    assert_array_equal(ac == a, True)
     ac[0].append(1)
     assert_array_equal(ac == a, [False, True, True, True])
 
@@ -358,7 +358,7 @@ def test_datalist():
 
     # update
     a._update_listlist(b)
-    assert_array_equal(a, [[], [1], [2], [1]])
+    assert_array_equal(a == [[], [1], [2], [1]], True)
 
 
 def test_dataset():
