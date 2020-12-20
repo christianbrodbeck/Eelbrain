@@ -687,7 +687,7 @@ def sensor_dim(
         info = info_
 
     if picks is None:
-        picks = mne.pick_types(info, eeg=True, ref_meg=False, exclude=())
+        picks = mne.pick_types(info, meg=True, eeg=True, ref_meg=False, exclude=())
     else:
         picks = np.asarray(picks, int)
 
@@ -721,9 +721,9 @@ def sensor_dim(
     elif isinstance(connectivity, str):
         if connectivity == 'auto':
             ch_type = _guess_ndvar_data_type({'chs': chs})
-            c_matrix, names = mne.channels.find_ch_connectivity(info, ch_type)
+            c_matrix, names = mne.channels.find_ch_adjacency(info, ch_type)
         else:
-            c_matrix, names = mne.channels.read_ch_connectivity(connectivity)
+            c_matrix, names = mne.channels.read_ch_adjacency(connectivity)
             if connectivity.startswith('neuromag'):
                 vec_ids = {name[-1] for name in ch_names}
                 if len(vec_ids) > 1:
@@ -771,7 +771,7 @@ def variable_length_mne_epochs(ds, tmin, tmax, baseline=None, allow_truncation=F
         baseline = None
     raw = ds.info['raw']
     if picks is None and raw.info['bads']:
-        picks = mne.pick_types(raw.info, eeg=True, eog=True, ref_meg=False, exclude=[])
+        picks = mne.pick_types(raw.info, meg=True, eeg=True, eog=True, ref_meg=False, exclude=[])
     events = _mne_events(ds)
     out = []
     for i, tmax_i in enumerate(tmax):

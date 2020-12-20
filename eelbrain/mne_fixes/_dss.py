@@ -58,8 +58,7 @@ def dss(data, data_max_components=None, data_thresh=0,
     """
     if isinstance(data, (Epochs, EpochsArray)):
         data_cov = compute_covariance(data).data
-        bias_cov = np.cov(data.average().pick_types(eeg=True, ref_meg=False).
-                          data)
+        bias_cov = np.cov(data.average().pick_types(meg=True, eeg=True, ref_meg=False).data)
         if return_data:
             data = data.get_data()
     elif isinstance(data, np.ndarray):

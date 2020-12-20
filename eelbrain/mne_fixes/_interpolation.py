@@ -190,7 +190,7 @@ def make_interpolators(interp_cache, keys, bads, epochs):
     logger = logging.getLogger(__name__)
     logger.debug("Making %i of %i interpolators" % (len(make), len(keys)))
     for key in make:
-        picks_good = pick_types(epochs.info, ref_meg=False, exclude=key)
+        picks_good = pick_types(epochs.info, meg=True, ref_meg=False, exclude=key)
         picks_bad = pick_channels(epochs.ch_names, key)
         interpolation = map_meg_channels(epochs, picks_good, picks_bad, 'accurate')
         interp_cache[bads, key] = picks_good, picks_bad, interpolation

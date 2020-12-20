@@ -8818,7 +8818,7 @@ class Sensor(Dimension):
             sysname = montage
             obj = mne.channels.make_standard_montage(montage)
             try:
-                cm, names = mne.channels.read_ch_connectivity(montage)
+                cm, names = mne.channels.read_ch_adjacency(montage)
                 connectivity = _matrix_graph(cm)
             except ValueError:
                 connectivity = 'none'

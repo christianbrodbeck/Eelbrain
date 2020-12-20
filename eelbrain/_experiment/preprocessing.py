@@ -13,7 +13,7 @@ from .. import load
 from .._data_obj import NDVar, Sensor
 from .._exceptions import DefinitionError
 from .._io.fiff import KIT_NEIGHBORS
-from .._mne import MNE_VERSION, V0_19
+from ..mne_fixes._version import MNE_VERSION, V0_19
 from .._ndvar import filter_data
 from .._text import enumeration
 from .._utils import as_sequence, ask, user_activity
@@ -118,7 +118,7 @@ class RawSource(RawPipe):
           connection [i, j] with i < j. If the array's dtype is uint32,
           property checks are disabled to improve efficiency.
         - ``'grid'`` to use adjacency in the sensor names
-        - ``'auto'`` to use :func:`mne.channels.find_ch_connectivity`
+        - ``'auto'`` to use :func:`mne.channels.find_ch_adjacency`
 
         If unspecified, it is inferred from ``sysname`` if possible.
     ...
@@ -448,7 +448,7 @@ class RawFilterElliptic(CachedRawPipe):
         raw = self.source.load(subject, recording, preload=True)
         self.log.info("Raw %s: filtering for %s/%s...", self.name, subject, recording)
         # filter data
-        picks = mne.pick_types(raw.info, eeg=True, ref_meg=True)
+        picks = mne.pick_types(raw.info, meg=True, eeg=True, ref_meg=True)
         sos = self._sos(raw.info['sfreq'])
         for i in picks:
             raw._data[i] = signal.sosfilt(sos, raw._data[i])
@@ -542,7 +542,7 @@ class RawICA(CachedRawPipe):
 
     @staticmethod
     def _check_ica_channels(ica, raw):
-        picks = mne.pick_types(raw.info, eeg=True, ref_meg=False)
+        picks = mne.pick_types(raw.info, meg=True, eeg=True, ref_meg=False)
         return ica.ch_names == [raw.ch_names[i] for i in picks]
 
     def load_concatenated_source_raw(self, subject, session, visit):

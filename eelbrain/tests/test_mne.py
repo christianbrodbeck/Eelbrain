@@ -290,7 +290,7 @@ def test_source_space():
 
         # connectivity
         conn = ss.connectivity()
-        mne_conn = mne.spatial_src_connectivity(mne_src)
+        mne_conn = mne.spatial_src_adjacency(mne_src)
         assert_array_equal(conn, _matrix_graph(mne_conn))
 
         # sub-space connectivity

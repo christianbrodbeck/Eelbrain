@@ -2,7 +2,6 @@ from math import ceil, floor
 import os
 from pathlib import Path
 import re
-import packaging.version
 from typing import Union, List
 import warnings
 
@@ -24,8 +23,6 @@ from ._data_obj import NDVar, Space, SourceSpace, VolumeSourceSpace
 from ._utils.numpy_utils import index
 
 
-MNE_VERSION = packaging.version.parse(mne.__version__)
-V0_19 = packaging.version.parse('0.19')
 ICO_N_VERTICES = (12, 42, 162, 642, 2562, 10242, 40962)
 ICO_SLICE_SUBJECTS = ('fsaverage', 'fsaverage_sym')
 
