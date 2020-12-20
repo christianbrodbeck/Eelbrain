@@ -843,7 +843,7 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
 def normalize_in_cells(
         y: NDVarArg,
         for_dim: str,
-        in_cells: CategorialArg,
+        in_cells: CategorialArg = None,
         ds: Dataset = None,
 ):
     """Normalize data in cells to make it appropriate for ANOVA [1]
@@ -876,11 +876,15 @@ def normalize_in_cells(
     .. [1] McCarthy, G., & Wood, C. C. (1985). Scalp Distributions of Event-Related Potentials—An Ambiguity Associated with Analysis of Variance Models. Electroencephalography and Clinical Neurophysiology, 61, S226–S227. `10.1016/0013-4694(85)90858-2 <https://doi.org/10.1016/0013-4694(85)90858-2>`_
     """
     y = asndvar(y, ds=ds).copy()
-    x = ascategorial(in_cells, ds=ds)
-    for cell in x.cells:
-        index = x == cell
-        y[index] -= y[index].min(('case', for_dim))
-        y[index] /= y[index].max(('case', for_dim))
+    if in_cells is None:
+        y -= y.mean(('case', for_dim))
+        y /= y.std(('case', for_dim))
+    else:
+        x = ascategorial(in_cells, ds=ds)
+        for cell in x.cells:
+            index = x == cell
+            y[index] -= y[index].mean(('case', for_dim))
+            y[index] /= y[index].std(('case', for_dim))
     return y
 
 
