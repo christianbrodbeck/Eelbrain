@@ -7911,6 +7911,10 @@ class Dimension:
     def _generate_connectivity(self):
         raise NotImplementedError("Connectivity for %s dimension." % self.name)
 
+    def _melt_vars(self) -> dict:
+        "Variables to add when melting the dimension"
+        return {}
+
     def _subgraph(self, index=None):
         """Connectivity parameter for new Dimension instance
 
@@ -9749,6 +9753,12 @@ class SourceSpaceBase(Dimension):
         index = np.hstack([np.in1d(s, o) for s, o in zip(self.vertices, dim.vertices)])
         return self[index]
 
+    def _melt_vars(self) -> dict:
+        if self.parc is None:
+            return {}
+        else:
+            return {'parc': self.parc}
+
     @property
     def values(self):
         raise NotImplementedError
@@ -10053,6 +10063,9 @@ class SourceSpace(SourceSpaceBase):
         source = SourceSpace(vertices, self.subject, self.src, subjects_dir,
                              self.parc.name, name=self.name)
         return NDVar(np.concatenate(data), (source,))
+
+    def _melt_vars(self):
+        return {'hemi': self.hemi, **SourceSpaceBase._melt_vars(self)}
 
     def _read_surf(self, hemi, surf='orig'):
         path = Path(f'{self.subjects_dir}/{self.subject}/surf/{hemi}.{surf}')

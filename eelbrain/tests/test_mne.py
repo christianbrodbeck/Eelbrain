@@ -8,7 +8,7 @@ from nibabel.freesurfer import read_annot
 import pytest
 
 from eelbrain import (
-    datasets, load, testnd,
+    datasets, load, table, testnd,
     Dataset, Factor,
     concatenate, labels_from_clusters, morph_source_space, set_parc, xhemi)
 from eelbrain._data_obj import SourceSpace, asndvar, _matrix_graph
@@ -108,6 +108,11 @@ def test_source_estimate():
     src_m = src.sub(source='middletemporal-lh')
     src_conc = concatenate([src_s, src_m], 'source')
     assert_dataobj_equal(src_conc, src_sm)
+
+    # melt NDVar
+    dsa['src_sub'] = dsa['src'].sub(source=['lateraloccipital-lh', 'lateraloccipital-rh'])
+    mdsa = table.melt_ndvar('src_sub', 'source', ds=dsa)
+    assert_array_equal(mdsa['hemi'], Factor(['lh']*88*2 + ['rh']*87*2))
 
 
 @requires_mne_sample_data

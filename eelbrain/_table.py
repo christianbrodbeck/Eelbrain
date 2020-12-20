@@ -374,8 +374,12 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None, labels=None):
         dimname = dim
         dim = ndvar.get_dim(dimname)
 
+    dim_vars = dim._melt_vars()
     if cells is None:
         cells = dim._as_uv()
+    elif dim_vars:
+        index = dim._array_index(cells)
+        dim_vars = {k: v[index] for k, v in dim_vars.items()}
 
     if callable(labels):
         label = labels
@@ -408,7 +412,11 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None, labels=None):
         ds_[varname] = ndvar.sub(**{dimname: cell})
         ds_[dimname, :] = label(cell)
         dss.append(ds_)
-    return combine(dss)
+    out = combine(dss)
+    for k, v in dim_vars.items():
+        if k not in out:
+            out[k] = v.repeat(base_ds.n_cases)
+    return out
 
 
 def cast_to_ndvar(data, dim_values, match, sub=None, ds=None, dim=None,
