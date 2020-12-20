@@ -97,7 +97,6 @@ plot.Scatter('Realname', ..., ds=ds)  # -> 'Realname'
 """
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
 from copy import copy, deepcopy
 import fnmatch
 from functools import partial
@@ -111,7 +110,7 @@ import operator
 import os
 import re
 import string
-from typing import Collection, Optional, Union, Sequence, Tuple, List
+from typing import Any, Collection, Dict, Iterable, Iterator, Optional, Union, Sequence, Tuple, List
 from warnings import warn
 
 from matplotlib.ticker import FixedLocator, Formatter, FormatStrFormatter, FuncFormatter
@@ -2240,21 +2239,21 @@ class Factor(_Effect):
 
     Parameters
     ----------
-    x : iterator
+    x
         Sequence of Factor values (see also the ``labels`` kwarg).
-    name : str
+    name
         Name of the Factor.
-    random : bool
+    random
         Treat Factor as random factor (for ANOVA; default is False).
-    repeat : int | array of int
+    repeat
         repeat each element in ``x``, either a constant or a different number
         for each element.
-    tile : int
+    tile
         Repeat ``x`` as a whole ``tile`` many times.
-    labels : dict
+    labels
         An optional dictionary mapping values as they occur in ``x`` to the
         Factor's cell labels.
-    default : str
+    default
         Label to assign values not in ``label`` (by default this is
         ``str(value)``).
 
@@ -2293,7 +2292,16 @@ class Factor(_Effect):
         >>> Factor('iiiooo')
         Factor(['i', 'i', 'i', 'o', 'o', 'o'])
     """
-    def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels=None, default=None):
+    def __init__(
+            self,
+            x: Iterable[Any],
+            name: str = None,
+            random: bool = False,
+            repeat: Union[int, Sequence[int]] = 1,
+            tile: Union[int, Sequence[int]] = 1,
+            labels: Dict[Any, str] = None,
+            default: str = None,
+    ):
         if isinstance(x, Iterator):
             x = list(x)
         elif isdataobject(x):
@@ -5267,9 +5275,9 @@ class Datalist(list):
 
     Parameters
     ----------
-    items : sequence
+    items
         Content for the Datalist.
-    name : str
+    name
         Name of the Datalist.
     fmt : 'repr' | 'str' | 'strlist'
         How to format items when converting Datasets to tables (default 'repr'
@@ -5298,7 +5306,12 @@ class Datalist(list):
     """
     _fmt = 'repr'  # for backwards compatibility with old pickles
 
-    def __init__(self, items=None, name=None, fmt='repr'):
+    def __init__(
+            self,
+            items: Sequence[Any] = None,
+            name: str = None,
+            fmt: str = 'repr',
+    ):
         if fmt not in ('repr', 'str', 'strlist'):
             raise ValueError("fmt=%s" % repr(fmt))
 

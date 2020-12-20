@@ -845,8 +845,8 @@ def normalize_in_cells(
         for_dim: str,
         in_cells: CategorialArg = None,
         ds: Dataset = None,
-):
-    """Normalize data in cells to make it appropriate for ANOVA [1]
+) -> NDVar:
+    """Normalize data in cells to make it appropriate for ANOVA [1]_
 
     Parameters
     ----------
@@ -854,7 +854,7 @@ def normalize_in_cells(
         Dependent variable which should be normalized.
     for_dim
         Dimension which will be included as factor in the ANOVA (e.g.,
-        ``''sensor'``).
+        ``'sensor'``).
     in_cells
         Model defining the cells within which to normalize (normally the factors
         that will be used as fixed effects in the ANOVA).
@@ -864,6 +864,7 @@ def normalize_in_cells(
 
     Notes
     -----
+    This method normalizes data by *z*-scoring.
     A common example is a by sensor interaction effect in EEG data.
     ANOVA interaction effects assume additivity, but EEG topographies depend on
     source strength in a multiplicative fashion, which can lead to spurious
