@@ -7687,6 +7687,10 @@ class Dimension:
         "x for plot command"
         return np.arange(len(self))
 
+    def _axis_extent(self):
+        "Extent for plots with continuous x-axis"
+        return 0, len(self) - 1
+
     def _axis_im_extent(self):
         "Extent for im plots; needs to extend beyond end point locations"
         return -0.5, len(self) - 0.5
@@ -8391,6 +8395,9 @@ class Scalar(Dimension):
 
     def _axis_data(self):
         return self.values
+
+    def _axis_extent(self):
+        return self[0], self[-1]
 
     def _axis_format(self, scalar, label):
         if scalar:
@@ -10356,6 +10363,9 @@ class UTS(Dimension):
 
     def _axis_data(self):
         return self.times
+
+    def _axis_extent(self):
+        return self.tmin, self.tmax
 
     def _axis_im_extent(self):
         return self.tmin - 0.5 * self.tstep, self.tmax + 0.5 * self.tstep

@@ -3349,14 +3349,13 @@ class XAxisMixin:
             Plot displays an im, i.e. the axes limits need to extend beyond the
             dimension endpoints by half a step (default False).
         """
-        dims = tuple(e.get_dim(xdim) for e in chain(*epochs))
+        dims = (e.get_dim(xdim) for e in chain(*epochs))
         if im:
-            dim_extent = tuple(dim._axis_im_extent() for dim in dims)
-            xmin = min(e[0] for e in dim_extent)
-            xmax = max(e[1] for e in dim_extent)
+            dim_extent = [dim._axis_im_extent() for dim in dims]
         else:
-            xmin = min(dim[0] for dim in dims)
-            xmax = max(dim[-1] for dim in dims)
+            dim_extent = [dim._axis_extent() for dim in dims]
+        xmin = min(e[0] for e in dim_extent)
+        xmax = max(e[1] for e in dim_extent)
         XAxisMixin.__init__(self, xmin, xmax, xlim, axes)
 
     def get_xlim(self):

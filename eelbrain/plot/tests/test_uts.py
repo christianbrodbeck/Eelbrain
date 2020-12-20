@@ -6,7 +6,7 @@ from eelbrain.testing import hide_plots
 @hide_plots
 def test_uts_stat():
     "test plot.UTSStat plotting function"
-    ds = datasets.get_uts()
+    ds = datasets.get_uts(utsnd=True)
     p = plot.UTSStat('uts', ds=ds)
     p.close()
     p = plot.UTSStat('uts', 'A%B', ds=ds)
@@ -56,6 +56,11 @@ def test_uts_stat():
     p = plot.UTSStat('uts', 'A', ds=ds, mask=res.p > 0.05)
     p.close()
     p = plot.UTSStat('uts', 'A', ds=ds, mask=res_sub.p > 0.05)
+    p.close()
+
+    # x-axis other than time
+    p = plot.UTSStat("utsnd.sub(time=0)", 'A', ds=ds)
+    assert p.figure.axes[0].get_xlim() == (0, 4)
     p.close()
 
 
