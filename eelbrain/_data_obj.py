@@ -4566,7 +4566,7 @@ class NDVar(Named):
             mask = all_masked
             x = np.ma.masked_array(x, mask)
         dims = self.dims[:axis] + self.dims[axis + 1:]
-        return NDVar(x, dims, name or self.name, self.info)
+        return self._package_aggregated_output(x, dims, name, self.info)
 
     def ols(self, x, name=None):
         """Sample-wise ordinary least squares regressions
