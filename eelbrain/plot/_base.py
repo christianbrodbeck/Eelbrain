@@ -120,6 +120,10 @@ POINT = 0.013888888888898
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}
 
+# Types
+CMapArg = Any
+ColorArg = Any
+
 
 class PlotType(Enum):
     GENERAL = auto()
@@ -319,22 +323,26 @@ def find_uts_ax_vlim(layers, vlims={}):
     return bottom, top
 
 
-def find_fig_cmaps(epochs, cmap=None, alpha=False):
+def find_fig_cmaps(
+        epochs: Sequence[Sequence[NDVar]],
+        cmap: Union[dict, CMapArg] = None,
+        alpha: bool = False,
+) -> Dict[str, CMapArg]:
     """Find cmap for every meas
 
     Parameters
     ----------
-    epochs : list of list of NDVar
+    epochs
         All NDVars in the plot.
-    cmap : str
+    cmap
         Use this instead of the default for the first ``meas`` (for user
         argument).
-    alpha : bool
+    alpha
         If possible, use cmaps with alpha.
 
     Returns
     -------
-    cmaps : dict
+    cmaps
         {meas: cmap} dict for all meas.
     """
     if isinstance(cmap, dict):
@@ -1044,23 +1052,30 @@ class PlotData:
         return iter(self.plot_data)
 
     @classmethod
-    def from_args(cls, y, dims, xax=None, ds=None, sub=None):
+    def from_args(
+            cls,
+            y: Union[NDVarArg, Sequence[NDVarArg]],
+            dims: Union[int, Tuple[str, ...]],
+            xax: CategorialArg = None,
+            ds: Dataset = None,
+            sub: IndexArg = None,
+    ):
         """Unpack the first argument to top-level NDVar plotting functions
 
         Parameters
         ----------
-        y : NDVar | list
+        y
             the first argument.
-        dims : tuple of {str | None}
+        dims
             The dimensions needed for the plotting function. ``None`` to indicate
             arbitrary dimensions.
-        xax : None | categorial
+        xax
             A model to divide ``y`` into different axes. ``xax`` is currently
             applied on the first level, i.e., it assumes that ``y``'s first
             dimension is cases.
-        ds : Dataset
+        ds
             Dataset containing data objects which are provided as :class:`str`.
-        sub : None | str
+        sub
             Index selecting a subset of cases.
 
         Notes
@@ -2459,7 +2474,7 @@ class ImLayout(Layout):
             margins: dict = None,
             default_margins: dict = None,
             title: str = None,
-            axtitle: Union[bool, List] = False,  # for default spacing
+            axtitle: Union[bool, Sequence[str]] = False,  # for default spacing
             **kwargs,
     ):
         if axtitle is True:

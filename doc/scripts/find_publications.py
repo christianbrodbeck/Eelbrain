@@ -1,6 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
-Reuires https://github.com/maenu/scholar.py
+Reuires https://github.com/maenu/scholar.py::
+
+    pip install https://github.com/maenu/scholar.py/archive/master.zip
+
 """
 from argparse import ArgumentParser
 from pathlib import Path

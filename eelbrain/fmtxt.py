@@ -37,6 +37,8 @@ Functions for export:
    save_tex
 
 """
+from __future__ import annotations
+
 import base64
 import csv
 import datetime
@@ -1978,17 +1980,22 @@ class Section(FMText):
         self.append(figure)
         return figure
 
-    def add_image_figure(self, image, caption, alt=None):
+    def add_image_figure(
+            self,
+            image: Union[Image, np.ndarray, FMTextArg],
+            caption: FMTextArg,
+            alt: str = None,
+    ):
         """Add an image in a figure frame to the section
 
         Parameters
         ----------
-        image : Image | array | str
+        image
             Image, image array or target filename for the image. If a filename
             it should have the appropriate extension.
-        caption : FMText
+        caption
             Figure caption.
-        alt : None | str
+        alt
             Alternate text, placeholder in case the image can not be found
             (HTML `alt` tag).
 

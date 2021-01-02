@@ -1,6 +1,7 @@
 from copy import deepcopy
 import os
 import re
+from typing import Sequence, Union
 
 import mne
 
@@ -16,7 +17,10 @@ class Parcellation(Definition):
     kind = None  # used when comparing dict representations
     morph_from_fsaverage = False
 
-    def __init__(self, views=None):
+    def __init__(
+            self,
+            views: Union[str, Sequence[str]] = None,
+    ):
         self.views = views
 
     def _link(self, name):
@@ -76,7 +80,12 @@ class SubParc(Parcellation):
     DICT_ATTRS = ('kind', 'base', 'labels')
     kind = 'combination'
 
-    def __init__(self, base, labels, views=None):
+    def __init__(
+            self,
+            base: str,
+            labels: Sequence[str],
+            views: Union[str, Sequence[str]] = None,
+    ):
         Parcellation.__init__(self, views)
         self.base = base
         self.labels = tuple_arg(labels)
@@ -100,7 +109,7 @@ class CombinationParc(Parcellation):
 
     Parameters
     ----------
-    base : str
+    base
         The name of the parcellation that provides the input labels. A common
         ``base`` is the ``'aparc'`` parcellation [1]_.
     labels : dict  {str: str}
@@ -109,7 +118,7 @@ class CombinationParc(Parcellation):
         not contain the -hemi tags. In order to create a given label only on one
         hemisphere, add the -hemi tag in the name (not in the expression, e.g.,
         ``{'occipitotemporal-lh': "occipital + temporal"}``).
-    views : sequence of str
+    views
         Views shown in anatomical plots, e.g. ``("medial", "lateral")``.
 
     See Also
@@ -150,7 +159,12 @@ class CombinationParc(Parcellation):
     DICT_ATTRS = ('kind', 'base', 'labels')
     kind = 'combination'
 
-    def __init__(self, base, labels, views=None):
+    def __init__(
+            self,
+            base: str,
+            labels: dict,
+            views: Union[str, Sequence[str]] = None,
+    ):
         Parcellation.__init__(self, views)
         self.base = base
         self.labels = labels
@@ -169,7 +183,11 @@ class EelbrainParc(Parcellation):
     "Parcellation that has special make rule"
     kind = 'eelbrain_parc'
 
-    def __init__(self, morph_from_fsaverage, views=None):
+    def __init__(
+            self,
+            morph_from_fsaverage: bool,
+            views: Union[str, Sequence[str]] = None,
+    ):
         Parcellation.__init__(self, views)
         self.morph_from_fsaverage = morph_from_fsaverage
 
@@ -270,9 +288,13 @@ class LabelParc(Parcellation):
     kind = 'label_parc'
     make = True
 
-    def __init__(self, labels, views=None):
+    def __init__(
+            self,
+            labels: Sequence[str],
+            views: Union[str, Sequence[str]] = None,
+    ):
         Parcellation.__init__(self, views)
-        self.labels = labels if isinstance(labels, tuple) else tuple(labels)
+        self.labels = tuple_arg(labels)
 
     def _make(self, e, parc):
         labels = []
