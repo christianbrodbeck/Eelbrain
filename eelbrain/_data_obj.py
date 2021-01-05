@@ -4396,6 +4396,7 @@ class NDVar(Named):
         See Also
         --------
         .unmask : remove mask
+        .get_mask : retrieve mask
 
         Examples
         --------
@@ -4438,6 +4439,11 @@ class NDVar(Named):
         """Remove mask from a masked ``NDVar``"""
         x = self.x.data if isinstance(self.x, np.ma.masked_array) else self.x
         return NDVar(x, self.dims, name or self.name, self.info)
+
+    def get_mask(self, name: str = None) -> NDVar:
+        "Retriev the mask as :class:`NDVar`"
+        assert isinstance(self.x, np.ma.masked_array), "NDVar is not masked"
+        return NDVar(self.x.mask, self.dims, name or self.name, self.info)
 
     def max(self, dims=(), **regions):
         """Compute the maximum over given dimensions
