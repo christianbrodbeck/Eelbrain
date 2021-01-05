@@ -3,7 +3,7 @@ import logging
 
 from eelbrain import datasets, testnd
 from eelbrain.fmtxt import html
-from eelbrain._report import result_report
+from eelbrain.report._auto import result_report
 from eelbrain.testing import requires_framework_build
 
 

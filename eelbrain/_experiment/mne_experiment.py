@@ -22,11 +22,11 @@ import mne
 from mne.baseline import rescale
 from mne.minimum_norm import make_inverse_operator, apply_inverse, apply_inverse_epochs
 
-from .. import _report
 from .. import fmtxt
 from .. import gui
 from .. import load
 from .. import plot
+from .. import report as _report
 from .. import save
 from .. import table
 from .. import testnd
@@ -5000,8 +5000,7 @@ class MneExperiment(FileTree):
             res = rlm.tests[term]
             ds = rlm.coefficients_dataset(term, long=True)
             report.append(
-                _report.source_time_results(
-                    res, ds, None, include, surfer_kwargs, term, y='coeff'))
+                _report.source_time_results(res, ds, None, include, surfer_kwargs, term, y='coeff'))
 
         self._report_test_info(info_section, group_ds or ds, test_obj, res, data)
 
@@ -5104,8 +5103,7 @@ class MneExperiment(FileTree):
             if n < n_subjects:
                 title += ' (n=%i)' % n
                 caption += " Data from %i of %i subjects." % (n, n_subjects)
-            section.append(_report.time_results(
-                res_i, ds, colors, title, caption, merged_dist=res.merged_dist))
+            section.append(_report.time_results(res_i, ds, colors, title, caption, merged_dist=res.merged_dist))
 
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst, meta={'samples': samples})
