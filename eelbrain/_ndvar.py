@@ -861,7 +861,6 @@ def normalize_in_cells(
     ds
         Dataset containing the data.
 
-
     Notes
     -----
     This method normalizes data by *z*-scoring.
@@ -871,6 +870,9 @@ def normalize_in_cells(
     interaction effects. Normalizing in each cell of the ANOVA model controls
     for this (see [1] for details).
 
+    Examples
+    --------
+    See :ref:`exa-compare-topographies`.
 
     References
     ----------

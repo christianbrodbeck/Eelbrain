@@ -1,5 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
+.. _exa-cluster-based-mu:
+
 Cluster-based permutation t-test
 ================================
 

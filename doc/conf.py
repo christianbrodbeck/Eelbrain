@@ -108,6 +108,7 @@ example_order = NameOrder({
         'simulate-N400.py',
         'sensor-cluster-based-ttest.py',
         'sensor-two-stage.py',
+        'compare-topographies.py',
     ],
     'plots': [
         'boxplot.py',
