@@ -503,7 +503,10 @@ class Frame(SharedToolsMenu, FileFrame):
             axes.append(ax)
 
         if IS_OSX:
-            self.canvas.redraw(axes=axes)
+            try:
+                self.canvas.redraw(axes=axes)
+            except AttributeError:
+                self.canvas.draw()
         else:
             self.canvas.draw()  # FIXME
 
