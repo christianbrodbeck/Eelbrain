@@ -58,5 +58,4 @@ dependencies:
 - vtk >= 8.1.1
 - pysurfer >= 0.9
 - nilearn
-- pip:
-  - scanpydoc
+- pyface 7.1.0  # 7.2.0 causes RuntimeError: No traitsui.toolkits plugin could be loaded for wx
