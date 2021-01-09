@@ -308,12 +308,12 @@ class BoostingResult(PickleableDataClass):
                 continue
             values = [getattr(result, field.name) for result in results]
             if field.name == 't_run':
-                out['t_run'] = sum(values)
+                out['t_run'] = None if any(v is None for v in values) else sum(values)
                 continue
             if field.name == 'partition_results' and any(v is not None for v in values):
                 if not all(v is not None for v in values):
                     raise ValueError(f'partition_results avaiable for some but not all part-results')
-                new_values = [cls._concatenate(p_results) for p_results in zip(*values)]
+                new_values = [cls._eelbrain_concatenate(p_results) for p_results in zip(*values)]
             else:
                 new_values = _concatenate_values(values, dim, field.name)
             out[field.name] = new_values

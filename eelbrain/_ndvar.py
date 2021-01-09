@@ -8,7 +8,7 @@ operations that operate on more than one NDVar.
 from collections import defaultdict
 from copy import copy
 from functools import reduce
-from itertools import groupby, repeat
+from itertools import groupby, repeat, zip_longest
 from math import floor
 from numbers import Real
 import operator
@@ -161,18 +161,20 @@ def _concatenate_values(
             return concatenate(values, dim)
         elif not all((v == values[0]).all() for v in values[1:]):
             raise ValueError(f'Inconsistent values for {key}: {values}')
-        else:
-            return values[0]
-    elif isinstance(values[0], (tuple, list)) and isinstance(values[0][0], (NDVar, np.ndarray)):
+    elif isinstance(values[0], (tuple, list)):
         if isinstance(values[0][0], NDVar) and values[0][0].has_dim(dim):
             items = [concatenate(items, dim) for items in zip(*values)]
             if isinstance(values[0], tuple):
                 items = tuple(items)
             return items
-        elif not all(all((vji == v0i).all() for vji, v0i in zip(values_j, values[0])) for values_j in values[1:]):
-            raise ValueError(f'Inconsistent values for {key}: {values}')
-        else:
-            return values[0]
+        for values_i in zip_longest(*values):
+            value_i_0 = values_i[0]
+            if isinstance(value_i_0, (NDVar, np.ndarray)):
+                equal = ((value_i_j == value_i_0).all() for value_i_j in values_i[1:])
+            else:
+                equal = (value_i_j == value_i_0 for value_i_j in values_i[1:])
+            if not all(equal):
+                raise ValueError(f'Inconsistent values for {key}: {values}')
     elif len(list(groupby(values))) > 1:
         raise ValueError(f'Inconsistent values for {key}: {values}')
     return values[0]
