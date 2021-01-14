@@ -586,7 +586,7 @@ Parcellations (:attr:`parcs`)
 
 The parcellation determines how the brain surface is divided into regions.
 A number of standard parcellations are automatically defined (see
-:ref:`analysis-params-parc` below). Additional parcellations can be defined in
+:ref:`state-parc` below). Additional parcellations can be defined in
 the :attr:`MneExperiment.parcs` dictionary with ``{name: parc_definition}``
 entries. There are a couple of different ways in which parcellations can be
 defined, described below.
@@ -730,15 +730,14 @@ the targets, you would use
 ``equalize_evoked_count``
 -------------------------
 
-By default, the analysis uses all epoch marked as good during rejection. Set
-equalize_evoked_count='eq' to discard trials to make sure the same number of
-epochs goes into each cell of the model.
+By default, the analysis uses all epochs marked as good during rejection.
+Set ``equalize_evoked_count='eq'`` to discard trials to make sure the same number of epochs goes into each cell of the model (see ``equal_count`` parameter to :meth:`Dataset.aggregate`).
 
 '' (default)
     Use all epochs.
 'eq'
-    Make sure the same number of epochs is used in each cell by discarding
-    epochs.
+    Make sure the same number of epochs ``n`` is used in each cell by discarding epochs.
+    The first ``n`` epochs are used for each condition (assuming that habituation increases by condition).
 
 
 .. _state-cov:
@@ -784,7 +783,7 @@ the options. The inverse solution can be set directly using the appropriate
 string as in ``e.set(inv='fixed-1-MNE')``.
 
 
-.. _analysis-params-parc:
+.. _state-parc:
 
 ``parc``/``mask`` (parcellations)
 ---------------------------------

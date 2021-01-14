@@ -1,7 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """MneExperiment class to manage data from a experiment"""
 from collections import defaultdict
-from collections.abc import Sequence
 from copy import deepcopy
 from datetime import datetime
 from glob import glob
@@ -14,13 +13,13 @@ from pathlib import Path
 import re
 import shutil
 import time
-from typing import Union
+from typing import Any, Optional, Sequence, Tuple, Union
 import warnings
 
 import numpy as np
 import mne
 from mne.baseline import rescale
-from mne.minimum_norm import make_inverse_operator, apply_inverse, apply_inverse_epochs
+from mne.minimum_norm import make_inverse_operator, apply_inverse, apply_inverse_epochs, apply_inverse_raw
 
 from .. import fmtxt
 from .. import gui
@@ -30,7 +29,7 @@ from .. import report as _report
 from .. import save
 from .. import table
 from .. import testnd
-from .._data_obj import NDVarArg, Datalist, Dataset, Factor, Var, NDVar, SourceSpace, VolumeSourceSpace, align1, all_equal, assert_is_legal_dataset_key, combine
+from .._data_obj import CellArg, NDVarArg, Datalist, Dataset, Factor, Var, NDVar, SourceSpace, VolumeSourceSpace, align1, all_equal, assert_is_legal_dataset_key, combine
 from .._exceptions import DefinitionError, DimensionMismatchError, OldVersionError
 from .._info import BAD_CHANNELS
 from .._io.pickle import update_subjects_dir
@@ -92,6 +91,7 @@ inv_re = re.compile(r"^(free|fixed|loose\.\d+|vec)"  # orientation constraint
 
 
 # Argument types
+BaselineArg = Union[bool, Tuple[Optional[float], Optional[float]]]
 DataArg = Union[str, TestDims]
 PMinArg = Union[str, float, None]
 
@@ -2363,7 +2363,23 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_epochs_stc(self, subjects=None, baseline=True, src_baseline=False, cat=None, keep_epochs=False, morph=False, mask=False, data_raw=False, vardef=None, samplingrate=None, decim=None, pad=0, ndvar=True, reject=True, **state):
+    def load_epochs_stc(
+            self,
+            subjects: Union[str, int] = None,
+            baseline: BaselineArg = True,
+            src_baseline: BaselineArg = False,
+            cat: Sequence[CellArg] = None,
+            keep_epochs: Union[bool, str] = False,
+            morph: bool = False,
+            mask: Union[bool, str] = False,
+            data_raw: bool = False,
+            vardef: str = None,
+            samplingrate: int = None,
+            decim: int = None,
+            pad: float = 0,
+            ndvar: bool = True,
+            reject: Union[bool, str] = True,
+            **state):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -2376,38 +2392,40 @@ class MneExperiment(FileTree):
             Warning: loading single trial data for multiple subjects at once
             uses a lot of memory, which can lead to a periodically unresponsive
             terminal).
-        baseline : bool | tuple
+        baseline
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
-        src_baseline : bool | tuple
+        src_baseline
             Apply baseline correction using this period in source space.
             True to use the epoch's baseline specification. The default is to
             not apply baseline correction.
-        cat : sequence of cell-names
+        cat
             Only load data for these cells (cells of model).
         keep_epochs : bool | 'ndvar' | 'both'
             Keep the sensor space data in the Dataset that is returned (default
             False; True to keep :class:`mne.Epochs` object; ``'ndvar'`` to keep
             :class:`NDVar`; ``'both'`` to keep both).
-        morph : bool
+        morph
             Morph the source estimates to the common_brain (default False).
-        mask : bool | str
-            Discard data that is labelled 'unknown' by the parcellation (only
-            applies to NDVars, default False).
-        data_raw : bool
+        mask
+            Discard data that is labelled ``unknown`` by the parcellation.
+            Parcellation name (:class:`str`) to specify a parcellation,
+            ``True`` to use the :ref:`state-parc`` state parameter.
+            Only applies when ``ndvar=True``, default ``False``.
+        data_raw
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
             (default False).
-        vardef : str
+        vardef
             Name of a test defining additional variables.
-        samplingrate : int
+        samplingrate
             Samplingrate in Hz for the analysis (default is specified in epoch
             definition).
-        decim : int
+        decim
             Data decimation factor (alternative to ``samplingrate``).
-        pad : scalar
+        pad
             Pad the epoch's data by extending ``tmin`` and ``tmax`` (specify
             ``pad`` time in seconds).
-        ndvar : bool
+        ndvar
             Add the source estimates as :class:`NDVar` named "src" instead of a list of
             :class:`mne.SourceEstimate` objects named "stc" (default True).
         reject : bool | 'keep'
@@ -2741,7 +2759,14 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_epochs_stf(self, subjects=None, baseline=True, mask=True, morph=False, keep_stc=False, **state):
+    def load_epochs_stf(
+            self,
+            subjects: Union[str, int] = None,
+            baseline: BaselineArg = True,
+            mask: Union[bool, str] = True,
+            morph: bool = False,
+            keep_stc: bool = False,
+            **state):
         """Load frequency space single trial data
 
         Parameters
@@ -2751,15 +2776,17 @@ class MneExperiment(FileTree):
             name or a group name such as ``'all'``. ``1`` to use the current
             subject; ``-1`` for the current group. Default is current subject
             (or group if ``group`` is specified).
-        baseline : bool | tuple
+        baseline
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
-        mask : bool | str
-            Discard data that is labelled 'unknown' by the parcellation (only
-            applies to NDVars, default True).
-        morph : bool
+        mask
+            Discard data that is labelled ``unknown`` by the parcellation.
+            Parcellation name (:class:`str`) to specify a parcellation,
+            ``True`` to use the :ref:`state-parc`` state parameter.
+            Only applies when ``ndvar=True``, default ``True``.
+        morph
             Morph the source estimates to the common_brain (default False).
-        keep_stc : bool
+        keep_stc
             Keep the source timecourse data in the Dataset that is returned
             (default False).
         ...
@@ -2771,16 +2798,21 @@ class MneExperiment(FileTree):
         # apply morlet transformation
         freq_params = self.freqs[self.get('freq')]
         freq_range = freq_params['frequencies']
-        ds['stf'] = cwt_morlet(ds[name], freq_range, use_fft=True,
-                               n_cycles=freq_params['n_cycles'],
-                               zero_mean=False, out='magnitude')
+        ds['stf'] = cwt_morlet(ds[name], freq_range, use_fft=True, n_cycles=freq_params['n_cycles'], zero_mean=False, out='magnitude')
 
         if not keep_stc:
             del ds[name]
 
         return ds
 
-    def load_evoked_stf(self, subjects=None, baseline=True, mask=True, morph=False, keep_stc=False, **state):
+    def load_evoked_stf(
+            self,
+            subjects: Union[str, int] = None,
+            baseline: BaselineArg = True,
+            mask: Union[bool, str] = True,
+            morph: bool = False,
+            keep_stc: bool = False,
+            **state):
         """Load frequency space evoked data
 
         Parameters
@@ -2790,15 +2822,17 @@ class MneExperiment(FileTree):
             name or a group name such as ``'all'``. ``1`` to use the current
             subject; ``-1`` for the current group. Default is current subject
             (or group if ``group`` is specified).
-        baseline : bool | tuple
+        baseline
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
-        mask : bool | str
-            Whether to just load the sources from the parcellation that are not
-            defined as "unknown". Default is True.
-        morph : bool
+        mask
+            Discard data that is labelled ``unknown`` by the parcellation.
+            Parcellation name (:class:`str`) to specify a parcellation,
+            ``True`` to use the :ref:`state-parc`` state parameter.
+            Only applies when ``ndvar=True``, default ``True``.
+        morph
             Morph the source estimates to the common_brain (default False).
-        keep_stc : bool
+        keep_stc
             Keep the source timecourse data in the Dataset that is returned
             (default False).
         ...
@@ -2810,19 +2844,28 @@ class MneExperiment(FileTree):
         # apply morlet transformation
         freq_params = self.freqs[self.get('freq')]
         freq_range = freq_params['frequencies']
-        ds['stf'] = cwt_morlet(ds[name], freq_range, use_fft=True,
-                               n_cycles=freq_params['n_cycles'],
-                               zero_mean=False, out='magnitude')
+        ds['stf'] = cwt_morlet(ds[name], freq_range, use_fft=True, n_cycles=freq_params['n_cycles'], zero_mean=False, out='magnitude')
 
         if not keep_stc:
             del ds[name]
 
         return ds
 
-    def load_evoked_stc(self, subjects=None, baseline=True, src_baseline=False,
-                        cat=None, keep_evoked=False, morph=False, mask=False,
-                        data_raw=False, vardef=None, samplingrate=None, decim=None, ndvar=True,
-                        **state):
+    def load_evoked_stc(
+            self,
+            subjects: Union[str, int] = None,
+            baseline: BaselineArg = True,
+            src_baseline: BaselineArg = False,
+            cat: Sequence[CellArg] = None,
+            keep_evoked: bool = False,
+            morph: bool = False,
+            mask: Union[bool, str] = False,
+            data_raw: bool = False,
+            vardef: str = None,
+            samplingrate: int = None,
+            decim: int = None,
+            ndvar: bool = True,
+            **state):
         """Load evoked source estimates.
 
         Parameters
@@ -2832,35 +2875,36 @@ class MneExperiment(FileTree):
             name or a group name such as ``'all'``. ``1`` to use the current
             subject; ``-1`` for the current group. Default is current subject
             (or group if ``group`` is specified).
-        baseline : bool | tuple
+        baseline
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
-        src_baseline : bool | tuple
+        src_baseline
             Apply baseline correction using this period in source space.
             True to use the epoch's baseline specification. The default is to
             not apply baseline correction.
-        cat : sequence of cell-names
+        cat
             Only load data for these cells (cells of model).
-        keep_evoked : bool
+        keep_evoked
             Keep the sensor space data in the Dataset that is returned (default
             False).
-        morph : bool
+        morph
             Morph the source estimates to the common_brain (default False).
-        mask : bool | str
-            Discard data that is labelled 'unknown' by the parcellation (only
-            applies to NDVars, default False). Can be set to a parcellation
-            name or ``True`` to use the current parcellation.
-        data_raw : bool
+        mask
+            Discard data that is labelled ``unknown`` by the parcellation.
+            Parcellation name (:class:`str`) to specify a parcellation,
+            ``True`` to use the :ref:`state-parc`` state parameter.
+            Only applies when ``ndvar=True``, default ``False``.
+        data_raw
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
             (default False).
-        vardef : str
+        vardef
             Name of a test defining additional variables.
-        samplingrate : int
+        samplingrate
             Samplingrate in Hz for the analysis (default is specified in epoch
             definition).
-        decim : int
+        decim
             Data decimation factor (alternative to ``samplingrate``).
-        ndvar : bool
+        ndvar
             Add the source estimates as NDVar named "src" instead of a list of
             :class:`mne.SourceEstimate` objects named "stc" (default True).
         ...
@@ -2960,7 +3004,19 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_induced_stc(self, subjects=None, frequencies=None, n_cycles=None, pad=0.250, baseline=True, cat=None, morph=False, mask=False, vardef=None, decim=1, **state):
+    def load_induced_stc(
+            self,
+            subjects: Union[str, int] = None,
+            frequencies: Union[float, Sequence[float]] = None,
+            n_cycles: Union[float, Sequence[float]] = None,
+            pad: float = 0.250,
+            baseline: BaselineArg = True,
+            cat: Sequence[CellArg] = None,
+            morph: bool = False,
+            mask: Union[bool, str] = False,
+            vardef: str = None,
+            decim: int = 1,
+            **state):
         """Morlet wavelet induced power and phase in source space.
 
         Parameters
@@ -2970,27 +3026,28 @@ class MneExperiment(FileTree):
             name or a group name such as ``'all'``. ``1`` to use the current
             subject; ``-1`` for the current group. Default is current subject
             (or group if ``group`` is specified).
-        frequencies : array of scalar
+        frequencies
             Frequencies for which to compute induced activity.
-        n_cycles : scalar | array of scalar
+        n_cycles
             Number of cycles in each wavelet. Fixed number or one per frequency.
-        pad : scalar
+        pad
             Pad the epochs data to avoid edge effects in wavelet representation
             (specified in seconds; default 0.250).
-        baseline : bool | tuple
+        baseline
             Baseline for the epochs, ``True`` to use the epoch's baseline
             specification (default).
-        cat : sequence of cell-names
+        cat
             Only load data for these cells (cells of model).
-        morph : bool
+        morph
             Morph the source estimates to the common_brain (default False).
-        mask : bool | str
-            Discard data that is labelled 'unknown' by the parcellation (default
-            False). Can be set to a parcellation name or ``True`` to use the
-            current parcellation.
-        vardef : str
+        mask
+            Discard data that is labelled ``unknown`` by the parcellation.
+            Parcellation name (:class:`str`) to specify a parcellation,
+            ``True`` to use the :ref:`state-parc`` state parameter.
+            Only applies when ``ndvar=True``, default ``False``.
+        vardef
             Name of a test defining additional variables.
-        decim : int
+        decim
             Decimate time-frequency representation (cumulative with epoch
             decimation factor).
         ...
@@ -3039,21 +3096,28 @@ class MneExperiment(FileTree):
         ds['power'] = cwt
         return ds.aggregate(model, drop_bad=True)
 
-    def load_fwd(self, surf_ori=True, ndvar=False, mask=None, **state):
+    def load_fwd(
+            self,
+            surf_ori: bool = True,
+            ndvar: bool = False,
+            mask: bool = False,
+            **state):
         """Load the forward solution
 
         Parameters
         ----------
-        surf_ori : bool
+        surf_ori
             Force surface orientation (default True; only applies if
             ``ndvar=False``, :class:`NDVar` forward operators are alsways
             surface based).
-        ndvar : bool
+        ndvar
             Return forward solution as :class:`NDVar` (default is
             :class:`mne.forward.Forward`).
-        mask : str | bool
-            Remove source labelled "unknown". Can be parcellation name or True,
-            in which case the current parcellation is used.
+        mask
+            Discard data that is labelled ``unknown`` by the parcellation.
+            Parcellation name (:class:`str`) to specify a parcellation,
+            ``True`` to use the :ref:`state-parc`` state parameter.
+            Only applies when ``ndvar=True``, default ``False``.
         ...
             State parameters.
 
@@ -3115,7 +3179,12 @@ class MneExperiment(FileTree):
                 pipe = pipe.source
         return pipe
 
-    def load_inv(self, fiff=None, ndvar=False, mask=None, **state):
+    def load_inv(
+            self,
+            fiff: Any = None,
+            ndvar: bool = False,
+            mask: Union[bool, str] = False,
+            **state):
         """Load the inverse operator
 
         Parameters
@@ -3123,14 +3192,16 @@ class MneExperiment(FileTree):
         fiff : Raw | Epochs | Evoked | ...
             Object which provides the mne info dictionary (default: load the
             raw file).
-        ndvar : bool
+        ndvar
             Return the inverse operator as NDVar (default is 
             :class:`mne.minimum_norm.InverseOperator`). The NDVar representation 
             does not take into account any direction selectivity (loose/free 
             orientation) or noise normalization properties.
-        mask : str | bool
-            Remove source labelled "unknown". Can be parcellation name or True,
-            in which case the current parcellation is used.
+        mask
+            Discard data that is labelled ``unknown`` by the parcellation.
+            Parcellation name (:class:`str`) to specify a parcellation,
+            ``True`` to use the :ref:`state-parc`` state parameter.
+            Only applies when ``ndvar=True``, default ``False``.
         ...
             Applicable :ref:`state-parameters`:
 
@@ -3281,23 +3352,30 @@ class MneExperiment(FileTree):
             data = self.load_raw(ndvar=True, **state)
         return neighbor_correlation(data)
 
-    def load_raw(self, add_bads=True, preload=False, ndvar=False, samplingrate=None, decim=None, **kwargs):
+    def load_raw(
+            self,
+            add_bads: Union[bool, Sequence[str]] = True,
+            preload: bool = False,
+            ndvar: bool = False,
+            samplingrate: int = None,
+            decim: int = None,
+            **kwargs):
         """
         Load a raw file as mne Raw object.
 
         Parameters
         ----------
-        add_bads : bool | list
+        add_bads
             Add bad channel information to the bad channels text file (default
-            True).
-        preload : bool
-            Load raw data into memory (default False; see
+            ``True``).
+        preload
+            Load raw data into memory (default ``False``; see
             :func:`mne.io.read_raw_fif` parameter).
-        ndvar : bool
-            Load as NDVar instead of mne Raw object (default False).
-        samplingrate : int
+        ndvar
+            Load as NDVar instead of mne Raw object (default ``False``).
+        samplingrate
             Samplingrate in Hz for the analysis.
-        decim : int
+        decim
             Decimate data (default 1, i.e. no decimation; value other than 1
             implies ``preload=True``)
         ...
@@ -6040,6 +6118,13 @@ class MneExperiment(FileTree):
         For details, see the MNE  documentation on the `inverse operator
         <https://mne.tools/stable/overview/implementation.html?
         highlight=lambda#the-linear-inverse-operator>`_
+
+        .. warning::
+            Free and loose orientation inverse solutions have a non-zero
+            expected value. In that case, when source localizing condition
+            averages, the number of trials affects the expected value.
+            For designs with unequal number of trials per cell,
+            be sure to use :ref:`state-equalize_evoked_count` appropriately.
 
         References
         ----------
