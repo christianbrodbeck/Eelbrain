@@ -3359,6 +3359,8 @@ class MneExperiment(FileTree):
             ndvar: bool = False,
             samplingrate: int = None,
             decim: int = None,
+            tstart: float = None,
+            tstop: float = None,
             **kwargs):
         """
         Load a raw file as mne Raw object.
@@ -3378,6 +3380,11 @@ class MneExperiment(FileTree):
         decim
             Decimate data (default 1, i.e. no decimation; value other than 1
             implies ``preload=True``)
+        tstart
+            Crop the raw data. After cropping the time axis will be reset, i.e.,
+            the ``tstart`` will be set to ``t = 0``.
+        tstop
+            Crop the raw data.
         ...
             Applicable :ref:`state-parameters`:
 
@@ -3394,6 +3401,8 @@ class MneExperiment(FileTree):
         if decim and decim > 1:
             assert samplingrate is None, f"samplingrate and decim can't both be specified"
             samplingrate = int(round(raw.info['sfreq'] / decim))
+        if tstart or tstop:
+            raw = raw.crop(tstart, tstop, False)
         if samplingrate or preload:
             raw.load_data()
         if samplingrate:

@@ -19,7 +19,7 @@ dependencies:
 - pillow
 - psutil
 # mne-python
-- mne >= 0.17
+- mne >= 0.19
 - h5py
 - pandas
 - scikit-learn
