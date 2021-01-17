@@ -3285,8 +3285,7 @@ class MneExperiment(FileTree):
         elif not label.endswith(('-lh', '-rh')):
             return labels[label + '-lh'] + labels[label + '-rh']
         else:
-            raise ValueError("Label %r could not be found in parc %r."
-                             % (label, self.get('parc')))
+            raise ValueError(f"Label {label!r} could not be found in parc {self.get('parc')!r}.")
 
     def _load_labels(self, regexp=None, **kwargs):
         """Load labels from an annotation file."""

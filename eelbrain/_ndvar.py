@@ -63,26 +63,33 @@ class Alignement:
         self.all = self.y_only + x_dims
 
 
-def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
+def concatenate(
+        ndvars: Union[NDVar, Sequence[NDVar]],
+        dim: Union[str, Dimension] = 'time',
+        name: str = None,
+        tmin: Union[float, str] = 0,
+        info: dict = None,
+        ravel: str = None,
+):
     """Concatenate multiple NDVars
 
     Parameters
     ----------
-    ndvars : NDVar | sequence of NDVar
+    ndvars
         NDVars to be concatenated. Can also be a single 2d NDVar to concatenate
         the levels of the dimension other than ``dim``.
-    dim : str | Dimension
+    dim
         Either a string specifying an existsing dimension along which to
         concatenate, or a Dimension object to create a new dimension (default
         ``'time'``).
-    name : str (optional)
+    name
         Name the NDVar holding the result.
-    tmin : scalar | 'first'
+    tmin : float | 'first'
         Time axis start, only applies when ``dim == 'time'``; default is 0.
         Set ``tmin='first'`` to use ``tmin`` of ``ndvars[0]``.
-    info : dict
+    info
         Info for the returned ``ndvar``.
-    ravel : str
+    ravel
         If ``ndvars`` is a single NDVar with more than 2 dimensions, ``ravel``
         specifies which dimension to unravel for concatenation.
 
@@ -103,13 +110,11 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
         ndvars = [ndvars.sub(**{ravel: v}) for v in ndvars.get_dim(ravel)]
     elif ravel is not None:
         raise TypeError(f'ravel={ravel!r}: parameter ony applies when ndvars is an NDVar')
-
-    try:
-        ndvar = ndvars[0]
-    except TypeError:
+    else:
         ndvars = list(ndvars)
-        ndvar = ndvars[0]
+    ndvar = ndvars[0]
 
+    # Allow objects to implement concatenation: used by BoostingResult
     if hasattr(ndvar, '_eelbrain_concatenate'):
         return ndvar._eelbrain_concatenate(ndvars, dim)
 
