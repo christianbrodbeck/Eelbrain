@@ -108,6 +108,7 @@ def test_source_estimate():
     src_m = src.sub(source='middletemporal-lh')
     src_conc = concatenate([src_s, src_m], 'source')
     assert_dataobj_equal(src_conc, src_sm)
+    assert_array_equal(src_conc.source.parc, src_sm.source.parc)
 
     # melt NDVar
     dsa['src_sub'] = dsa['src'].sub(source=['lateraloccipital-lh', 'lateraloccipital-rh'])

@@ -9925,13 +9925,19 @@ class SourceSpace(SourceSpaceBase):
         vertices = [np.concatenate(vertices) for vertices in zip(*dims_vertices)]
         if any(len(np.unique(v)) < len(v) for v in vertices):
             raise ValueError("Can't concatenate SourceSpace that overlap")
-        vertices = [np.sort(v) for v in vertices]
+        argsorts = [np.argsort(v) for v in vertices]
+        vertices = [v[argsort] for v, argsort in zip(vertices, argsorts)]
         # parc
-        lh, rh = dims
-        if lh.parc is None or rh.parc is None:
+        parcs = [dim.parc for dim in dims]
+        if any(parc is None for parc in parcs):
             parc = None
         else:
-            parc = combine((lh.parc, rh.parc))
+            parc = combine(parcs)
+            i0 = 0
+            for argsort in argsorts:
+                i1 = i0 + len(argsort)
+                parc[i0:i1] = parc[i0+argsort]
+                i0 = i1
         return SourceSpace(vertices, subject, src, subjects_dir, parc, name=name, filename=filename)
 
     def _link_midline(self, maxdist=0.015):
