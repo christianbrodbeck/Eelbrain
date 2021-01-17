@@ -2483,32 +2483,16 @@ class MneExperiment(FileTree):
 
         ds = self.load_epochs(subject, baseline, sns_ndvar, reject=reject, cat=cat, samplingrate=samplingrate, decim=decim, pad=pad, data_raw=data_raw, vardef=vardef)
 
-        # load inv
         if src_baseline is True:
             src_baseline = epoch.baseline
-        parc = self.get('parc') or None
-        if isinstance(mask, str) and parc != mask:
-            parc = mask
-            self.set(parc=mask)
-        # make sure annotation exists
-        if parc:
-            self.make_annot()
 
         is_variable_time = isinstance(ds['epochs'], Datalist)
         if is_variable_time:
             epoch_list = ds['epochs']
         else:
             epoch_list = [ds['epochs']]
-        inv = self.load_inv(epoch_list[0])
 
-        # determine whether initial source-space can be restricted
-        mri_sdir = self.get('mri-sdir')
-        mrisubject = self.get('mrisubject')
-        is_scaled = find_source_subject(mrisubject, mri_sdir)
-        if mask and (is_scaled or not morph):
-            label = label_from_annot(inv['src'], mrisubject, mri_sdir, parc)
-        else:
-            label = None
+        inv, label, mri_sdir, mrisubject, is_scaled, parc = self._prepare_inv(epoch_list[0], mask, morph)
         method, make_kw, apply_kw = self._inv_params()
         stc_list = [apply_inverse_epochs(epoch, inv, label=label, **apply_kw) for epoch in epoch_list]
         if is_variable_time:
@@ -3255,6 +3239,34 @@ class MneExperiment(FileTree):
             raise NotImplementedError("Masking for inverse operator")
         return inv
 
+    def _prepare_inv(
+            self,
+            fiff: Any,
+            mask: Union[bool, str],
+            morph: bool,
+    ):
+        # load inv
+        parc = self.get('parc') or None
+        if isinstance(mask, str) and parc != mask:
+            parc = mask
+            self.set(parc=mask)
+        # make sure annotation exists
+        if parc:
+            self.make_annot()
+
+        inv = self.load_inv(fiff)
+
+        # determine whether initial source-space can be restricted
+        mri_sdir = self.get('mri-sdir')
+        mrisubject = self.get('mrisubject')
+        is_scaled = find_source_subject(mrisubject, mri_sdir)
+        if mask and (is_scaled or not morph):
+            label = label_from_annot(inv['src'], mrisubject, mri_sdir, parc)
+        else:
+            label = None
+
+        return inv, label, mri_sdir, mrisubject, is_scaled, parc
+
     def load_label(self, label, **kwargs):
         """Retrieve a label as mne Label object
 
@@ -3422,6 +3434,58 @@ class MneExperiment(FileTree):
             raw = load.fiff.raw_ndvar(raw, sysname=sysname, connectivity=connectivity)
 
         return raw
+
+    def load_raw_stc(
+            self,
+            mask: Union[bool, str] = False,
+            morph: bool = False,
+            ndvar: bool = True,
+            samplingrate: int = None,
+            tstart: float = None,
+            tstop: float = None,
+            **kwargs):
+        """
+        Load a raw file as mne Raw object.
+
+        Parameters
+        ----------
+        mask
+            Discard data that is labelled ``unknown`` by the parcellation.
+            Parcellation name (:class:`str`) to specify a parcellation,
+            ``True`` to use the :ref:`state-parc`` state parameter.
+            Only applies when ``ndvar=True``, default ``False``.
+        morph
+            Morph the source estimates to the common_brain (default False).
+        ndvar
+            Load as NDVar instead of mne Raw object (default ``True``).
+        samplingrate
+            Samplingrate in Hz for the analysis.
+        tstart
+            Crop the raw data. After cropping the time axis will be reset, i.e.,
+            the ``tstart`` will be set to ``t = 0``.
+        tstop
+            Crop the raw data.
+        ...
+            Applicable :ref:`state-parameters`:
+
+             - :ref:`state-session`: from which session to load raw data
+             - :ref:`state-raw`: preprocessing pipeline
+
+        Notes
+        -----
+        Bad channels defined in the raw file itself are ignored in favor of the
+        bad channels in the bad channels file.
+        """
+        raw = self.load_raw(samplingrate=samplingrate, tstart=tstart, tstop=tstop, **kwargs)
+        inv, label, mri_sdir, mrisubject, is_scaled, parc = self._prepare_inv(raw, mask, morph)
+        method, make_kw, apply_kw = self._inv_params()
+        stc = apply_inverse_raw(raw, inv, label=label, **apply_kw)
+
+        if ndvar:
+            src = self.get('src')
+            return load.fiff.stc_ndvar(stc, mrisubject, src, mri_sdir, method, make_kw.get('fixed', False), parc=parc, connectivity=self.get('connectivity'))
+        else:
+            return stc
 
     def _load_result_plotter(self, test, tstart, tstop, pmin, parc=None,
                              mask=None, samples=10000, data='source',
