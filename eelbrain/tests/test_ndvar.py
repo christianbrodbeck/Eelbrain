@@ -4,12 +4,7 @@ from numpy.testing import assert_array_equal, assert_allclose
 import pytest
 from scipy import signal
 
-from eelbrain import (
-    NDVar, Case, Scalar, UTS, datasets,
-    concatenate, convolve, correlation_coefficient, cross_correlation,
-    cwt_morlet, find_intervals, find_peaks, frequency_response, gaussian, psd_welch,
-    resample, set_time,
-)
+from eelbrain import NDVar, Case, Scalar, UTS, datasets, concatenate, convolve, correlation_coefficient, cross_correlation, cwt_morlet, find_intervals, find_peaks, frequency_response, gaussian, normalize_in_cells, psd_welch, resample, set_time
 from eelbrain.testing import assert_dataobj_equal, get_ndvar
 
 
@@ -189,6 +184,32 @@ def test_mask():
     assert_array_equal(y_masked.x.mask[:, :, 70:], True)
     assert_array_equal(y_masked.x.mask[:, :, 30:70], False)
     assert_array_equal(y_masked.x.mask[:, :, :30], True)
+
+
+def test_normalize_in_cells():
+    ds = datasets.get_uts(True)
+    ab = ds.eval("A % B")
+    indices = [ab == cell for cell in ab.cells]
+    # z-score
+    ds['utsnd_n'] = normalize_in_cells('utsnd', 'sensor', ds=ds)
+    y_mean = ds['utsnd_n'].mean('case')
+    assert_allclose(y_mean.mean('sensor'), 0, atol=1e-10)
+    assert_allclose(y_mean.std('sensor'), 1)
+    ds['utsnd_n'] = normalize_in_cells('utsnd', 'sensor', 'A % B', ds=ds)
+    for index in indices:
+        y_mean = ds[index, 'utsnd_n'].mean('case')
+        assert_allclose(y_mean.mean('sensor'), 0, atol=1e-10)
+        assert_allclose(y_mean.std('sensor'), 1)
+    # range
+    ds['utsnd_n'] = normalize_in_cells('utsnd', 'sensor', ds=ds, method='range')
+    y_mean = ds['utsnd_n'].mean('case')
+    assert_allclose(y_mean.min('sensor'), 0, atol=1e-10)
+    assert_allclose(y_mean.max('sensor'), 1)
+    ds['utsnd_n'] = normalize_in_cells('utsnd', 'sensor', 'A % B', ds=ds, method='range')
+    for index in indices:
+        y_mean = ds[index, 'utsnd_n'].mean('case')
+        assert_allclose(y_mean.min('sensor'), 0, atol=1e-10)
+        assert_allclose(y_mean.max('sensor'), 1)
 
 
 def test_resample():

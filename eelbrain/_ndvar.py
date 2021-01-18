@@ -852,6 +852,7 @@ def normalize_in_cells(
         for_dim: str,
         in_cells: CategorialArg = None,
         ds: Dataset = None,
+        method: str = 'z-score',
 ) -> NDVar:
     """Normalize data in cells to make it appropriate for ANOVA [1]_
 
@@ -867,6 +868,14 @@ def normalize_in_cells(
         that will be used as fixed effects in the ANOVA).
     ds
         Dataset containing the data.
+    method : 'z-score' | 'range'
+        Method used for normalizing the data:
+        ``z-score``: for the data in each cell, subtract the mean and divide by
+        the standard deviation (mean and standard deviation are computed after
+        averaging across cases in each cell)
+        ``range``: for the data in each cell, subtract minimum and then divide
+        by the maximum (i.e., change the range of the data to ``(0, 1)``; range
+        is computed after averaging across cases in each cell).
 
     Notes
     -----
@@ -885,16 +894,24 @@ def normalize_in_cells(
     ----------
     .. [1] McCarthy, G., & Wood, C. C. (1985). Scalp Distributions of Event-Related Potentials—An Ambiguity Associated with Analysis of Variance Models. Electroencephalography and Clinical Neurophysiology, 61, S226–S227. `10.1016/0013-4694(85)90858-2 <https://doi.org/10.1016/0013-4694(85)90858-2>`_
     """
-    y = asndvar(y, ds=ds).copy()
+    y, n = asndvar(y, ds=ds, return_n=True)
     if in_cells is None:
-        y -= y.mean(('case', for_dim))
-        y /= y.std(('case', for_dim))
+        cells = [slice(None)]
     else:
-        x = ascategorial(in_cells, ds=ds)
-        for cell in x.cells:
-            index = x == cell
-            y[index] -= y[index].mean(('case', for_dim))
-            y[index] /= y[index].std(('case', for_dim))
+        x = ascategorial(in_cells, ds=ds, n=n)
+        cells = [x == cell for cell in x.cells]
+
+    y = y.copy()
+    for cell in cells:
+        y_cell_mean = y[cell].mean('case')
+        if method == 'z-score':
+            y[cell] -= y_cell_mean.mean(for_dim)
+            y[cell] /= y_cell_mean.std(for_dim)
+        elif method == 'range':
+            y_min = y_cell_mean.min(for_dim)
+            y_range = y_cell_mean.max(for_dim) - y_min
+            y[cell] -= y_min
+            y[cell] /= y_range
     return y
 
 
