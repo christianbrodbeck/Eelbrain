@@ -54,6 +54,15 @@ class AbsoluteLayoutFigure(XAxisMixin, Figure):
     kwargs
         Other :class:`Figure` parameters.
 
+    Attributes
+    ----------
+    h
+        Figure height in inches (determine matplotlib ``y`` coordinate:
+        ``y_relative = y_inches / figure.h``).
+    w
+        Figure width in inches (determine matplotlib ``x`` coordinate:
+        ``x_relative = x_inches / figure.w``).
+
     Notes
     -----
     Usage:
@@ -75,6 +84,8 @@ class AbsoluteLayoutFigure(XAxisMixin, Figure):
         self._xlim = xlim
         self._ylims = []
         self._ystep = ystep
+        self.w = self._layout.w
+        self.h = self._layout.h
 
     def add_axes(
             self,
