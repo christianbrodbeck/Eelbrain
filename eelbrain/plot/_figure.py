@@ -1,7 +1,9 @@
 """Figures for custom plots"""
+from functools import wraps
 from numbers import Real
 from typing import Union, Tuple
 
+import matplotlib.figure
 import matplotlib.patches
 import numpy as np
 
@@ -202,3 +204,8 @@ class AbsoluteLayoutFigure(XAxisMixin, Figure):
             self.figure.add_artist(artist)
 
         self._show()
+
+    @wraps(matplotlib.figure.Figure.text)
+    def text(self, x, y, *args, **kwargs):
+        "Add text at ``x, y`` in absolute coordinates (otherwise like :meth:`matplotlib.figure.Figure.text`)"
+        return self.figure.text(x / self.w, y / self.h, *args, **kwargs)
