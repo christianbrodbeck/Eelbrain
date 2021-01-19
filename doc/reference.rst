@@ -604,7 +604,7 @@ Reports
 .. currentmodule:: eelbrain
 
 The :mod:`report` submodule contains shortcuts for producing data summaries and
-visualizations.
+visualizations. Meant to work in Jupyter notebooks.
 
 .. autosummary::
    :toctree: generated

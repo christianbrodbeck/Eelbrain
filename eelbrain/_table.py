@@ -362,6 +362,10 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None, labels=None):
     -------
     long_table : Dataset
         Dataset in long format.
+
+    Examples
+    --------
+    See :ref:`exa-compare-topographies`.
     """
     ndvar = asndvar(ndvar, ds=ds)
     if dim is None:

@@ -8,16 +8,16 @@ New in 0.34
 
 * API:
 
- - :calls:`plot.Correlation` renamed to :class:`plot.Scatter` with some parameter changes for improved functionality
+ - :class:`plot.Correlation` renamed to :class:`plot.Scatter` with some parameter changes for improved functionality.
 
-* Added:
+* New:
 
  - :func:`boosting`: Option to store TRFs for the different test partitions
-   (``partition_results``).
- - :func:`normalize_in_cells`
- - :func:`load.convert_pickle_protocol`
- - :class:`UTS`: ``unit`` parameter to represent time in units other than seconds
- - :mod:`report` submodule with shortcuts for data summary and visualization
+   (``partition_results`` parameter).
+ - :func:`normalize_in_cells` (see :ref:`exa-compare-topographies`).
+ - :class:`UTS` dimension: ``unit`` parameter to represent time in units other than seconds.
+ - :mod:`report` submodule with shortcuts for data summary and visualization.
+ - :func:`load.convert_pickle_protocol` for compatibility with older Python version.
 
 
 New in 0.33

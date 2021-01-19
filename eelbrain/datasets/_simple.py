@@ -45,7 +45,7 @@ def _get_continuous(
         ynd: bool = False,
         seed: int = 0,
         xn: int = 0,
-):
+) -> Dataset:
     """Generate continuous data for reverse correlation
 
     Parameters
@@ -62,8 +62,8 @@ def _get_continuous(
 
     Returns
     -------
-    data : dict
-        {:class:`str`: :class:`NDVar`}`` dictionary with simulated data:
+    data
+        Dataset with simulated data:
 
          - ``x1``: random time series
          - ``x2``: two random time series

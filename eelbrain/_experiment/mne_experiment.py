@@ -3401,11 +3401,6 @@ class MneExperiment(FileTree):
 
              - :ref:`state-session`: from which session to load raw data
              - :ref:`state-raw`: preprocessing pipeline
-
-        Notes
-        -----
-        Bad channels defined in the raw file itself are ignored in favor of the
-        bad channels in the bad channels file.
         """
         pipe = self._raw[self.get('raw', **kwargs)]
         raw = pipe.load(self.get('subject'), self.get('recording'), add_bads)
@@ -3469,11 +3464,6 @@ class MneExperiment(FileTree):
 
              - :ref:`state-session`: from which session to load raw data
              - :ref:`state-raw`: preprocessing pipeline
-
-        Notes
-        -----
-        Bad channels defined in the raw file itself are ignored in favor of the
-        bad channels in the bad channels file.
         """
         raw = self.load_raw(samplingrate=samplingrate, tstart=tstart, tstop=tstop, **kwargs)
         inv, label, mri_sdir, mrisubject, is_scaled, parc = self._prepare_inv(raw, mask, morph)
