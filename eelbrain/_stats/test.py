@@ -345,14 +345,12 @@ def _independent_measures_args(y, x, c1, c0, match, ds, sub, nd_data=False):
         coerce = asvar
 
     if two_y:
-        assert c1 is None
-        assert c0 is None
         assert match is None
         y1 = coerce(y, sub, ds)
         y0 = coerce(x, sub, ds)
         y = combine((y1, y0))
-        c1_name = y1.name
-        c0_name = y0.name
+        c1_name = y1.name if c1 is None else c1
+        c0_name = y0.name if c0 is None else c0
         x_name = y0.name
     else:
         ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=coerce, dtype=np.float64)
@@ -382,14 +380,12 @@ def _related_measures_args(y, x, c1, c0, match, ds, sub, nd_data=False):
         coerce = asvar
 
     if two_y:
-        assert c1 is None
-        assert c0 is None
         assert match is None
         y1 = coerce(y, sub, ds)
         n = len(y1)
         y0 = coerce(x, sub, ds, n)
-        c1_name = y1.name
-        c0_name = y0.name
+        c1_name = y1.name if c1 is None else c1
+        c0_name = y0.name if c0 is None else c0
         x_name = y0.name
     elif match is None:
         raise TypeError("The `match` argument needs to be specified for related measures tests")
