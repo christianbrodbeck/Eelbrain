@@ -93,7 +93,7 @@ def simulate_erp(n_trials=80, seed=0):
     signal += amp * tc * topo
 
     # Add noise
-    noise = powerlaw_noise(signal, 1)
+    noise = powerlaw_noise(signal, 1, rng)
     noise = noise.smooth('sensor', 0.02, 'gaussian')
     noise *= 5
     signal += noise

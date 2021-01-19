@@ -915,24 +915,36 @@ def normalize_in_cells(
     return y
 
 
-def powerlaw_noise(dims, exponent):
+def powerlaw_noise(
+        dims: Union[NDVar, Dimension, Sequence[Dimension]],
+        exponent: float,
+        seed: Union[int, np.random.RandomState] = None,
+):
     """Gaussian :math:`(1/f)^{exponent}` noise.
 
     Parameters
     ----------
-    dims : list of Dimension | NDVar
+    dims
         Shape of the noise.
-    exponent : float
+    exponent
         The power-spectrum of the generated noise is proportional to
         :math:`S(f) = (1 / f)^{exponent}`
 
         - flicker/pink noise: ``exponent=1``
         - brown noise: ``exponent=2``
+    seed
+        Seed for random number generator.
 
     Notes
     -----
     Based on `colorednoise <https://github.com/felixpatzelt/colorednoise>`_.
     """
+    # randomg number generator
+    if isinstance(seed, np.random.RandomState):
+        rng = seed
+    else:
+        rng = np.random.RandomState(seed)
+    # dimensions
     if isinstance(dims, NDVar):
         dim_objs = dims.dims
     elif isinstance(dims, Dimension):
@@ -947,7 +959,7 @@ def powerlaw_noise(dims, exponent):
         raise ValueError(f"dims={dims!r}: No time dimension")
     if time_ax < len(shape) - 1:
         shape.append(shape.pop(time_ax))
-    x = powerlaw_psd_gaussian(exponent, shape)
+    x = powerlaw_psd_gaussian(exponent, shape, rng)
     if time_ax < len(shape) - 1:
         x = np.moveaxis(x, -1, time_ax)
     return NDVar(x, dim_objs, name=f'(1/f)^{exponent}')
