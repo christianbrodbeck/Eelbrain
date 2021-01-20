@@ -2,7 +2,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass, fields
 from functools import reduce
 from operator import mul
-from typing import List, Union
+from typing import List, Tuple, Union
 
 import numpy as np
 import scipy.signal
@@ -204,6 +204,102 @@ def split_data(
     return Splits(splits, partitions_arg, partitions, validate, test, model, segments, split_segments)
 
 
+class PredictorData:
+    """Restructure model NDVars (like RevCorrData but for x only)"""
+
+    def __init__(
+            self,
+            x: Union[NDVarArg, List[NDVarArg]],
+            ds: Dataset = None,
+    ):
+        if isinstance(x, (tuple, list, Iterator)):
+            multiple_x = True
+            xs = [asndvar(x_, ds=ds) for x_ in x]
+            if len(xs) == 0:
+                raise ValueError(f"x={x!r} of length 0")
+            x_name = [x_.name for x_ in xs]
+        else:
+            multiple_x = False
+            xs = [asndvar(x, ds=ds)]
+            x_name = xs[0].name
+
+        time_dim = xs[0].get_dim('time')
+        if any(xi.get_dim('time') != time_dim for xi in xs[1:]):
+            raise ValueError("Not all NDVars in x have the same time dimension")
+        n_times = len(time_dim)
+
+        # determine cases (used as segments)
+        has_case = n_cases = segments = None
+        for xi in xs:
+            # determine cases
+            if n_cases is None:
+                has_case = xi.has_case
+                if xi.has_case:
+                    n_cases = len(xi)
+                    # prepare segment index
+                    seg_i = np.arange(0, n_cases * n_times + 1, n_times, np.int64)[:, newaxis]
+                    segments = np.hstack((seg_i[:-1], seg_i[1:]))
+                else:
+                    n_cases = 0
+                    segments = np.array([[0, n_times]], np.int64)
+            elif xi.has_case ^ has_case:
+                raise ValueError(f'x={xs}: some but not all x have case')
+            elif has_case and len(xi) != n_cases:
+                raise ValueError(f'x={xs}: not all items have the same number of cases')
+
+        # x_data:  predictor x time array
+        x_data = []
+        x_meta = []
+        x_names = []
+        n_x = 0
+        for xi in xs:
+            ndim = xi.ndim - bool(n_cases)
+            if ndim == 1:
+                xdim = None
+                dimnames = ('case' if n_cases else newaxis, 'time')
+                data = xi.get_data(dimnames)
+                index = n_x
+                x_names.append(dataobj_repr(xi))
+            elif ndim == 2:
+                dimnames = xi.get_dimnames(last='time')
+                xdim = xi.get_dim(dimnames[-2])
+                if n_cases:
+                    dimnames = (xdim.name, 'case', 'time')
+                data = xi.get_data(dimnames)
+                index = slice(n_x, n_x + len(data))
+                x_repr = dataobj_repr(xi)
+                for v in xdim:
+                    x_names.append("%s-%s" % (x_repr, v))
+            else:
+                raise NotImplementedError("x with more than 2 dimensions")
+            if n_cases:
+                data = data.reshape((-1, n_cases * n_times))
+            x_data.append(data)
+            x_meta.append((xi.name, xdim, index))
+            n_x += len(data)
+
+        if len(x_data) == 1:
+            x_data = x_data[0]
+            x_data_is_copy = False
+        else:
+            x_data = np.concatenate(x_data)
+            x_data_is_copy = True
+
+        self.has_case = has_case
+        self.n_cases = n_cases
+        self.case_to_segments = n_cases > 0
+        self.time_dim = time_dim
+        self.n_times = n_times
+        self.n_times_flat = n_cases * n_times if n_cases else n_times
+        self.multiple_x = multiple_x
+        self.x_name = x_name
+        self.x_names = x_names
+        self.x_meta = x_meta
+        self.data = x_data
+        self.data_is_copy = x_data_is_copy
+        self.segments = segments
+
+
 class RevCorrData:
     """Restructure input NDVars into arrays for reverse correlation
     
@@ -240,48 +336,16 @@ class RevCorrData:
             ds: Dataset = None,
             in_place: bool = False,
     ):
+        x_data = PredictorData(x, ds)
+
+        # check y
         y = asndvar(y, ds=ds)
-        if isinstance(x, (tuple, list, Iterator)):
-            multiple_x = True
-            xs = [asndvar(x_, ds=ds) for x_ in x]
-            if len(xs) == 0:
-                raise ValueError(f"x={x!r} of length 0")
-            x_name = [x_.name for x_ in xs]
-        else:
-            multiple_x = False
-            xs = [asndvar(x, ds=ds)]
-            x_name = xs[0].name
-
-        # check y and x
-        time_dim = y.get_dim('time')
-        if any(x_.get_dim('time') != time_dim for x_ in xs):
-            raise ValueError("Not all NDVars have the same time dimension")
-        n_times = len(time_dim)
-
-        # determine cases (used as segments)
-        n_cases = segments = None
-        for x_ in xs:
-            # determine cases
-            if n_cases is None:
-                if x_.has_case:
-                    n_cases = len(x_)
-                    # check y
-                    if not y.has_case:
-                        raise ValueError(f'y={y!r}: x has case dimension but y does not')
-                    elif len(y) != n_cases:
-                        raise ValueError(f'y={y!r}: different number of cases from x {n_cases}')
-                    # prepare segment index
-                    seg_i = np.arange(0, n_cases * n_times + 1, n_times, np.int64)[:, newaxis]
-                    segments = np.hstack((seg_i[:-1], seg_i[1:]))
-                else:
-                    n_cases = 0
-                    segments = np.array([[0, n_times]], np.int64)
-            elif n_cases:
-                if len(x_) != n_cases:
-                    raise ValueError(f'x={xs}: not all components have same number of cases')
-            else:
-                assert not x_.has_case, 'some but not all x have case'
-        case_to_segments = n_cases > 0
+        if y.get_dim('time') != x_data.time_dim:
+            raise ValueError("y does not have the same time dimension as x")
+        if y.has_case ^ x_data.has_case:
+            raise ValueError(f'y={y!r}: case dimension does not match x')
+        elif y.has_case and len(y) != x_data.n_cases:
+            raise ValueError(f'y={y!r}: different number of cases from x ({x_data.n_cases})')
 
         # vector dimension
         vector_dims = [dim.name for dim in y.dims if dim._connectivity_type == 'vector']
@@ -295,67 +359,28 @@ class RevCorrData:
         # y_data: flatten to ydim x time array
         last = ('time',)
         n_ydims = -1
-        if case_to_segments:
+        if x_data.case_to_segments:
             last = ('case',) + last
             n_ydims -= 1
         if vector_dim:
             last = (vector_dim.name,) + last
         y_dimnames = y.get_dimnames(last=last)
         ydims = y.get_dims(y_dimnames[:n_ydims])
-        n_times_flat = n_cases * n_times if case_to_segments else n_times
         n_flat = reduce(mul, map(len, ydims), 1)
-        shape = (n_flat, n_times_flat)
+        shape = (n_flat, x_data.n_times_flat)
         y_data = y.get_data(y_dimnames).reshape(shape)
         # shape for exposing vector dimension
         if vector_dim:
             n_flat_prevector = reduce(mul, map(len, ydims[:-1]), 1)
             n_vector = len(ydims[-1])
             assert n_vector > 1
-            vector_shape = (n_flat_prevector, n_vector, n_times_flat)
+            vector_shape = (n_flat_prevector, n_vector, x_data.n_times_flat)
         else:
             vector_shape = None
 
-        # x_data:  predictor x time array
-        x_data = []
-        x_meta = []
-        x_names = []
-        n_x = 0
-        for x_ in xs:
-            ndim = x_.ndim - bool(n_cases)
-            if ndim == 1:
-                xdim = None
-                dimnames = ('case' if n_cases else newaxis, 'time')
-                data = x_.get_data(dimnames)
-                index = n_x
-                x_names.append(dataobj_repr(x_))
-            elif ndim == 2:
-                dimnames = x_.get_dimnames(last='time')
-                xdim = x_.get_dim(dimnames[-2])
-                if n_cases:
-                    dimnames = (xdim.name, 'case', 'time')
-                data = x_.get_data(dimnames)
-                index = slice(n_x, n_x + len(data))
-                x_repr = dataobj_repr(x_)
-                for v in xdim:
-                    x_names.append("%s-%s" % (x_repr, v))
-            else:
-                raise NotImplementedError("x with more than 2 dimensions")
-            if n_cases:
-                data = data.reshape((-1, n_cases * n_times))
-            x_data.append(data)
-            x_meta.append((x_.name, xdim, index))
-            n_x += len(data)
-
-        if len(x_data) == 1:
-            x_data = x_data[0]
-            x_is_copy = False
-        else:
-            x_data = np.concatenate(x_data)
-            x_is_copy = True
-
-        self.time = time_dim
-        self.segments = segments
-        self.shortest_segment_n_times = n_times
+        self.time = x_data.time_dim
+        self.segments = x_data.segments
+        self.shortest_segment_n_times = x_data.n_times
         self.in_place = in_place
         # y
         self.y = y_data  # (n_signals, n_times)
@@ -368,12 +393,12 @@ class RevCorrData:
         self.vector_dim = vector_dim  # vector dimension
         self.vector_shape = vector_shape  # flat shape with vector dim separate
         # x
-        self.x = x_data  # (n_predictors, n_times)
-        self.x_name = x_name
-        self.x_names = x_names
-        self._x_meta = x_meta  # [(x.name, xdim, index), ...]; index is int or slice
-        self._multiple_x = multiple_x
-        self._x_is_copy = x_is_copy
+        self.x = x_data.data  # (n_predictors, n_times)
+        self.x_name = x_data.x_name
+        self.x_names = x_data.x_names
+        self._x_meta = x_data.x_meta  # [(x.name, xdim, index), ...]; index is int or slice
+        self._multiple_x = x_data.multiple_x
+        self._x_is_copy = x_data.data_is_copy
         # basis
         self.basis = 0
         self.basis_window = None
