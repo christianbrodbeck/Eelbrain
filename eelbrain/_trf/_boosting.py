@@ -26,19 +26,19 @@ from multiprocessing.sharedctypes import RawArray
 import os
 import time
 from threading import Event, Thread
-from typing import Any, List, Union, Tuple, Sequence
+from typing import Any, Iterator, List, Union, Tuple, Sequence
 import warnings
 
 import numpy as np
 
 from .._config import CONFIG, mpc
-from .._data_obj import Dataset, NDVar, CategorialArg, NDVarArg, dataobj_repr
+from .._data_obj import Case, Dataset, Dimension, NDVar, CategorialArg, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
 from .._ndvar import _concatenate_values, convolve_jit
 from .._utils import LazyProperty, PickleableDataClass, user_activity
 from .._utils.notebooks import tqdm
 from ._boosting_opt import l1, l2, generate_options, update_error
-from .shared import RevCorrData, Split, Splits, merge_segments
+from .shared import PredictorData, RevCorrData, Split, Splits, merge_segments
 from ._fit_metrics import get_evaluators
 
 
@@ -139,9 +139,10 @@ class BoostingResult(PickleableDataClass):
     # advanced data properties
     n_samples: int = None
     _y_info: dict = field(default_factory=dict)
+    _y_dims: Tuple[Dimension, ...] = None
     # fit metrics
     i_test: int = None  # test partition for fit metrics
-    residual: NDVar = None
+    residual: Union[float, NDVar] = None
     r: Union[float, NDVar] = None
     r_rank: Union[float, NDVar] = None
     r_l1: NDVar = None
@@ -262,6 +263,91 @@ class BoostingResult(PickleableDataClass):
         else:
             # Due to the normalization:
             return self.n_samples
+
+    def cross_predict(
+            self,
+            x: Union[NDVarArg, Sequence[NDVarArg]] = None,
+            ds: Dataset = None,
+            name: str = None,
+    ) -> NDVar:
+        """Predict responses to ``x`` using complementary training data
+
+        Parameters
+        ----------
+        x
+            Predictors used in the original model fit. In order for
+            cross-prediction to be accurate, ``x`` needs to match the ``x``
+            used in the original fit exactly in cases and time.
+        ds
+            Dataset with predictors. If ``ds`` is specified, ``x`` can be omitted.
+        name
+            Name for the output :class:`NDVar`.
+
+        See Also
+        --------
+        convolve : Simple prediction of linear model
+
+        Notes
+        -----
+        This function does not adjust the mean across time of predicted
+        responses; subtract the mean in order to compute explained variance.
+        """
+        # predictors
+        if x is None:
+            x = self.x
+        x_data = PredictorData(x, ds)
+        if not self.partition_results:
+            raise ValueError("BoostingResult does not contain partition-specific models; fit with partition_results=True")
+        # check predictors match h
+        if x_data.x_name != self.x:
+            raise ValueError(f"x name mismatch:\nx: {', '.join(x_data.x_name)}\nh: {', '.join(self.x)}")
+        # prepare output array
+        if self._y_dims is None:  # only possible in results from dev version
+            y_dims = self.y_mean.dims
+        else:
+            y_dims = self._y_dims
+        y_dimnames = [dim.name for dim in y_dims]
+        n_y = sum(len(dim) for dim in y_dims) or 1
+        y_pred = np.zeros((n_y, x_data.n_times_flat))
+        # prepare h
+        h_i_start = int(round(self.h_time.tmin / self.h_time.tstep))
+        h_i_stop = h_i_start + len(self.h_time)
+        # iterate through partitions
+        for result in self.partition_results:
+            # find segments
+            for split in self.splits.splits:
+                if split.i_test == result.i_test:
+                    segments = split.test
+                    break
+            else:
+                raise RuntimeError(f"Split missing for test segment {result.i_test}")
+            # h to flat array: (y, x, n_times)
+            hs = result.h_scaled if x_data.multiple_x else [result.h_scaled]
+            h_array = []
+            for h, (name, dim, index) in zip(hs, x_data.x_meta):
+                dimnames = list(y_dimnames)
+                if dim is not None:
+                    dimnames.append(dim.name)
+                h_data = h.get_data((*dimnames, 'time'))
+                h_data = h_data.reshape((n_y, -1, h_data.shape[-1]))
+                h_array.append(h_data)
+            h_array = np.concatenate(h_array, 1)
+            # convolution
+            for i_y in range(n_y):
+                for start, stop in segments:
+                    convolve_jit(h_array[i_y], x_data.data[:, start:stop], y_pred[i_y, start:stop], h_i_start, h_i_stop)
+        # package output
+        dims = [*y_dims, x_data.time_dim]
+        shape = [len(dim) for dim in dims]
+        if x_data.case_to_segments:
+            dims = (Case, *dims)
+            shape.insert(-1, x_data.n_cases)
+        y_pred = y_pred.reshape(shape)
+        if x_data.case_to_segments:
+            y_pred = np.rollaxis(y_pred, -2)
+        if name is None:
+            name = self.y
+        return NDVar(y_pred, dims, name, self._y_info)
 
     @LazyProperty
     def proportion_explained(self):
@@ -646,7 +732,7 @@ class Boosting:
                     y_mean, y_scale, x_mean, x_scale,
                     h_i, self._get_h_failed(i), 0,
                     self.data.basis, self.data.basis_window, None,
-                    self.data.y.shape[1], self.data.y_info,
+                    self.data.y.shape[1], self.data.y_info, self.data.ydims,
                     algorithm_version=0, i_test=i, **evaluations_i)
                 partition_results_list.append(result)
         else:
@@ -661,7 +747,7 @@ class Boosting:
             # advanced parameters
             self.data.basis, self.data.basis_window, self.data.splits,
             # advanced data properties
-            self.data.y.shape[1], self.data.y_info,
+            self.data.y.shape[1], self.data.y_info, self.data.ydims,
             partition_results=partition_results_list,
             algorithm_version=0,
             i_test=i_test, **evaluations)

@@ -80,8 +80,11 @@ def test_boosting(n_workers):
 
     # cross-validation
     res = boosting(y[:7.5], x1[:7.5], 0, 1, scale_data=False, partitions=3, debug=True)
-    res_cv = boosting(y, x1, 0, 1, test=1, scale_data=False, partitions=4, debug=True)
+    res_cv = boosting(y, x1, 0, 1, test=1, scale_data=False, partitions=4, debug=True, partition_results=True)
     assert correlation_coefficient(res.h, res_cv.h) == approx(.986, abs=.001)
+    # using cross-prediction
+    y_pred = res_cv.cross_predict(x1)
+    assert correlation_coefficient(y_pred, y, 'time') == pytest.approx(res_cv.r)
     # fit res_cv on same data as res
     fit = res_cv.fit
     fit.data.splits = replace(fit.data.splits, splits=[fit.data.splits.splits[i] for i in [9, 10, 11]])
@@ -112,6 +115,11 @@ def test_boosting(n_workers):
     res = boosting(y, [x1, x2], 0, 1, selective_stopping=2)
     assert res.r == approx(0.992, abs=0.001)
 
+    # 2d-y
+    res_cv = boosting('ynd', ['x1', 'x2'], 0, 1, ds=ds, test=1, partitions=4, partition_results=True)
+    y_pred = res_cv.cross_predict(ds=ds)
+    assert_dataobj_equal(correlation_coefficient(y_pred, ynd, 'time'), res_cv.r, 2, name=False)
+
 
 def test_boosting_epochs():
     """Test boosting with epoched data"""
@@ -139,6 +147,10 @@ def test_boosting_epochs():
     y = convolve(res.h_scaled, [p0, p1])
     r = correlation_coefficient(y, ds['utsnd'], ('case', 'time'))
     assert_dataobj_equal(res.r, r, decimal=3, name=False)
+    # cross-validation
+    res_cv = boosting('utsnd', [p0, p1], 0, 0.6, error='l1', ds=ds, partitions=3, test=1, partition_results=True, debug=True)
+    y_pred = res_cv.cross_predict([p0, p1])
+    assert correlation_coefficient(y_pred - y_pred.mean('time'), res_cv.y_pred - res_cv.y_pred.mean('time')) > 0.99
     # vector
     res = boosting('v3d', [p0, p1], 0, 0.6, error='l1', model='A', ds=ds, partitions=3)
     assert res.residual.ndim == 0

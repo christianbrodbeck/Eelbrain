@@ -360,10 +360,10 @@ class RevCorrData:
         last = ('time',)
         n_ydims = -1
         if x_data.case_to_segments:
-            last = ('case',) + last
+            last = ('case', *last)
             n_ydims -= 1
         if vector_dim:
-            last = (vector_dim.name,) + last
+            last = (vector_dim.name, *last)
         y_dimnames = y.get_dimnames(last=last)
         ydims = y.get_dims(y_dimnames[:n_ydims])
         n_flat = reduce(mul, map(len, ydims), 1)
