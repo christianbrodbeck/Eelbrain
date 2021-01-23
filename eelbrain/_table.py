@@ -1,8 +1,9 @@
 """Create tables from data-objects"""
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from itertools import zip_longest
 from operator import itemgetter
 import re
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Union
 from warnings import warn
 
 import numpy as np
@@ -11,7 +12,7 @@ from . import fmtxt
 from ._celltable import Celltable
 from ._exceptions import KeysMissing
 from ._data_obj import (
-    CategorialArg, IndexArg,
+    CategorialArg, IndexArg, VarArg,
     Categorial, Dataset, Factor, Interaction, NDVar, Scalar, UTS,
     Var, ascategorial, as_legal_dataset_key, asndvar, asvar, assub, asuv,
     cellname, combine, isuv)
@@ -363,6 +364,10 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None, labels=None):
     long_table : Dataset
         Dataset in long format.
 
+    See Also
+    --------
+    cast_to_ndvar
+
     Examples
     --------
     See :ref:`exa-compare-topographies`.
@@ -423,32 +428,41 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None, labels=None):
     return out
 
 
-def cast_to_ndvar(data, dim_values, match, sub=None, ds=None, dim=None,
-                  name=None):
+def cast_to_ndvar(
+        data: Union[VarArg, Sequence[VarArg]],
+        dim_values: Union[VarArg, Factor],
+        match: CategorialArg,
+        sub: IndexArg = None,
+        ds: Dataset = None,
+        dim: str = None,
+        unit: str = 's',
+        name: str = None,
+) -> Dataset:
     """Create an NDVar by converting a data column to a dimension
     
     Parameters
     ----------
-    data : Var
+    data
         Data to be cast.
-    dim_values : Var | Factor
+    dim_values
         Location on the new dimension.
-    match : Factor | Interaction
+    match
         Indicating rows which belong the the same case in the NDvar.
-    sub : index
+    sub
         Use a subset of the data.
-    ds : Dataset
+    ds
         Dataset with data for operation.
-    dim : str   
+    dim
         Name for the new dimension. Use ``dim='uts'`` to create :class:`UTS` 
         time dimension from scalar ``dim_values``.
-    name : str
-        Name for the new :class:`NDVar` (the default is the name of 
-        ``dim_values``).
+    unit
+        Unit for :class:`UTS` dimension (ignored otherwise).
+    name
+        Name for the new :class:`NDVar` (the default is the name of ``data``).
         
     Returns
     -------
-    short_ds : Dataset
+    short_ds
         Copy of ``ds``, aggregated over ``dim_values``, and with an 
         :class:`NDVar` containing the values form ``data`` and a new dimension
         reflecting ``dim_values``. If ``dim_values`` is a Factor, the new 
@@ -456,11 +470,29 @@ def cast_to_ndvar(data, dim_values, match, sub=None, ds=None, dim=None,
         it is :class:`Scalar`. The new dimension's name is ``dim``. The only
         exception to this is that when ``dim='uts'``, the new dimension is 
         :class:`UTS` named ``'time'``.
+
+    See Also
+    --------
+    melt_ndvar
     """
-    sub = assub(sub, ds)
-    data = asvar(data, sub, ds)
-    dim_values = asuv(dim_values, sub, ds)
-    match = ascategorial(match, sub, ds)
+    sub, n = assub(sub, ds, return_n=True)
+    if isinstance(data, (str, Var)):
+        data, n = asvar(data, sub, ds, n, return_n=True)
+        data_vars = [data]
+        names = [name]
+    else:
+        data_vars = []
+        for data_i in data:
+            data_var, n = asvar(data_i, sub, ds, n, return_n=True)
+            data_vars.append(data_var)
+        if name is None:
+            names = [None for _ in range(len(data_vars))]
+        elif isinstance(name, str):
+            raise TypeError(f"name={name!r}: single name for multiple variables")
+        else:
+            names = name
+    dim_values, n = asuv(dim_values, sub, ds, n, return_n=True)
+    match, n = ascategorial(match, sub, ds, n, return_n=True)
 
     # determine NDVar dimension
     if isinstance(dim_values, Factor):
@@ -473,14 +505,11 @@ def cast_to_ndvar(data, dim_values, match, sub=None, ds=None, dim=None,
             unique_diff = np.unique(diff)
             if len(unique_diff) > 1:
                 if np.diff(unique_diff).max() > 1e-15:
-                    raise NotImplementedError(
-                        "Can't create UTS dimension from data with irregular "
-                        "sampling (detected time-steps of %s" %
-                        ', '.join(map(str, unique_diff)))
+                    raise NotImplementedError(f"Can't create UTS dimension from data with irregular sampling (detected time-steps of {', '.join(map(str, unique_diff))}")
                 tstep = round(unique_diff.mean(), 17)
             else:
                 tstep = unique_diff[0]
-            dim = UTS(unique_dim_vales[0], tstep, len(unique_dim_vales))
+            dim = UTS(unique_dim_vales[0], tstep, len(unique_dim_vales), unit)
         else:
             dim = Scalar(dim or dim_values.name, unique_dim_vales)
 
@@ -489,11 +518,13 @@ def cast_to_ndvar(data, dim_values, match, sub=None, ds=None, dim=None,
     n_cases = len(match.cells)
     case_indexes = [match == case for case in match.cells]
     samples_indexes = [dim_values == v for v in unique_dim_vales]
-    x = np.empty((n_cases, n_samples))
+    xs = [np.empty((n_cases, n_samples)) for _ in data_vars]
     index = None
     for i, case_index in enumerate(case_indexes):
         for j, sample_index in enumerate(samples_indexes):
-            x[i, j] = data.x[np.logical_and(case_index, sample_index, index)]
+            index = np.logical_and(case_index, sample_index, out=index)
+            for x, data_var in zip(xs, data_vars):
+                x[i, j] = data_var.x[index]
 
     # package output dataset
     if ds is None:
@@ -501,7 +532,8 @@ def cast_to_ndvar(data, dim_values, match, sub=None, ds=None, dim=None,
     else:
         out = ds if sub is None else ds.sub(sub)
         out = out.aggregate(match, drop_bad=True, count=False)
-    out[name or data.name] = NDVar(x, ('case', dim))
+    for x, data_var, name in zip_longest(xs, data_vars, names):
+        out[name or data_var.name] = NDVar(x, ('case', dim))
     return out
 
 
