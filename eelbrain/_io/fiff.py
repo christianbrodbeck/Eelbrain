@@ -198,9 +198,9 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
             index = [not regex.match(desc) for desc in raw.annotations.description]
             if any(index):
                 annotations = raw.annotations[index]
+
         if annotations:
             evts, event_ids = mne.events_from_annotations(raw)
-            labels = {event_id: key for key, event_id in event_ids.items()}
         else:
             raw.load_data()
             if merge is None:
@@ -210,6 +210,10 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
                     merge = -1
             evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
             evts = evts[np.flatnonzero(evts[:, 2])]
+            event_ids = getattr(raw, 'event_id', None)
+
+        if event_ids:
+            labels = {event_id: label for label, event_id in event_ids.items()}
     else:
         evts = mne.read_events(events)
 
