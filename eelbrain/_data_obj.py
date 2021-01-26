@@ -110,7 +110,7 @@ import operator
 import os
 import re
 import string
-from typing import Any, Collection, Dict, Iterable, Iterator, Optional, Union, Sequence, Tuple, List
+from typing import Any, Callable, Collection, Dict, Iterable, Iterator, Optional, Union, Sequence, Tuple, List
 from warnings import warn
 
 from matplotlib.ticker import FixedLocator, Formatter, FormatStrFormatter, FuncFormatter
@@ -164,6 +164,8 @@ _tex_wildcard = ("TeX (*.tex)", '*.tex')
 _tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
 _txt_wildcard = ("Plain Text (*.txt)", '*.txt')
 EVAL_CONTEXT = vars(np)  # updated at end of file
+
+AxisArg = Union[None, str, Sequence[str], 'NDVar']
 
 
 class IndexFormatter(Formatter):
@@ -3546,12 +3548,12 @@ class NDVar(Named):
         """
         return NDVar(np.abs(self.x), self.dims, *op_name(self, 'abs(', name=name))
 
-    def all(self, dims=(), **regions):
+    def all(self, axis: AxisArg = None, **regions) -> Union[NDVar, Var, bool]:
         """Whether all values are nonzero over given dimensions
 
         Parameters
         ----------
-        dims : str | tuple of str | boolean NDVar
+        axis
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute whether there are any nonzero values at all.
@@ -3567,7 +3569,7 @@ class NDVar(Named):
 
         Returns
         -------
-        any : NDVar | Var | bool
+        any
             Boolean data indicating presence of nonzero value over specified
             dimensions. Return a Var if only the case dimension remains, and a
             boolean if the function collapses over all data.
@@ -3595,14 +3597,14 @@ class NDVar(Named):
         <NDVar 'utsnd': 60 case, 5 sensor>
         
         """
-        return self._aggregate_over_dims(dims, regions, np.all)
+        return self._aggregate_over_dims(axis, regions, np.all)
 
-    def any(self, dims=(), **regions):
+    def any(self, axis: AxisArg = None, **regions) -> Union[NDVar, Var, bool]:
         """Compute presence of any value other than zero over given dimensions
 
         Parameters
         ----------
-        dims : str | tuple of str | boolean NDVar
+        axis
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute whether there are any nonzero values at all.
@@ -3618,12 +3620,12 @@ class NDVar(Named):
 
         Returns
         -------
-        any : NDVar | Var | bool
+        any
             Boolean data indicating presence of nonzero value over specified
             dimensions. Return a Var if only the case dimension remains, and a
             boolean if the function collapses over all data.
         """
-        return self._aggregate_over_dims(dims, regions, np.any)
+        return self._aggregate_over_dims(axis, regions, np.any)
 
     def argmax(self):
         """Find the index of the largest value.
@@ -3735,8 +3737,11 @@ class NDVar(Named):
             info = self.info
         return NDVar(x_out, dims, name or self.name, info)
 
-    def _aggregate_over_dims(self, axis, regions, func):
+    def _aggregate_over_dims(self, axis: AxisArg, regions: dict, func: Callable):
         name = regions.pop('name', None)
+        out = regions.pop('out', None)
+        if out is not None:
+            raise NotImplementedError('out parameter')
         if regions:
             data = self.sub(**regions)
             additional_axis = [dim for dim in regions if data.has_dim(dim)]
@@ -4071,7 +4076,7 @@ class NDVar(Named):
             x = x[aslice(axis, stop=n)]
         return NDVar(x, self.dims, name or self.name, self.info)
 
-    def extrema(self, dims=(), **regions):
+    def extrema(self, axis: AxisArg = None, **regions) -> Union[NDVar, Var, float]:
         """Extrema (value farthest away from 0) over given dimensions
 
         For each data point,
@@ -4079,7 +4084,7 @@ class NDVar(Named):
 
         Parameters
         ----------
-        dims : str | tuple of str | boolean NDVar
+        axis
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, ``None`` to
             compute the maximum over all dimensions.
@@ -4094,7 +4099,7 @@ class NDVar(Named):
 
         Returns
         -------
-        extrema : NDVar | Var | float
+        extrema
             Extrema over specified dimensions. Return a Var if only the
             case dimension remains, and a float if the function collapses over
             all data.
@@ -4104,7 +4109,7 @@ class NDVar(Named):
         .max
         .min
         """
-        return self._aggregate_over_dims(dims, regions, extrema)
+        return self._aggregate_over_dims(axis, regions, extrema)
 
     def fft(self, dim=None, name=None):
         """Fast fourier transform
@@ -4445,12 +4450,12 @@ class NDVar(Named):
         assert isinstance(self.x, np.ma.masked_array), "NDVar is not masked"
         return NDVar(self.x.mask, self.dims, name or self.name, self.info)
 
-    def max(self, dims=(), **regions):
+    def max(self, axis: AxisArg = None, **regions) -> Union[NDVar, Var, float]:
         """Compute the maximum over given dimensions
 
         Parameters
         ----------
-        dims : str | tuple of str | boolean NDVar
+        axis
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the maximum over all dimensions.
@@ -4465,7 +4470,7 @@ class NDVar(Named):
 
         Returns
         -------
-        max : NDVar | Var | float
+        max
             The maximum over specified dimensions. Return a Var if only the
             case dimension remains, and a float if the function collapses over
             all data.
@@ -4475,14 +4480,14 @@ class NDVar(Named):
         .argmax
         .extrema
         """
-        return self._aggregate_over_dims(dims, regions, np.max)
+        return self._aggregate_over_dims(axis, regions, np.max)
 
-    def mean(self, dims=(), **regions):
+    def mean(self, axis: AxisArg = None, **regions) -> Union[NDVar, Var, float]:
         """Compute the mean over given dimensions
 
         Parameters
         ----------
-        dims : str | tuple of str | boolean NDVar
+        axis
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the mean over all dimensions.
@@ -4497,19 +4502,19 @@ class NDVar(Named):
 
         Returns
         -------
-        mean : NDVar | Var | float
+        mean
             The mean over specified dimensions. Return a Var if only the case
             dimension remains, and a float if the function collapses over all
             data.
         """
-        return self._aggregate_over_dims(dims, regions, np.mean)
+        return self._aggregate_over_dims(axis, regions, np.mean)
 
-    def min(self, dims=(), **regions):
+    def min(self, axis: AxisArg = None, **regions) -> Union[NDVar, Var, float]:
         """Compute the minimum over given dimensions
 
         Parameters
         ----------
-        dims : str | tuple of str | boolean NDVar
+        axis
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the minimum over all dimensions.
@@ -4524,7 +4529,7 @@ class NDVar(Named):
 
         Returns
         -------
-        min : NDVar | Var | float
+        min
             The minimum over specified dimensions. Return a Var if only the
             case dimension remains, and a float if the function collapses over
             all data.
@@ -4534,7 +4539,7 @@ class NDVar(Named):
         .argmin
         .extrema
         """
-        return self._aggregate_over_dims(dims, regions, np.min)
+        return self._aggregate_over_dims(axis, regions, np.min)
 
     def norm(self, dim, ord=2, name=None):
         """Norm over ``dim``
@@ -4681,14 +4686,14 @@ class NDVar(Named):
         else:
             return NDVar(x, dims, *args)
 
-    def quantile(self, q=0.5, dims=(), interpolation='linear', **regions):
+    def quantile(self, q=0.5, axis: AxisArg = None, interpolation='linear', **regions) -> Union[NDVar, Var, float]:
         """The value such that q of the NDVar's values are lower
 
         (See func:`numpy.quantile`)
 
         Parameters
         ----------
-        dims : str | tuple of str | boolean NDVar
+        axis
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the maximum over all dimensions.
@@ -4706,7 +4711,7 @@ class NDVar(Named):
             Name of the output NDVar (default is the current name).
         """
         func = partial(np.quantile, q=q, interpolation=interpolation)
-        return self._aggregate_over_dims(dims, regions, func)
+        return self._aggregate_over_dims(axis, regions, func)
 
     def repeat(self, repeats, name=None):
         """Repeat slices of the NDVar along the case dimension
@@ -4775,12 +4780,12 @@ class NDVar(Named):
         res = stats.residuals(self.x, x)
         return NDVar(res, self.dims, name or self.name, self.info)
 
-    def rms(self, axis=(), **regions):
+    def rms(self, axis: AxisArg = None, **regions) -> Union[NDVar, Var, float]:
         """Compute the root mean square over given dimensions
 
         Parameters
         ----------
-        axis : str | tuple of str | boolean NDVar
+        axis
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the standard deviation over all values.
@@ -4795,7 +4800,7 @@ class NDVar(Named):
 
         Returns
         -------
-        rms : NDVar | Var | float
+        rms
             The root mean square over specified dimensions. Return a Var if
             only the case dimension remains, and a float if the function
             collapses over all data.
@@ -4946,12 +4951,12 @@ class NDVar(Named):
                     raise ValueError("mode=%r" % (mode,))
         return NDVar(x, dims, name or self.name, self.info)
 
-    def std(self, dims=(), **regions):
+    def std(self, axis: AxisArg = None, **regions) -> Union[NDVar, Var, float]:
         """Compute the standard deviation over given dimensions
 
         Parameters
         ----------
-        dims : str | tuple of str | boolean NDVar
+        axis
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the standard deviation over all values.
@@ -4967,12 +4972,12 @@ class NDVar(Named):
 
         Returns
         -------
-        std : NDVar | Var | float
+        std
             The standard deviation over specified dimensions. Return a Var if
             only the case dimension remains, and a float if the function
             collapses over all data.
         """
-        return self._aggregate_over_dims(dims, regions, np.std)
+        return self._aggregate_over_dims(axis, regions, np.std)
 
     def summary(self, *dims, **regions):
         r"""Aggregate specified dimensions.
@@ -5163,12 +5168,12 @@ class NDVar(Named):
         dims = [dim for dim in dims if dim is not None]
         return self._package_aggregated_output(x, dims, name)
 
-    def sum(self, dims=(), **regions):
+    def sum(self, axis: AxisArg = None, **regions) -> Union[NDVar, Var, float]:
         """Compute the sum over given dimensions
 
         Parameters
         ----------
-        dims : str | tuple of str | boolean NDVar
+        axis
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the sum over all dimensions.
@@ -5183,12 +5188,12 @@ class NDVar(Named):
 
         Returns
         -------
-        sum : NDVar | Var | float
+        sum
             The sum over specified dimensions. Return a Var if only the
             case dimension remains, and a float if the function collapses over
             all data.
         """
-        return self._aggregate_over_dims(dims, regions, np.sum)
+        return self._aggregate_over_dims(axis, regions, np.sum)
 
     def threshold(self, v, tail=1, name=None):
         """Set all values below a threshold to 0.
@@ -5217,34 +5222,34 @@ class NDVar(Named):
             raise ValueError("Invalid value tail=%r; need -1, 0 or 1" % (tail,))
         return NDVar(np.where(idx, self.x, 0), self.dims, name or self.name, self.info)
 
-    def var(self, dims=(), ddof=0, **regions):
+    def var(self, axis: AxisArg = None, ddof: int = 0, **regions) -> Union[NDVar, Var, float]:
         """Compute the variance over given dimensions
 
         Parameters
         ----------
-        dims : str | tuple of str | boolean NDVar
+        axis
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the sum over all dimensions.
             An boolean NDVar with the same dimensions as the data can be used
             to compute the variance in specific elements (if the data has a case
             dimension, the variance is computed for each case).
-        ddof : int
+        ddof
             Degrees of freedom (default 0; see :func:`numpy.var`).
-        name : str
-            Name of the output NDVar (default is the current name).
         **regions
             Regions over which to aggregate. For example, to get the variance
             between time=0.1 and time=0.2, use ``ndvar.var(time=(0.1, 0.2))``.
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
-        var : NDVar | Var | float
+        var
             The variance over specified dimensions. Return a Var if only the
             case dimension remains, and a float if the function collapses over
             all data.
         """
-        return self._aggregate_over_dims(dims, regions, partial(np.var, ddof=ddof))
+        return self._aggregate_over_dims(axis, regions, partial(np.var, ddof=ddof))
 
     def nonzero(self):
         """Return indices where the NDVar is non-zero 
