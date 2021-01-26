@@ -454,7 +454,7 @@ To use the ``raw --> TSSS --> 1-40 Hz band-pass`` pipeline, use ``e.set(raw="1-4
 To use ``raw --> TSSS --> 1-40 Hz band-pass --> ICA``, select ``e.set(raw="ica")``.
 
 .. note::
-    Continuous files take up a lot of hard drive space. By default, files for most pre-processing steps are cached This can be controlled with the ``cache`` parameter. To delete files correspoding to a specific step (e.g., ``'1-40'``, use the `meth`:MneExperiment.rm` method::
+    Continuous files take up a lot of hard drive space. By default, files for most pre-processing steps are cached This can be controlled with the ``cache`` parameter. To delete files correspoding to a specific step (e.g., ``raw='1-40'``), use the :meth:`MneExperiment.rm` method::
 
         >>> e.rm('cached-raw-file', True, raw='1-40')
 
