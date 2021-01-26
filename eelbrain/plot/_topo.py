@@ -364,22 +364,39 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
     """
     _default_xlabel_ax = -2
 
-    def __init__(self, y, xax=None, ds=None, sub=None,
-                 vmax=None, vmin=None, cmap=None, contours=None,
-                 color=None, linewidth=None,
-                 # topomap args
-                 proj='default', res=None, interpolation=None, clip='even',
-                 clip_distance=0.05, head_radius=None, head_pos=0,
-                 im_interpolation=None,
-                 # sensor-map args
-                 sensorlabels=None, mark=None, mcolor=None,
-                 # layout
-                 xlabel: Union[bool, str] = True,
-                 ylabel: Union[bool, str] = True,
-                 xticklabels: Union[str, int, Sequence[int]] = -1,
-                 yticklabels: Union[str, int, Sequence[int]] = 'left',
-                 axtitle=True, frame=True, xlim=None,
-                 **kwargs):
+    def __init__(
+            self,
+            y,
+            xax=None,
+            ds=None,
+            sub=None,
+            vmax=None,
+            vmin=None,
+            cmap=None,
+            contours=None,
+            color=None,
+            linewidth=None,
+            # topomap args
+            proj='default',
+            res=None,
+            interpolation=None,
+            clip='even',
+            clip_distance=0.05,
+            head_radius=None,
+            head_pos=0,
+            im_interpolation=None,
+            # sensor-map args
+            sensorlabels=None, mark=None, mcolor=None,
+            # layout
+            xlabel: Union[bool, str] = True,
+            ylabel: Union[bool, str] = True,
+            xticklabels: Union[str, int, Sequence[int]] = -1,
+            yticklabels: Union[str, int, Sequence[int]] = 'left',
+            axtitle=True,
+            frame: bool = True,
+            xlim: Union[float, Tuple[float, float]] = None,
+            **kwargs,
+    ):
         data = PlotData.from_args(y, ('sensor', None), xax, ds, sub)
         data._cannot_skip_axes(self)
         xdim = data.dims[1]
