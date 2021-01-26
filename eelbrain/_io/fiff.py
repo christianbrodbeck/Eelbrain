@@ -204,10 +204,10 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
         else:
             raw.load_data()
             if merge is None:
-                if 'kit_system_id' in raw.info:
-                    merge = -1
-                else:
+                if raw.info.get('kit_system_id') is None:
                     merge = 0
+                else:
+                    merge = -1
             evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
             evts = evts[np.flatnonzero(evts[:, 2])]
     else:

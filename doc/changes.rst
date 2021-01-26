@@ -28,7 +28,7 @@ New in 0.33
 * .. currentmodule:: eelbrain.pipeline
   Experiment :mod:`pipeline`:
 
-  - New :attr:`MneExperiment.merge_events` attribute.
+  - New :attr:`MneExperiment.merge_triggers` attribute.
   - Compatibility with Microsoft Windows.
 
 
