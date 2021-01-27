@@ -74,6 +74,10 @@ class RawPipe:
             raw.info['bads'] = list(add_bads)
         elif add_bads:
             raw.info['bads'] = self.load_bad_channels(subject, recording)
+        elif add_bads is False:
+            raw.info['bads'] = []
+        else:
+            raise TypeError(f"add_bads={add_bads!r}")
         return raw
 
     def _load(self, subject, recording, preload):
