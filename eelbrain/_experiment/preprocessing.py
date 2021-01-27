@@ -33,6 +33,11 @@ def _visit(recording: str) -> str:
 
 class RawPipe:
 
+    name = None  # set on linking
+    path = None
+    root = None
+    log = None
+
     def _can_link(self, pipes):
         raise NotImplementedError
 
@@ -129,6 +134,7 @@ class RawSource(RawPipe):
     MneExperiment.raw
     """
     _dig_sessions = None  # {subject: {for_recording: use_recording}}
+    bads_path = None  # set on linking
 
     def __init__(self, filename='{subject}_{recording}-raw.fif', reader=mne.io.read_raw_fif, sysname=None, rename_channels=None, montage=None, connectivity=None, **kwargs):
         RawPipe.__init__(self)
@@ -273,6 +279,7 @@ class RawSource(RawPipe):
 class CachedRawPipe(RawPipe):
 
     _bad_chs_affect_cache = False
+    source = None  # set on linking
 
     def __init__(self, source, cache=True):
         RawPipe.__init__(self)
@@ -502,6 +509,7 @@ class RawICA(CachedRawPipe):
 
     This step merges bad channels from all sessions.
     """
+    ica_path = None  # set on linking
 
     def __init__(self, source, session, method='extended-infomax', random_state=0, cache=False, **kwargs):
         CachedRawPipe.__init__(self, source, cache)
@@ -541,9 +549,19 @@ class RawICA(CachedRawPipe):
         return mne.preprocessing.read_ica(path)
 
     @staticmethod
-    def _check_ica_channels(ica, raw):
+    def _check_ica_channels(
+            ica: mne.preprocessing.ICA,
+            raw: mne.io.BaseRaw,
+            raise_on_mismatch: bool = False,
+            raw_name: str = None,
+            subject: str = None,
+    ):
         picks = mne.pick_types(raw.info, meg=True, eeg=True, ref_meg=False)
-        return ica.ch_names == [raw.ch_names[i] for i in picks]
+        raw_ch_names = [raw.ch_names[i] for i in picks]
+        names_match = ica.ch_names == raw_ch_names
+        if raise_on_mismatch and not names_match:
+            raise RuntimeError(f"The ICA channel names do not match the data channels for raw={raw_name!r}, subject={subject!r}. Have the bad channels changed since the ICA was computed? Try to revert the data channels, or recompute the ICA using MneExperiment.make_ica().\nData: {', '.join(raw_ch_names)}\nICA:  {', '.join(ica.ch_names)}")
+        return names_match
 
     def load_concatenated_source_raw(self, subject, session, visit):
         sessions = as_sequence(session)
@@ -570,7 +588,7 @@ class RawICA(CachedRawPipe):
         if exists(path):
             ica = mne.preprocessing.read_ica(path)
             if not self._check_ica_channels(ica, raw):
-                self.log.info("Raw %s: ICA outdated due to change in bad channels for %s", self.name, subject)
+                self.log.info("Raw %s for subject=%r: ICA channels mismatch data channels", self.name, subject)
             else:
                 mtimes = [self.source.mtime(subject, recording, self._bad_chs_affect_cache) for recording in recordings]
                 if all(mtimes) and getmtime(path) > max(mtimes):
@@ -608,8 +626,7 @@ class RawICA(CachedRawPipe):
         raw = self.source.load(subject, recording, preload=True)
         raw.info['bads'] = self.load_bad_channels(subject, recording)
         ica = self.load_ica(subject, recording)
-        if not self._check_ica_channels(ica, raw):
-            raise RuntimeError(f"Raw {self.name}, ICA for {subject} outdated due to change in bad channels. Reset bad channels or re-run .make_ica().")
+        self._check_ica_channels(ica, raw, raise_on_mismatch=True, raw_name=self.name, subject=subject)
         self.log.debug("Raw %s: applying ICA for %s/%s...", self.name, subject, recording)
         ica.apply(raw)
         return raw
@@ -662,6 +679,7 @@ class RawApplyICA(CachedRawPipe):
             }
 
     """
+    ica_source = None  # set on linking
 
     def __init__(self, source, ica, cache=False):
         CachedRawPipe.__init__(self, source, cache)
@@ -687,8 +705,7 @@ class RawApplyICA(CachedRawPipe):
         raw = self.source.load(subject, recording, preload=True)
         raw.info['bads'] = self.load_bad_channels(subject, recording)
         ica = self.ica_source.load_ica(subject, recording)
-        if not self.ica_source._check_ica_channels(ica, raw):
-            raise RuntimeError(f"Raw {self.name}, ICA for {subject} outdated due to change in bad channels. Reset bad channels or re-run .make_ica().")
+        self.ica_source._check_ica_channels(ica, raw, raise_on_mismatch=True, raw_name=self.name, subject=subject)
         self.log.debug("Raw %s: applying ICA for %s/%s...", self.name, subject, recording)
         ica.apply(raw)
         return raw
