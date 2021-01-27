@@ -287,8 +287,6 @@ class MneExperiment(FileTree):
     }
     artifact_rejection = {}
 
-    exclude = {}  # field_values to exclude (e.g. subjects)
-
     # groups can be defined as subject lists: {'group': ('member1', 'member2', ...)}
     # or by exclusion: {'group': {'base': 'all', 'exclude': ('member1', 'member2')}}
     groups = {}
@@ -296,8 +294,7 @@ class MneExperiment(FileTree):
     # whether to look for and load eye tracker data when loading raw files
     has_edf = defaultdict(lambda: False)
 
-    # Pattern for subject names. The first group is used to determine what
-    # MEG-system the data was recorded from
+    # Pattern for subject names when searching the data directory.
     subject_re = r'(R|S|A|Y|AD|QP)(\d{3,})$'
     # MEG-system (legacy variable).
     meg_system = None
