@@ -3152,9 +3152,9 @@ class MneExperiment(FileTree):
         raw = self.get('raw', **state)
         pipe = self._raw[raw]
         while not isinstance(pipe, RawICA):
-            if isinstance(raw, RawSource):
+            if isinstance(pipe, RawSource):
                 raise ValueError(f"raw={raw!r} does not involve ICA")
-            elif isinstance(raw, RawApplyICA):
+            elif isinstance(pipe, RawApplyICA):
                 pipe = pipe.ica_source
             else:
                 pipe = pipe.source
