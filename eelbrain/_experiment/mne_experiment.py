@@ -3405,7 +3405,7 @@ class MneExperiment(FileTree):
             assert samplingrate is None, f"samplingrate and decim can't both be specified"
             samplingrate = int(round(raw.info['sfreq'] / decim))
         if tstart or tstop:
-            raw = raw.crop(tstart, tstop, False)
+            raw = raw.crop(tstart or 0, tstop, False)
         if samplingrate or preload:
             raw.load_data()
         if samplingrate:
