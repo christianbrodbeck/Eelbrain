@@ -4378,13 +4378,9 @@ class MneExperiment(FileTree):
         samplingrate : int
             Samplingrate in Hz for the visualization (set to a lower value to
             improve GUI performance; for raw data, the default is ~100 Hz, for
-            epochs the default is theepoch setting).
+            epochs the default is the epoch setting).
         decim : int
             Data decimation factor (alternative to ``samplingrate``).
-        decim : int
-            Downsample data for visualization (to improve GUI performance;
-            for raw data, the default is ~100 Hz, for epochs the default is the
-            epoch setting).
         session : str | list of str
             One or more sessions for which to plot the raw data (this parameter
             can not be used together with ``epoch``; default is the session in
@@ -4416,12 +4412,12 @@ class MneExperiment(FileTree):
                 raw = pipe.load_concatenated_source_raw(subject, session, self.get('visit'))
                 events = mne.make_fixed_length_events(raw)
                 ds = Dataset()
-                decim = int(raw.info['sfreq'] // 100) if decim is None else decim
+                decim = decim_param(samplingrate, decim, None, raw.info['sfreq']) or int(raw.info['sfreq'] // 100)
                 ds['epochs'] = mne.Epochs(raw, events, 1, 0, 1, baseline=None, proj=False, decim=decim, preload=True)
             elif session is not None:
                 raise TypeError(f"session={session!r} with epoch={epoch!r}")
             else:
-                ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, decim=decim, add_bads=bads)
+                ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, samplingrate=samplingrate, decim=decim, add_bads=bads)
         info = ds['epochs'].info
         data = TestDims('sensor')
         data_kind = data.data_to_ndvar(info)[0]
