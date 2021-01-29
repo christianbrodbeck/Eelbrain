@@ -4402,7 +4402,7 @@ class MneExperiment(FileTree):
         path = self.make_ica(**state)
         # display data
         subject = self.get('subject')
-        pipe = self._raw[self.get('raw')]
+        pipe = self._get_ica_pipe(state)
         bads = pipe.load_bad_channels(subject, self.get('recording'))
         with self._temporary_state, warnings.catch_warnings():
             warnings.filterwarnings('ignore', 'The measurement information indicates a low-pass', RuntimeWarning)
