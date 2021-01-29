@@ -38,16 +38,25 @@ def scatter_table(
     **
         Other :class:`plot.Scatter` arguments.
     """
-    table = fmtxt.Table('l' * (len(xs)-1))
-    for ir, y in enumerate(xs):
-        for ic, x in enumerate(xs):
-            if ic == 0:
-                continue
-            elif ic == 1 and ir == len(xs) - 2 and color is not None:
+    # row: start at 0; column: start at 1
+    n_xs = len(xs)
+    if n_xs < 2:
+        raise ValueError(f"xs={xs!r}: need at least 2 items")
+    # color-bar placement
+    cbar_row = n_xs - 2
+    cbar_column = 1 if n_xs > 2 else 2
+    xs_columns = xs[1:] if n_xs > 2 else [xs[1], None]
+    # generate table
+    table = fmtxt.Table('l' * max(2, (n_xs-1)))
+    for i_row, y in enumerate(xs):
+        for i_column, x in enumerate(xs_columns, 1):
+            if i_column == cbar_column and i_row == cbar_row and color is not None:
                 p_cbar = p.plot_colorbar(orientation='vertical', h=p._layout.h, width=0.2)
                 table.cell(fmtxt.asfmtext(p_cbar, rasterize=rasterize))
                 continue
-            elif ic <= ir:
+            elif x is None:
+                return table
+            elif i_column <= i_row:
                 table.cell()
                 continue
             p = plot.Scatter(y, x, color, sub=sub, markers=markers, ds=ds, alpha=alpha, **kwargs)
