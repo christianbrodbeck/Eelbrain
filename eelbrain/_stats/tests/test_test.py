@@ -96,15 +96,18 @@ def test_ttest():
     t, p = scipy.stats.ttest_1samp(ds['fltvar'], 0)
     assert res.t == pytest.approx(t, 10)
     assert res.p == pytest.approx(p, 10)
+    assert str(res.full) == 'M = 0.40, SD = 1.20, t(79) = 2.96, p = .004'
     res = test.TTestOneSample('fltvar', ds=ds, tail=1)
     assert res.t == pytest.approx(t, 10)
     assert res.p == pytest.approx(p / 2., 10)
+    assert str(res.full) == 'M = 0.40, SD = 1.20, t(79) = 2.96, p = .002'
 
     # TTestIndependent
     res = test.TTestIndependent('fltvar', 'A', 'a1', 'a2', ds=ds)
     t, p = scipy.stats.ttest_ind(ds[a1_index, 'fltvar'], ds[a2_index, 'fltvar'])
     assert res.t == pytest.approx(t, 10)
     assert res.p == pytest.approx(p, 10)
+    assert str(res.full) == 'a1: M = 1.00, SD = 1.02; a2: M = -0.20, SD = 1.05; t(78) = 5.10, p < .001'
 
     # TTestRelated
     res = test.TTestRelated('fltvar', 'A', 'a1', 'a2', 'rm', "B=='b1'", ds)
@@ -119,6 +122,7 @@ def test_ttest():
     assert res.p == pytest.approx(p)
     print(res)
     print(asfmtext(res))
+    assert str(res.full) == 'a1: M = 0.90; a2: M = -0.06; difference: M = 0.96, SD = 1.65, t(19) = 2.53, p = .021'
 
     res = test.TTestRelated('fltvar', 'A', 'a1', 'a2', 'rm', "B=='b1'", ds, 1)
     assert_array_equal(res.difference.x, difference)

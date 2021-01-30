@@ -16,6 +16,7 @@ from .._data_obj import (
     combine,
     cellname, dataobj_repr, nice_label,
 )
+from .._utils import LazyProperty
 from .permutation import resample
 from . import stats
 
@@ -594,6 +595,8 @@ class TTestOneSample(TTest):
         Tailedness of the p value.
     df : int
         Degrees of freedom.
+    full : FMText
+        Full description of the test result.
     """
     def __init__(
             self,
@@ -611,7 +614,8 @@ class TTestOneSample(TTest):
 
         self.mean = ct.y.mean()
         self.popmean = popmean
-        self._y = dataobj_repr(ct.y)
+        self._y = ct.y
+        self._y_name = dataobj_repr(ct.y)
         v = ct.y.x[:, None]
         if popmean:
             v = v - popmean
@@ -620,7 +624,11 @@ class TTestOneSample(TTest):
 
     def __repr__(self):
         cmp = '=><'[self.tail]
-        return f"<{self.__class__.__name__}: {self._y} {cmp} {self.popmean}; {self._asfmtext(difference=True)}>"
+        return f"<{self.__class__.__name__}: {self._y_name} {cmp} {self.popmean}; {self._asfmtext(difference=True)}>"
+
+    @LazyProperty
+    def full(self):
+        return fmtxt.FMText([fmtxt.eq('M', self.mean), ', ', fmtxt.eq('SD', self._y.std()), ', ', self._asfmtext()])
 
 
 class TTestIndependent(TTest):
@@ -668,6 +676,8 @@ class TTestIndependent(TTest):
         Tailedness of the p value.
     df : int
         Degrees of freedom.
+    full : FMText
+        Full description of the test result.
     """
     def __init__(
             self,
@@ -686,24 +696,33 @@ class TTestIndependent(TTest):
         n = len(y)
         df = n - 2
         groups = np.arange(n) < n1
-        d = y[groups].mean() - y[groups == False].mean()
+        d = y[groups].mean() - y[~groups].mean()
         groups.dtype = np.int8
         t = stats.t_ind(y.x[:, None], groups)[0]
 
         self._y = dataobj_repr(y)
         self._x = x_name
         TTest.__init__(self, d, t, df, tail)
-        self._c1 = c1_name
-        self._c0 = c0_name
+        self.c1_name = c1_name
+        self.c0_name = c0_name
+        self._y1 = y1
+        self._y0 = y0
         self._two_y = c1 is None
 
     def __repr__(self):
         cmp = '=><'[self.tail]
         if self._two_y:
-            desc = f"{self._c1} {cmp} {self._c0}"
+            desc = f"{self.c1_name} {cmp} {self.c0_name}"
         else:
-            desc = f"{self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
+            desc = f"{self._y} ~ {self._x}, {self.c1_name} {cmp} {self.c0_name}"
         return f"<{self.__class__.__name__}: {desc}; {self._asfmtext(difference=True)}>"
+
+    @LazyProperty
+    def full(self):
+        return fmtxt.FMText([
+            self.c1_name, ': ', fmtxt.eq('M', self._y1.mean()), ', ', fmtxt.eq('SD', self._y1.std()), '; ',
+            self.c0_name, ': ', fmtxt.eq('M', self._y0.mean()), ', ', fmtxt.eq('SD', self._y0.std()), '; ',
+            self._asfmtext()])
 
 
 class MannWhitneyU:
@@ -860,6 +879,8 @@ class TTestRelated(TTest):
         Mean of condition ``c1``.
     c0_mean : float
         Mean of condition ``c0``.
+    full : FMText
+        Full description of the test result.
 
     See Also
     --------
@@ -883,6 +904,8 @@ class TTestRelated(TTest):
         self._x = x_name
         self._c1 = c1
         self._c0 = c0
+        self.c1_name = c1_name
+        self.c0_name = c0_name
         self.c1_mean = y1.mean()
         self.c0_mean = y0.mean()
         self.difference = y1 - y0
@@ -897,6 +920,15 @@ class TTestRelated(TTest):
         else:
             desc = f"{self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
         return f"<{self.__class__.__name__}: {desc}; {self._asfmtext(difference=True)}>"
+
+    @LazyProperty
+    def full(self):
+        return fmtxt.FMText([
+            self.c1_name, ': ', fmtxt.eq('M', self.c1_mean), '; ',
+            self.c0_name, ': ', fmtxt.eq('M', self.c0_mean), '; ',
+            'difference: ', fmtxt.eq('M', self.difference.mean()), ', ',
+            fmtxt.eq('SD', self.difference.std()), ', ',
+            self._asfmtext()])
 
 
 class WilcoxonSignedRank:
