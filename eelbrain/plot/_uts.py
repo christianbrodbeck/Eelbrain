@@ -249,6 +249,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             ax: int = None,
             y: Union[float, Dict] = None,
             dy: float = None,
+            **kwargs,
     ):
         """Add clusters from a cluster test to the plot (as shaded area).
 
@@ -271,12 +272,15 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             whole y-axis).
         dy
             Height of bars.
+        ...
+            Additional arguments for the matplotlib artists (e.g., ``zorder``).
         """
         axes = range(len(self._axes)) if ax is None else [ax]
 
         # update plots
         for ax in axes:
             p = self._plots[ax].cluster_plt
+            p.kwargs = kwargs
             p.set_clusters(clusters, False)
             p.set_color(color, False)
             p.set_y(y, dy, False)
@@ -643,6 +647,7 @@ class _plt_uts_clusters:
         self.color = color
         self.y = None
         self.dy = None
+        self.kwargs = {}
         self.update()
 
     def set_clusters(self, clusters, update=True):
@@ -698,12 +703,10 @@ class _plt_uts_clusters:
             color = self.color[effect] if isinstance(self.color, dict) else self.color
             y = self.y[effect] if isinstance(self.y, dict) else self.y
             if y is None:
-                h = self.ax.axvspan(
-                    tstart, tstop, color=color, fill=True, alpha=alpha, zorder=-10)
+                kwargs = {'zorder': -10, **self.kwargs}
+                h = self.ax.axvspan(tstart, tstop, color=color, fill=True, alpha=alpha, **kwargs)
             else:
-                h = mpl.patches.Rectangle(
-                    (tstart, y - dy / 2.), tstop - tstart, dy, facecolor=color,
-                    linewidth=0, zorder=-10)
+                h = mpl.patches.Rectangle((tstart, y - dy / 2.), tstop - tstart, dy, facecolor=color, linewidth=0, **self.kwargs)
                 self.ax.add_patch(h)
             self.h.append(h)
 
