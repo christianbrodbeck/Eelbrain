@@ -2,7 +2,7 @@
 """Plots for color/style legends"""
 from collections.abc import Iterator
 from itertools import chain
-from typing import Sequence
+from typing import Any, Dict, Sequence, Union
 
 import numpy as np
 import matplotlib as mpl
@@ -10,7 +10,7 @@ from matplotlib.colors import LinearSegmentedColormap, Colormap, Normalize, to_r
 from matplotlib.colorbar import ColorbarBase
 from matplotlib.ticker import FixedFormatter, MaxNLocator
 
-from .._data_obj import cellname
+from .._data_obj import CellArg, cellname
 from .._utils import IS_WINDOWS
 from ._base import EelFigure, Layout, AxisScale, fix_vlim_for_cmap
 
@@ -57,7 +57,7 @@ class ColorGrid(EelFigure):
             self,
             row_cells: Sequence[str],
             column_cells: Sequence[str],
-            colors: dict,
+            colors: Dict[CellArg, Any],
             size: float = None,
             column_label_position: str = 'top',
             row_first: bool = None,
@@ -119,7 +119,7 @@ class ColorGrid(EelFigure):
                     y = row + 0.5
                     ax.plot([col, col + 1], [y, y], color=colors[cell])
                 else:
-                    raise ValueError("shape=%r" % (shape,))
+                    raise ValueError(f"shape={shape!r}")
 
         # column labels
         self.column_labels = []
@@ -214,20 +214,22 @@ class ColorList(EelFigure):
 
     Parameters
     ----------
-    colors : dict
+    colors
         Colors for cells.
-    cells : tuple
+    cells
         Cells for which to plot colors (default is ``colors.keys()``).
-    labels : dict (optional)
+    labels
         Condition labels that are used instead of the keys in ``colors``. This
         is useful if ``colors`` uses abbreviated labels, but the color legend
         should contain more intelligible labels.
-    size : scalar
+    size
         Size (width and height) of the color squares (the default is to
         scale them to fit the font size).
-    h : 'auto' | scalar
+    h : 'auto' | float
         Height of the figure in inches. If 'auto' (default), the height is
         chosen to fit all labels.
+    shape : 'box' | 'line'
+        Shape for color samples (default 'box').
     ...
         Also accepts :ref:`general-layout-parameters`.
 
@@ -236,7 +238,15 @@ class ColorList(EelFigure):
     labels : list of :class:`matplotlib.text.Text`
         Color labels.
     """
-    def __init__(self, colors, cells=None, labels=None, size=None, h='auto', **kwargs):
+    def __init__(
+            self,
+            colors: Dict[CellArg, Any],
+            cells: Sequence[CellArg] = None,
+            labels: Dict[CellArg, str] = None,
+            size: float = None,
+            h: Union[str, float] = 'auto',
+            shape: str = 'box',
+            **kwargs):
         if cells is None:
             cells = tuple(colors.keys())
         elif isinstance(cells, Iterator):
@@ -267,8 +277,13 @@ class ColorList(EelFigure):
         for i, cell in enumerate(cells):
             bottom = n - i - 1
             y = bottom + 0.5
-            patch = mpl.patches.Rectangle((0, bottom), 1, 1, fc=colors[cell], ec='none', zorder=1)
-            ax.add_patch(patch)
+            if shape == 'box':
+                patch = mpl.patches.Rectangle((0, bottom), 1, 1, fc=colors[cell], ec='none', zorder=1)
+                ax.add_patch(patch)
+            elif shape == 'line':
+                ax.plot([0, 1], [y, y], color=colors[cell])
+            else:
+                raise ValueError(f"shape={shape!r}")
             h = ax.text(1.1, y, labels.get(cell, cell), va='center', ha='left', zorder=2)
             self.labels.append(h)
 
