@@ -884,35 +884,44 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         return out
 
 
-def epochs_ndvar(epochs, name=None, data=None, exclude='bads', mult=1,
-                 info=None, sensors=None, vmax=None, sysname=None,
-                 connectivity=None):
+def epochs_ndvar(
+        epochs: Union[mne.BaseEpochs, PathArg],
+        name: str = None,
+        data: str = None,
+        exclude: Union[str, Sequence[str]] = 'bads',
+        mult: float = 1,
+        info: dict = None,
+        sensors: Sensor = None,
+        vmax: float = None,
+        sysname: str = None,
+        connectivity: Union[str, Sequence] = None,
+):
     """
     Convert an :class:`mne.Epochs` object to an :class:`NDVar`.
 
     Parameters
     ----------
-    epochs : mne.Epochs | str
+    epochs
         The epochs object or path to an epochs FIFF file.
-    name : None | str
+    name
         Name for the NDVar.
     data : 'eeg' | 'mag' | 'grad'
         Which data channels data to include (default based on channels in data).
-    exclude : list of string | str
+    exclude
         Channels to exclude (:func:`mne.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
         If empty do not exclude any.
-    mult : scalar
+    mult
         multiply all data by a constant.
     info : None | dict
         Additional contents for the info dictionary of the NDVar.
-    sensors : None | Sensor
+    sensors
         The default (``None``) reads the sensor locations from the fiff file.
         If the fiff file contains incorrect sensor locations, a different
         Sensor can be supplied through this kwarg.
-    vmax : None | scalar
+    vmax
         Set a default range for plotting.
-    sysname : str
+    sysname
         Name of the sensor system to load sensor connectivity (e.g. 'neuromag306',
         inferred automatically for KIT data converted with a recent version of
         MNE-Python).
@@ -929,7 +938,7 @@ def epochs_ndvar(epochs, name=None, data=None, exclude='bads', mult=1,
 
         If unspecified, it is inferred from ``sysname`` if possible.
     """
-    if isinstance(epochs, str):
+    if isinstance(epochs, (str, Path)):
         epochs = mne.read_epochs(epochs)
 
     if data is None:
