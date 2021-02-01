@@ -102,7 +102,8 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     error_alpha
         Alpha of the error plot (default 0.3).
     mask : NDVar | {cell: NDVar}
-        Mask certain time points.
+        Mask certain time points. To control appearance of masked regions, set
+        ``colors`` using :class:`plot.Style`.
     clusters
         Clusters to add to the plots. The clusters should be provided as
         Dataset, as stored in test results' :py:attr:`.clusters`.
