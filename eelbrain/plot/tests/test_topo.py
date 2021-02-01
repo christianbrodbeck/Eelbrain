@@ -72,7 +72,9 @@ def test_plot_topo_butterfly():
     p._on_key_press(event)
     p.close()
 
-    p = plot.TopoButterfly('utsnd', ds=ds, vmax=0.2, w=6)
+    p = plot.TopoButterfly('utsnd', ds=ds, vmax=2, w=6, t=0.5)
+    assert p._axes[0].get_ylim() == (-2.0, 2.0)
+    assert p._time_fixed
     p.close()
 
     # multiple rows

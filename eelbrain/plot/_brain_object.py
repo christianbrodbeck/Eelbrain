@@ -405,7 +405,7 @@ class Brain(TimeSlicer, surfer.Brain):
         # make sure time axis is compatible with existing data
         if time_dim is not None:
             if self._time_dim is None:
-                self._set_time_dim(time_dim)
+                self._init_time_dim(time_dim)
             elif time_dim != self._time_dim:
                 raise ValueError(f"The brain already displays an NDVar with incompatible time dimension (current: {self._time_dim};  new: {time_dim})")
 

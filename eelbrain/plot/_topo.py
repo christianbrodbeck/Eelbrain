@@ -15,7 +15,8 @@ from ._base import (
     CMapArg, ColorArg,
     PlotType, EelFigure, PlotData, AxisData, DataLayer,
     Layout, ImLayout, VariableAspectLayout,
-    ColorMapMixin, TimeSlicerEF, TopoMapKey, XAxisMixin, YLimMixin)
+    ColorMapMixin, TimeSlicerEF, TopoMapKey, XAxisMixin, YLimMixin,
+)
 from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
 from ._sensors import SENSORMAP_FRAME, SensorMapMixin, _plt_map2d
 
@@ -255,8 +256,7 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
             return p.data, p.title, p.proj
 
 
-class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
-                    XAxisMixin, EelFigure):
+class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
     """Butterfly plot with corresponding topomaps
 
     Parameters
@@ -284,6 +284,8 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         Color of the butterfly plots.
     linewidth : scalar
         Linewidth for plots (defult is to use ``matplotlib.rcParams``).
+    t
+        Time to display in the topomap.
     proj : str
         The sensor projection to use for topomaps.
     res : int
@@ -377,6 +379,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
             color=None,
             linewidth=None,
             # topomap args
+            t: float = None,
             proj='default',
             res=None,
             interpolation=None,
@@ -443,12 +446,10 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         # setup callback
         XAxisMixin._init_with_data(self, data.data, xdim, xlim, self.bfly_axes)
         YLimMixin.__init__(self, self.bfly_plots + self.topo_plots)
-        TimeSlicerEF.__init__(self, xdim, data.time_dim, self.bfly_axes, False)
+        TimeSlicerEF.__init__(self, xdim, data.time_dim, self.bfly_axes, False, initial_time=t)
         TopoMapKey.__init__(self, self._topo_data)
-        self._realtime_topo = True
         self._t_label = None  # time label under lowest topo-map
         self._frame .store_canvas()
-        self._update_topo(data.time_dim[0])
 
         self._show(crosshair_axes=self.bfly_axes)
         self._init_controller()
@@ -500,7 +501,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
             self._t_label.remove()
             self._t_label = None
             self.canvas.draw()  # otherwise time label does not get redrawn
-        else:
+        elif hasattr(self.canvas, 'redraw'):
             self.canvas.redraw(self.topo_axes)
 
 

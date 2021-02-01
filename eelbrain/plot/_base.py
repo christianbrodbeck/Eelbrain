@@ -93,6 +93,7 @@ import weakref
 import matplotlib as mpl
 import matplotlib.axes
 import matplotlib.font_manager
+import matplotlib.text
 from matplotlib.colors import Colormap
 from matplotlib.figure import SubplotParams
 from matplotlib.ticker import FuncFormatter
@@ -2979,7 +2980,11 @@ class Legend(EelFigure):
 
 class TimeController:
     # Link plots that have the TimeSlicer mixin
-    def __init__(self, t=0, fixate=False):
+    def __init__(
+            self,
+            t: float = 0,
+            fixate: bool = False,
+    ):
         self._plots = []  # list of weakref to plots
         self.current_time = t
         self.fixate = fixate
@@ -3030,28 +3035,40 @@ class TimeSlicer:
     # Interface to link time axes of multiple plots.
     # update data in a child plot of time-slices
     _time_dim = None
-    _current_time = None
+    _current_time = None  # needs to reflect what is currently displayed
+    _initial_time = None  # used by delayed initialization of time-controller
     _display_time_in_frame_title = False
 
-    def __init__(self, time_dim=None, time_fixed=False, display_text=None):
-        if time_dim is not None:
-            self._set_time_dim(time_dim)
+    def __init__(
+            self,
+            time_dim: Union[UTS, Case] = None,
+            time_fixed: bool = None,
+            display_text: matplotlib.text.Text = None,
+            initial_time: float = None,
+    ):
         self._time_controller = None
-        self._time_fixed = time_fixed
+        self._time_fixed = time_fixed if time_fixed is not None else (initial_time is not None)
         self.__display_text = display_text
+        self._initial_time = initial_time
+        if time_dim is not None:
+            self._init_time_dim(time_dim)
 
-    def _init_controller(self):
-        tc = TimeController(self._current_time, self._time_fixed)
-        tc.add_plot(self)
-
-    def _set_time_dim(self, time_dim):
+    def _init_time_dim(self, time_dim: Union[UTS, Case]):
         if self._time_dim is not None:
-            raise NotImplementedError("Time dim already set")
+            raise RuntimeError("Time dim already set")
         self._time_dim = time_dim
         if isinstance(time_dim, UTS):
-            self._current_time = time_dim.tmin
+            if self._initial_time is None:
+                self._initial_time = time_dim.tmin
         elif isinstance(time_dim, Case):
-            self._current_time = 0
+            if self._initial_time is None:
+                self._initial_time = 0
+        else:
+            raise TypeError(f'{time_dim=}')
+
+    def _init_controller(self):
+        tc = TimeController(self._initial_time, self._time_fixed)
+        tc.add_plot(self)
 
     def link_time_axis(self, other):
         """Link the time axis of this figure with another figure"""
@@ -3152,11 +3169,19 @@ class TimeSlicerEF(TimeSlicer):
     # TimeSlicer for Eelfigure
     _can_set_time = True
 
-    def __init__(self, x_dimname, x_dim, axes=None, redraw=True, display_text=None):
+    def __init__(
+            self,
+            x_dimname: str,
+            x_dim: Dimension,
+            axes: Sequence[matplotlib.axes.Axes] = None,
+            redraw: bool = True,
+            display_text: matplotlib.text.Text = None,
+            initial_time: float = None,
+    ):
         if x_dimname != 'time':
             TimeSlicer.__init__(self, time_fixed=True, display_text=display_text)
             return
-        TimeSlicer.__init__(self, x_dim, display_text=display_text)
+        TimeSlicer.__init__(self, x_dim, display_text=display_text, initial_time=initial_time)
         self.__axes = self._axes if axes is None else axes
         self.__time_lines = []
         self.__redraw = redraw
