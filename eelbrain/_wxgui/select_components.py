@@ -12,6 +12,7 @@ from distutils.version import LooseVersion
 from itertools import repeat
 from math import ceil
 import re
+from typing import Sequence, Union
 
 import mne
 from matplotlib.patches import Rectangle
@@ -21,8 +22,9 @@ import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot, fmtxt
-from .._data_obj import Factor, NDVar, asndvar, Categorial, Scalar
+from .._data_obj import Dataset, Factor, NDVar, asndvar, Categorial, Scalar
 from .._io.fiff import _picks
+from .._types import PathArg
 from .._utils.parse import POS_FLOAT_PATTERN
 from .._utils.system import IS_OSX
 from ..plot._base import AxisData, DataLayer, PlotType
@@ -84,16 +86,29 @@ class Document(FileDocument):
 
     Parameters
     ----------
-    path : str
+    path
         Path to the ICA file.
-    ds : Dataset
+    data
         Dataset containing 'epochs' (mne Epochs), 'index' (Var describing
         epochs) and variables describing cases in epochs, used to plot
         condition averages.
     """
-    def __init__(self, path, ds, sysname, connectivity):
+    def __init__(
+            self,
+            path: PathArg,
+            data: Union[Dataset, mne.BaseEpochs],
+            sysname: str,
+            connectivity: Union[str, Sequence] = None,
+    ):
         FileDocument.__init__(self, path)
         self.saved = True
+
+        if isinstance(data, mne.BaseEpochs):
+            ds = Dataset({'epochs': data})
+        elif isinstance(data, Dataset):
+            ds = data
+        else:
+            raise TypeError(f'data={data!r}')
 
         self.ica = ica = mne.preprocessing.read_ica(path)
         if LooseVersion(mne.__version__) < LooseVersion('0.16'):
