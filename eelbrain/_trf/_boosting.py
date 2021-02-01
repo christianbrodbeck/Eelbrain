@@ -26,7 +26,7 @@ from multiprocessing.sharedctypes import RawArray
 import os
 import time
 from threading import Event, Thread
-from typing import Any, Iterator, List, Union, Tuple, Sequence
+from typing import Any, List, Union, Tuple, Sequence
 import warnings
 
 import numpy as np

@@ -849,9 +849,9 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         name = None
     start_scalar = i_start is None or isinstance(i_start, int)
     stop_scalar = i_stop is None or isinstance(i_stop, int)
-    if start_scalar or stop_scalar:
-        if not start_scalar and stop_scalar:
-            raise TypeError(f"i_start and i_stop must either both be scalar or both iterable, got i_start={i_start!r}, i_stop={i_stop!r}")
+    if start_scalar != stop_scalar:
+        raise TypeError(f"i_start and i_stop must either both be scalar or both iterable, got i_start={i_start!r}, i_stop={i_stop!r}")
+    elif start_scalar:
         i_start = (i_start,)
         i_stop = (i_stop,)
         scalar = True
@@ -859,8 +859,8 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         scalar = False
 
     # event index to raw index
-    i_start = tuple(i if i is None else i - raw.first_samp for i in i_start)
-    i_stop = tuple(i if i is None else i - raw.first_samp for i in i_stop)
+    i_start = [i if i is None else i - raw.first_samp for i in i_start]
+    i_stop = [i if i is None else i - raw.first_samp for i in i_stop]
 
     # target dimension
     if data is None:
