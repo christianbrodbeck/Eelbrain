@@ -777,7 +777,7 @@ class _TopoWindow:
             self.plot.set_vlim(v, vmax, meas)
 
 
-class TopoArray(ColorMapMixin, TopoMapKey, EelFigure):
+class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
     """Channel by sample plots with topomaps for individual time points
 
     Parameters
@@ -805,6 +805,9 @@ class TopoArray(ColorMapMixin, TopoMapKey, EelFigure):
         number of topomaps per array-plot.
     t
         Time points for topomaps.
+    xlim : scalar | (scalar, scalar)
+        Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
+        scalar (default is the full x-axis in the data).
     proj
         The sensor projection to use for topomaps.
     res
@@ -872,6 +875,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, EelFigure):
             contours: Union[int, Sequence, Dict] = None,
             ntopo: int = None,
             t: Sequence[float] = (),
+            xlim: Union[float, Tuple[float, float]] = None,
             # topomap args
             proj: str = 'default',
             res: int = None,
@@ -969,6 +973,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, EelFigure):
         self._configure_axis_dim('y', 'sensor', True, yticklabels, self._array_axes, False, data.data)
 
         # setup callback
+        XAxisMixin._init_with_data(self, data.data, 'time', xlim, self._array_axes)
         self._selected_window = None
         self.canvas.mpl_connect('pick_event', self._pick_handler)
         self._frame .store_canvas()
