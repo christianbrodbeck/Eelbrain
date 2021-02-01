@@ -9090,22 +9090,26 @@ class Sensor(Dimension):
         else:
             return None
 
-    def index(self, include=None, exclude=None):
+    def index(
+            self,
+            include: Union[str, Sequence[str, int]] = None,
+            exclude: Union[str, Sequence[str, int]] = None,
+    ) -> NDVar:
         """Construct an index for specified sensors
 
         Parameters
         ----------
-        include : list of str, int
+        include
             Sensors to exclude (by name or index).
-        exclude : list of str, int
+        exclude
             Sensors to exclude (by name or index).
 
         Returns
         -------
-        index : NDVar
+        index
             Boolean :class:`NDVar` indexing selected channels.
         """
-        if include is None == exclude is None:
+        if (include is None) == (exclude is None):
             raise TypeError(f"inclide={include!r}, exclude={exclude!r}: Need to specify exactly one of include, exclude")
         elif include is not None:
             if isinstance(include, str):
