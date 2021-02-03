@@ -1,25 +1,30 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """I/O for wave files"""
-import os
+from pathlib import Path
 
 import numpy as np
 
 from .._data_obj import NDVar, Scalar, UTS
+from .._types import PathArg
 from .._utils import ui
 
 
 FILETYPES = [("WAV files", "*.wav")]
 
 
-def load_wav(filename=None, name=None, backend='wave'):
+def load_wav(
+        filename: PathArg = None,
+        name: str = None,
+        backend: str = 'wave',
+) -> NDVar:
     """Load a wav file as NDVar
 
     Parameters
     ----------
-    filename : path-like
+    filename
         Filename of the wav file. If not filename is specified, a file dialog is
         shown to select one.
-    name : str
+    name
         NDVar name (default is the file name).
     backend : 'wave' | 'scipy'
         Whether to read the file using the builtin :mod:`wave` module or through
@@ -27,7 +32,7 @@ def load_wav(filename=None, name=None, backend='wave'):
 
     Returns
     -------
-    wav : NDVar
+    wav
         NDVar with the wav file's data. If the file contains a single channel,
         the NDVar dimensions are ``(time,)``; if it contains several channels,
         they are ``(time, channel)``. ``wav.info`` contains entries for
@@ -38,17 +43,17 @@ def load_wav(filename=None, name=None, backend='wave'):
     Uses :mod:`scipy.io.wavfile`.
     """
     if filename is None:
-        filename = ui.ask_file("Load WAV File", "Select WAV file to load as NDVar", FILETYPES)
-        if not filename:
+        path = ui.ask_file("Load WAV File", "Select WAV file to load as NDVar", FILETYPES)
+        if not path:
             return
-    elif not os.path.exists(filename):
-        _, ext = os.path.splitext(filename)
-        if not ext:
-            filename += '.wav'
+    else:
+        path = Path(filename)
+        if not path.suffix and not path.exists():
+            path = path.with_suffix('.wav')
 
     if backend == 'wave':
         import wave
-        with wave.open(str(filename), 'rb') as fp:
+        with wave.open(str(path), 'rb') as fp:
             n_channels = fp.getnchannels()
             n_frames = fp.getnframes()
             n_bytes = fp.getsampwidth()
@@ -59,19 +64,19 @@ def load_wav(filename=None, name=None, backend='wave'):
             data = data.reshape((-1, n_channels))
     elif backend == 'scipy':
         from scipy.io import wavfile
-        srate, data = wavfile.read(filename)
+        srate, data = wavfile.read(path)
     else:
         raise ValueError(f"backend={backend!r}")
 
     time = UTS(0, 1. / srate, data.shape[0])
     if name is None:
-        name = os.path.basename(filename)
-    info = {'filename': filename, 'samplingrate': srate}
+        name = path.name
+    info = {'filename': str(path), 'samplingrate': srate}
     if data.ndim == 1:
-        return NDVar(data, (time,), info, name)
+        return NDVar(data, (time,), name, info)
     elif data.ndim == 2:
         chan = Scalar('channel', np.arange(data.shape[1]))
-        return NDVar(data, (time, chan), info, name)
+        return NDVar(data, (time, chan), name, info)
     else:
         raise NotImplementedError(f"Data with {data.ndim} dimensions")
 
