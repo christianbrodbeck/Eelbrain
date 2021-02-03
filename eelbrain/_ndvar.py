@@ -17,6 +17,7 @@ from typing import Any, Callable, Sequence, Union
 import mne
 from numba import njit, prange
 import numpy as np
+import numpy
 from scipy import linalg, ndimage, signal, stats
 
 from . import _info, mne_fixes
@@ -803,33 +804,44 @@ def minimum(ndvars: SequenceOfNDNumeric, name: str = None):
     return _sequence_elementwise(ndvars, np.minimum, name)
 
 
-def neighbor_correlation(x, dim='sensor', obs='time', name=None):
+def neighbor_correlation(
+        x: NDVar,
+        dim: str = 'sensor',
+        obs: str = 'time',
+        func: Callable = np.mean,
+        name: str = None,
+) -> NDVar:
     """Calculate Neighbor correlation
 
     Parameters
     ----------
-    x : NDVar
+    x
         The data.
-    dim : str
+    dim
         Dimension over which to correlate neighbors (default 'sensor').
-    obs : str
+    obs
         Dimension which provides observations over which to compute the
         correlation (default 'time').
-    name : str
+    func
+        Numpy function to summarize the neighbors. Default :fun:`numpy.mean`;
+        for example, use :fun:`numpy.max` to test whether any neighbor is
+        correlated.
+    name
         Name for the new NDVar.
 
     Returns
     -------
-    correlation : NDVar
+    correlation
         NDVar that contains for each element in ``dim`` the with average
         correlation coefficient with its neighbors.
     """
     x = asndvar(x)
     low_var = x.std(obs).x < 1e-25
     dim_obj = x.get_dim(dim)
-    if np.any(low_var):
-        raise ValueError("Low variance at %s = %s" %
-                         (dim, dim_obj._dim_index(low_var)))
+    if numpy.any(low_var):
+        raise ValueError(f"Low variance at {dim} = {dim_obj._dim_index(low_var)}")
+    if name is None:
+        name = x.name
 
     # find neighbors
     neighbors = defaultdict(list)
@@ -839,12 +851,15 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
 
     # for each point, find the average correlation with its neighbors
     data = x.get_data((dim, obs))
-    cc = np.corrcoef(data)
-    y = np.empty(len(dim_obj))
-    for i in range(len(dim_obj)):
-        y[i] = np.mean(cc[i, neighbors[i]])
+    cc = numpy.corrcoef(data)
+    try:
+        y = numpy.array([func(cc[i, neighbors[i]]) for i in range(len(dim_obj))])
+    except ValueError:
+        if any(len(ns) == 0 for ns in neighbors.values()):
+            raise ValueError(f"Some elements do not have any neighbors")
+        raise
     info = _info.for_stat_map('r', old=x.info)
-    return NDVar(y, (dim_obj,), name or x.name, info)
+    return NDVar(y, (dim_obj,), name, info)
 
 
 def normalize_in_cells(
