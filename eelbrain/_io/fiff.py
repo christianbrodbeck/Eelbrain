@@ -509,8 +509,7 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
     return ds
 
 
-def add_mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, target='epochs',
-                   **kwargs):
+def add_mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, target='epochs', **kwargs):
     """
     Load epochs and add them to a dataset as :class:`mne.Epochs`.
 

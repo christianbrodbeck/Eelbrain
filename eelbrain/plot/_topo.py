@@ -2,7 +2,7 @@
 """Plot topographic maps of sensor space data."""
 from itertools import repeat
 from math import floor, sqrt
-from typing import Dict, Sequence, Tuple, Union
+from typing import Any, Dict, Sequence, Tuple, Union
 
 import matplotlib as mpl
 import numpy as np
@@ -315,7 +315,8 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMix
         Show sensor labels. For 'name', any prefix common to all names
         is removed; with 'fullname', the full name is shown.
     mark : Sensor index
-        Sensors which to mark.
+        Sensors to mark in the topo-map. To highlight sensors in the butterfly
+        plot, consider using :meth:`NDVar.mask` on ``y``.
     mcolor : matplotlib color
         Color for marked sensors.
     xlabel
@@ -368,34 +369,36 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMix
 
     def __init__(
             self,
-            y,
-            xax=None,
-            ds=None,
-            sub=None,
-            vmax=None,
-            vmin=None,
-            cmap=None,
-            contours=None,
-            color=None,
-            linewidth=None,
+            y: Union[NDVarArg, Sequence[NDVarArg]],
+            xax: CategorialArg = None,
+            ds: Dataset = None,
+            sub: IndexArg = None,
+            vmax: float = None,
+            vmin: float = None,
+            cmap: CMapArg = None,
+            contours: Union[int, Sequence, Dict] = None,
+            color: Any = None,
+            linewidth: float = None,
             # topomap args
             t: float = None,
-            proj='default',
-            res=None,
-            interpolation=None,
-            clip='even',
-            clip_distance=0.05,
-            head_radius=None,
-            head_pos=0,
-            im_interpolation=None,
+            proj: str = 'default',
+            res: int = None,
+            interpolation: str = None,
+            clip: Union[bool, str] = 'even',
+            clip_distance: float = 0.05,
+            head_radius: Union[float, Tuple[float, float]] = None,
+            head_pos: float = 0,
+            im_interpolation: str = None,
             # sensor-map args
-            sensorlabels=None, mark=None, mcolor=None,
+            sensorlabels: str = None,
+            mark: IndexArg = None,
+            mcolor: ColorArg = None,
             # layout
             xlabel: Union[bool, str] = True,
             ylabel: Union[bool, str] = True,
             xticklabels: Union[str, int, Sequence[int]] = -1,
             yticklabels: Union[str, int, Sequence[int]] = 'left',
-            axtitle=True,
+            axtitle: Union[bool, Sequence[str]] = True,
             frame: bool = True,
             xlim: Union[float, Tuple[float, float]] = None,
             **kwargs,

@@ -2,6 +2,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from logging import getLogger
 import os
+from typing import Optional, Tuple
 
 import wx
 
@@ -162,7 +163,7 @@ class FileDocument:
 class FileModel:
     """Manages a document as well as its history"""
 
-    def __init__(self, doc):
+    def __init__(self, doc: FileDocument):
         self.doc = doc
         self.history = History(doc)
 
@@ -186,7 +187,13 @@ class FileFrame(EelbrainFrame):
     _wildcard = ("Tab Separated Text (*.txt)|*.txt|"
                  "Pickle (*.pickled)|*.pickled")
 
-    def __init__(self, parent, pos, size, model):
+    def __init__(
+            self,
+            parent: wx.Frame,
+            pos: Optional[Tuple[int, int]],
+            size: Optional[Tuple[int, int]],
+            model: FileModel,
+    ):
         """View object of the epoch selection GUI
 
         Parameters

@@ -1365,7 +1365,7 @@ class FigureFrame:
     def Show(self):
         pass
 
-    def redraw(self, axes=[], artists=[]):
+    def redraw(self, axes=(), artists=()):
         "Adapted duplicate of mpl_canvas.FigureCanvasPanel"
         self.canvas.restore_region(self._background)
         for ax in axes:
@@ -1575,7 +1575,7 @@ class EelFigure(MatplotlibFigure):
 
     def _set_axtitle(
             self,
-            axtitle: Union[bool, str, Sequence[str]] = None,
+            axtitle: Union[bool, str, Iterator[str]] = None,
             data: PlotData = None,
             axes: Union[List[matplotlib.axes.Axes], int] = None,
             names: Sequence[str] = None,

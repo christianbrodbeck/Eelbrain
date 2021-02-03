@@ -516,8 +516,8 @@ def morph_source_space(
         if mask is None:
             if source.parc is None:
                 mask = False
-            else:
-                mask = not np.any(source.parc.startswith('unknown-'))
+            else:  # infer whether ndvar was masked
+                mask = not ('unknown-lh' in source.parc or 'unknown-rh' in source.parc)
     elif not isinstance(vertices_to, list) or not len(vertices_to) == 2:
         raise ValueError(f"vertices_to={vertices_to!r}: must be a list of length 2")
 

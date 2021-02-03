@@ -2,7 +2,7 @@
 """Plot multidimensional uniform time series."""
 from typing import Union, Sequence
 
-import matplotlib as mpl
+import matplotlib.axes
 import numpy as np
 
 from .._data_obj import Datalist, Dataset
@@ -21,7 +21,7 @@ class _plt_im:
 
     def __init__(
             self,
-            ax: mpl.axes.Axes,
+            ax: matplotlib.axes.Axes,
             layer: DataLayer,
             cmaps: dict,
             vlims: dict,

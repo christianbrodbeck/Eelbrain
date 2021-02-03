@@ -12,7 +12,7 @@ from distutils.version import LooseVersion
 from itertools import repeat
 from math import ceil
 import re
-from typing import Sequence, Union
+from typing import Optional, Sequence, Tuple, Union
 
 import mne
 from matplotlib.patches import Rectangle
@@ -167,6 +167,10 @@ class Document(FileDocument):
 
 class Model(FileModel):
     """Manages a document with its history"""
+
+    def __init__(self, doc: Document):
+        FileModel.__init__(self, doc)
+
     def set_case(self, index, state, desc="Manual Change"):
         old_accept = self.doc.accept[index]
         action = ChangeAction(desc, index, old_accept, state)
@@ -178,8 +182,7 @@ class Model(FileModel):
         self.history.do(action)
 
     def clear(self):
-        action = ChangeAction("Clear", slice(None), self.doc.accept.copy(),
-                              True)
+        action = ChangeAction("Clear", slice(None), self.doc.accept.copy(), True)
         self.history.do(action)
 
 
@@ -413,7 +416,13 @@ class Frame(SharedToolsMenu, FileFrame):
     _title = 'Select Components'
     _wildcard = "ICA fiff file (*-ica.fif)|*.fif"
 
-    def __init__(self, parent, pos, size, model):
+    def __init__(
+            self,
+            parent: wx.Frame,
+            pos: Optional[Tuple[int, int]],
+            size: Optional[Tuple[int, int]],
+            model: Model,
+    ):
         FileFrame.__init__(self, parent, pos, size, model)
         SharedToolsMenu.__init__(self)
         self.source_frame = None
@@ -676,7 +685,11 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
     _title = 'ICA Source Time Course'
     _wildcard = "ICA fiff file (*-ica.fif)|*.fif"
 
-    def __init__(self, parent: Frame, i_first: int):
+    def __init__(
+            self,
+            parent: Frame,
+            i_first: int,
+    ):
         FileFrameChild.__init__(self, parent, None, None, parent.model)
         SharedToolsMenu.__init__(self)
 

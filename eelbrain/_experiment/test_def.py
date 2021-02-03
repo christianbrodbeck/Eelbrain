@@ -430,8 +430,6 @@ TEST_CLASSES = {
     't_contrast_rel': TContrastRelated,
     'two-stage': TwoStageTest,
 }
-AGGREGATE_FUNCTIONS = ('mean', 'rms')
-DATA_RE = re.compile(r"(source|sensor|meg|eeg)(?:\.(%s))?$" % '|'.join(AGGREGATE_FUNCTIONS))
 
 
 class TestDims:
@@ -447,14 +445,14 @@ class TestDims:
         If loading source space data, whether the data is morphed to the common
         brain.
     """
-    # eventually, specify like 'source' vs 'source time.rms'
+    RE = re.compile(r"^(source|sensor|meg|eeg)(?:\.(mean|rms))?$")
     source = None
     sensor = None
 
     def __init__(self, string, time=True, morph=False):
         self.time = bool(time)
         self.morph = bool(morph)
-        m = DATA_RE.match(string)
+        m = self.RE.match(string)
         if m is None:
             raise ValueError(f"data={string!r}: invalid test dimension description")
         dim, aggregate = m.groups()
