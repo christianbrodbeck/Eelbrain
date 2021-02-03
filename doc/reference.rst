@@ -81,6 +81,7 @@ Functions and modules for loading specific file formats as Eelbrain object:
    :toctree: generated
 
    load.wav
+   load.sphere_audio
    load.tsv
    load.eyelink
    load.fiff
