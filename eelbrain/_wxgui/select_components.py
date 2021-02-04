@@ -22,6 +22,7 @@ import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot, fmtxt
+from .._colorspaces import UNAMBIGUOUS_COLORS
 from .._data_obj import Dataset, Factor, NDVar, asndvar, Categorial, Scalar
 from .._io.fiff import _picks
 from .._types import PathArg
@@ -140,12 +141,19 @@ class Document(FileDocument):
             labels = map(str, range(len(epochs)))
         self.epoch_labels = tuple(labels)
 
-        # global mean (which is not modified by ICA)
+        # properties which are not modified by ICA
+        # global mean
         if ica.noise_cov is None:  # revert standardization
             global_mean = ica.pca_mean_ * ica.pre_whitener_[:, 0]
         else:
             global_mean = np.dot(linalg.pinv(ica.pre_whitener_), ica.pca_mean_)
         self.global_mean = NDVar(global_mean[picks], (self.epochs_ndvar.sensor,))
+        # pre-ICA signal range
+        self.pre_ica_min = self.epochs_ndvar.min('sensor')
+        self.pre_ica_max = self.epochs_ndvar.max('sensor')
+        self.pre_ica_range_scale = (self.pre_ica_max.mean() - self.pre_ica_min.mean())
+        self.pre_ica_min /= self.pre_ica_range_scale
+        self.pre_ica_max /= self.pre_ica_range_scale
 
         # publisher
         self.callbacks.register_key('case_change')
@@ -703,15 +711,17 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
         self.parent = parent
         self.model = parent.model
         self.doc = parent.model.doc
-        self.n_comp = self.config.ReadInt('layout_n_comp', 10)
+        self.n_comp_actual = self.n_comp = self.config.ReadInt('layout_n_comp', 10)
         self.n_comp_in_ica = len(self.doc.components)
         self.i_first = i_first
         self.n_epochs = self.config.ReadInt('layout_n_epochs', 20)
         self.i_first_epoch = 0
+        self.pad_time = 0  # need to pad x-axis when showing fewer epochs than fit on axis)
         self.n_epochs_in_data = len(self.doc.sources)
         self.y_scale = self.config.ReadFloat('y_scale', 10)  # scale factor for y axis
         self._marked_epoch_i = None
         self._marked_epoch_h = None
+        self.show_range = True  # show axis with pre/post ICA data range
 
         # Toolbar
         tb = self.InitToolbar(can_open=False)
@@ -752,14 +762,37 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
         y = data.get_data(('component', 'case', 'time')).reshape((n_comp_actual, -1))
         if y.base is not None and data.x.base is not None:
             y = y.copy()
-        start = n_comp - 1
-        stop = -1 + (n_comp - n_comp_actual)
+        start = n_comp - 1 + self.show_range
+        stop = -1 + (n_comp - n_comp_actual) + self.show_range
         y += np.arange(start * self.y_scale, stop * self.y_scale, -self.y_scale)[:, None]
         # pad epoch labels for x-axis
         epoch_labels = self.doc.epoch_labels[epoch_index]
         if len(epoch_labels) < self.n_epochs:
             epoch_labels += ('',) * (self.n_epochs - len(epoch_labels))
         return y, epoch_labels
+
+    def _pad(self, y):
+        "Pad time-axis when data contains fewer epochs than the x-axis"
+        if self.pad_time:
+            return np.pad(y, (0, self.pad_time), 'constant')
+        else:
+            return y
+
+    def _get_raw_range(self):
+        epoch_index = slice(self.i_first_epoch, self.i_first_epoch + self.n_epochs)
+        y_min = self._pad(self.doc.pre_ica_min[epoch_index].x.ravel())
+        y_max = self._pad(self.doc.pre_ica_max[epoch_index].x.ravel())
+        return y_min, y_max
+
+    def _get_clean_range(self):
+        epoch_index = slice(self.i_first_epoch, self.i_first_epoch + self.n_epochs)
+        epochs = self.doc.epochs[epoch_index]
+        y_clean = asndvar(self.doc.apply(epochs))
+        y_min = y_clean.min('sensor').x.ravel()
+        y_max = y_clean.max('sensor').x.ravel()
+        y_min /= self.doc.pre_ica_range_scale
+        y_max /= self.doc.pre_ica_range_scale
+        return self._pad(y_min), self._pad(y_max)
 
     def _plot(self):
         # partition figure
@@ -774,8 +807,11 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
         self.n_comp_actual = n_comp_actual
         elen = len(self.doc.sources.time)
 
+        # layout
+        n_rows = n_comp + self.show_range
+        axheight = 1 / (n_rows + 0.5)  # 0.5 = bottom space for epoch labels
+
         # topomaps
-        axheight = 1 / (self.n_comp + 0.5)  # 0.5 = bottom space for epoch labels
         ax_size_in = axheight * figheight
         axwidth = ax_size_in / self.figure.get_figwidth()
         left = axwidth / 2
@@ -793,12 +829,13 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
             self.topo_labels.append(text)
 
         # source time course data
-        y, tick_labels = self._get_source_data()
+        y, xtick_labels = self._get_source_data()
 
         # axes
         left = 1.5 * axwidth
-        bottom = 1 - n_comp * axheight
-        ax = self.figure.add_axes((left, bottom, 1 - left, 1 - bottom), frameon=False, yticks=(), xticks=np.arange(elen / 2, elen * self.n_epochs, elen), xticklabels=tick_labels)
+        bottom = 1 - n_rows * axheight
+        xticks = np.arange(elen / 2, elen * self.n_epochs, elen)
+        ax = self.figure.add_axes((left, bottom, 1 - left, 1 - bottom), frameon=False, yticks=(), xticks=xticks, xticklabels=xtick_labels)
         ax.tick_params(bottom=False)
         ax.i = -1
         ax.i_comp = None
@@ -808,13 +845,27 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
 
         # plot epochs
         self.lines = ax.plot(y.T, color=LINE_COLOR[True], clip_on=False)
-        ax.set_ylim((-0.5 * self.y_scale, (self.n_comp - 0.5) * self.y_scale))
-        ax.set_xlim((0, y.shape[1]))
         # line color
         reject_color = LINE_COLOR[False]
         for i in range(n_comp_actual):
             if not self.doc.accept[i + self.i_first]:
                 self.lines[i].set_color(reject_color)
+        # data pre/post range
+        if self.show_range:
+            pre_color = UNAMBIGUOUS_COLORS['orange']
+            post_color = UNAMBIGUOUS_COLORS['bluish green']
+            ax.text(-10, 0.1, 'Range: Raw', va='bottom', ha='right', color=pre_color)
+            ax.text(-10, -0.1, 'Cleaned', va='top', ha='right', color=post_color)
+            # raw
+            ys_raw = self._get_raw_range()
+            self.y_range_pre_lines = [ax.plot(yi, color=pre_color, clip_on=False)[0] for yi in ys_raw]
+            # cleaned
+            ys_clean = self._get_clean_range()
+            self.y_range_post_lines = [ax.plot(yi, color=post_color, clip_on=False)[0] for yi in ys_clean]
+        # axes limits
+        self.ax_tc_ylim = (-0.5 * self.y_scale, (n_rows - 0.5) * self.y_scale)
+        ax.set_ylim(self.ax_tc_ylim)
+        ax.set_xlim((0, y.shape[1]))
         # epoch demarcation
         for x in range(elen, elen * self.n_epochs, elen):
             ax.axvline(x, ls='--', c='k')
@@ -822,10 +873,23 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
         self.ax_tc = ax
         self.canvas.draw()
 
+    def _plot_update_raw_range(self):
+        y_min, y_max = self._get_raw_range()
+        for line, data in zip(self.y_range_pre_lines, (y_min, y_max)):
+            line.set_ydata(data)
+
+    def _plot_update_clean_range(self):
+        y_min, y_max = self._get_clean_range()
+        for line, data in zip(self.y_range_post_lines, (y_min, y_max)):
+            line.set_ydata(data)
+
     def _event_i_comp(self, event):
         if event.inaxes:
             if event.inaxes.i_comp is None:
-                i_comp = int(self.i_first + self.n_comp - ceil(event.ydata / self.y_scale + 0.5))
+                i_in_axes = ceil(event.ydata / self.y_scale + 0.5)
+                if i_in_axes == 0 and self.show_range:
+                    return
+                i_comp = int(self.i_first + self.n_comp + self.show_range - i_in_axes)
                 if i_comp < self.n_comp_in_ica:
                     return i_comp
             else:
@@ -861,6 +925,7 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
         if index:
             for i_comp in index:
                 self.lines[i_comp - self.i_first].set_color(LINE_COLOR[self.doc.accept[i_comp]])
+            self._plot_update_clean_range()
             self.canvas.draw()
 
     def GoToComponentEpoch(self, component, epoch):
@@ -1053,8 +1118,6 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
 
     def SetFirstEpoch(self, i_first_epoch):
         self.i_first_epoch = i_first_epoch
-        bottom = -0.5 * self.y_scale
-        top = (self.n_comp - 0.5) * self.y_scale
 
         # marked epoch
         if self._marked_epoch_h is not None:
@@ -1064,7 +1127,8 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
             i = self._marked_epoch_i - i_first_epoch
             if 0 <= i < self.n_epochs:
                 elen = len(self.doc.sources.time)
-                height = self.n_comp * self.y_scale
+                bottom = -0.5 * self.y_scale
+                height = (self.n_comp + self.show_range) * self.y_scale
                 self._marked_epoch_h = Rectangle((i * elen, bottom), elen, height, edgecolor='yellow', facecolor='yellow')
                 self.ax_tc.add_patch(self._marked_epoch_h)
 
@@ -1076,6 +1140,7 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
             pad_time = elen * n_missing
         else:
             pad_time = 0
+        self.pad_time = pad_time
 
         if self.n_comp_actual < self.n_comp:
             pad_comp = self.n_comp - self.n_comp_actual
@@ -1087,8 +1152,13 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
 
         for line, data in zip(self.lines, y):
             line.set_ydata(data)
+
+        if self.show_range:
+            self._plot_update_raw_range()
+            self._plot_update_clean_range()
+
         self.ax_tc.set_xticklabels(tick_labels)
-        self.ax_tc.set_ylim((bottom, top))
+        self.ax_tc.set_ylim(self.ax_tc_ylim)
         self.canvas.draw()
 
 
