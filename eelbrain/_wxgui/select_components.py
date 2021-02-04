@@ -196,9 +196,10 @@ class Model(FileModel):
 
 class ContextMenu(wx.Menu):
     "Helper class for Menu to store component ID"
-    def __init__(self, i):
+    def __init__(self, i_comp: int = None, i_epoch: int = None):
         wx.Menu.__init__(self)
-        self.i = i
+        self.i_comp = i_comp
+        self.i_epoch = i_epoch
 
 
 class SharedToolsMenu:
@@ -322,7 +323,7 @@ class SharedToolsMenu:
         self.PlotConditionAverages(self)
 
     def OnPlotGrandAverage(self, event):
-        self.PlotEpochButterfly(-1)
+        self.PlotEpochButterfly()
 
     def OnSetButterflyBaseline(self, event):
         self.butterfly_baseline = event.GetId()
@@ -367,8 +368,8 @@ class SharedToolsMenu:
                   i in range(ds.n_cases)]
         self._PlotButterfly(ds['epochs'], titles)
 
-    def PlotEpochButterfly(self, i_epoch):
-        if i_epoch == -1:
+    def PlotEpochButterfly(self, i_epoch: int = None):
+        if i_epoch is None:
             self._PlotButterfly(self.doc.epochs.average(), "Epochs Average")
         else:
             name = f"Epoch {self.doc.epoch_labels[i_epoch]}"
@@ -404,7 +405,7 @@ class Frame(SharedToolsMenu, FileFrame):
     ===================
 
     * Click on components topographies to select/deselect them.
-    * Use the context-menu (right click) for additional commands.
+    * Right-click for a context-menu.
 
     *Keyboard shortcuts* in addition to the ones in the menu:
 
@@ -540,9 +541,21 @@ class Frame(SharedToolsMenu, FileFrame):
             except AttributeError:
                 self.canvas.draw()
         else:
-            self.canvas.draw()  # FIXME
+            self.canvas.draw()  # FIXME: optimize on non-macOS systems
 
-    def GoToComponentEpoch(self, component, epoch):
+    def FindTopComponent(self, i_epoch: int, only_accepted: bool = False):
+        components = self.doc.components
+        sources = self.doc.sources.sub(case=i_epoch)
+        if only_accepted:
+            components = components.sub(component=self.doc.accept)
+            sources = sources.sub(component=self.doc.accept)
+        comp_power = (components ** 2).sum('sensor')
+        source_power = (sources ** 2).sum('time')
+        epoch_comp_power = comp_power * source_power
+        top_component = epoch_comp_power.argmax()
+        self.GoToComponentEpoch(component=top_component)
+
+    def GoToComponentEpoch(self, component: int = None, epoch: int = None):
         if not self.source_frame:
             self.ShowSources(0)
         self.source_frame.GoToComponentEpoch(component, epoch)
@@ -574,9 +587,15 @@ class Frame(SharedToolsMenu, FileFrame):
         elif event.key == 'f':
             self.PlotCompFFT(event.inaxes.i)
         elif event.key == 'b':
-            self.PlotEpochButterfly(-1)
+            self.PlotEpochButterfly()
         elif event.key == 'B':
             self.PlotConditionAverages(self)
+
+    def OnFindTopAcceptedComponent(self, event):
+        self.FindTopComponent(event.EventObject.i_epoch, only_accepted=True)
+
+    def OnFindTopComponent(self, event):
+        self.FindTopComponent(event.EventObject.i_epoch)
 
     def OnPanelResize(self, event):
         w, h = event.GetSize()
@@ -585,10 +604,10 @@ class Frame(SharedToolsMenu, FileFrame):
             self.plot()
 
     def OnPlotCompSourceArray(self, event):
-        self.PlotCompSourceArray(event.EventObject.i)
+        self.PlotCompSourceArray(event.EventObject.i_comp)
 
     def OnPlotCompTopomap(self, event):
-        self.PlotCompTopomap(event.EventObject.i)
+        self.PlotCompTopomap(event.EventObject.i_comp)
 
     def OnPointerEntersAxes(self, event):
         try:
@@ -602,7 +621,7 @@ class Frame(SharedToolsMenu, FileFrame):
             sb.SetStatusText("%i ICA Components" % len(self.doc.components))
 
     def OnRankEpochs(self, event):
-        i_comp = event.EventObject.i
+        i_comp = event.EventObject.i_comp
         source = self.doc.sources.sub(component=i_comp)
         y = source - source.mean()
         y /= y.std()
@@ -620,22 +639,29 @@ class Frame(SharedToolsMenu, FileFrame):
         doc = fmtxt.Section(f"#{i_comp} Ranked Epochs", lst)
         InfoFrame(self, f"Component {i_comp} Epoch SS", doc, 200, 900)
 
-    def _component_context_menu(self, i_comp):
-        menu = ContextMenu(i_comp)
-        item = menu.Append(wx.ID_ANY, "Rank Epochs")
-        self.Bind(wx.EVT_MENU, self.OnRankEpochs, item)
-        menu.AppendSeparator()
-        item = menu.Append(wx.ID_ANY, "Plot Topomap")
-        self.Bind(wx.EVT_MENU, self.OnPlotCompTopomap, item)
-        item = menu.Append(wx.ID_ANY, "Plot Source Array")
-        self.Bind(wx.EVT_MENU, self.OnPlotCompSourceArray, item)
+    def _context_menu(self, i_comp: int = None, i_epoch: int = None):
+        menu = ContextMenu(i_comp, i_epoch)
+        if i_comp is not None:
+            item = menu.Append(wx.ID_ANY, "Rank Epochs")
+            self.Bind(wx.EVT_MENU, self.OnRankEpochs, item)
+            item = menu.Append(wx.ID_ANY, "Plot Topomap")
+            self.Bind(wx.EVT_MENU, self.OnPlotCompTopomap, item)
+            item = menu.Append(wx.ID_ANY, "Plot Source Array")
+            self.Bind(wx.EVT_MENU, self.OnPlotCompSourceArray, item)
+        if i_comp is not None and i_epoch is not None:
+            menu.AppendSeparator()
+        if i_epoch is not None:
+            item = menu.Append(wx.ID_ANY, "Top Component")
+            self.Bind(wx.EVT_MENU, self.OnFindTopComponent, item)
+            item = menu.Append(wx.ID_ANY, "Top Accepted Component")
+            self.Bind(wx.EVT_MENU, self.OnFindTopAcceptedComponent, item)
         return menu
 
     def OnRightDown(self, event):
         mpl_event = self.canvas._to_matplotlib_event(event)
         if not mpl_event.inaxes:
             return
-        menu = self._component_context_menu(mpl_event.inaxes.i)
+        menu = self._context_menu(mpl_event.inaxes.i)
         pos = self.panel.CalcScrolledPosition(event.Position)
         self.PopupMenu(menu, pos)
         menu.Destroy()
@@ -671,6 +697,7 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
     """Component source time course display for selecting ICA components.
 
     * Click on components topographies to select/deselect them.
+    * Right-click for a context-menu.
 
     *Keyboard shortcuts* in addition to the ones in the menu:
 
@@ -720,6 +747,8 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
         self.pad_time = 0  # need to pad x-axis when showing fewer epochs than fit on axis)
         self.n_epochs_in_data = len(self.doc.sources)
         self.y_scale = self.config.ReadFloat('y_scale', 10)  # scale factor for y axis
+        self._marked_component_i = None
+        self._marked_component_h = None
         self._marked_epoch_i = None
         self._marked_epoch_h = None
         self.show_range = True  # show axis with pre/post ICA data range
@@ -896,6 +925,12 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
             else:
                 return event.inaxes.i_comp
 
+    def _event_i_epoch(self, event):
+        if event.inaxes is not None and event.inaxes.i_comp is None:
+            i_epoch = self.i_first_epoch + int(event.xdata // len(self.doc.sources.time))
+            if 0 <= i_epoch < len(self.doc.epochs):
+                return i_epoch
+
     def CanBackward(self):
         return self.i_first_epoch > 0
 
@@ -929,8 +964,9 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
             self._plot_update_clean_range()
             self.canvas.draw()
 
-    def GoToComponentEpoch(self, component, epoch):
+    def GoToComponentEpoch(self, component: int = None, epoch: int = None):
         if component is not None:
+            self._marked_component_i = component
             self.SetFirstComponent(component // self.n_comp * self.n_comp)
         if epoch is not None:
             self._marked_epoch_i = epoch
@@ -967,15 +1003,7 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
         elif event.key == 'B':
             self.parent.PlotConditionAverages(self)
         elif event.key == 'b':
-            if event.inaxes is None:
-                i_epoch = -1
-            elif event.inaxes.i_comp is None:
-                i_epoch = self.i_first_epoch + int(event.xdata // len(self.doc.sources.time))
-                if i_epoch >= len(self.doc.epochs):
-                    i_epoch = -1
-            else:
-                i_epoch = -1
-            self.PlotEpochButterfly(i_epoch)
+            self.PlotEpochButterfly(self._event_i_epoch(event))
         elif not event.inaxes:
             return
         # component-specific plots
@@ -1016,9 +1044,10 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
     def OnRightDown(self, event):
         mpl_event = self.canvas._to_matplotlib_event(event)
         i_comp = self._event_i_comp(mpl_event)
-        if i_comp is None:
+        i_epoch = self._event_i_epoch(mpl_event)
+        if i_comp is None and i_epoch is None:
             return
-        menu = self.parent._component_context_menu(i_comp)
+        menu = self.parent._context_menu(i_comp, i_epoch)
         self.PopupMenu(menu, event.Position)
         menu.Destroy()
 
@@ -1101,6 +1130,18 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
             i_first = 0
         elif i_first >= self.n_comp_in_ica:
             i_first = self.n_comp_in_ica - 1
+        n_rows = self.n_comp + self.show_range
+
+        # marked component
+        if self._marked_component_h is not None:
+            self._marked_component_h.remove()
+            self._marked_component_h = None
+        if self._marked_component_i is not None:
+            i_from_top = self._marked_component_i - i_first
+            i_from_bottom = n_rows - 1 - i_from_top
+            if 0 <= i_from_bottom < n_rows:
+                bottom = (i_from_bottom - 0.5) * self.y_scale
+                self._marked_component_h = self.ax_tc.axhspan(bottom, bottom + self.y_scale, edgecolor='yellow', facecolor='yellow')
 
         n_comp_actual = min(self.n_comp_in_ica - i_first, self.n_comp)
         for i in range(n_comp_actual):

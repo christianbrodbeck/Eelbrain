@@ -6,9 +6,11 @@ Changes
 New in 0.35
 -----------
 
-* ICA GUI:
-  - In the source time-course window, display the range of the data before and after cleaning in real-time (:func:`gui.select_components`; :meth:`MneExperiment.make_ica_selection`).
-  - New keyboard shortcut: ``alt + arrow`` keys to go to the beginning/end.
+* ICA GUI (:func:`gui.select_components`; :meth:`pipeline.MneExperiment.make_ica_selection`):
+
+   - In the source time-course window, display the range of the data before and after cleaning in real-time.
+   - New keyboard shortcut: ``alt + arrow`` keys to go to the beginning/end.
+   - New context-menu commands: find top component for an epoch.
 
 
 New in 0.34
@@ -16,16 +18,16 @@ New in 0.34
 
 * API:
 
- - :class:`plot.Correlation` renamed to :class:`plot.Scatter` with some parameter changes for improved functionality.
+  - :class:`plot.Correlation` renamed to :class:`plot.Scatter` with some parameter changes for improved functionality.
 
 * New:
 
- - :func:`boosting`: Option to store TRFs for the different test partitions
-   (``partition_results`` parameter).
- - :func:`normalize_in_cells` (see :ref:`exa-compare-topographies`).
- - :class:`UTS` dimension: ``unit`` parameter to represent time in units other than seconds.
- - :mod:`report` submodule with shortcuts for data summary and visualization.
- - :func:`load.convert_pickle_protocol` for compatibility with older Python version.
+  - :func:`boosting`: Option to store TRFs for the different test partitions
+    (``partition_results`` parameter).
+  - :func:`normalize_in_cells` (see :ref:`exa-compare-topographies`).
+  - :class:`UTS` dimension: ``unit`` parameter to represent time in units other than seconds.
+  - :mod:`report` submodule with shortcuts for data summary and visualization.
+  - :func:`load.convert_pickle_protocol` for compatibility with older Python version.
 
 
 New in 0.33
