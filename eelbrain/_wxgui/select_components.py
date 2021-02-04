@@ -678,6 +678,7 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
     Key         Effect
     =========== ============================================================
     arrows      scroll through components/epochs
+    alt+arrows  scroll to beginning/end
     t           topomap plot of the component under the pointer
     a           array-plot of the source time course of the component under
                 the pointer
@@ -943,15 +944,23 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
     def OnCanvasKey(self, event):
         if event.key is None:
             return
+        elif event.key == 'alt+down':
+            self.SetFirstComponent(self.n_comp_in_ica - self.n_comp)
         elif event.key == 'down':
             if self.CanDown():
                 self.OnDown(None)
+        elif event.key == 'alt+up':
+            self.SetFirstComponent(0)
         elif event.key == 'up':
             if self.CanUp():
                 self.OnUp(None)
+        elif event.key == 'alt+right':
+            self.SetFirstEpoch(((self.n_epochs_in_data - 1) // self.n_epochs) * self.n_epochs)
         elif event.key == 'right':
             if self.CanForward():
                 self.OnForward(None)
+        elif event.key == 'alt+left':
+            self.SetFirstEpoch(0)
         elif event.key == 'left':
             if self.CanBackward():
                 self.OnBackward(None)

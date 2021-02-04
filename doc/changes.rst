@@ -6,7 +6,9 @@ Changes
 New in 0.35
 -----------
 
-* ICA GUI: In the source time-course window, display the range of the data before and after cleaning in real-time (:func:`gui.select_components`; :meth:`MneExperiment.make_ica_selection`).
+* ICA GUI:
+  - In the source time-course window, display the range of the data before and after cleaning in real-time (:func:`gui.select_components`; :meth:`MneExperiment.make_ica_selection`).
+  - New keyboard shortcut: ``alt + arrow`` keys to go to the beginning/end.
 
 
 New in 0.34
