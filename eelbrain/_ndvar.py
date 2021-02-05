@@ -525,7 +525,7 @@ def erode(ndvar, dim):
 def filter_data(ndvar, l_freq, h_freq, filter_length='auto',
                 l_trans_bandwidth='auto', h_trans_bandwidth='auto',
                 method='fir', iir_params=None, phase='zero',
-                fir_window='hamming', fir_design='firwin'):
+                fir_window='hamming', fir_design='firwin', name=None):
     """Apply :func:`mne.filter.filter_data` to an NDVar
 
     Returns
@@ -549,7 +549,9 @@ def filter_data(ndvar, l_freq, h_freq, filter_length='auto',
 
     if axis is not None:
         x = x.swapaxes(axis, -1)
-    return NDVar(x, ndvar.dims, ndvar.name, ndvar.info)
+    if name is None:
+        name = ndvar.name
+    return NDVar(x, ndvar.dims, name, ndvar.info)
 
 
 def find_intervals(ndvar, interpolate=False):
