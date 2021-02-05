@@ -26,7 +26,7 @@ from multiprocessing.sharedctypes import RawArray
 import os
 import time
 from threading import Event, Thread
-from typing import Any, List, Union, Tuple, Sequence
+from typing import Any, Callable, List, Union, Tuple, Sequence
 import warnings
 
 import numpy as np
@@ -358,29 +358,43 @@ class BoostingResult(PickleableDataClass):
     def proportion_explained(self):
         return 1 - (self.residual / self._variability)
 
-    def _set_parc(self, parc):
+    def _apply_ndvar_transform(self, func: Callable):
+        "Apply func to all NDVars in-place"
+        def sub_func(obj):
+            if obj is None:
+                return None
+            elif isinstance(obj, tuple):
+                return tuple(sub_func(obj_) for obj_ in obj)
+            return func(obj)
+
+        for attr in ('h', 'r', 'r_rank', 'residual', 'y_mean', 'y_scale'):
+            setattr(self, attr, sub_func(getattr(self, attr)))
+        if self.partition_results:
+            for res in self.partition_results:
+                res._apply_ndvar_transform(func)
+
+    def _morph(self, to_subject: str):
+        "Morph source space"
+        from .._mne import morph_source_space
+
+        def func(obj: NDVar):
+            return morph_source_space(obj, to_subject)
+
+        self._apply_ndvar_transform(func)
+
+    def _set_parc(self, parc: str):
         """Change the parcellation of source-space result
-         
+
         Notes
         -----
         No warning for missing sources!
         """
         from .._ndvar import set_parc
 
-        if not self.r.has_dim('source'):
-            raise RuntimeError('BoostingResult does not have source-space data')
+        def func(obj: NDVar):
+            return set_parc(obj, parc, mask=True)
 
-        def sub_func(obj):
-            if obj is None:
-                return None
-            elif isinstance(obj, tuple):
-                return tuple(sub_func(obj_) for obj_ in obj)
-            obj_new = set_parc(obj, parc)
-            index = np.invert(obj_new.source.parc.startswith('unknown-'))
-            return obj_new.sub(source=index)
-
-        for attr in ('h', 'r', 'r_rank', 'residual', 'y_mean', 'y_scale'):
-            setattr(self, attr, sub_func(getattr(self, attr)))
+        self._apply_ndvar_transform(func)
 
     @classmethod
     def _eelbrain_concatenate(
