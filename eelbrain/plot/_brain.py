@@ -1134,7 +1134,7 @@ class SequencePlotter:
 
         res = testnd.TTestRelated('srcm', 'condition')
         vmax = 3  # explicitly set vmax to make sure that the color-maps agree
-        sp = plot.brain.SequancePlotter()
+        sp = plot.brain.SequencePlotter()
         sp.set_brain_args(surf='inflated')
         sp.add_ndvar(res.c1_mean, vmax=vmax, label='a')
         sp.add_ndvar(res.c0_mean, vmax=vmax, label = 'b')
