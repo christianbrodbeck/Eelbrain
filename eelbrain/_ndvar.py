@@ -1252,6 +1252,7 @@ def set_parc(
         data: Union[NDVar, SourceSpace],
         parc: Union[str, Factor],
         dim: str = 'source',
+        mask: bool = False,
 ) -> Union[NDVar, SourceSpace]:
     """Change the parcellation of an :class:`NDVar` or :class:`SourceSpace` dimension
 
@@ -1266,6 +1267,8 @@ def set_parc(
         (stored as ``*.annot`` files in the subject's ``label`` directory).
     dim
         Name of the dimension to operate on (usually ``'source'``, the default).
+    mask
+        Remove ``unknown-*`` vertices.
 
     Returns
     -------
@@ -1280,7 +1283,12 @@ def set_parc(
     axis = data.get_axis(dim)
     source = set_parc(data.dims[axis], parc)
     dims = (*data.dims[:axis], source, *data.dims[axis + 1:])
-    return NDVar(data.x, dims, data.name, data.info)
+    out = NDVar(data.x, dims, data.name, data.info)
+    if mask:
+        index = source.parc.startswith('unknown-')
+        if np.any(index):
+            out = out.sub(source=np.invert(index, out=index))
+    return out
 
 
 def set_tmin(ndvar, tmin=0.):
