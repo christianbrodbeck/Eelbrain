@@ -1296,11 +1296,12 @@ class MneExperiment(FileTree):
             rm['cached-raw-file'].add({'raw': raw})
             rm['evoked-file'].add({'raw': raw})
             rm['cov-file'].add({'raw': raw})
-            analysis = {'analysis': f'{raw} *'}
-            rm['test-file'].add(analysis)
-            rm['report-file'].add(analysis)
-            rm['group-mov-file'].add(analysis)
-            rm['subject-mov-file'].add(analysis)
+            for analysis in (raw, f'{raw} *'):
+                state = {'analysis': analysis}
+                rm['test-file'].add(state)
+                rm['report-file'].add(state)
+                rm['group-mov-file'].add(state)
+                rm['subject-mov-file'].add(state)
 
         # epochs
         for epoch in invalid_cache['epochs']:
@@ -1314,11 +1315,11 @@ class MneExperiment(FileTree):
         for cov in invalid_cache['cov']:
             rm['cov-file'].add({'cov': cov})
             rm['inv-file'].add({'cov': cov})
-            analysis = f'* {cov} *'
-            rm['test-file'].add({'analysis': analysis})
-            rm['report-file'].add({'analysis': analysis})
-            rm['group-mov-file'].add({'analysis': analysis})
-            rm['subject-mov-file'].add({'analysis': analysis})
+            state = {'analysis': f'* {cov} *'}
+            rm['test-file'].add(state)
+            rm['report-file'].add(state)
+            rm['group-mov-file'].add(state)
+            rm['subject-mov-file'].add(state)
 
         # parcs
         for parc in invalid_cache['parcs']:
