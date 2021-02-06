@@ -408,6 +408,7 @@ class MneExperiment(FileTree):
             'raw-cache-dir': join('{cache-dir}', 'raw', '{subject}'),
             'raw-cache-base': join('{raw-cache-dir}', '{recording} {raw}'),
             'cached-raw-file': '{raw-cache-base}-raw.fif',
+            'cached-raw-file-overflow': '{raw-cache-base}-raw-?.fif',
             'event-file': '{raw-cache-base}-evts.pickled',
             'interp-file': '{raw-cache-base}-interp.pickled',
             'cached-raw-log-file': '{raw-cache-base}-raw.log',
@@ -695,7 +696,7 @@ class MneExperiment(FileTree):
         self._bind_cache('fwd-file', self.make_fwd)
 
         # currently only used for .rm()
-        self._secondary_cache['cached-raw-file'] = ('event-file', 'interp-file', 'cached-raw-log-file')
+        self._secondary_cache['cached-raw-file'] = ('event-file', 'interp-file', 'cached-raw-log-file', 'cached-raw-file-overflow')
 
         ########################################################################
         # logger
