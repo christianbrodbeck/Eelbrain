@@ -980,10 +980,9 @@ def test_model():
 def test_ndvar():
     "Test the NDVar class"
     ds = datasets.get_uts(utsnd=True)
-    x = ds['utsnd']
 
     with pytest.raises(TypeError):
-        bool(x)
+        bool(ds['utsnd'])
 
     # names
     x = ds[0, 'uts']
@@ -1067,6 +1066,13 @@ def test_ndvar():
     # -> scalar
     y = m.dot(x[0, :, 0.200])
     assert y == x.x[0, 0, 40] - x.x[0, 2, 40]
+    # multiple dimensions
+    m = NDVar([[1, 0, -1, 0, 0], [-1, 0, 1, 0, 0]], (Case, x.sensor))
+    y_target = x.x[0, 0] - x.x[0, 2] - x.x[1, 0] + x.x[1, 2]
+    y = m.dot(x[:2], ('case', 'sensor'))
+    assert_array_equal(y.x, y_target)
+    y = m.dot(x[:2], ('sensor', 'case'))
+    assert_allclose(y.x, y_target)
 
     # Var
     v_case = Var(b_case)

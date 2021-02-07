@@ -12,6 +12,8 @@ New in 0.35
    - New keyboard shortcut: ``alt + arrow`` keys to go to the beginning/end.
    - New context-menu commands: find top component for an epoch.
 
+* :meth:`NDVar.dot` generalized to multiple dimensions.
+
 
 New in 0.34
 -----------

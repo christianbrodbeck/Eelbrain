@@ -3981,68 +3981,71 @@ class NDVar(Named):
 
         return NDVar(x, self.dims, name or self.name, self.info)
 
-    def dot(self, ndvar, dim=None, name=None):
+    def dot(
+            self,
+            ndvar: NDVar,
+            dims: Union[str, Sequence[str]] = None,
+            name: str = None,
+    ) -> Union[NDVar, Var, float]:
         """Dot product
 
         Parameters
         ----------
-        ndvar : NDVar
+        ndvar
             Second NDVar, has to have at least the dimension ``dim``.
-        dim : str
-            Dimension over which to form the dot product (default is the last
-            dimension).
-        name : str
+        dims
+            Dimension(s) over which to compute the dot product (default is the
+            last dimension shared with ``ndvar``).
+        name
             Name of the output NDVar (default is ``ndvar.name``).
 
         Examples
         --------
-        >>> to_dss, from_dss = dss(x)
-        >>> x_dss_6 = to_dss[:6].dot(x, 'sensor')
+        Compute the first 6 DSS components::
+
+            >>> to_dss, from_dss = dss(x)
+            >>> x_dss_6 = to_dss[:6].dot(x, 'sensor')
         """
-        if dim is None:
-            for dim in self.dimnames[::-1]:
-                if ndvar.has_dim(dim):
+        if dims is None:
+            for dims in self.dimnames[::-1]:
+                if ndvar.has_dim(dims):
                     break
-        if dim == 'case':
-            raise NotImplementedError("dim='case': dot-product along Case dimension")
-        dim_x1 = self.get_dim(dim)
-        dim_x2 = ndvar.get_dim(dim)
-        if dim_x1 == dim_x2:
-            x1_index = x2_index = None
-        else:
-            out_dim = dim_x1.intersect(dim_x2)
-            x1_index = None if dim_x1 == out_dim else dim_x1._array_index_to(out_dim)
-            x2_index = None if dim_x2 == out_dim else dim_x2._array_index_to(out_dim)
+        x1_axes = self._get_axes(dims)
+        x2_axes = ndvar._get_axes(dims)
 
-        v1_dimnames = self.get_dimnames((None,) * (self.ndim - 1) + (dim,))
-        dims = [self.get_dim(d) for d in v1_dimnames[:-1]]
+        # find whether one dimension is subset of other
+        x1_index = {}
+        x2_index = {}
+        for i1, i2 in zip(x1_axes, x2_axes):
+            dim_x1 = self.dims[i1]
+            dim_x2 = ndvar.dims[i2]
+            if dim_x1 != dim_x2:
+                out_dim = dim_x1.intersect(dim_x2)
+                if dim_x1 != out_dim:
+                    x1_index[i1] = dim_x1._array_index_to(out_dim)
+                if dim_x2 != out_dim:
+                    x2_index[i2] = dim_x2._array_index_to(out_dim)
+        # trim data
+        x1 = self.x
+        for i, index in x1_index.items():
+            x1 = np.take(x1, index, i)
+        x2 = ndvar.x
+        for i, index in x2_index.items():
+            x2 = np.take(x2, index, i)
 
-        v2_dimnames = (dim,)
-        if ndvar.has_case:
-            v2_dimnames = ('case',) + v2_dimnames
-            dims.insert(0, Case)
-        v2_dimnames += (None,) * (ndvar.ndim - ndvar.has_case - 1)
-        v2_dimnames = ndvar.get_dimnames(v2_dimnames)
-        dims.extend(ndvar.get_dim(d) for d in v2_dimnames[1 + ndvar.has_case:])
+        x = np.tensordot(x1, x2, (x1_axes, x2_axes))
 
-        x1 = self.get_data(v1_dimnames)
-        if x1_index is not None:
-            x1 = np.take(x1, x1_index, -1)
-        x2 = ndvar.get_data(v2_dimnames)
-        if x2_index is not None:
-            x2 = np.take(x2, x2_index, v2_dimnames.index(dim))
-
-        if ndvar.has_case:
-            x = np.array([np.tensordot(x1, x2_, 1) for x2_ in x2])
-        else:
-            x = np.tensordot(x1, x2, 1)
-            if not dims:
-                return x
+        # output dimensions
+        x1_dims = [dim for i, dim in enumerate(self.dims) if i not in x1_axes]
+        x2_dims = [dim for i, dim in enumerate(ndvar.dims) if i not in x2_axes]
+        dims = [*x1_dims, *x2_dims]
 
         if name is None:
             name = ndvar.name
 
-        if len(dims) == 1 and dims[0] is Case:
+        if len(dims) == 0:
+            return x
+        elif len(dims) == 1 and isinstance(dims[0], Case):
             return Var(x, name)
         else:
             return NDVar(x, dims, name, {})
@@ -4174,6 +4177,12 @@ class NDVar(Named):
             return self._dim_2_ax[name]
         else:
             raise DimensionMismatchError(f"{self} has no dimension named {name!r}")
+
+    def _get_axes(self, dims: Union[str, Sequence[str]]) -> Sequence[int]:
+        if isinstance(dims, str):
+            return self.get_axis(dims),
+        else:
+            return [self.get_axis(dim) for dim in dims]
 
     def get_data(self, dims, mask=None):
         """Retrieve the NDVar's data with a specific axes order.
