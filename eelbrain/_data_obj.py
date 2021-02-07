@@ -100,7 +100,7 @@ from __future__ import annotations
 from copy import copy, deepcopy
 import fnmatch
 from functools import partial
-from itertools import chain, product, repeat, zip_longest
+from itertools import chain, combinations, product, repeat, zip_longest
 from keyword import iskeyword
 from math import ceil, floor, log
 from numbers import Integral, Number
@@ -7364,11 +7364,11 @@ class Model:
         return self.as_table(cases=n)
 
     # checking model properties
-    def check(self, v=True):
+    def check(self):
         "Shortcut to check linear independence and orthogonality"
-        return self.lin_indep(v) + self.orthogonal(v)
+        return self.lin_indep() + self.orthogonal()
 
-    def lin_indep(self, v=True):
+    def lin_indep(self):
         "Check the Model for linear independence of its factors"
         msg = []
         ne = len(self.effects)
@@ -7379,31 +7379,21 @@ class Model:
                 e2 = self.effects[j]
                 x = np.hstack((codes[i], codes[j]))
                 if rank(x) < x.shape[1]:
-                    if v:
-                        errtxt = "Linear Dependence Warning: {0} and {1}"
-                        msg.append(errtxt.format(e1.name, e2.name))
+                    msg.append(f"Linear Dependence Warning: {e1.name} and {e2.name}")
         return msg
 
-    def orthogonal(self, v=True):
+    def orthogonal(self):
         "Check the Model for orthogonality of its factors"
         msg = []
         ne = len(self.effects)
         codes = [e.as_effects for e in self.effects]
-        for i in range(ne):
-            for j in range(i + 1, ne):
-                ok = True
-                e1 = self.effects[i]
-                e2 = self.effects[j]
-                e1e = codes[i]
-                e2e = codes[j]
-                for i1 in range(e1.df):
-                    for i2 in range(e2.df):
-                        dotp = np.dot(e1e[:, i1], e2e[:, i2])
-                        if dotp != 0:
-                            ok = False
-#                            allok = False
-                if v and (not ok):
+        for i, j in combinations(range(ne), 2):
+            e1 = self.effects[i]
+            e2 = self.effects[j]
+            for i1, i2 in product(range(e1.df), range(e2.df)):
+                if np.dot(codes[i][:, i1], codes[j][:, i2]) != 0:
                     msg.append(f"Not orthogonal: {e1.name} and {e2.name}")
+                    break
         return msg
 
     def _parametrize(self, method='effect'):

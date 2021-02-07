@@ -69,7 +69,7 @@ setup(
     author_email='christianbrodbeck@nyu.edu',
     license='BSD (3-clause)',
     long_description=DESC,
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     setup_requires=[
         "numpy >= 1.11",
         "cython >= 0.21",
@@ -84,8 +84,8 @@ setup(
             'tqdm >= 4.8',
         ],
         'full': [
-            'numpy >= 1.8',
-            'scipy >= 0.17',
+            'numpy >= 1.20',
+            'scipy >= 1.3',
             'matplotlib >= 2.1',
         ],
         'plot.brain': [

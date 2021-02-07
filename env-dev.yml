@@ -5,7 +5,7 @@ name: eeldev
 channels:
 - conda-forge
 dependencies:
-- python >= 3.7
+- python >= 3.8
 - pip
 - twine
 - libblas=*=*mkl  # openblas produces incorrect results for ICA in iMac Pro
@@ -14,7 +14,7 @@ dependencies:
 - numpy
 - scipy >= 1.3
 - numba
-- matplotlib-base >= 3, <3.1  # https://github.com/matplotlib/matplotlib/issues/15410
+- matplotlib-base >= 3.3.4  # https://github.com/matplotlib/matplotlib/issues/15410
 - pyarrow
 - pillow
 - psutil
@@ -31,7 +31,7 @@ dependencies:
 - colormath >= 2.1
 - tqdm >= 4.40
 - keyring >= 5
-- wxpython >= 4.0.3
+- wxpython >= 4.0.3, < 4.1  # double install of libraries
 # building
 - setuptools >= 17
 - cython

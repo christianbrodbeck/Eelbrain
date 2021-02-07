@@ -120,16 +120,14 @@ def test_find_intervals():
 def test_find_peaks():
     scalar = Scalar('scalar', range(9))
     time = UTS(0, .1, 12)
-    v = NDVar(np.zeros((9, 12)), (scalar, time))
+    v = NDVar.zeros((scalar, time))
     wsize = [0, 0, 1, 2, 3, 2, 1, 0, 0]
     for i, s in enumerate(wsize):
         if s:
             v.x[i, 5 - s: 5 + s] += np.hamming(2 * s)
 
     peaks = find_peaks(v)
-    x, y = np.where(peaks.x)
-    assert_array_equal(x, [4])
-    assert_array_equal(y, [5])
+    assert_array_equal(np.where(peaks.x), ([4, 4], [4, 5]))
 
 
 def test_frequency_response():
