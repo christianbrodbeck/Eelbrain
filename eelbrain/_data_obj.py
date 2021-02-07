@@ -119,6 +119,7 @@ from mne.source_space import label_src_vertno_sel
 import nibabel
 from nibabel.freesurfer import read_annot, read_geometry
 import numpy as np
+from numpy.typing import ArrayLike
 import scipy.interpolate
 import scipy.optimize
 import scipy.signal
@@ -1263,17 +1264,17 @@ class Var(Named):
 
     Parameters
     ----------
-    x : array_like
+    x
         Data; is converted with ``np.asarray(x)``. Multidimensional arrays
         are flattened as long as only 1 dimension is longer than 1.
-    name : str | None
+    name
         Name of the variable
-    info : dict
+    info
         Info dictionary. The "longname" entry is used for display purposes.
-    repeat : int | array of int
+    repeat
         repeat each element in ``x``, either a constant or a different number
         for each element.
-    tile : int
+    tile
         Repeat ``x`` as a whole ``tile`` many times.
 
     Attributes
@@ -1295,7 +1296,14 @@ class Var(Named):
     ndim = 1
     random = False
 
-    def __init__(self, x, name=None, info=None, repeat=1, tile=1):
+    def __init__(
+            self,
+            x: ArrayLike,
+            name: str = None,
+            info: dict = None,
+            repeat: Union[ArrayLike, int] = 1,
+            tile: int = 1,
+    ):
         if isinstance(x, str):
             raise TypeError("Var can't be initialized with a string")
         if isinstance(info, int):
@@ -3109,7 +3117,7 @@ class NDVar(Named):
     """
     def __init__(
             self,
-            x: np.ndarray,
+            x: ArrayLike,
             dims: Union[Dimension, Sequence[Dimension]],
             name: str = None,
             info: dict = None,
