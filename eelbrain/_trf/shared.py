@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from dataclasses import dataclass, fields
 from functools import reduce
+from itertools import product
 from operator import mul
 from typing import List, Tuple, Union
 
@@ -254,28 +255,25 @@ class PredictorData:
         n_x = 0
         for xi in xs:
             ndim = xi.ndim - bool(n_cases)
-            if ndim == 1:
-                xdim = None
-                dimnames = ('case' if n_cases else newaxis, 'time')
-                data = xi.get_data(dimnames)
-                index = n_x
-                x_names.append(dataobj_repr(xi))
-            elif ndim == 2:
-                dimnames = xi.get_dimnames(last='time')
-                xdim = xi.get_dim(dimnames[-2])
-                if n_cases:
-                    dimnames = (xdim.name, 'case', 'time')
-                data = xi.get_data(dimnames)
-                index = slice(n_x, n_x + len(data))
-                x_repr = dataobj_repr(xi)
-                for v in xdim:
-                    x_names.append("%s-%s" % (x_repr, v))
+            if has_case:
+                dimnames = xi.get_dimnames(last=('case', 'time'))
+                xdims = xi.get_dims(dimnames[:-2])
+                shape = (-1, n_cases * n_times)
             else:
-                raise NotImplementedError("x with more than 2 dimensions")
-            if n_cases:
-                data = data.reshape((-1, n_cases * n_times))
+                dimnames = xi.get_dimnames(last='time')
+                xdims = xi.get_dims(dimnames[:-1])
+                shape = (-1, n_times)
+            data = xi.get_data(dimnames).reshape(shape)
+            x_repr = dataobj_repr(xi)
+            if ndim == 1:
+                index = n_x
+                x_names.append(x_repr)
+            else:
+                index = slice(n_x, n_x + len(data))
+                for v in product(*xdims):
+                    x_names.append("-".join((x_repr, *map(str, v))))
             x_data.append(data)
-            x_meta.append((xi.name, xdim, index))
+            x_meta.append((xi.name, xdims, index))
             n_x += len(data)
 
         if len(x_data) == 1:
@@ -541,14 +539,14 @@ class RevCorrData:
             # x
             x_mean = []
             x_scale = []
-            for name, dim, index in self._x_meta:
-                if dim is None:
+            for name, xdims, index in self._x_meta:
+                if xdims:
+                    shape = [len(dim) for dim in xdims]
+                    x_mean.append(NDVar(self.x_mean[index].reshape(shape), xdims, name))
+                    x_scale.append(NDVar(self.x_scale[index].reshape(shape), xdims, name))
+                else:
                     x_mean.append(self.x_mean[index])
                     x_scale.append(self.x_scale[index])
-                else:
-                    dims = (dim,)
-                    x_mean.append(NDVar(self.x_mean[index], dims, name))
-                    x_scale.append(NDVar(self.x_scale[index], dims, name))
             if self._multiple_x:
                 x_mean = tuple(x_mean)
                 x_scale = tuple(x_scale)
@@ -574,18 +572,10 @@ class RevCorrData:
         else:
             info = self.y_info
 
-        for name, dim, index in self._x_meta:
-            x = h[:, index, :]
-            if dim is None:
-                dims = (h_time,)
-            else:
-                dims = (dim, h_time)
-            if self.ydims:
-                dims = self.ydims + dims
-                if len(self.ydims) > 1:
-                    x = x.reshape(self.yshape + x.shape[1:])
-            else:
-                x = x[0]
+        for name, xdims, index in self._x_meta:
+            dims = (*self.ydims, *xdims, h_time)
+            shape = [len(dim) for dim in dims]
+            x = h[:, index, :].reshape(shape)
             hs.append(NDVar(x, dims, name, info))
 
         if self._multiple_x:

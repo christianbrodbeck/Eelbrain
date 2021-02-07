@@ -20,9 +20,11 @@ x2 = ds['x2']
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
+from functools import reduce
 import inspect
 from itertools import chain, product, repeat
 from multiprocessing.sharedctypes import RawArray
+from operator import mul
 import os
 import time
 from threading import Event, Thread
@@ -329,11 +331,9 @@ class BoostingResult(PickleableDataClass):
             # h to flat array: (y, x, n_times)
             hs = result.h_scaled if x_data.multiple_x else [result.h_scaled]
             h_array = []
-            for h, (name, dim, index) in zip(hs, x_data.x_meta):
-                dimnames = list(y_dimnames)
-                if dim is not None:
-                    dimnames.append(dim.name)
-                h_data = h.get_data((*dimnames, 'time'))
+            for h, (name, xdims, index) in zip(hs, x_data.x_meta):
+                dimnames = [*y_dimnames, *[dim.name for dim in xdims], 'time']
+                h_data = h.get_data(dimnames)
                 h_data = h_data.reshape((n_y, -1, h_data.shape[-1]))
                 h_array.append(h_data)
             h_array = np.concatenate(h_array, 1)
@@ -516,7 +516,7 @@ class Boosting:
             self.tstart = tuple(tstart)
             self.tstart_h = min(self.tstart)
             self.tstop = tuple(tstop)
-            n_xs = [1 if dim is None else len(dim) for _, dim, _ in self.data._x_meta]
+            n_xs = [reduce(mul, map(len, xdims), 1) for _, xdims, _ in self.data._x_meta]
             tstart = [t for t, n in zip(tstart, n_xs) for _ in range(n)]
             tstop = [t for t, n in zip(tstop, n_xs) for _ in range(n)]
         else:
