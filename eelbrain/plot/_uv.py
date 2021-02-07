@@ -1045,6 +1045,7 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
 
         LegendMixin.__init__(self, legend, legend_handles, labels)
         ColorBarMixin.__init__(self, data=color_obj, mappable=mappable)
+        self._n_cases = n
         self._show()
 
     def _fill_toolbar(self, tb):

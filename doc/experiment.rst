@@ -130,6 +130,8 @@ Which will plot a 10 s excerpt and allow scrolling through the data.
 Events
 ------
 
+If needed, set :attr:`MneExperiment.merge_triggers` to handle spurious events.
+Then, add event labels.
 Initially, events are only labeled with the trigger ID. Use the
 :attr:`MneExperiment.variables` settings to add labels.
 Events are represented as :class:`Dataset` objects and can be inspected with
@@ -375,7 +377,7 @@ earlier, the :attr:`MneExperiment.meg_system` attribute needs to specify the
 system the data were collected with. For data from NYU New York, the
 correct value is ``meg_system="KIT-157"``.
 
-.. py:attribute:: MneExperiment.merge_events
+.. py:attribute:: MneExperiment.merge_triggers
 
 Use a non-default ``merge`` parameter for :func:`load.fiff.events`.
 

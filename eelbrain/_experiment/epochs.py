@@ -1,6 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from copy import deepcopy
 import inspect
+from typing import Optional
 
 from .._exceptions import DefinitionError
 from .._text import enumeration
@@ -467,16 +468,17 @@ class ContinuousEpoch(EpochBase):
         self.vars = vars
 
 
-def decim_param(samplingrate: int, decim: int, epoch: Epoch, raw_samplingrate: float):
+def decim_param(samplingrate: int, decim: int, epoch: Optional[Epoch], raw_samplingrate: float):
     if samplingrate is not None:
         if decim is not None:
             raise TypeError(f"samplingrate={samplingrate}, decim={decim}: can only specify one at a time")
     elif decim is not None:
         return decim
-    elif epoch.decim is not None:
-        return epoch.decim
-    elif epoch.samplingrate is not None:
-        samplingrate = epoch.samplingrate
+    elif epoch is not None:
+        if epoch.decim is not None:
+            return epoch.decim
+        elif epoch.samplingrate is not None:
+            samplingrate = epoch.samplingrate
 
     if samplingrate is not None:
         decim_ratio = raw_samplingrate / samplingrate

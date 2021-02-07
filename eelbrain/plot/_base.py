@@ -1055,7 +1055,7 @@ class PlotData:
     def from_args(
             cls,
             y: Union[NDVarArg, Sequence[NDVarArg]],
-            dims: Union[int, Tuple[str, ...]],
+            dims: Union[int, Tuple[Optional[str], ...]],
             xax: CategorialArg = None,
             ds: Dataset = None,
             sub: IndexArg = None,
@@ -2516,26 +2516,40 @@ class VariableAspectLayout(BaseLayout):
 
     Parameters
     ----------
-    nrow : int
+    nrow
         Number of rows.
-    axh_default : scalar
+    axh_default
         Default row height.
-    w_default : scalar
+    w_default
         Default figure width.
-    aspect : tuple of {scalar | None}
+    aspect
         Axes aspect ratio (w/h) for each column; None for axes with flexible
         width.
-    ax_kwargs : tuple of dict
+    ax_kwargs
         Parameters for :meth:`figure.add_axes` for each column.
-    ax_frames : tuple of str
+    ax_frames
         ``frame`` parameter for :func:`format_axes` for each column.
-    row_titles : sequence of {str | None}
+    row_titles
         One title per row.
     """
-    def __init__(self, nrow, axh_default, w_default, aspect=(None, 1),
-                 ax_kwargs=None, ax_frames=None, row_titles=None,
-                 title=None, h=None, w=None, axh=None,
-                 dpi=None, show=True, run=None, frame=True, yaxis=True, **kwargs):
+    def __init__(
+            self,
+            nrow: int,
+            axh_default: float,
+            w_default: float,
+            aspect: Sequence[Optional[float]] = (None, 1),
+            ax_kwargs: Sequence[dict] = None,
+            ax_frames: Sequence[bool] = None,
+            row_titles: Sequence[Optional[str]] = None,
+            title: FMTextArg = None,
+            h: float = None,
+            w: float = None,
+            axh: float = None,
+            dpi: float = None,
+            show: bool = True,
+            run: bool = None,
+            **kwargs,
+    ):
         w, h = resolve_plot_rect(w, h, dpi)
         self.w_fixed = w
 
@@ -2562,8 +2576,6 @@ class VariableAspectLayout(BaseLayout):
         self.axh = axh
         self.nrow = nrow
         self.ncol = len(aspect)
-        self.frame = frame
-        self.yaxis = yaxis
         self.share_axes = False
         self.row_titles = row_titles
         self.aspect = aspect
@@ -3346,21 +3358,28 @@ class XAxisMixin:
             xlim = (self.__xmin, self.__xmin + xlim)
         self._set_xlim(*xlim)
 
-    def _init_with_data(self, epochs, xdim, xlim=None, axes=None, im=False):
+    def _init_with_data(
+            self,
+            epochs: List[List[NDVar]],
+            xdim: str,
+            xlim: Union[float, Tuple[float, float]] = None,
+            axes: List[matplotlib.axes.Axes] = None,
+            im: bool = False,
+    ):
         """Compute axis bounds from data
 
         Parameters
         ----------
-        epochs : list of list of NDVar
+        epochs
             The data that is plotted (to determine axis range).
-        xdim : str
+        xdim
             Dimension that is plotted on the x-axis.
-        axes : list of Axes
+        axes
             Axes that should be managed by the mixin.
-        xlim : scalar | (scalar, scalar)
+        xlim
             Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
             scalar (default is the full x-axis in the data).
-        im : bool
+        im
             Plot displays an im, i.e. the axes limits need to extend beyond the
             dimension endpoints by half a step (default False).
         """

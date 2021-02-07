@@ -26,7 +26,7 @@ from multiprocessing.sharedctypes import RawArray
 import os
 import time
 from threading import Event, Thread
-from typing import Any, Iterator, List, Union, Tuple, Sequence
+from typing import Any, List, Union, Tuple, Sequence
 import warnings
 
 import numpy as np
@@ -57,9 +57,11 @@ class BoostingResult(PickleableDataClass):
     Attributes
     ----------
     h : NDVar | tuple of NDVar
-        The temporal response function. Whether ``h`` is an NDVar or a tuple of
-        NDVars depends on whether the ``x`` parameter to :func:`boosting` was
-        an NDVar or a sequence of NDVars.
+        The temporal response function (the average of all TRFs from the
+        different runs/partitions).
+        Whether ``h`` is an :class:`NDVar` or a :class:`tuple` of :class:`NDVar`
+        depends on whether the ``x`` parameter to :func:`boosting` was an
+        :class:`NDVar` or a sequence of :class:`NDVar`.
     h_scaled : NDVar | tuple of NDVar
         ``h`` scaled such that it applies to the original input ``y`` and ``x``.
         If boosting was done with ``scale_data=False``, ``h_scaled`` is the same
@@ -109,6 +111,9 @@ class BoostingResult(PickleableDataClass):
     splits : Splits
         Data splits used for cross-validation.
         Use :meth:`.splits.plot` to visualize the cross-validation scheme.
+    partition_results : list of BoostingResuls
+        If :func:`boosting` is called with ``partition_results=True``, this
+        attribute contains the results for the individual test paritions.
     algorithm_version : int
         Version of the algorithm with which the model was estimated; ``-1`` for
         results from before this attribute was added.

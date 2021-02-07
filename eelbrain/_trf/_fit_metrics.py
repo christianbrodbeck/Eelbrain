@@ -4,7 +4,7 @@ from warnings import catch_warnings, filterwarnings
 
 import numpy as np
 from scipy.linalg import norm
-from scipy.stats import spearmanr
+from scipy.stats import spearmanr, SpearmanRConstantInputWarning
 
 from ._boosting_opt import l1, l2
 from .shared import RevCorrData
@@ -121,6 +121,7 @@ class RankCorrelation(Evaluator):
             y_i, y_pred_i = self._crop_y(segments, y, y_pred)
             with catch_warnings():
                 filterwarnings('ignore', "invalid value encountered", RuntimeWarning)
+                filterwarnings('ignore', category=SpearmanRConstantInputWarning)
                 r = spearmanr(y_i, y_pred_i)[0]
             x[i] = 0 if np.isnan(r) else r
 

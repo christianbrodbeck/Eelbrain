@@ -287,8 +287,6 @@ class MneExperiment(FileTree):
     }
     artifact_rejection = {}
 
-    exclude = {}  # field_values to exclude (e.g. subjects)
-
     # groups can be defined as subject lists: {'group': ('member1', 'member2', ...)}
     # or by exclusion: {'group': {'base': 'all', 'exclude': ('member1', 'member2')}}
     groups = {}
@@ -296,8 +294,7 @@ class MneExperiment(FileTree):
     # whether to look for and load eye tracker data when loading raw files
     has_edf = defaultdict(lambda: False)
 
-    # Pattern for subject names. The first group is used to determine what
-    # MEG-system the data was recorded from
+    # Pattern for subject names when searching the data directory.
     subject_re = r'(R|S|A|Y|AD|QP)(\d{3,})$'
     # MEG-system (legacy variable).
     meg_system = None
@@ -1299,11 +1296,12 @@ class MneExperiment(FileTree):
             rm['cached-raw-file'].add({'raw': raw})
             rm['evoked-file'].add({'raw': raw})
             rm['cov-file'].add({'raw': raw})
-            analysis = {'analysis': f'{raw} *'}
-            rm['test-file'].add(analysis)
-            rm['report-file'].add(analysis)
-            rm['group-mov-file'].add(analysis)
-            rm['subject-mov-file'].add(analysis)
+            for analysis in (raw, f'{raw} *'):
+                state = {'analysis': analysis}
+                rm['test-file'].add(state)
+                rm['report-file'].add(state)
+                rm['group-mov-file'].add(state)
+                rm['subject-mov-file'].add(state)
 
         # epochs
         for epoch in invalid_cache['epochs']:
@@ -1317,11 +1315,11 @@ class MneExperiment(FileTree):
         for cov in invalid_cache['cov']:
             rm['cov-file'].add({'cov': cov})
             rm['inv-file'].add({'cov': cov})
-            analysis = f'* {cov} *'
-            rm['test-file'].add({'analysis': analysis})
-            rm['report-file'].add({'analysis': analysis})
-            rm['group-mov-file'].add({'analysis': analysis})
-            rm['subject-mov-file'].add({'analysis': analysis})
+            state = {'analysis': f'* {cov} *'}
+            rm['test-file'].add(state)
+            rm['report-file'].add(state)
+            rm['group-mov-file'].add(state)
+            rm['subject-mov-file'].add(state)
 
         # parcs
         for parc in invalid_cache['parcs']:
@@ -3155,9 +3153,9 @@ class MneExperiment(FileTree):
         raw = self.get('raw', **state)
         pipe = self._raw[raw]
         while not isinstance(pipe, RawICA):
-            if isinstance(raw, RawSource):
+            if isinstance(pipe, RawSource):
                 raise ValueError(f"raw={raw!r} does not involve ICA")
-            elif isinstance(raw, RawApplyICA):
+            elif isinstance(pipe, RawApplyICA):
                 pipe = pipe.ica_source
             else:
                 pipe = pipe.source
@@ -3408,7 +3406,7 @@ class MneExperiment(FileTree):
             assert samplingrate is None, f"samplingrate and decim can't both be specified"
             samplingrate = int(round(raw.info['sfreq'] / decim))
         if tstart or tstop:
-            raw = raw.crop(tstart, tstop, False)
+            raw = raw.crop(tstart or 0, tstop, False)
         if samplingrate or preload:
             raw.load_data()
         if samplingrate:
@@ -4381,13 +4379,9 @@ class MneExperiment(FileTree):
         samplingrate : int
             Samplingrate in Hz for the visualization (set to a lower value to
             improve GUI performance; for raw data, the default is ~100 Hz, for
-            epochs the default is theepoch setting).
+            epochs the default is the epoch setting).
         decim : int
             Data decimation factor (alternative to ``samplingrate``).
-        decim : int
-            Downsample data for visualization (to improve GUI performance;
-            for raw data, the default is ~100 Hz, for epochs the default is the
-            epoch setting).
         session : str | list of str
             One or more sessions for which to plot the raw data (this parameter
             can not be used together with ``epoch``; default is the session in
@@ -4409,7 +4403,7 @@ class MneExperiment(FileTree):
         path = self.make_ica(**state)
         # display data
         subject = self.get('subject')
-        pipe = self._raw[self.get('raw')]
+        pipe = self._get_ica_pipe(state)
         bads = pipe.load_bad_channels(subject, self.get('recording'))
         with self._temporary_state, warnings.catch_warnings():
             warnings.filterwarnings('ignore', 'The measurement information indicates a low-pass', RuntimeWarning)
@@ -4419,12 +4413,12 @@ class MneExperiment(FileTree):
                 raw = pipe.load_concatenated_source_raw(subject, session, self.get('visit'))
                 events = mne.make_fixed_length_events(raw)
                 ds = Dataset()
-                decim = int(raw.info['sfreq'] // 100) if decim is None else decim
+                decim = decim_param(samplingrate, decim, None, raw.info['sfreq']) or int(raw.info['sfreq'] // 100)
                 ds['epochs'] = mne.Epochs(raw, events, 1, 0, 1, baseline=None, proj=False, decim=decim, preload=True)
             elif session is not None:
                 raise TypeError(f"session={session!r} with epoch={epoch!r}")
             else:
-                ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, decim=decim, add_bads=bads)
+                ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, samplingrate=samplingrate, decim=decim, add_bads=bads)
         info = ds['epochs'].info
         data = TestDims('sensor')
         data_kind = data.data_to_ndvar(info)[0]

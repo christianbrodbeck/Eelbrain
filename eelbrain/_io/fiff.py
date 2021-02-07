@@ -198,18 +198,22 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
             index = [not regex.match(desc) for desc in raw.annotations.description]
             if any(index):
                 annotations = raw.annotations[index]
+
         if annotations:
             evts, event_ids = mne.events_from_annotations(raw)
-            labels = {event_id: key for key, event_id in event_ids.items()}
         else:
             raw.load_data()
             if merge is None:
-                if 'kit_system_id' in raw.info:
-                    merge = -1
-                else:
+                if raw.info.get('kit_system_id') is None:
                     merge = 0
+                else:
+                    merge = -1
             evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
             evts = evts[np.flatnonzero(evts[:, 2])]
+            event_ids = getattr(raw, 'event_id', None)
+
+        if event_ids:
+            labels = {event_id: label for label, event_id in event_ids.items()}
     else:
         evts = mne.read_events(events)
 
@@ -845,9 +849,9 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         name = None
     start_scalar = i_start is None or isinstance(i_start, int)
     stop_scalar = i_stop is None or isinstance(i_stop, int)
-    if start_scalar or stop_scalar:
-        if not start_scalar and stop_scalar:
-            raise TypeError(f"i_start and i_stop must either both be scalar or both iterable, got i_start={i_start!r}, i_stop={i_stop!r}")
+    if start_scalar != stop_scalar:
+        raise TypeError(f"i_start and i_stop must either both be scalar or both iterable, got i_start={i_start!r}, i_stop={i_stop!r}")
+    elif start_scalar:
         i_start = (i_start,)
         i_stop = (i_stop,)
         scalar = True
@@ -855,8 +859,8 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         scalar = False
 
     # event index to raw index
-    i_start = tuple(i if i is None else i - raw.first_samp for i in i_start)
-    i_stop = tuple(i if i is None else i - raw.first_samp for i in i_stop)
+    i_start = [i if i is None else i - raw.first_samp for i in i_start]
+    i_stop = [i if i is None else i - raw.first_samp for i in i_stop]
 
     # target dimension
     if data is None:

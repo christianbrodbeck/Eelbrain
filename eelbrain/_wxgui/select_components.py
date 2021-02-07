@@ -720,15 +720,18 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
         n_comp = self.n_comp
         n_comp_actual = self.n_comp_actual
         epoch_index = slice(self.i_first_epoch, self.i_first_epoch + self.n_epochs)
-        data = self.doc.sources.sub(
-            case=epoch_index, component=slice(self.i_first, self.i_first + n_comp))
+        data = self.doc.sources.sub(case=epoch_index, component=slice(self.i_first, self.i_first + n_comp))
         y = data.get_data(('component', 'case', 'time')).reshape((n_comp_actual, -1))
         if y.base is not None and data.x.base is not None:
             y = y.copy()
         start = n_comp - 1
         stop = -1 + (n_comp - n_comp_actual)
         y += np.arange(start * self.y_scale, stop * self.y_scale, -self.y_scale)[:, None]
-        return y, self.doc.epoch_labels[epoch_index]
+        # pad epoch labels for x-axis
+        epoch_labels = self.doc.epoch_labels[epoch_index]
+        if len(epoch_labels) < self.n_epochs:
+            epoch_labels += ('',) * (self.n_epochs - len(epoch_labels))
+        return y, epoch_labels
 
     def _plot(self):
         # partition figure
@@ -767,10 +770,7 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
         # axes
         left = 1.5 * axwidth
         bottom = 1 - n_comp * axheight
-        ax = self.figure.add_axes((left, bottom, 1 - left, 1 - bottom),
-                                  frameon=False, yticks=(),
-                                  xticks=np.arange(elen / 2, elen * self.n_epochs, elen),
-                                  xticklabels=tick_labels)
+        ax = self.figure.add_axes((left, bottom, 1 - left, 1 - bottom), frameon=False, yticks=(), xticks=np.arange(elen / 2, elen * self.n_epochs, elen), xticklabels=tick_labels)
         ax.tick_params(bottom=False)
         ax.i = -1
         ax.i_comp = None
