@@ -76,8 +76,8 @@ Eelbrain relies on
 
 ----
 
-Current funding: `National Institutes of Health (NIH) <https://www.nih.gov>`_
-grant R01-DC-014085 (since 2016).
-Past funding: `NYU Abu Dhabi Institute
-<http://nyuad.nyu.edu/en/research/nyuad-institute.html>`_ grant G1001
-(2011-2016).
+Current funding:
+`NSF <http://nsf.gov>`_ `1754284 <https://www.nsf.gov/awardsearch/showAward?AWD_ID=1754284>`_ (2020-);
+Past funding:
+`NIH <https://www.nih.gov>`_ R01-DC-014085 (2016-2020);
+`NYU Abu Dhabi Institute <http://nyuad.nyu.edu/en/research/nyuad-institute.html>`_ G1001 (2011-2016).
