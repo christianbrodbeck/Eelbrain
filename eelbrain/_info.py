@@ -204,19 +204,10 @@ def _values_equal(a, b):
         return True
     elif type(a) is not type(b):
         return False
-    a_iterable = np.iterable(a)
-    b_iterable = np.iterable(b)
-    if a_iterable != b_iterable:
-        return False
-    elif not a_iterable:
+    elif not np.iterable(a):
         return a == b
     elif len(a) != len(b):
         return False
-    elif isinstance(a, np.ndarray):
-        if a.shape == b.shape:
-            return (a == b).all()
-        else:
-            return False
     elif isinstance(a, (tuple, list)):
         return all(_values_equal(a_, b_) for a_, b_ in zip(a, b))
     elif isinstance(a, dict):
@@ -226,6 +217,12 @@ def _values_equal(a, b):
             return False
     elif isinstance(a, mne.io.BaseRaw):
         return isinstance(b, a.__class__) and _values_equal(a.info, b.info)
+    from ._data_obj import NDVar
+    if isinstance(a, (np.ndarray, NDVar)):
+        if a.shape == b.shape:
+            return (a == b).all()
+        else:
+            return False
     else:
         return a == b
 
