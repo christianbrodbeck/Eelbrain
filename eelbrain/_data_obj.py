@@ -167,6 +167,7 @@ _txt_wildcard = ("Plain Text (*.txt)", '*.txt')
 EVAL_CONTEXT = vars(np)  # updated at end of file
 
 AxisArg = Union[None, str, Sequence[str], 'NDVar']
+DimsArg = Union[str, Sequence[str]]
 
 
 class IndexFormatter(Formatter):
@@ -4184,16 +4185,16 @@ class NDVar(Named):
         else:
             return [self.get_axis(dim) for dim in dims]
 
-    def get_data(self, dims, mask=None):
+    def get_data(self, dims: DimsArg, mask: float = None) -> np.ndarray:
         """Retrieve the NDVar's data with a specific axes order.
 
         Parameters
         ----------
-        dims : str | sequence of str
+        dims
             Sequence of dimension names (or single dimension name). The array
             that is returned will have axes in this order. To insert a new
             axis with size 1 use ``numpy.newaxis``/``None``.
-        mask : scalar
+        mask
             If data is a masked array, set masked values to ``mask``.
 
         Notes

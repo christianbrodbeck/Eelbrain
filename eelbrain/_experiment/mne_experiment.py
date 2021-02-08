@@ -13,7 +13,7 @@ from pathlib import Path
 import re
 import shutil
 import time
-from typing import Any, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Literal, Optional, Sequence, Tuple, Union
 import warnings
 
 import numpy as np
@@ -48,13 +48,13 @@ from .._utils import IS_WINDOWS, ask, intervals, subp, keydefaultdict, log_level
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .._utils.notebooks import tqdm
 from .definitions import FieldCode, find_dependent_epochs, find_epochs_vars, log_dict_change, log_list_change
-from .epochs import ContinuousEpoch, PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
+from .epochs import ContinuousEpoch, PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochBase, EpochCollection, assemble_epochs, decim_param
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
 from .groups import assemble_groups
-from .parc import SEEDED_PARC_RE, CombinationParc, EelbrainParc, FreeSurferParc, FSAverageParc, SeededParc, IndividualSeededParc, LabelParc, SubParc, assemble_parcs
+from .parc import SEEDED_PARC_RE, CombinationParc, EelbrainParc, FreeSurferParc, FSAverageParc, SeededParc, IndividualSeededParc, LabelParc, Parcellation, SubParc, assemble_parcs
 from .preprocessing import (
-    assemble_pipeline, RawSource, RawFilter, RawICA, RawApplyICA,
+    assemble_pipeline, RawPipe, RawSource, RawFilter, RawICA, RawApplyICA,
     compare_pipelines, ask_to_delete_ica_files)
 from .test_def import (
     Test,
@@ -212,47 +212,47 @@ class MneExperiment(FileTree):
         Guide on using :ref:`experiment-class-guide`.
     """
     _safe_delete = 'cache-dir'
-    path_version = 2
-    screen_log_level = logging.INFO
-    auto_delete_results = False
-    auto_delete_cache = 'auto'
+    path_version: int = 2
+    screen_log_level: Union[str, int] = logging.INFO
+    auto_delete_results: bool = False
+    auto_delete_cache: Literal['auto', 'ask', 'debug'] = 'auto'
     # what to do when the experiment class definition changed:
     #   'auto': Automatically delete outdated files
     #   'ask': Ask whether to delete or raise an error
     #   'debug': Prompt with debug options
-    cache_inv = True  # Whether to cache inverse solution
+    cache_inv: bool = True  # Whether to cache inverse solution
     # moderate speed gain for loading source estimates (34 subjects: 20 vs 70 s)
     # hard drive space ~ 100 mb/file
-    check_raw_mtime = True  # check raw input files' mtime for change
+    check_raw_mtime: bool = True  # check raw input files' mtime for change
 
     # Customize data locations, relative to root:
     # Main data files (MEG/EEG)
-    data_dir = 'meg'
+    data_dir: str = 'meg'
     # Directory where to look for MRI subjects
-    mri_dir = 'mri'
+    mri_dir: str = 'mri'
     # Directory where to keep cache files
-    cache_dir = 'eelbrain-cache'
+    cache_dir: str = 'eelbrain-cache'
 
     # tuple (if the experiment has multiple sessions)
-    sessions = None
-    visits = ('',)
+    sessions: Union[str, Sequence[str]] = None
+    visits: Tuple[str] = ('',)
 
     # Raw preprocessing pipeline
-    raw = {}
+    raw: Dict[str, RawPipe] = {}
 
     # merge adjacent events in the stimulus channel
-    merge_triggers = None
-    # add this value to all trigger times
-    trigger_shift = 0
+    merge_triggers: int = None
+    # add this value to all trigger times (in seconds); global shift, or {subject: shift} dictionary
+    trigger_shift: Union[float, Dict[str, float]] = 0
 
     # variables for automatic labeling {name: {trigger: label, triggers: label}}
-    variables = {}
+    variables: Dict[str, Any] = {}
 
     # Default values for epoch definitions
     epoch_default = {'decim': 5}
 
     # named epochs
-    epochs = {}
+    epochs: Dict[str, EpochBase] = {}
 
     # Rejection
     # =========
@@ -331,7 +331,7 @@ class MneExperiment(FileTree):
         'lobes-op': CombinationParc('lobes', {'occipitoparietal': "occipital + parietal"}, ('lateral', 'medial')),
         'lobes-ot': CombinationParc('lobes', {'occipitotemporal': "occipital + temporal"}, ('lateral', 'medial')),
     }
-    parcs = {}
+    parcs: Dict[str, Parcellation] = {}
 
     # Frequencies:  lowbound, highbound, step
     _freqs = {'gamma': {'frequencies': np.arange(25, 50, 2),
@@ -361,7 +361,7 @@ class MneExperiment(FileTree):
     # Tests
     # -----
     # Tests imply a model which is set automatically
-    tests = {}
+    tests: Dict[str, Test] = {}
     _empty_test = False  # for TRFExperiment
     _cluster_criteria = {
         '': {'time': 0.025, 'sensor': 4, 'source': 10},
