@@ -717,6 +717,8 @@ class MneExperiment(FileTree):
         # Terminal log
         handler = ScreenHandler()
         self._screen_log_level = log_level(self.screen_log_level)
+        if self.auto_delete_cache == 'debug':
+            self._screen_log_level = min(self._screen_log_level, logging.DEBUG)
         handler.setLevel(self._screen_log_level)
         log.addHandler(handler)
         self._screen_log_handler = handler
@@ -955,51 +957,43 @@ class MneExperiment(FileTree):
                     else:
                         msg = []
                     msg.append(f"Delete {n_result_files} outdated results?")
-                    command = ask(
-                        '\n'.join(msg),
-                        options={
-                            'delete': 'delete invalid result files',
-                            'abort': 'raise an error'},
-                        help=CACHE_HELP.format(experiment=self.__class__.__name__, filetype='result'),
-                    )
+                    help_text = CACHE_HELP.format(experiment=self.__class__.__name__, filetype='result')
+                    command = ask('\n'.join(msg), options={'delete': 'delete invalid result files', 'abort': 'raise an error'}, help=help_text)
                     if command == 'abort':
                         raise RuntimeError("User aborted invalid result deletion")
                     elif command != 'delete':
                         raise RuntimeError("command=%r" % (command,))
                 # Ask for any files
-                if files:
-                    if self.auto_delete_cache != 'auto':
-                        options = {'delete': 'delete invalid files', 'abort': 'raise an error'}
-                        if self.auto_delete_cache == 'debug':
-                            options.update({'ignore': 'proceed without doing anything', 'revalidate': "don't delete any cache files but write a new cache-state file"})
-                        elif self.auto_delete_cache != 'ask':
-                            raise ValueError(f"{self.__class__.__name__}.auto_delete_cache={self.auto_delete_cache!r}")
-                        command = ask(
-                            "Outdated cache files. Choose 'delete' to proceed. WARNING: only choose 'ignore' or 'revalidate' if you know what you are doing.",
-                            options=options,
-                            help=CACHE_HELP.format(experiment=self.__class__.__name__, filetype='cache and/or result'),
-                        )
-                        if command == 'delete':
-                            pass
-                        elif command == 'abort':
-                            raise RuntimeError("User aborted invalid cache deletion")
-                        elif command == 'ignore':
-                            log.warning("Ignoring invalid cache")
-                            return
-                        elif command == 'revalidate':
-                            log.warning("Revalidating invalid cache")
-                            files.clear()
-                        else:
-                            raise RuntimeError("command=%s" % repr(command))
+                if files and self.auto_delete_cache != 'auto':
+                    options = {'delete': 'delete invalid files', 'abort': 'raise an error'}
+                    if self.auto_delete_cache == 'debug':
+                        options.update({'ignore': 'proceed without doing anything', 'revalidate': "don't delete any cache files but write a new cache-state file"})
+                    elif self.auto_delete_cache != 'ask':
+                        raise ValueError(f"{self.__class__.__name__}.auto_delete_cache={self.auto_delete_cache!r}")
+                    help_text = CACHE_HELP.format(experiment=self.__class__.__name__, filetype='cache and/or result')
+                    command = ask("Outdated cache files. Choose 'delete' to proceed. WARNING: only choose 'ignore' or 'revalidate' if you know what you are doing.", options=options, help=help_text)
+                    if command == 'delete':
+                        pass
+                    elif command == 'abort':
+                        raise RuntimeError("User aborted invalid cache deletion")
+                    elif command == 'ignore':
+                        log.warning("Ignoring invalid cache")
+                        return
+                    elif command == 'revalidate':
+                        log.warning("Revalidating invalid cache")
+                        files.clear()
+                    else:
+                        raise RuntimeError("command=%s" % repr(command))
 
-                    # delete invalid files
+                # delete invalid files
+                if files:
                     n_cache_files = len(files) - n_result_files
                     descs = []
                     if n_result_files:
-                        descs.append("%i invalid result files" % n_result_files)
+                        descs.append(f"{n_result_files} invalid result files")
                     if n_cache_files:
-                        descs.append("%i invalid cache files" % n_cache_files)
-                    log.info("Deleting " + (' and '.join(descs)) + '...')
+                        descs.append(f"{n_cache_files} invalid cache files")
+                    log.info(f"Deleting {' and '.join(descs)}...")
                     for path in files:
                         os.remove(path)
                 else:
