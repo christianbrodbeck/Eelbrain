@@ -1,5 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import chain
+import logging
+from typing import Any, Dict, Optional
 
 from .._exceptions import DefinitionError
 from .._text import enumeration, plural
@@ -136,24 +138,35 @@ def compound(items):
     return out
 
 
-def dict_change(old, new):
+def dict_change(
+        old: Dict[str, Any],
+        new: Dict[str, Any],
+):
     "Readable representation of dict change"
     lines = []
     keys = set(new)
     keys.update(old)
     for key in sorted(keys):
         if key not in new:
-            lines.append("%r: %r -> key removed" % (key, old[key]))
+            lines.append("%s: %r -> key removed" % (key, old[key]))
         elif key not in old:
-            lines.append("%r: new key -> %r" % (key, new[key]))
+            lines.append("%s: new key -> %r" % (key, new[key]))
         elif new[key] != old[key]:
-            lines.append("%r: %r -> %r" % (key, old[key], new[key]))
+            lines.append("%s: %r -> %r" % (key, old[key], new[key]))
     return lines
 
 
-def log_dict_change(log, kind, name, old, new):
+def log_dict_change(
+        log: logging.Logger,
+        kind: str,
+        name: str,
+        old: Optional[Dict[str, Any]],
+        new: Optional[Dict[str, Any]],
+):
     if new is None:
         log.warning("  %s %s removed", kind, name)
+    elif old is None:
+        log.info("  %s %s added", kind, name)
     else:
         log.warning("  %s %s changed:", kind, name)
         for line in dict_change(old, new):

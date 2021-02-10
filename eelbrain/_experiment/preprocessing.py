@@ -3,9 +3,10 @@
 from copy import deepcopy
 import fnmatch
 from itertools import chain
+import logging
 from os import makedirs, remove
 from os.path import basename, dirname, exists, getmtime, join, splitext
-from typing import Sequence
+from typing import Dict, Sequence
 
 import mne
 from scipy import signal
@@ -19,7 +20,7 @@ from .._ndvar import filter_data
 from .._text import enumeration
 from .._utils import as_sequence, ask, user_activity
 from ..mne_fixes import CaptureLog
-from .definitions import compound, typed_arg
+from .definitions import compound, log_dict_change, typed_arg
 from .exceptions import FileMissing
 
 
@@ -858,16 +859,20 @@ def assemble_pipeline(raw_dict, raw_dir, cache_path, root, sessions, log):
 ######################
 
 
-def compare_pipelines(old, new, log):
+def compare_pipelines(
+        old: Dict[str, Dict],
+        new: Dict[str, Dict],
+        log: logging.Logger,
+):
     """Return a tuple of raw keys for which definitions changed
 
     Parameters
     ----------
-    old : {str: dict}
+    old
         A {name: params} dict for the previous preprocessing pipeline.
-    new : {str: dict}
+    new
         Current pipeline.
-    log : logger
+    log
         Logger for logging changes.
 
     Returns
@@ -879,22 +884,25 @@ def compare_pipelines(old, new, log):
         Same as ``bad_raw`` but only for RawICA pipes (for which ICA files
         might have to be removed).
     """
-    # status:  good, changed, new, removed, secondary
-    out = {k: 'new' for k in new if k not in old}
-    out.update({k: 'removed' for k in old if k not in new})
-
-    # parameter changes
-    to_check = set(new) - set(out)
-    for key in tuple(to_check):
-        if new[key] != old[key]:
-            log.debug("  raw changed: %s %s -> %s", key, old[key], new[key])
+    out = {}  # status:  good, changed, new, removed
+    to_check = []  # need to check whether source is still valid
+    keys = set(new).union(old)
+    for key in keys:
+        new_dict = new.get(key)
+        old_dict = old.get(key)
+        if new_dict is None:
+            out[key] = 'removed'
+        elif old_dict is None:
+            out[key] = 'new'
+        elif new_dict == old_dict:
+            if key == 'raw':
+                out[key] = 'good'
+            else:
+                to_check.append(key)
+            continue
+        else:
             out[key] = 'changed'
-            to_check.remove(key)
-
-    # does not need to be checked for source
-    if 'raw' in to_check:
-        to_check.remove('raw')
-        out['raw'] = 'good'
+        log_dict_change(log, 'raw', key, old_dict, new_dict)
 
     # secondary changes
     while to_check:
@@ -907,6 +915,7 @@ def compare_pipelines(old, new, log):
                 out[key] = 'good'
             else:
                 out[key] = 'changed'
+                log.warning(f"  raw {key} parent changed")
             to_check.remove(key)
         if len(to_check) == n:
             raise RuntimeError("Queue not decreasing")
