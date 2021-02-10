@@ -2343,7 +2343,7 @@ class MneExperiment(FileTree):
                 else:
                     name = data_kind
                 if variable_tmax:
-                    ys = [load.fiff.epochs_ndvar(e, data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude)[0] for e in ds['epochs']]
+                    ys = [load.fiff.epochs_ndvar(e, data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude, name=data.y_name)[0] for e in ds['epochs']]
                     if isinstance(data.sensor, str):
                         ys = [getattr(y, data.sensor)('sensor') for y in ys]
                 else:
