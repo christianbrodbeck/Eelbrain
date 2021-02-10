@@ -1459,7 +1459,9 @@ class MatplotlibFigure:
         name
             Name for the file (without extension; default is 'image').
         format
-            File format (default 'png').
+            File format. For HTML, use ``svg`` for vector graphics and ``png``
+            for pixel graphics. The default is ``svg`` and can be changed with
+            :func:`configure`).
         close
             Close the figure after writing to the ``image``. By default, this is
             ``True`` when in an inline context (Jupyter notebook), ``False``

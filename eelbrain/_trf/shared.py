@@ -3,7 +3,7 @@ from dataclasses import dataclass, fields
 from functools import reduce
 from itertools import product
 from operator import mul
-from typing import List, Tuple, Union
+from typing import List, Union
 
 import numpy as np
 import scipy.signal
@@ -321,7 +321,7 @@ class RevCorrData:
     x_pads = None
     _x_is_copy: bool = False
     _y_is_copy: bool = False
-    scale_data: bool = False
+    scale_data: str = None
     # cross-validation
     splits: Splits = None
 

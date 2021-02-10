@@ -94,6 +94,7 @@ inv_re = re.compile(r"^(free|fixed|loose\.\d+|vec)"  # orientation constraint
 BaselineArg = Union[bool, Tuple[Optional[float], Optional[float]]]
 DataArg = Union[str, TestDims]
 PMinArg = Union[str, float, None]
+SubjectArg = Union[str, Literal[1, -1]]
 
 # Eelbrain 0.24 raw/preprocessing pipeline
 LEGACY_RAW = {
@@ -2100,66 +2101,82 @@ class MneExperiment(FileTree):
         path = self.get('edf-file', fmatch=False, **kwargs)
         return load.eyelink.Edf(path)
 
-    def load_epochs(self, subjects=None, baseline=False, ndvar=True,
-                    add_bads=True, reject=True, cat=None,
-                    samplingrate=None, decim=None, pad=0, data_raw=False, vardef=None, data='sensor',
-                    trigger_shift=True, tmin=None,
-                    tmax=None, tstop=None, interpolate_bads=False, **state):
+    def load_epochs(
+            self,
+            subjects: SubjectArg = None,
+            baseline: BaselineArg = False,
+            ndvar: Union[bool, Literal['both']] = True,
+            add_bads: Union[bool, List] = True,
+            reject: Union[bool, Literal['keep']] = True,
+            cat: Sequence[CellArg] = None,
+            samplingrate: int = None,
+            decim: int = None,
+            pad: float = 0,
+            data_raw: bool = False,
+            vardef: str = None,
+            data: str = 'sensor',
+            trigger_shift: bool = True,
+            tmin: float = None,
+            tmax: float = None,
+            tstop: float = None,
+            interpolate_bads: bool = False,
+            **state,
+    ) -> Dataset:
         """
         Load a Dataset with epochs for a given epoch definition
 
         Parameters
         ----------
-        subjects : str | 1 | -1
+        subjects
             Subject(s) for which to load data. Can be a single subject
             name or a group name such as ``'all'``. ``1`` to use the current
             subject; ``-1`` for the current group. Default is current subject
             (or group if ``group`` is specified).
-        baseline : bool | tuple
+        baseline
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to not apply baseline
             correction.
-        ndvar : bool | 'both'
+        ndvar
             Convert epochs to an NDVar (named 'meg' for MEG data and 'eeg' for
             EEG data). Use 'both' to include NDVar and MNE Epochs.
-        add_bads : bool | list
+        add_bads
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the bad channels file. Alternatively,
             a list of bad channels can be specified.
-        reject : bool | 'keep'
+        reject
             Reject bad trials. If ``True`` (default), bad trials are removed
             from the Dataset. Set to ``False`` to ignore the trial rejection.
             Set ``reject='keep'`` to load the rejection (added it to the events
             as ``'accept'`` variable), but keep bad trails.
-        cat : sequence of cell-names
+        cat
             Only load data for these cells (cells of model).
-        samplingrate : int
+        samplingrate
             Samplingrate in Hz for the analysis (default is specified in epoch
             definition).
-        decim : int
+        decim
             Data decimation factor (alternative to ``samplingrate``).
         pad : scalar
             Pad the epochs with this much time (in seconds; e.g. for spectral
             analysis).
-        data_raw : bool
+        data_raw
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
             (default False).
-        vardef : str
+        vardef
             Name of a test defining additional variables.
-        data : str
+        data
             Data to load; 'sensor' to load all sensor data (default);
             'sensor.rms' to return RMS over sensors. Only applies to NDVar
             output.
-        trigger_shift : bool
+        trigger_shift
             Apply post-baseline trigger-shift if it applies to the epoch
             (default True).
-        tmin : scalar
+        tmin
             Override the epoch's ``tmin`` parameter.
-        tmax : scalar
+        tmax
             Override the epoch's ``tmax`` parameter.
-        tstop : scalar
+        tstop
             Override the epoch's ``tmax`` parameter as exclusive ``tstop``.
-        interpolate_bads : bool
+        interpolate_bads
             Interpolate channels marked as bad for the whole recording (useful
             when comparing topographies across subjects; default False).
         ...
@@ -2177,11 +2194,11 @@ class MneExperiment(FileTree):
             if not ndvar:
                 raise ValueError(f"data={data.string!r} with ndvar=False")
             elif interpolate_bads:
-                raise ValueError(f"interpolate_bads={interpolate_bads!r} with data={data.string}")
+                raise ValueError(f"{interpolate_bads=} with data={data.string!r}")
         if ndvar:
             if isinstance(ndvar, str):
                 if ndvar != 'both':
-                    raise ValueError("ndvar=%s" % repr(ndvar))
+                    raise ValueError(f"{ndvar=}")
         subject, group = self._process_subject_arg(subjects, state)
         epoch_name = self.get('epoch')
 

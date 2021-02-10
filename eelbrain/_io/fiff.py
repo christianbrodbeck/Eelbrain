@@ -8,7 +8,7 @@ from math import floor
 import os
 from pathlib import Path
 import re
-from typing import Sequence, Union
+from typing import Any, List, Optional, Sequence, Tuple, Union
 import warnings
 
 import numpy as np
@@ -17,7 +17,6 @@ import mne
 from mne.source_estimate import _BaseSourceEstimate
 from mne.io.constants import FIFF
 from mne.io.kit.constants import KIT
-from mne.minimum_norm import prepare_inverse_operator, apply_inverse_raw
 
 from .. import _info
 from .._types import PathArg
@@ -42,6 +41,9 @@ except ImportError:
         KIT.SYSTEM_UMD_2014_07: 'KIT-UMD-2',
         KIT.SYSTEM_UMD_2014_12: 'KIT-UMD-3',
     }
+
+BaselineArg = Optional[Tuple[Optional[float], Optional[float]]]
+PicksArg = Any
 
 
 def mne_raw(path=None, proj=False, **kwargs):
@@ -747,7 +749,15 @@ def sensor_dim(
     return Sensor(ch_locs, ch_names, sysname, connectivity=connectivity)
 
 
-def variable_length_mne_epochs(ds, tmin, tmax, baseline=None, allow_truncation=False, picks=None, **kwargs):
+def variable_length_mne_epochs(
+        ds: Dataset,
+        tmin: float,
+        tmax: Sequence[float],
+        baseline: BaselineArg = None,
+        allow_truncation: bool = False,
+        picks: PicksArg = None,
+        **kwargs,
+) -> List[mne.Epochs]:
     """Load mne Epochs where each epoch has a different length
 
     Parameters
