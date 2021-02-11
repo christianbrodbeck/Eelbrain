@@ -6,7 +6,7 @@ from itertools import chain
 import logging
 from os import makedirs, remove
 from os.path import basename, dirname, exists, getmtime, join, splitext
-from typing import Dict, Sequence
+from typing import Dict, Sequence, Union
 
 import mne
 from scipy import signal
@@ -24,6 +24,9 @@ from .definitions import compound, log_dict_change, typed_arg
 from .exceptions import FileMissing
 
 
+AddBadsArg = Union[bool, Sequence[str]]
+
+
 def _visit(recording: str) -> str:
     # visit field from recording compound
     if ' ' in recording:
@@ -35,10 +38,10 @@ def _visit(recording: str) -> str:
 
 class RawPipe:
 
-    name = None  # set on linking
-    path = None
-    root = None
-    log = None
+    name: str = None  # set on linking
+    path: str = None
+    root: str = None
+    log: logging.Logger = None
 
     def _can_link(self, pipes):
         raise NotImplementedError
@@ -69,7 +72,14 @@ class RawPipe:
     def get_sysname(self, info, subject, data):
         raise NotImplementedError
 
-    def load(self, subject, recording, add_bads=True, preload=False, raw=None):
+    def load(
+            self,
+            subject: str,
+            recording: str,
+            add_bads: AddBadsArg = True,
+            preload: bool = False,
+            raw: mne.io.BaseRaw = None,
+    ):
         # raw
         if raw is None:
             raw = self._load(subject, recording, preload)
@@ -141,8 +151,8 @@ class RawSource(RawPipe):
     --------
     MneExperiment.raw
     """
-    _dig_sessions = None  # {subject: {for_recording: use_recording}}
-    bads_path = None  # set on linking
+    _dig_sessions: dict = None  # {subject: {for_recording: use_recording}}
+    bads_path: str = None  # set on linking
 
     def __init__(self, filename='{subject}_{recording}-raw.fif', reader=mne.io.read_raw_fif, sysname=None, rename_channels=None, montage=None, connectivity=None, **kwargs):
         RawPipe.__init__(self)
@@ -286,8 +296,8 @@ class RawSource(RawPipe):
 
 class CachedRawPipe(RawPipe):
 
-    _bad_chs_affect_cache = False
-    source = None  # set on linking
+    _bad_chs_affect_cache: bool= False
+    source: RawPipe = None  # set on linking
 
     def __init__(self, source, cache=True):
         RawPipe.__init__(self)
@@ -342,7 +352,14 @@ class CachedRawPipe(RawPipe):
     def get_sysname(self, info, subject, data):
         return self.source.get_sysname(info, subject, data)
 
-    def load(self, subject, recording, add_bads=True, preload=False, raw=None):
+    def load(
+            self,
+            subject: str,
+            recording: str,
+            add_bads: AddBadsArg = True,
+            preload: bool = False,
+            raw: mne.io.BaseRaw = None,
+    ):
         if raw is not None:
             pass
         elif self._cache:
@@ -512,7 +529,7 @@ class RawICA(CachedRawPipe):
 
     This step merges bad channels from all sessions.
     """
-    ica_path = None  # set on linking
+    ica_path: str = None  # set on linking
 
     def __init__(self, source, session, method='extended-infomax', random_state=0, cache=False, **kwargs):
         CachedRawPipe.__init__(self, source, cache)
@@ -563,7 +580,12 @@ class RawICA(CachedRawPipe):
             raise RuntimeError(f"The ICA channel names do not match the data channels for raw={raw_name!r}, subject={subject!r}. Have the bad channels changed since the ICA was computed? Try to revert the data channels, or recompute the ICA using MneExperiment.make_ica().\nData: {', '.join(raw_ch_names)}\nICA:  {', '.join(ica.ch_names)}")
         return names_match
 
-    def load_concatenated_source_raw(self, subject, session, visit):
+    def load_concatenated_source_raw(
+            self,
+            subject: str,
+            session: str,
+            visit: str,
+    ):
         sessions = as_sequence(session)
         recordings = [compound((session, visit)) for session in sessions]
         bad_channels = self.load_bad_channels(subject, recordings[0])
