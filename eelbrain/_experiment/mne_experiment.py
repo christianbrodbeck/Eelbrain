@@ -4368,11 +4368,13 @@ class MneExperiment(FileTree):
         src = self.get('src-file', make=True)
         pipe = self._raw[self.get('raw')]
         raw = pipe.load(subject, fwd_recording)
-        bem = self._load_bem()
         src = mne.read_source_spaces(src)
-
         self._log.debug(f"make_fwd {basename(dst)}...")
-        bemsol = mne.make_bem_solution(bem)
+        if self.get('mrisubject') == 'fsaverage':
+            bemsol = join(self.get('mri-dir'), 'bem', 'fsaverage-5120-5120-5120-bem-sol.fif')
+        else:
+            bem = self._load_bem()
+            bemsol = mne.make_bem_solution(bem)
         fwd = mne.make_forward_solution(raw.info, trans, src, bemsol, ignore_ref=True)
         for s, s0 in zip(fwd['src'], src):
             if s['nuse'] != s0['nuse']:
