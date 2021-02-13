@@ -2,7 +2,7 @@
 """Plots for color/style legends"""
 from collections.abc import Iterator
 from itertools import chain
-from typing import Any, Dict, Sequence, Union
+from typing import Any, Dict, Literal, Sequence, Union
 
 import numpy as np
 import matplotlib as mpl
@@ -12,7 +12,7 @@ from matplotlib.ticker import FixedFormatter, MaxNLocator
 
 from .._data_obj import CellArg, cellname
 from .._utils import IS_WINDOWS
-from ._base import EelFigure, Layout, AxisScale, fix_vlim_for_cmap
+from ._base import EelFigure, Layout, AxisScale, CMapArg, ColorArg, fix_vlim_for_cmap
 
 
 POINT_SIZE = 0.0138889  # 1 point in inches
@@ -318,54 +318,71 @@ class ColorBar(EelFigure):
 
     Parameters
     ----------
-    cmap : str | Colormap | array
+    cmap
         Name of the color-map, or a matplotlib Colormap, or LUT.
-    vmin : scalar
+    vmin
         Lower end of the scale mapped onto cmap.
-    vmax : scalar
+    vmax
         Upper end of the scale mapped onto cmap.
-    label : bool | str
+    label
         Label for the x-axis (default is the unit, or if no unit is provided
         the name of the colormap).
-    label_position : 'left' | 'right' | 'top' | 'bottom'
+    label_position
         Position of the axis label. Valid values depend on orientation.
-    label_rotation : scalar
+    label_rotation
         Angle of the label in degrees (For horizontal colorbars, the default is
         0; for vertical colorbars, the default is 0 for labels of 3 characters
         and shorter, and 90 for longer labels).
-    clipmin : scalar
+    clipmin
         Clip the color-bar below this value.
-    clipmax : scalar
+    clipmax
         Clip the color-bar above this value.
-    orientation : 'horizontal' | 'vertical'
+    orientation
         Orientation of the bar (default is horizontal).
-    unit : str
+    unit
         Unit for the axis to determine tick labels (for example, ``u'µV'`` to
         label 0.000001 as '1').
-    contours : iterator of scalar (optional)
+    contours
         Plot contour lines at these values.
-    width : scalar
+    width
         Width of the color-bar in inches.
-    ticks : {float: str} dict | sequence of float
+    ticks
         Customize tick-labels on the colormap; either a dictionary with
         tick-locations and labels, or a sequence of tick locations. To draw no
         ticks, set to ``()``.
-    threshold : scalar
+    threshold
         Set the alpha of values below ``threshold`` to 0 (as well as for
         negative values above ``abs(threshold)``).
-    ticklocation : 'auto', 'top', 'bottom', 'left', 'right'
+    ticklocation
         Where to place ticks and label.
     background : matplotlib color
         Background color (for colormaps including transparency).
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, cmap, vmin=None, vmax=None, label=True, label_position=None,
-                 label_rotation=None,
-                 clipmin=None, clipmax=None, orientation='horizontal',
-                 unit=None, contours=(), width=None, ticks=None, threshold=None,
-                 ticklocation='auto', background='white', tight=True,
-                 h=None, w=None, **kwargs):
+    def __init__(
+            self,
+            cmap: CMapArg,
+            vmin: float = None,
+            vmax: float = None,
+            label: Union[bool, str] = True,
+            label_position: Literal['left', 'right', 'top', 'bottom'] = None,
+            label_rotation: float = None,
+            clipmin: float = None,
+            clipmax: float = None,
+            orientation: Literal['horizontal', 'vertical'] = 'horizontal',
+            unit: str = None,
+            contours: Sequence[float] = (),
+            width: float = None,
+            ticks: Union[Dict[float, str], Sequence[float]] = None,
+            threshold: float = None,
+            ticklocation: Literal['auto', 'top', 'bottom', 'left', 'right'] = 'auto',
+            background: ColorArg = 'white',
+            tight: bool = True,
+            h: float = None,
+            w: float = None,
+            **kwargs,
+    ):
         # get Colormap
         if isinstance(cmap, np.ndarray):
             if threshold is not None:

@@ -7,13 +7,13 @@ env:
 jobs:
   include:
     - os: osx
-      name: "MacOS Python 3.8"
+      name: "MacOS Python 3.8 + MNE data tests"
       env: CONDA_PYTHON="3.8" CONDA_OS="MacOSX" KMP_DUPLICATE_LIB_OK=TRUE CC=g++ CXX=g++ DOWNLOAD_MNE_DATA=TRUE
     - os: osx
       name: "MacOS Python 3.9"
       env: CONDA_PYTHON="3.9" CONDA_OS="MacOSX" KMP_DUPLICATE_LIB_OK=TRUE CC=g++ CXX=g++
     - os: linux
-      name: "Linux Python 3.8 + MNE data tests"
+      name: "Linux Python 3.8"
       env: CONDA_PYTHON="3.8" CONDA_OS="Linux"
       addons: {apt: {packages: [libwebkitgtk-dev]}}
     - os: linux

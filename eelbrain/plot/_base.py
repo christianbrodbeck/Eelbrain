@@ -87,7 +87,7 @@ from numbers import Number
 import os
 import re
 import time
-from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Iterator, List, Literal, Optional, Sequence, Tuple, Union
 import weakref
 
 import matplotlib as mpl
@@ -2664,27 +2664,36 @@ class ColorBarMixin:
     def __OnPlotColorBar(self, event):
         return self.plot_colorbar()
 
-    def plot_colorbar(self, label=True, label_position=None,
-                      label_rotation=None, clipmin=None, clipmax=None,
-                      orientation='horizontal', *args, **kwargs):
+    def plot_colorbar(
+            self,
+            label: Union[bool, str] = True,
+            label_position: Literal['left', 'right', 'top', 'bottom'] = None,
+            label_rotation: float = None,
+            clipmin: float = None,
+            clipmax: float = None,
+            orientation: Literal['horizontal', 'vertical'] = 'horizontal',
+            **kwargs,
+    ):
         """Plot a colorbar corresponding to the displayed data
 
         Parameters
         ----------
-        label : str | bool
+        label
             Label for the x-axis (default is based on the data).
-        label_position : 'left' | 'right' | 'top' | 'bottom'
+        label_position
             Position of the axis label. Valid values depend on orientation.
-        label_rotation : scalar
+        label_rotation
             Angle of the label in degrees (For horizontal colorbars, the default is
             0; for vertical colorbars, the default is 0 for labels of 3 characters
             and shorter, and 90 for longer labels).
-        clipmin : scalar
+        clipmin
             Clip the color-bar below this value.
-        clipmax : scalar
+        clipmax
             Clip the color-bar above this value.
-        orientation : 'horizontal' | 'vertical'
+        orientation
             Orientation of the bar (default is horizontal).
+        ...
+            More parameters for :class:`plot.ColorBar`.
 
         Returns
         -------
@@ -2701,7 +2710,7 @@ class ColorBarMixin:
             cmap, vmin, vmax = self.__get_params()
         else:
             raise RuntimeError(f"No colormap on {self}")
-        return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation, clipmin, clipmax, orientation, self.__scale, (), *args, **kwargs)
+        return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation, clipmin, clipmax, orientation, self.__scale, **kwargs)
 
 
 class ColorMapMixin(ColorBarMixin):
