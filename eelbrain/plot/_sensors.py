@@ -1,19 +1,18 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot sensor maps."""
-from collections.abc import Sequence
 from math import sin, cos, asin
 import os
+from typing import Literal, Sequence, Union
 
 import numpy as np
 import matplotlib as mpl
+import matplotlib.axes
 from matplotlib.lines import Line2D
 
-from .._data_obj import Datalist, as_sensor
-from ._base import EelFigure, ImLayout, Layout
-
+from .._data_obj import Datalist, Sensor, as_sensor
+from ._base import EelFigure, ImLayout, ColorArg
 
 SENSORMAP_FRAME = 0.1
-
 
 # some useful kwarg dictionaries for different plot layouts
 kwargs_mono = dict(mc='k',
@@ -24,7 +23,10 @@ kwargs_mono = dict(mc='k',
                    strlc='k')
 
 
-def _head_outlines(radius, center=0):
+def _head_outlines(
+        radius: Union[float, Sequence[float]],
+        center: Union[float, Sequence[float]] = 0,
+):
     # generate outlines for center 0, radius 1
     nose_alpha = 0.2
     l = np.linspace(0, 2 * np.pi, 101)
@@ -120,19 +122,38 @@ class _plt_map2d:
 
     Parameters
     ----------
-    ax : matplotlib Axes
+    ax
         Axes.
-    sensors : Sensor
+    sensors
         Sensor dimension.
     """
-    def __init__(self, ax, sensors, proj, extent, marker, size, color, mark,
-                 mcolor, mmarker, labels, invisible, head_radius, head_pos,
-                 head_linewidth):
+    _label_text = 'none'  # currently shown label text
+
+    def __init__(
+            self,
+            ax: matplotlib.axes.Axes,
+            sensors: Sensor,
+            proj: str,
+            extent: float,
+            marker: str,
+            size: float,
+            color: ColorArg,
+            mark: Union[Sequence[str], str, Sequence[int], int],
+            mcolor: ColorArg,
+            mmarker: str,
+            labels: Literal['', 'none', 'index', 'name', 'fullname'],
+            invisible: bool,
+            head_radius: Union[float, Sequence[float]],
+            head_pos: Union[float, Sequence[float]],
+            head_linewidth: float = None,
+    ):
         self.ax = ax
         self.sensors = sensors
         self.locs = sensors.get_locs_2d(proj, extent, SENSORMAP_FRAME)
         self._index = None if invisible else sensors._visible_sensors(proj)
         self._extent = extent
+        self._label_h = []  # handles for label text objects
+        self._mark_handles = []
 
         # head outline
         if head_radius:
@@ -143,20 +164,17 @@ class _plt_map2d:
                 head_linewidth = mpl.rcParams['lines.linewidth']
 
             for x, y in _head_outlines(head_radius, head_pos):
-                ax.plot(x, y, color='k', linewidth=head_linewidth,
-                        solid_capstyle='butt', clip_on=False)
+                ax.plot(x, y, color='k', linewidth=head_linewidth, solid_capstyle='butt', clip_on=False)
 
         # sensors
+        if labels == '':
+            return
         index = slice(None) if self._index is None else self._index
-        self._sensor_h = ax.scatter(self.locs[index, 0], self.locs[index, 1],
-                                    size, color, marker)
+        self._sensor_h = ax.scatter(self.locs[index, 0], self.locs[index, 1], size, color, marker)
 
-        self._label_h = []  # handles for label text objects
-        self._label_text = 'none'  # currently shown label text
         if labels:
             self.show_labels(labels)
 
-        self._mark_handles = []
         if mark is not None:
             self.mark_sensors(mark, 20, mcolor, mmarker)
 
@@ -580,7 +598,7 @@ class SensorMaps(EelFigure):
             self._drag_x = event.xdata
             self._drag_y = event.ydata
 
-            self._frame .store_canvas()
+            self._frame.store_canvas()
             x = np.ones(5) * event.xdata
             y = np.ones(5) * event.ydata
             self._drag_rect = ax.plot(x, y, '-k')[0]

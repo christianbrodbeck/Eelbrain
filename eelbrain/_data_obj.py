@@ -8907,20 +8907,26 @@ class Sensor(Dimension):
         sorted_pairs = [tuple(sorted(pair)) for pair in pairs]
         return sorted(sorted_pairs)
 
-    def get_locs_2d(self, proj='default', extent=1, frame=0, invisible=True):
+    def get_locs_2d(
+            self,
+            proj: str = 'default',
+            extent: float = 1,
+            frame: float = 0,
+            invisible: bool = True,
+    ):
         """Compute a 2 dimensional projection of the sensor locations
 
         Parameters
         ----------
-        proj : str
+        proj
             How to transform 3d coordinates into a 2d map; see class
             documentation for options.
-        extent : int
+        extent
             coordinates will be scaled with minimum value 0 and maximum value
             defined by the value of ``extent``.
-        frame : scalar
+        frame
             Distance of the outermost points from 0 and ``extent`` (default 0).
-        invisible : bool
+        invisible
             Return invisible sensors (sensors that would be hidden behind the
             head; default True).
 
@@ -8981,7 +8987,12 @@ class Sensor(Dimension):
         radius = estimate[3:] if len(estimate) == 6 else estimate[3]
         return center, radius
 
-    def _make_locs_2d(self, proj, extent, frame):
+    def _make_locs_2d(
+            self,
+            proj: str,
+            extent: float,
+            frame: float,
+    ):
         if proj in ('cone', 'lower cone', 'z root'):
             # center the sensor locations based on the sphere and scale to radius 1
             center, radius = self._sphere_fit

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from itertools import repeat
 from math import floor, sqrt
-from typing import Any, Dict, Sequence, Tuple, Union
+from typing import Any, Dict, Literal, Sequence, Tuple, Union
 
 import matplotlib as mpl
 import matplotlib.axes
@@ -654,7 +654,7 @@ class _ax_topomap(_ax_im_array):
             layers: AxisData,
             clip: str = 'even',  # even or circle (only applies if interpolation is None)
             clip_distance: float=0.05,  # distance from outermost sensor for clip=='even'
-            sensorlabels: str = None,  # index | name | fullname
+            sensorlabels: Literal['', 'none', 'index', 'name', 'fullname'] = None,
             mark=None,
             mcolor=None,
             mmarker=None,
@@ -690,9 +690,7 @@ class _ax_topomap(_ax_im_array):
             head_radius = self.plots[0]._default_head_radius
 
         # plot sensors
-        self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, '.', 1, 'k', mark,
-                                  mcolor, mmarker, sensorlabels, False,
-                                  head_radius, head_pos, head_linewidth)
+        self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, '.', 1, 'k', mark, mcolor, mmarker, sensorlabels, False, head_radius, head_pos, head_linewidth)
 
         ax.set_aspect('equal')
         ax.set_xlim(0, 1)
@@ -839,9 +837,10 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
         :meth:`~matplotlib.axes.Axes.imshow`). Matplotlib 1.5.3's SVG output
         can't handle uneven aspect with ``interpolation='none'``, use
         ``interpolation='nearest'`` instead.
-    sensorlabels : 'none' | 'index' | 'name' | 'fullname'
+    sensorlabels
         Show sensor labels. For 'name', any prefix common to all names
-        is removed; with 'fullname', the full name is shown.
+        is removed; with 'fullname', the full name is shown. Set to ``''`` to
+        hide sensor position markers completely.
     mark : Sensor index
         Sensors which to mark.
     mcolor : matplotlib color
@@ -896,7 +895,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
             head_pos: float = 0,
             im_interpolation: str = None,
             # sensor-map args
-            sensorlabels: str = None,
+            sensorlabels: Literal['', 'none', 'index', 'name', 'fullname'] = None,
             mark: IndexArg = None,
             mcolor: ColorArg = None,
             # layout
