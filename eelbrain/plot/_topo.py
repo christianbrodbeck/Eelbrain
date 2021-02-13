@@ -1,14 +1,18 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot topographic maps of sensor space data."""
+from __future__ import annotations
+
 from itertools import repeat
 from math import floor, sqrt
 from typing import Any, Dict, Sequence, Tuple, Union
 
 import matplotlib as mpl
+import matplotlib.axes
 import numpy as np
 from scipy import interpolate, linalg
 from scipy.spatial import ConvexHull
 
+from .._colorspaces import UNAMBIGUOUS_COLORS
 from .._data_obj import NDVarArg, CategorialArg, IndexArg, Dataset
 from .._text import ms
 from ._base import (
@@ -664,7 +668,8 @@ class _ax_topomap(_ax_im_array):
             interpolation: str = None,  # topomap interpolation method
             head_radius: float = None,
             head_pos: Union[float, Tuple[float, float]] = 0.,  # y if centered on x, or (x, y)
-            head_linewidth: float = None):
+            head_linewidth: float = None,
+    ):
         self.ax = ax
         self.data = layers  # will not update from .set_data()
         self.proj = proj
@@ -706,21 +711,28 @@ class _TopoWindow:
 
     Maintains a topomap corresponding to one segment with flexible time point.
     """
-    def __init__(self, ax, parent, *plot_args):
+    t_line = None
+    pointer = None
+    plot = None
+    t = None
+
+    def __init__(
+            self,
+            ax: matplotlib.axes.Axes,  # topomap-axes
+            parent: _ax_im_array,  # array-plot
+            color: ColorArg = UNAMBIGUOUS_COLORS['bluish green'],
+            **topomap_args,
+    ):
         self.ax = ax
         self.parent = parent
-        self.plot_args = plot_args
-        # initial plot state
-        self.t_line = None
-        self.pointer = None
-        self.plot = None
-        self.t = None
+        self.color = color
+        self.topomap_args = topomap_args
 
     def update(self, t):
         if t is not None:
             if self.t_line:
                 self.t_line.remove()
-            self.t_line = self.parent.ax.axvline(t, c='r')
+            self.t_line = self.parent.ax.axvline(t, c=self.color)
 
             t_str = f"{ms(t)} ms"
             if self.pointer:
@@ -735,22 +747,12 @@ class _TopoWindow:
                 # into 'figure fraction' coordinates
                 inv = self.ax.figure.transFigure.inverted()
                 xytext = inv.transform(xytext)
-                self.pointer = self.parent.ax.annotate(
-                    t_str, (t, 0),
-                    xycoords='data',
-                    xytext=xytext,
-                    textcoords='figure fraction',
-                    horizontalalignment='center',
-                    verticalalignment='center',
-                    arrowprops={'arrowstyle': '-',
-                                'shrinkB': 0,
-                                'connectionstyle': "angle3,angleA=90,angleB=0",
-                                'color': 'r'},
-                    zorder=99)
+                arrowprops = {'arrowstyle': '-', 'shrinkB': 0, 'connectionstyle': "angle3,angleA=90,angleB=0", 'color': self.color}
+                self.pointer = self.parent.ax.annotate(t_str, (t, 0), xycoords='data', xytext=xytext, textcoords='figure fraction', horizontalalignment='center', verticalalignment='center', arrowprops=arrowprops, zorder=4)
 
             if self.plot is None:
                 layers = self.parent.data.sub_time(t)
-                self.plot = _ax_topomap(self.ax, layers, *self.plot_args)
+                self.plot = _ax_topomap(self.ax, layers, **self.topomap_args)
             else:
                 layers = self.parent.data.sub_time(t, data_only=True)
                 self.plot.set_data(layers)
@@ -844,6 +846,13 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
         Sensors which to mark.
     mcolor : matplotlib color
         Color for marked sensors.
+    axtitle
+        Title for the individual axes. The default is to show the names of the
+        epochs, but only if multiple axes are plotted.
+    xlabel
+        X-axis label. By default the label is inferred from the data.
+    ylabel
+        Y-axis label. By default the label is inferred from the data.
     xticklabels
         Specify which axes should be annotated with x-axis tick labels.
         Use ``int`` for a single axis, a sequence of ``int`` for multiple
@@ -852,9 +861,6 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
         Specify which axes should be annotated with y-axis tick labels.
         Use ``int`` for a single axis, a sequence of ``int`` for multiple
         specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
-    axtitle
-        Title for the individual axes. The default is to show the names of the
-        epochs, but only if multiple axes are plotted.
     ...
         Also accepts :ref:`general-layout-parameters`.
 
@@ -895,6 +901,8 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
             mcolor: ColorArg = None,
             # layout
             axtitle: Union[bool, Sequence[str]] = True,
+            xlabel: Union[bool, str] = True,
+            ylabel: Union[bool, str] = True,
             xticklabels: Union[int, Sequence[int]] = -1,
             yticklabels: Union[int, Sequence[int]] = 0,
             **kwargs,
@@ -918,8 +926,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
         x_sep = .01 / data.n_plots
         x_per_ax = (1 - x_frame_l - x_frame_r) / data.n_plots
 
-        self.figure.subplots_adjust(left=x_frame_l, right=1 - x_frame_r,
-                                    bottom=.05, top=.9, wspace=.1, hspace=.3)
+        self.figure.subplots_adjust(left=x_frame_l, right=1 - x_frame_r, bottom=.05, top=.9, wspace=.1, hspace=.3)
 
         # save important properties
         self._data = data
@@ -956,11 +963,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
                                              picker=True, xticks=[], yticks=[])
                 ax.ID = ID
                 ax.type = 'window'
-                win = _TopoWindow(
-                    ax, im_plot, clip, clip_distance, sensorlabels, mark,
-                    mcolor, None, proj, res, im_interpolation, None,
-                    self._vlims, self._cmaps, self._contours, interpolation,
-                    head_radius, head_pos)
+                win = _TopoWindow(ax, im_plot, clip=clip, clip_distance=clip_distance, sensorlabels=sensorlabels, mark=mark, mcolor=mcolor, proj=proj, res=res, im_interpolation=im_interpolation, vlims=self._vlims, cmaps=self._cmaps, contours=self._contours, interpolation=interpolation, head_radius=head_radius, head_pos=head_pos)
                 self.axes.append(ax)
                 self._topo_windows.append(win)
         all_plots.extend(self._array_plots)
@@ -973,8 +976,8 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
             self.set_topo_ts(*t)
 
         self._set_axtitle(axtitle, data, self._array_axes)
-        self._configure_axis_dim('x', data.y0.time, True, xticklabels, self._array_axes)
-        self._configure_axis_dim('y', 'sensor', True, yticklabels, self._array_axes, False, data.data)
+        self._configure_axis_dim('x', data.y0.time, xlabel, xticklabels, self._array_axes)
+        self._configure_axis_dim('y', 'sensor', ylabel, yticklabels, self._array_axes, False, data.data)
 
         # setup callback
         XAxisMixin._init_with_data(self, data.data, 'time', xlim, self._array_axes)
