@@ -713,17 +713,20 @@ class _TopoWindow:
     pointer = None
     plot = None
     t = None
+    _annotation_xy = (0.5, 1.05)
 
     def __init__(
             self,
             ax: matplotlib.axes.Axes,  # topomap-axes
             parent: _ax_im_array,  # array-plot
             color: ColorArg = UNAMBIGUOUS_COLORS['bluish green'],
+            connectionstyle: str = "angle3,angleA=90,angleB=0",
             **topomap_args,
     ):
         self.ax = ax
         self.parent = parent
         self.color = color
+        self.connectionstyle = connectionstyle
         self.topomap_args = topomap_args
 
     def update(self, t):
@@ -739,14 +742,10 @@ class _TopoWindow:
                 self.pointer.set_text(t_str)
                 self.pointer.set_visible(True)
             else:
-                xytext = self.ax.transAxes.transform((.5, 1))
-                # These coordinates are in 'figure pixels'. They do not scale
-                # when the figure is rescaled, so we need to transform them
-                # into 'figure fraction' coordinates
-                inv = self.ax.figure.transFigure.inverted()
-                xytext = inv.transform(xytext)
-                arrowprops = {'arrowstyle': '-', 'shrinkB': 0, 'connectionstyle': "angle3,angleA=90,angleB=0", 'color': self.color}
-                self.pointer = self.parent.ax.annotate(t_str, (t, 0), xycoords='data', xytext=xytext, textcoords='figure fraction', horizontalalignment='center', verticalalignment='center', arrowprops=arrowprops, zorder=4)
+                arrowprops = {'arrowstyle': '-', 'shrinkB': 0, 'color': self.color}
+                if self.connectionstyle:
+                    arrowprops['connectionstyle'] = self.connectionstyle
+                self.pointer = self.parent.ax.annotate(t_str, (t, 0), xycoords='data', xytext=self._annotation_xy, textcoords=self.ax.transData, horizontalalignment='center', verticalalignment='center', arrowprops=arrowprops, zorder=4)
 
             if self.plot is None:
                 layers = self.parent.data.sub_time(t)
