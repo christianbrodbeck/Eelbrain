@@ -61,7 +61,7 @@ def time_results(
 
     # add UTSStat plot
     p = plot.UTSStat(res.y, model, None, res.match, sub, ds, colors=colors, legend=False, clusters=clusters, show=False)
-    ax = p._axes[0]
+    ax = p.axes[0]
     if res.tstart is not None:
         ax.axvline(res.tstart, color='k')
     if res.tstop is not None:

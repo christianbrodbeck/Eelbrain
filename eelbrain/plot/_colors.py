@@ -392,7 +392,7 @@ class ColorBar(EelFigure):
 
         layout = Layout(1, ax_aspect, 2, tight, h=h, w=w, **kwargs)
         EelFigure.__init__(self, cm.name, layout)
-        ax = self._axes[0]
+        ax = self.axes[0]
 
         # translate between axes and data coordinates
         if isinstance(vmin, Normalize):
@@ -486,7 +486,7 @@ class ColorBar(EelFigure):
 
     def _tight(self):
         # make sure ticklabels have space
-        ax = self._axes[0]
+        ax = self.axes[0]
         if self._orientation == 'vertical' and not self._layout.w_fixed:
             self.draw()
             labels = ax.get_yticklabels()
@@ -502,7 +502,7 @@ class ColorBar(EelFigure):
         # Override to keep bar thickness
         if not self._width:
             return
-        ax = self._axes[0]
+        ax = self.axes[0]
         x = (self._width, self._width)
         x = self.figure.dpi_scale_trans.transform(x)
         x = self.figure.transFigure.inverted().transform(x)

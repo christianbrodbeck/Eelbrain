@@ -141,7 +141,7 @@ class AbsoluteLayoutFigure(XAxisMixin, Figure):
             if isinstance(self._ystep, int):
                 ticks = ticks.astype(int)
             ax.set_yticks(ticks)
-        self._axes.append(ax)
+        self.axes.append(ax)
         self._ylims.append(ylim)
         return ax
 
@@ -176,7 +176,7 @@ class AbsoluteLayoutFigure(XAxisMixin, Figure):
         ]
         ax = self.figure.add_axes(rect, **kwargs)
         ax.patch.set_visible(False)
-        self._axes.append(ax)
+        self.axes.append(ax)
         self._ylims.append(None)
         return ax
 
@@ -194,10 +194,10 @@ class AbsoluteLayoutFigure(XAxisMixin, Figure):
             size in Jupyter, which crops the display area based on figure
             elements rather than actual figure size.
         """
-        for ax, ylim in zip(self._axes, self._ylims):
+        for ax, ylim in zip(self.axes, self._ylims):
             if ylim is not None:
                 ax.set_ylim(ylim)
-        XAxisMixin.__init__(self, None, None, self._xlim, self._axes)
+        XAxisMixin.__init__(self, None, None, self._xlim, self.axes)
 
         if outline:
             artist = matplotlib.patches.Rectangle((0, 0), 1, 1, fc='none', ec='k')

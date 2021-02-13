@@ -266,7 +266,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
 
-        for ax, layers in zip(self._axes, data):
+        for ax, layers in zip(self.axes, data):
             p = _ax_im_array(ax, layers, x, interpolation, self._vlims, self._cmaps, self._contours)
             self.plots.append(p)
 
@@ -485,7 +485,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
         self.plots = []
         self._vlims = _base.find_fig_vlims(data.data, vmax, vmin)
         legend_handles = {}
-        for ax, layers in zip(self._axes, data):
+        for ax, layers in zip(self.axes, data):
             h = _ax_butterfly(ax, layers, xdim, linedim, sensors, color, linewidth, self._vlims, clip)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
@@ -542,7 +542,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
     def _topo_data(self, event):
         if not event.inaxes:
             return
-        p = self.plots[self._axes.index(event.inaxes)]
+        p = self.plots[self.axes.index(event.inaxes)]
         t = event.xdata
         data = [l.sub(time=t) for l in p.data]
         return data, p.title + ' %i ms' % round(t), 'default'

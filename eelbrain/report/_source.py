@@ -281,7 +281,7 @@ def cluster_timecourse(section, cluster, y, dim, model, ds, colors, match):
     p = plot.UTSStat(tc, model, match=match, ds=ds, legend=False, h=4,
                      colors=colors, show=False)
     # mark original cluster
-    for ax in p._axes:
+    for ax in p.axes:
         ax.axvspan(cluster['tstart'], cluster['tstop'], color='r',
                    alpha=0.2, zorder=-2)
 
@@ -291,7 +291,7 @@ def cluster_timecourse(section, cluster, y, dim, model, ds, colors, match):
         legend = legend_p.image("Legend")
         legend_p.close()
     else:
-        p._axes[0].axhline(0, color='k')
+        p.axes[0].axhline(0, color='k')
     image_tc = p.image('cluster_%i_timecourse' % cid)
     p.close()
 

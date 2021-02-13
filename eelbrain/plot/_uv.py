@@ -180,7 +180,7 @@ class _SimpleFigure(EelFigure):
     def __init__(self, data_desc, *args, **kwargs):
         layout = Layout(1, 1, 5, *args, **kwargs)
         EelFigure.__init__(self, data_desc, layout)
-        self._ax = self._axes[0]
+        self._ax = self.axes[0]
 
         # collector for handles for figure legend
         self._handles = []
@@ -812,7 +812,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         self._configure_axis_data('y', y, ylabel)
         self._configure_axis_data('x', x, xlabel)
 
-        plot = _ax_timeplot(self._axes[0], y, categories, x, match, styles, line_plot, error, local_plot, timelabels, x_jitter, bottom, top)
+        plot = _ax_timeplot(self.axes[0], y, categories, x, match, styles, line_plot, error, local_plot, timelabels, x_jitter, bottom, top)
 
         YLimMixin.__init__(self, (plot,))
         LegendMixin.__init__(self, legend, plot.legend_handles, labels)
@@ -1030,7 +1030,7 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
         self._configure_axis_data('y', y, ylabel)
         self._configure_axis_data('x', x, xlabel)
 
-        ax = self._axes[0]
+        ax = self.axes[0]
         legend_handles = {}
         if cat is None:
             legend = False
@@ -1124,7 +1124,7 @@ class Regression(EelFigure, LegendMixin):
         self._configure_axis_data('x', x, xlabel)
         self._configure_axis_data('y', y, ylabel)
 
-        ax = self._axes[0]
+        ax = self.axes[0]
         legend_handles = {}
         if cat is None:
             legend = False
@@ -1275,7 +1275,7 @@ class Histogram(EelFigure):
                 bins = np.histogram_bin_edges(ct.y.x, bins)
 
         if x is None:
-            _ax_histogram(self._axes[0], ct.y.x, density, test, bins=bins)
+            _ax_histogram(self.axes[0], ct.y.x, density, test, bins=bins)
         elif ct.all_within:  # distribution of differences
             data = [v.x for v in ct.get_data()]
             names = ct.cellnames()
@@ -1289,7 +1289,7 @@ class Histogram(EelFigure):
                     pooled_data.append(difference)
                     ax_i = n_comp * i + (n_comp + 1 - j)
                     ax = self.figure.add_subplot(n_comp, n_comp, ax_i)
-                    self._axes.append(ax)
+                    self.axes.append(ax)
                     _ax_histogram(ax, difference, density, test, bins=bins)
                     if i == 0:
                         ax.set_title(names[j], size=12)
@@ -1299,11 +1299,11 @@ class Histogram(EelFigure):
             # pooled diffs
             if pooled and len(names) > 2:
                 ax = self.figure.add_subplot(n_comp, n_comp, n_comp ** 2)
-                self._axes.append(ax)
+                self.axes.append(ax)
                 _ax_histogram(ax, pooled_data, density, test, facecolor='g', bins=bins)
                 ax.set_title("Pooled Differences")
         else:  # independent measures
-            for cell, ax in zip(ct.cells, self._axes):
+            for cell, ax in zip(ct.cells, self.axes):
                 ax.set_title(cellname(cell))
                 _ax_histogram(ax, ct.data[cell].x, density, test, bins=bins)
 

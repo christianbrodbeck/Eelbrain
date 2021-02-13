@@ -121,7 +121,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
 
         # plots
         axes_data = data.for_plot(PlotType.IMAGE)
-        for ax, layers, proj_ in zip(self._axes, axes_data, proj):
+        for ax, layers, proj_ in zip(self.axes, axes_data, proj):
             h = _ax_topomap(ax, layers, clip, clip_distance, sensorlabels, mark,
                             mcolor, None, proj_, res, im_interpolation, xlabel,
                             self._vlims, self._cmaps, self._contours, interpolation,
@@ -138,7 +138,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
 
     def _topo_data(self, event):
         if event.inaxes:
-            ax_i = self._axes.index(event.inaxes)
+            ax_i = self.axes.index(event.inaxes)
             p = self.plots[ax_i]
             return p.data, p.title, p.proj
 
@@ -237,10 +237,10 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
             t_data = bin_data.sub_time(t)
             for row, layers in enumerate(t_data):
                 i = row * n_bins + column
-                ax = self._axes[i]
+                ax = self.axes[i]
                 self._plots[i] = _ax_topomap(ax, layers, clip, clip_distance, sensorlabels, mark, mcolor, None, proj, res, im_interpolation, None, self._vlims, self._cmaps, self._contours, interpolation, head_radius, head_pos)
 
-        self._set_axtitle((str(t) for t in time), axes=self._axes[:len(time)])
+        self._set_axtitle((str(t) for t in time), axes=self.axes[:len(time)])
         TopoMapKey.__init__(self, self._topo_data)
         SensorMapMixin.__init__(self, [h.sensors for h in self._plots])
         self._show()
@@ -251,7 +251,7 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
 
     def _topo_data(self, event):
         if event.inaxes:
-            ax_i = self._axes.index(event.inaxes)
+            ax_i = self.axes.index(event.inaxes)
             p = self._plots[ax_i]
             return p.data, p.title, p.proj
 
@@ -413,8 +413,8 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMix
         layout = VariableAspectLayout(data.n_plots, 3, 10, aspect=(None, 1), ax_frames=(frame, False), row_titles=row_titles, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
 
-        self.bfly_axes = self._axes[0::2]
-        self.topo_axes = self._axes[1::2]
+        self.bfly_axes = self.axes[0::2]
+        self.topo_axes = self.axes[1::2]
         self.bfly_plots = []
         self.topo_plots = []
         self.t_markers = []  # vertical lines on butterfly plots
@@ -942,7 +942,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
             ax.ID = i
             ax.type = 'main'
             im_plot = _ax_im_array(ax, layers, 'time', im_interpolation, self._vlims, self._cmaps, self._contours)
-            self._axes.append(ax)
+            self.axes.append(ax)
             self._array_axes.append(ax)
             self._array_plots.append(im_plot)
             if i > 0:
@@ -961,7 +961,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
                     mcolor, None, proj, res, im_interpolation, None,
                     self._vlims, self._cmaps, self._contours, interpolation,
                     head_radius, head_pos)
-                self._axes.append(ax)
+                self.axes.append(ax)
                 self._topo_windows.append(win)
         all_plots.extend(self._array_plots)
         all_plots.extend(self._topo_windows)

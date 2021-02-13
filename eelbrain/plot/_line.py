@@ -152,7 +152,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
 
         layout = Layout(1, 2. / ny, 6, **kwargs)
         EelFigure.__init__(self, frame_title(y, x), layout)
-        ax = self._axes[0]
+        ax = self.axes[0]
 
         if clip is None:
             clip = layout.frame is True

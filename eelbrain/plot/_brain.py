@@ -654,7 +654,7 @@ class ImageTable(ColorBarMixin, EelFigure):
 
     def _add_ims(self, ims, cmap_params, cmap_data):
         for row, column in product(range(self._n_rows), range(self._n_columns)):
-            ax = self._axes[row * self._n_columns + column]
+            ax = self.axes[row * self._n_columns + column]
             ax.imshow(ims[row][column])
 
         ColorBarMixin.__init__(self, lambda: cmap_params, cmap_data)
@@ -744,7 +744,7 @@ class _BinTable(EelFigure, ColorBarMixin):
                                            mask=mask)
         for row in range(n_rows):
             for column in range(n_columns):
-                ax = self._axes[row * n_columns + column]
+                ax = self.axes[row * n_columns + column]
                 ax.imshow(ims[row][column])
 
         # time labels

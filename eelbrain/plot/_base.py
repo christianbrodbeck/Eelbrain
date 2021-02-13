@@ -1544,7 +1544,7 @@ class EelFigure(MatplotlibFigure):
         # store attributes
         MatplotlibFigure.__init__(self, figure)
         self._frame = frame
-        self._axes = axes
+        self.axes = axes
         self.canvas = frame.canvas
         self._layout = layout
         self._last_draw_time = 1.
@@ -1592,7 +1592,7 @@ class EelFigure(MatplotlibFigure):
         data
             Plotted data (if available).
         axes
-            Axes for which to set title (default is self._axes). If an int,
+            Axes for which to set title (default is self.axes). If an int,
             (n axes) the method does not set axes title but returns ``None``
             or a tuple of titles.
         names
@@ -1604,7 +1604,7 @@ class EelFigure(MatplotlibFigure):
             return
 
         if axes is None:
-            axes = self._axes
+            axes = self.axes
 
         naxes = axes if isinstance(axes, int) else len(axes)
 
@@ -1634,7 +1634,7 @@ class EelFigure(MatplotlibFigure):
             self._tight()
 
         if crosshair_axes is None:
-            self._crosshair_axes = self._axes
+            self._crosshair_axes = self.axes
         else:
             self._crosshair_axes = crosshair_axes
 
@@ -1768,11 +1768,11 @@ class EelFigure(MatplotlibFigure):
     def _get_axes(self, axes):
         "Iterate over axes corresponding to ``axes`` parameter"
         if axes is None:
-            return self._axes
+            return self.axes
         elif isinstance(axes, int):
-            return self._axes[axes],
+            return self.axes[axes],
         else:
-            return (self._axes[i] for i in axes)
+            return (self.axes[i] for i in axes)
 
     def _configure_axis(
             self,
@@ -1782,7 +1782,7 @@ class EelFigure(MatplotlibFigure):
             axes: List[matplotlib.axes.Axes] = None,  # axes which to format
     ):
         if axes is None:
-            axes = self._axes
+            axes = self.axes
 
         # find axes with tick-labels
         nax = len(axes)
@@ -2006,7 +2006,7 @@ class EelFigure(MatplotlibFigure):
         rotation : scalar
             Counterclockwise rotation angle, in degrees.
         """
-        for ax in self._axes:
+        for ax in self.axes:
             for t in ax.get_xticklabels():
                 t.set_rotation(rotation)
         self.draw()
@@ -2023,7 +2023,7 @@ class EelFigure(MatplotlibFigure):
         """
         if ax is None:
             ax = self._default_xlabel_ax
-        self._axes[ax].set_xlabel(label)
+        self.axes[ax].set_xlabel(label)
 
     def set_ylabel(self, label: str, ax: int = None):
         """Set the label for the y-axis
@@ -2037,7 +2037,7 @@ class EelFigure(MatplotlibFigure):
         """
         if ax is None:
             ax = self._default_ylabel_ax
-        self._axes[ax].set_ylabel(label)
+        self.axes[ax].set_ylabel(label)
 
 
 def format_axes(
@@ -3184,7 +3184,7 @@ class TimeSlicerEF(TimeSlicer):
             TimeSlicer.__init__(self, time_fixed=True, display_text=display_text)
             return
         TimeSlicer.__init__(self, x_dim, display_text=display_text, initial_time=initial_time)
-        self.__axes = self._axes if axes is None else axes
+        self.__axes = self.axes if axes is None else axes
         self.__time_lines = []
         self.__redraw = redraw
         self.canvas.mpl_connect('button_press_event', self._on_click)
@@ -3371,7 +3371,7 @@ class XAxisMixin:
     def __init__(self, xmin, xmax, xlim=None, axes=None):
         self.__xmin = xmin
         self.__xmax = xmax
-        self.__axes = axes or self._axes
+        self.__axes = axes or self.axes
         self.__vspans = []
         self._register_key('f', self.__on_zoom_plus)
         self._register_key('d', self.__on_zoom_minus)

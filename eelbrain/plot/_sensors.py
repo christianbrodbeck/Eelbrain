@@ -497,7 +497,7 @@ class SensorMaps(EelFigure):
         xlim, ylim, zlim = list(zip(min_coords, max_coords))
 
         # back
-        ax = self.ax0 = self._axes[0]
+        ax = self.ax0 = self.axes[0]
         ax.proj = 'back'  # y-
         ax.extent = False
         ax.set_xlim(xlim)
@@ -505,7 +505,7 @@ class SensorMaps(EelFigure):
         self._h0 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
 
         # left
-        ax = self.ax1 = self._axes[1]
+        ax = self.ax1 = self.axes[1]
         ax.proj = 'left'  # x-
         ax.extent = False
         ax.set_xlim(ylim)
@@ -513,7 +513,7 @@ class SensorMaps(EelFigure):
         self._h1 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
 
         # top
-        ax = self.ax2 = self._axes[2]
+        ax = self.ax2 = self.axes[2]
         ax.proj = 'top'  # z+
         ax.extent = False
         ax.set_xlim(xlim)
@@ -521,7 +521,7 @@ class SensorMaps(EelFigure):
         self._h2 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
 
         # proj
-        ax = self.ax3 = self._axes[3]
+        ax = self.ax3 = self.axes[3]
         ax.proj = proj
         ax.extent = 1
         self._h3 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
@@ -710,7 +710,7 @@ class SensorMap(SensorMapMixin, EelFigure):
         kwargs.setdefault('frame', 'none')
         layout = ImLayout(1, 1, 5, margins, {}, **kwargs)
         EelFigure.__init__(self, sensors.sysname, layout)
-        ax = self._axes[0]
+        ax = self.axes[0]
 
         # store args
         self._sensors = sensors

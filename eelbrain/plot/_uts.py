@@ -170,7 +170,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         self._plots = []
         legend_handles = {}
         ymax = ymin = None
-        for ax, ax_data in zip(self._axes, data):
+        for ax, ax_data in zip(self.axes, data):
             p = _ax_uts_stat(ax, ax_data, xdim, main, error, pool_error, clusters, pmax, ptrend, clip, error_alpha)
             self._plots.append(p)
             legend_handles.update(p.legend_handles)
@@ -276,7 +276,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         ...
             Additional arguments for the matplotlib artists (e.g., ``zorder``).
         """
-        axes = range(len(self._axes)) if ax is None else [ax]
+        axes = range(len(self.axes)) if ax is None else [ax]
 
         # update plots
         for ax in axes:
@@ -397,7 +397,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         else:
             colors_ = (colors,) * n_colors
 
-        for ax, layers in zip(self._axes, data.data):
+        for ax, layers in zip(self.axes, data.data):
             h = _ax_uts(ax, layers, xdim, vlims, colors_, stem)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
@@ -508,12 +508,12 @@ class UTSClusters(EelFigure):
         colors = colors_for_oneway(range(data.n_plots), cmap=cm)
         self._caxes = []
         if overlay:
-            ax = self._axes[0]
+            ax = self.axes[0]
 
         for i, layers in enumerate(data.data):
             stat = layers[0]
             if not overlay:
-                ax = self._axes[i]
+                ax = self.axes[i]
 
             # ax clusters
             if clusters_:

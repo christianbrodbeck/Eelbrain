@@ -51,7 +51,7 @@ def test_barplot():
 
     # Fixed top
     p = plot.Barplot('fltvar', 'A%B', ds=ds, top=2, test_markers=False)
-    ax = p._axes[0]
+    ax = p.axes[0]
     assert ax.get_ylim()[1] == 2
 
 

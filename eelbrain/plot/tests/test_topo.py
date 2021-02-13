@@ -73,7 +73,7 @@ def test_plot_topo_butterfly():
     p.close()
 
     p = plot.TopoButterfly('utsnd', ds=ds, vmax=2, w=6, t=0.5)
-    assert p._axes[0].get_ylim() == (-2.0, 2.0)
+    assert p.axes[0].get_ylim() == (-2.0, 2.0)
     assert p._time_fixed
     p.close()
 

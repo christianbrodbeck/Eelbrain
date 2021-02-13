@@ -24,7 +24,7 @@ def test_plot_butterfly():
 
     # _ax_bfly_epoch (used in GUI, not part of a figure)
     fig = Figure(1)
-    ax = _ax_bfly_epoch(fig._axes[0], ds[0, 'utsnd'])
+    ax = _ax_bfly_epoch(fig.axes[0], ds[0, 'utsnd'])
     fig.show()
     ax.set_data(ds[1, 'utsnd'])
     fig.draw()

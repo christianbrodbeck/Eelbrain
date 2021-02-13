@@ -5944,10 +5944,9 @@ class MneExperiment(FileTree):
         colors = plot.colors_for_oneway(subjects)
         title = "Whitened Global Field Power (%s)" % self.get('cov')
         fig = plot._base.Figure(1, title, h=7, run=run)
-        ax = fig._axes[0]
+        ax = fig.axes[0]
         for subject, gfp in zip(subjects, gfps):
-            ax.plot(whitened_evoked.times, gfp, label=subject,
-                    color=colors[subject])
+            ax.plot(whitened_evoked.times, gfp, label=subject, color=colors[subject])
         ax.legend(loc='right')
         fig.show()
         return fig

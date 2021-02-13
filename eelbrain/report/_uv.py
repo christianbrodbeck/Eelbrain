@@ -61,7 +61,7 @@ def scatter_table(
                 continue
             p = plot.Scatter(y, x, color, sub=sub, markers=markers, ds=ds, alpha=alpha, **kwargs)
             if diagonal:
-                p._axes[0].plot(diagonal, diagonal, color='k')
+                p.axes[0].plot(diagonal, diagonal, color='k')
             if rasterize is None:
                 rasterize = p._n_cases > 500
             table.cell(fmtxt.asfmtext(p, rasterize=rasterize))
