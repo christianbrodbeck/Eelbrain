@@ -104,7 +104,7 @@ from .._colorspaces import LocatedColormap, symmetric_cmaps, zerobased_cmaps, AL
 from .._config import CONFIG
 from .._data_obj import Dimension, Dataset, Factor, Interaction, NDVar, Var, Case, UTS, NDVarArg, CategorialArg, IndexArg, CellArg, ascategorial, asndvar, assub, isnumeric, isdataobject, combine_cells, cellname
 from .._utils.notebooks import use_inline_backend
-from .._stats import testnd
+from .._stats import test, testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._ndvar import erode, resample
 from .._text import enumeration, ms
@@ -3287,7 +3287,9 @@ class TopoMapKey:
 class CategorialAxisMixin:
 
     def __init__(self, ax, axis, layout, label, model, ticks, tick_delim, tick_pos, cells, origin=None):
+        self.__ax = ax
         self.__axis = axis
+        self.__cells = cells
         if axis == 'x':
             self.__axis_obj = ax.xaxis
             if layout.frame is not True:
@@ -3339,6 +3341,86 @@ class CategorialAxisMixin:
             w += int(extend)
             self._frame.SetSize((w, h))
             return True
+
+    def mark_pair(
+            self,
+            cell_1: Union[float, CellArg],
+            cell_2: Union[float, CellArg],
+            y: float,
+            y0: float = None,
+            p: float = None,
+            label: str = None,
+            color: Any = None,
+            nudge: Union[bool, float] = None,
+            **text_args,
+    ):
+        """Mark a pair of categories with a line and a label
+
+        Parameters
+        ----------
+        cell_1
+            Data-cell to be compared (can be specified as cell or as
+            x-coordinate)
+        cell_2
+            Second cell to be compared.
+        y
+            Level at which to plot the bar and label.
+        y0
+            Add vertica ticks on each side of the bar reaching to ``y0``.
+        p
+            P-value to automatically determine ``color`` and ``label``.
+        label
+            Text to label bar.
+        color
+            Color for bar and ``label``.
+        nudge
+            Nudge the edges of the bar inwards to allow multiple bars
+            side-by-side on the same level of ``y``.
+        ...
+            All other parameters are used to plot the text label with
+            :meth:`matplotlib.axes.Axes.text`.
+        """
+        if p is None:
+            if color is None:
+                color = 'k'
+        else:
+            n_stars = test._n_stars(p)
+            if not n_stars:
+                return
+            if color is None:
+                color = ('#FFCC00', '#FF6600', '#FF3300')[n_stars - 1]
+            if label is None:
+                label = '*' * n_stars
+
+        if isinstance(cell_1, (str, tuple)):
+            x1 = self.__cells.index(cell_1)
+        else:
+            x1 = cell_1
+        if isinstance(cell_2, (str, tuple)):
+            x2 = self.__cells.index(cell_2)
+        else:
+            x2 = cell_2
+        if x1 > x2:
+            x1, x2 = x2, x1
+        if nudge is True:
+            nudge = 0.025
+        if nudge:
+            x1 += nudge
+            x2 -= nudge
+        if y0 is None:
+            xs, ys = [x1, x2], [y, y]
+        else:
+            xs, ys = [x1, x1, x2, x2], [y0, y, y, y0]
+        self.__ax.plot(xs, ys, color=color)
+        if label:
+            text_args = {
+                'size': mpl.rcParams['font.size'] * 1.5,
+                'ha': 'center',
+                'va': 'center',
+                'clip_on': False,
+                **text_args
+            }
+            self.__ax.text((x1 + x2) / 2, y, label, color=color, **text_args)
 
 
 class XAxisMixin:

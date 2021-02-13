@@ -252,8 +252,8 @@ def _get_correction_caption(corr, n):
         return "(* Uncorrected)"
 
 
-def _n_stars(p: float, levels: Sequence[float]):
-    return sum(p <= l for l in levels)
+def _n_stars(p: float, levels: Sequence[float] = (0.05, 0.01, 0.001)):
+    return sum(p <= level for level in levels)
 
 
 def star(
