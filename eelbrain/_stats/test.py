@@ -2,7 +2,7 @@
 """Statistical tests for univariate variables"""
 from functools import partial
 import itertools
-from typing import Union, Sequence
+from typing import Literal, Sequence, Union
 
 import numpy as np
 import scipy.stats
@@ -24,6 +24,8 @@ from . import stats
 __test__ = False
 DEFAULT_LEVELS = {.05: '*', .01: '**', .001: '***'}
 DEFAULT_LEVELS_TREND = {.05: '*', .01: '**', .001: '***', .1: '`'}
+
+MCCArg = Union[bool, Literal['hochberg', 'bonferroni', 'holm']]
 
 
 def get_levels(
@@ -1150,21 +1152,14 @@ def pairwise(
 
 
 def _pairwise(
-        data,
-        within,
-        parametric,
-        corr,
-        trend,
-        levels=True,
+        data: Sequence[Sequence[float]],  # list of groups/treatments
+        within: bool,
+        parametric: bool,
+        corr: MCCArg,
+        trend: Union[bool, str] = False,
+        levels: Union[bool, dict] = True,
 ):
     """Pairwise tests
-
-    Parameters
-    ----------
-    data
-        list of groups/treatments
-    corr : 'Hochberg' | 'Holm' | 'Bonferroni'
-        MCP.
 
     Returns
     -------

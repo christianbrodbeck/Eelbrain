@@ -3,7 +3,7 @@
 import inspect
 from itertools import chain
 import logging
-from typing import Any, Callable, Dict, Sequence, Union
+from typing import Any, Callable, Dict, Literal, Sequence, Union
 
 import numpy as np
 import scipy.linalg
@@ -34,7 +34,7 @@ def _mark_plot_pairwise(  # Mark pairwise significance
         pos: Sequence[float],  # position of items on x axis
         bottom: float,  # Bottom of the space to use for the connectors (in data coordinates, i.e. highest point reached by the data plot)
         y_unit: float,  # Suggested scale for half the vertical distance between connectors (only used if top is None)
-        corr: Union[str, None],
+        corr: test.MCCArg,
         trend: str,
         markers: bool,  # Plot markers indicating significance level (stars)
         levels: Union[dict, bool] = True,
@@ -104,7 +104,7 @@ def _mark_plot_1sample(  # Mark significance for one-sample test
         bottom: float,  # Bottom of the space to use for the stars
         y_unit: float,  # Distance from bottom to stars
         popmean: float,
-        corr: Union[str, None],
+        corr: test.MCCArg,
         trend: str,
         levels: Union[dict, bool] = True,
         pwcolors: Sequence = None,
@@ -177,6 +177,7 @@ class PairwiseLegend(EelFigure):
 
 
 class _SimpleFigure(EelFigure):
+
     def __init__(self, data_desc, *args, **kwargs):
         layout = Layout(1, 1, 5, *args, **kwargs)
         EelFigure.__init__(self, data_desc, layout)
@@ -203,6 +204,21 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     cells
         Cells to plot (optional). All entries have to be cells of ``x``). Can be
         used to change the order of the bars or plot only certain cells.
+    test : bool | scalar
+        ``True`` (default): perform pairwise tests; ``False``: no tests;
+        scalar: 1-sample tests against this value.
+    tail
+        Tailedness of the test (when testing against population mean).
+    par
+        Use parametric test for pairwise comparisons (use non-parametric
+        tests if False).
+    corr
+        Method for multiple comparison correction (default 'hochberg').
+    trend
+        Marker for a trend in pairwise comparisons.
+    test_markers
+        For pairwise tests, plot markers indicating significance level
+        (stars).
     bottom
         Lowest possible value on the y axis (default is 0 or slightly
         below the lowest value).
@@ -220,28 +236,13 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     xtick_delim
         Delimiter for x axis category descriptors (default is ``'\n'``,
         i.e. the level on each Factor of ``x`` on a separate line).
-    test : bool | scalar
-        ``True`` (default): perform pairwise tests; ``False``: no tests;
-        scalar: 1-sample tests against this value.
-    tail : 0 | 1 | -1
-        Tailedness of the test (when testing against population mean).
-    par : bool
-        Use parametric test for pairwise comparisons (use non-parametric
-        tests if False).
-    trend : str
-        Marker for a trend in pairwise comparisons.
-    test_markers : bool
-        For pairwise tests, plot markers indicating significance level
-        (stars).
-    corr : None | 'hochberg' | 'bonferroni' | 'holm'
-        Method for multiple comparison correction (default 'hochberg').
     colors : bool | sequence | dict of matplitlib colors
         Matplotlib colors to use for boxes (True to use the module default;
         default is False, i.e. no colors).
-    ds : Dataset
+    ds
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
-    label_fliers : bool
+    label_fliers
         Add labels to flier points (outliers); requires ``match`` to be
         specified.
     ...
@@ -255,21 +256,21 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
             match: CategorialArg = None,
             sub: IndexArg = None,
             cells: Sequence[CellArg] = None,
+            test: Union[bool, float] = True,
+            tail: Literal[-1, 0, 1] = 0,
+            par: bool = True,
+            corr: test.MCCArg = 'Hochberg',
+            trend: Union[bool, str] = False,
+            test_markers: bool = True,
             bottom: float = None,
             top: float = None,
             xlabel: Union[bool, str] = True,
             ylabel: Union[bool, str] = True,
             xticks: Union[bool, dict, Sequence[str]] = True,
             xtick_delim: str = '\n',
-            test=True,
-            tail=0,
-            par=True,
-            trend=False,
-            test_markers=True,
-            corr='Hochberg',
-            colors=False,
-            ds=None,
-            label_fliers=False,
+            colors: ColorsArg = False,
+            ds: Dataset = None,
+            label_fliers: bool = False,
             **kwargs,
     ):
         # get data
@@ -302,85 +303,111 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
 
     Parameters
     ----------
-    y : Var
+    y
         Dependent variable.
-    x : categorial
+    x
         Model (Factor or Interaction).
-    match : None | categorial
+    match
         Match cases for a repeated measures design.
-    sub : index-array
+    sub
         Use a subset of the data.
-    cells : None | sequence of cells of x
+    cells
         Cells to plot (optional). All entries have to be cells of ``x``). Can be
         used to change the order of the bars or plot only certain cells.
-    test : bool | scalar
-        ``True`` (default): perform pairwise tests; ``False``: no tests;
-        scalar: 1-sample tests against this value.
-    tail : 0 | 1 | -1
-        Tailedness of the test (when testing against population mean).
-    par : bool
-        Use parametric test for pairwise comparisons (use non-parametric
-        tests if False).
-    corr : None | 'hochberg' | 'bonferroni' | 'holm'
-        Method for multiple comparison correction (default 'hochberg').
-    trend : str
-        Marker for a trend in pairwise comparisons.
-    test_markers : bool
-        For pairwise tests, plot markers indicating significance level
-        (stars).
-    ylabel : str | None
-        Y axis label (default is inferred from the data).
     error
         Measure of variability to plot. Examples:
         ``sem``: Standard error of the mean;
         ``2sem``: 2 standard error of the mean;
         ``ci``: 95% confidence interval;
         ``99%ci``: 99% confidence interval.
-    pool_error : bool
+    pool_error
         Pool the errors for the estimate of variability (default is True
         for related measures designs, False for others). See Loftus & Masson
         (1994).
     ec : matplotlib color
         Error bar color.
-    xlabel : str | bool
+    test
+        ``True`` (default): perform pairwise tests; ``False``: no tests;
+        scalar: 1-sample tests against this value.
+    tail
+        Tailedness of the test (when testing against population mean).
+    par
+        Use parametric test for pairwise comparisons (use non-parametric
+        tests if False).
+    corr
+        Method for multiple comparison correction (default 'hochberg').
+    trend
+        Marker for a trend in pairwise comparisons.
+    test_markers
+        For pairwise tests, plot markers indicating significance level
+        (stars).
+    bottom
+        Lower end of the y axis (default is determined from the data).
+    top
+        Upper end of the y axis (default is determined from the data).
+    origin
+        Origin of the bars on the y-axis (the default is ``0``, or the visible
+        point closest to it).
+    xlabel
         X axis label (default is ``x.name``).
-    xticks : None | sequence of str | dict
+    ylabel
+        Y axis label (default is inferred from the data).
+    xticks
         X-axis tick labels describing the categories.
         The default is to use the cell names from ``x``.
         Use list of labels or ``{cell: label}`` :class:`dict` for custom labels.
         None to plot no labels.
-    xtick_delim : str
+    xtick_delim
         Delimiter for x axis category descriptors (default is ``'\n'``,
         i.e. the level on each Factor of ``x`` on a separate line).
     colors : bool | dict | sequence of matplitlib colors
         Matplotlib colors to use for boxes (True to use the module default;
         default is False, i.e. no colors).
-    bottom : scalar
-        Lower end of the y axis (default is determined from the data).
-    top : scalar
-        Upper end of the y axis (default is determined from the data).
-    origin : scalar
-        Origin of the bars on the y-axis (the default is ``0``, or the visible
-        point closest to it).
-    pos : sequence of scalar
+    pos
         Position of the bars on the x-axis (default is ``range(n_cells)``).
-    width : scalar or sequence of scalar
+    width
         Width of the bars (deault 0.5).
-    c : matplotlib color
+    c
         Bar color (ignored if colors is specified).
     edgec : matplotlib color
         Barplot edge color.
-    ds : Dataset
+    ds
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, y, x=None, match=None, sub=None, cells=None, test=True, tail=0, par=True,
-                 corr='Hochberg', trend=False, test_markers=True, ylabel=True,
-                 error: str = 'sem', pool_error=None, ec='k', xlabel=True, xticks=True,
-                 xtick_delim='\n', colors=False, bottom=None, top=None,
-                 origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, **kwargs):
+    def __init__(
+            self,
+            y: VarArg,
+            x: CategorialArg = None,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            cells: Sequence[CellArg] = None,
+            error: str = 'sem',
+            pool_error: bool = None,
+            ec: Any = 'k',
+            test: Union[bool, float] = True,
+            tail: Literal[-1, 0, 1] = 0,
+            par: bool = True,
+            corr: test.MCCArg = 'Hochberg',
+            trend: Union[bool, str] = False,
+            test_markers: bool = True,
+            bottom: float = None,
+            top: float = None,
+            origin: float = None,
+            xlabel: Union[bool, str] = True,
+            ylabel: Union[bool, str] = True,
+            xticks: Union[bool, dict, Sequence[str]] = True,
+            xtick_delim: str = '\n',
+            colors: ColorsArg = False,
+            pos: Sequence[float] = None,
+            width: Union[float, Sequence[float]] = 0.5,
+            c: Any = '#0099FF',
+            edgec: Any = None,
+            ds: Dataset = None,
+            **kwargs,
+    ):
         ct = Celltable(y, x, match, sub, cells, ds, asvar)
         if colors is False:
             styles = False
@@ -409,86 +436,109 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
 
     Parameters
     ----------
-    y : Var
+    y
         Dependent variable.
-    x : categorial
+    x
         Model (Factor or Interaction).
-    match : None | categorial
+    match
         Match cases for a repeated measures design.
-    sub : index-array
+    sub
         Use a subset of the data.
-    cells : None | sequence of cells of x
+    cells
         Cells to plot (optional). All entries have to be cells of ``x``). Can be
         used to change the order of the bars or plot only certain cells.
-    test : bool | scalar
-        ``True`` (default): perform pairwise tests; ``False``: no tests;
-        scalar: 1-sample tests against this value.
-    tail : 0 | 1 | -1
-        Tailedness of the test (when testing against population mean).
-    par : bool
-        Use parametric test for pairwise comparisons (use non-parametric
-        tests if False).
-    corr : None | 'hochberg' | 'bonferroni' | 'holm'
-        Method for multiple comparison correction (default 'hochberg').
-    trend : str
-        Marker for a trend in pairwise comparisons.
-    test_markers : bool
-        For pairwise tests, plot markers indicating significance level
-        (stars).
-    ylabel : str | None
-        Y axis label (default is inferred from the data).
     error
         Measure of variability to plot. Examples:
         ``sem``: Standard error of the mean;
         ``2sem``: 2 standard error of the mean;
         ``ci``: 95% confidence interval;
         ``99%ci``: 99% confidence interval.
-    pool_error : bool
+    pool_error
         Pool the errors for the estimate of variability (default is True
         for related measures designs, False for others). See Loftus & Masson
         (1994).
     ec : matplotlib color
         Error bar color.
-    xlabel : str | bool
+    test
+        ``True`` (default): perform pairwise tests; ``False``: no tests;
+        scalar: 1-sample tests against this value.
+    tail
+        Tailedness of the test (when testing against population mean).
+    par
+        Use parametric test for pairwise comparisons (use non-parametric
+        tests if False).
+    corr
+        Method for multiple comparison correction (default 'hochberg').
+    trend
+        Marker for a trend in pairwise comparisons.
+    test_markers
+        For pairwise tests, plot markers indicating significance level
+        (stars).
+    bottom
+        Lower end of the y axis (default is determined from the data).
+    top
+        Upper end of the y axis (default is determined from the data).
+    origin
+        Origin of the bars on the data axis (the default is ``0``).
+    xlabel
         X axis label (default is ``x.name``).
-    xticks : None | sequence of str | dict
+    ylabel
+        Y axis label (default is inferred from the data).
+    xticks
         X-axis tick labels describing the categories.
         The default is to use the cell names from ``x``.
         Use list of labels or ``{cell: label}`` :class:`dict` for custom labels.
         None to plot no labels.
-    xtick_delim : str
-        Delimiter for x axis category descriptors (default ``' '``).
-    hatch : bool | str
-        Matplotlib Hatch pattern to fill boxes (True to use the module
-        default; default is False).
+    xtick_delim
+        Delimiter for x axis category descriptors.
     colors : bool | dict | sequence of matplitlib colors
         Matplotlib colors to use for boxes (True to use the module default;
         default is False, i.e. no colors).
-    left : scalar
-        Left end of the data axis (default is determined from the data).
-    right : scalar
-        Right end of the data axis (default is determined from the data).
-    origin : scalar
-        Origin of the bars on the data axis (the default is ``0``).
-    pos : sequence of scalar
+    pos
         Position of the bars on the x-axis (default is ``range(n_cells)``).
-    width : scalar or sequence of scalar
+    width
         Width of the bars (deault 0.5).
-    c : matplotlib color
+    c
         Bar color (ignored if colors is specified).
     edgec : matplotlib color
         Barplot edge color.
-    ds : Dataset
+    ds
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, y, x=None, match=None, sub=None, cells=None, test=False, tail=0, par=True,
-                 corr='Hochberg', trend=False, test_markers=True, ylabel=True,
-                 error: str = 'sem', pool_error=None, ec='k', xlabel=True, xticks=True,
-                 xtick_delim=' ', colors=False, bottom=0, top=None,
-                 origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, **kwargs):
+    def __init__(
+            self,
+            y: VarArg,
+            x: CategorialArg = None,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            cells: Sequence[CellArg] = None,
+            error: str = 'sem',
+            pool_error: bool = None,
+            ec: Any = 'k',
+            test: Union[bool, float] = True,
+            tail: Literal[-1, 0, 1] = 0,
+            par: bool = True,
+            corr: test.MCCArg = 'Hochberg',
+            trend: Union[bool, str] = False,
+            test_markers: bool = True,
+            bottom: float = 0,
+            top: float = None,
+            origin: float = None,
+            xlabel: Union[bool, str] = True,
+            ylabel: Union[bool, str] = True,
+            xticks: Union[bool, dict, Sequence[str]] = True,
+            xtick_delim: str = ' ',
+            colors: ColorsArg = False,
+            pos: Sequence[float] = None,
+            width: Union[float, Sequence[float]] = 0.5,
+            c: Any = '#0099FF',
+            edgec: Any = None,
+            ds: Dataset = None,
+            **kwargs,
+    ):
         if test is not False:
             raise NotImplemented("Horizontal barplot with pairwise significance")
 
