@@ -228,11 +228,12 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         X-axis label. By default the label is inferred from the data.
     ylabel
         Y-axis label. By default the label is inferred from the data.
+    labels
+        Labels for cells as ``{cell: label}`` dictionary.
     xticks
-        X-axis tick labels describing the categories.
-        The default is to use the cell names from ``x``.
-        Use list of labels or ``{cell: label}`` :class:`dict` for custom labels.
-        None to plot no labels.
+        X-axis tick labels. The default is to use the cell names from ``x``.
+        Can be specified as list of labels or as ``{cell: label}``
+        :class:`dict`, or set to ``False`` to plot no labels.
     xtick_delim
         Delimiter for x axis category descriptors (default is ``'\n'``,
         i.e. the level on each Factor of ``x`` on a separate line).
@@ -266,7 +267,8 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
             top: float = None,
             xlabel: Union[bool, str] = True,
             ylabel: Union[bool, str] = True,
-            xticks: Union[bool, dict, Sequence[str]] = True,
+            labels: Dict[CellArg, str] = None,
+            xticks: Union[bool, Dict[CellArg, str], Sequence[str]] = True,
             xtick_delim: str = '\n',
             colors: ColorsArg = False,
             ds: Dataset = None,
@@ -293,7 +295,7 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
 
-        CategorialAxisMixin.__init__(self, self._ax, 'x', self._layout, xlabel, ct.x, xticks, xtick_delim, p.pos, ct.cells)
+        CategorialAxisMixin.__init__(self, self._ax, 'x', self._layout, xlabel, ct.x, xticks, labels, xtick_delim, p.pos, ct.cells)
         YLimMixin.__init__(self, (p,))
         self._show()
 
@@ -312,8 +314,8 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     sub
         Use a subset of the data.
     cells
-        Cells to plot (optional). All entries have to be cells of ``x``). Can be
-        used to change the order of the bars or plot only certain cells.
+        Cells to plot. All entries have to be cells of ``x``. Use to change the
+        order of the bars or plot bars for only a subset of cells.
     error
         Measure of variability to plot. Examples:
         ``sem``: Standard error of the mean;
@@ -352,11 +354,12 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         X axis label (default is ``x.name``).
     ylabel
         Y axis label (default is inferred from the data).
+    labels
+        Labels for cells as ``{cell: label}`` dictionary.
     xticks
-        X-axis tick labels describing the categories.
-        The default is to use the cell names from ``x``.
-        Use list of labels or ``{cell: label}`` :class:`dict` for custom labels.
-        None to plot no labels.
+        X-axis tick labels. The default is to use the cell names from ``x``.
+        Can be specified as list of labels or as ``{cell: label}``
+        :class:`dict`, or set to ``False`` to plot no labels.
     xtick_delim
         Delimiter for x axis category descriptors (default is ``'\n'``,
         i.e. the level on each Factor of ``x`` on a separate line).
@@ -398,7 +401,8 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
             origin: float = None,
             xlabel: Union[bool, str] = True,
             ylabel: Union[bool, str] = True,
-            xticks: Union[bool, dict, Sequence[str]] = True,
+            labels: Dict[CellArg, str] = None,
+            xticks: Union[bool, Dict[CellArg, str], Sequence[str]] = True,
             xtick_delim: str = '\n',
             colors: ColorsArg = False,
             pos: Sequence[float] = None,
@@ -423,7 +427,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
 
-        CategorialAxisMixin.__init__(self, self._ax, 'x', self._layout, xlabel, ct.x, xticks, xtick_delim, p.pos, ct.cells, p.origin)
+        CategorialAxisMixin.__init__(self, self._ax, 'x', self._layout, xlabel, ct.x, xticks, labels, xtick_delim, p.pos, ct.cells, p.origin)
         YLimMixin.__init__(self, (p,))
         self._show()
 
@@ -484,11 +488,12 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
         X axis label (default is ``x.name``).
     ylabel
         Y axis label (default is inferred from the data).
+    labels
+        Labels for cells as ``{cell: label}`` dictionary.
     xticks
-        X-axis tick labels describing the categories.
-        The default is to use the cell names from ``x``.
-        Use list of labels or ``{cell: label}`` :class:`dict` for custom labels.
-        None to plot no labels.
+        X-axis tick labels. The default is to use the cell names from ``x``.
+        Can be specified as list of labels or as ``{cell: label}``
+        :class:`dict`, or set to ``False`` to plot no labels.
     xtick_delim
         Delimiter for x axis category descriptors.
     colors : bool | dict | sequence of matplitlib colors
@@ -529,7 +534,8 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
             origin: float = None,
             xlabel: Union[bool, str] = True,
             ylabel: Union[bool, str] = True,
-            xticks: Union[bool, dict, Sequence[str]] = True,
+            labels: Dict[CellArg, str] = None,
+            xticks: Union[bool, Dict[CellArg, str], Sequence[str]] = True,
             xtick_delim: str = ' ',
             colors: ColorsArg = False,
             pos: Sequence[float] = None,
@@ -557,7 +563,7 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
         self._configure_axis_data('x', ct.y, ylabel)
 
         XAxisMixin.__init__(self, p.bottom, p.top, axes=[p.ax])
-        CategorialAxisMixin.__init__(self, self._ax, 'y', self._layout, xlabel, ct.x, xticks, xtick_delim, p.pos, ct.cells, p.origin)
+        CategorialAxisMixin.__init__(self, self._ax, 'y', self._layout, xlabel, ct.x, xticks, labels, xtick_delim, p.pos, ct.cells, p.origin)
         self._show()
 
 
