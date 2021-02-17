@@ -859,6 +859,10 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
         Specify which axes should be annotated with y-axis tick labels.
         Use ``int`` for a single axis, a sequence of ``int`` for multiple
         specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
+    connectionstyle
+        Style for the connections between the image array-plot and the
+        topo-maps. Set to ``''`` for straight connections. See
+        `Matplotlib demo <https://matplotlib.org/stable/gallery/userdemo/connectionstyle_demo.html>`_.
     ...
         Also accepts :ref:`general-layout-parameters`.
 
@@ -903,6 +907,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
             ylabel: Union[bool, str] = True,
             xticklabels: Union[int, Sequence[int]] = -1,
             yticklabels: Union[int, Sequence[int]] = 0,
+            connectionstyle: str = "angle3,angleA=90,angleB=0",
             **kwargs,
     ):
         if ntopo is None:
@@ -961,7 +966,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
                                              picker=True, xticks=[], yticks=[])
                 ax.ID = ID
                 ax.type = 'window'
-                win = _TopoWindow(ax, im_plot, clip=clip, clip_distance=clip_distance, sensorlabels=sensorlabels, mark=mark, mcolor=mcolor, proj=proj, res=res, im_interpolation=im_interpolation, vlims=self._vlims, cmaps=self._cmaps, contours=self._contours, interpolation=interpolation, head_radius=head_radius, head_pos=head_pos)
+                win = _TopoWindow(ax, im_plot, connectionstyle=connectionstyle, clip=clip, clip_distance=clip_distance, sensorlabels=sensorlabels, mark=mark, mcolor=mcolor, proj=proj, res=res, im_interpolation=im_interpolation, vlims=self._vlims, cmaps=self._cmaps, contours=self._contours, interpolation=interpolation, head_radius=head_radius, head_pos=head_pos)
                 self.axes.append(ax)
                 self._topo_windows.append(win)
         all_plots.extend(self._array_plots)
