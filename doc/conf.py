@@ -212,7 +212,7 @@ intersphinx_mapping = {
     'surfer': ('https://pysurfer.github.io', None),
     'matplotlib': ('https://matplotlib.org', None),
     'nilearn': ('https://nilearn.github.io', None),
-    'numpy': ('https://docs.scipy.org/doc/numpy', None),
+    'numpy': ('https://numpy.org/doc/stable', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
     'pyarrow': ('https://arrow.apache.org/docs/python', None),
 }
