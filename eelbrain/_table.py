@@ -330,8 +330,11 @@ def melt(name, cells, cell_var_name, ds, labels=None):
         cell_labels = labels
 
     # melt the Dataset
-    keep = tuple(k for k, v in ds.items() if isuv(v))
-    out = ds[keep].tile(len(cells))
+    keep = [k for k, v in ds.items() if isuv(v)]
+    if keep:
+        out = ds[tuple(keep)].tile(len(cells))
+    else:
+        out = Dataset(info=ds.info)
     out[name] = combine(ds[cell] for cell in cells)
     out[cell_var_name] = Factor(cell_labels, repeat=ds.n_cases)
     return out
