@@ -522,15 +522,32 @@ def erode(ndvar, dim):
     return NDVar(x, ndvar.dims, ndvar.name, ndvar.info)
 
 
-def filter_data(ndvar, l_freq, h_freq, filter_length='auto',
-                l_trans_bandwidth='auto', h_trans_bandwidth='auto',
-                method='fir', iir_params=None, phase='zero',
-                fir_window='hamming', fir_design='firwin', name=None):
+def filter_data(
+        ndvar: NDVar,
+        low: float = None,
+        high: float = None,
+        *,
+        name: str = None,
+        **filter_kwargs,
+) -> NDVar:
     """Apply :func:`mne.filter.filter_data` to an NDVar
+
+    Parameters
+    ----------
+    ndvar
+        Data to be filtered.
+    low
+        Low cutoff frequency (in Hz).
+    high
+        High cutoff frequency (in Hz).
+    name
+        Name for the output :class:`NDVar`.
+    **
+        Parameters for :func:`mne.filter.filter_data`.
 
     Returns
     -------
-    filtered_ndvar : NDVar
+    filtered_ndvar
         NDVar with same dimensions as ``ndvar`` and filtered data.
     """
     axis = ndvar.get_axis('time')
@@ -541,11 +558,8 @@ def filter_data(ndvar, l_freq, h_freq, filter_length='auto',
         data = ndvar.x.swapaxes(axis, -1)
     sfreq = 1. / ndvar.time.tstep
 
-    x = mne.filter.filter_data(
-        data, sfreq, l_freq, h_freq, None, filter_length, l_trans_bandwidth,
-        h_trans_bandwidth, 1, method, iir_params, True, phase, fir_window,
-        fir_design
-    )
+    filter_kwargs.setdefault('copy', True)
+    x = mne.filter.filter_data(data, sfreq, low, high, **filter_kwargs)
 
     if axis is not None:
         x = x.swapaxes(axis, -1)
