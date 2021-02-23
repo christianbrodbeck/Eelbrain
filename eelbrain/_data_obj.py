@@ -7744,6 +7744,7 @@ class Dimension:
                 return "%s [%s]" % (self.name.capitalize(), self._axis_unit)
             else:
                 return self.name.capitalize()
+        return label
 
     def dimindex(self, arg):
         "Convert a dimension index to an array index"
