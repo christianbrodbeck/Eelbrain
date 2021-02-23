@@ -188,7 +188,7 @@ class BoostingResult(PickleableDataClass):
                     state['residual'] *= state['n_samples']
             if version < 13:
                 state['splits'] = Splits(None, state.pop('_partitions_arg'), state.pop('partitions'), state.pop('validate', 1), state.pop('test', 0), state.pop('model'))
-        self.__init__(**state)
+        PickleableDataClass.__setstate__(self, state)
 
     def __repr__(self):
         items = []

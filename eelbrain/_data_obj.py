@@ -7714,7 +7714,11 @@ class Dimension:
         "Extent for im plots; needs to extend beyond end point locations"
         return -0.5, len(self) - 0.5
 
-    def _axis_format(self, scalar, label):
+    def _axis_format(
+            self,
+            scalar: bool,
+            label: Union[bool, str],
+    ):
         """Find axis decoration parameters for this dimension
 
         Parameters
@@ -8030,7 +8034,11 @@ class Case(Dimension):
     def _as_scalar_array(self):
         return np.arange(self.n)
 
-    def _axis_format(self, scalar, label):
+    def _axis_format(
+            self,
+            scalar: bool,
+            label: Union[bool, str],
+    ):
         if scalar:
             locator = None
             formatter = FormatStrFormatter('%i')
@@ -8130,7 +8138,11 @@ class Space(Dimension):
     def __iter__(self):
         return iter(self._directions)
 
-    def _axis_format(self, scalar, label):
+    def _axis_format(
+            self,
+            scalar: bool,
+            label: Union[bool, str],
+    ):
         # like Categorial
         locator = FixedLocator(np.arange(len(self._directions)))
         formatter = IndexFormatter(self._directions)
@@ -8268,7 +8280,11 @@ class Categorial(Dimension):
     def _as_uv(self):
         return Factor(self.values, name=self.name)
 
-    def _axis_format(self, scalar, label):
+    def _axis_format(
+            self,
+            scalar: bool,
+            label: Union[bool, str],
+    ):
         locator = FixedLocator(np.arange(len(self)))
         formatter = IndexFormatter(self.values)
         return formatter, locator, self._axis_label(label)
@@ -8419,7 +8435,11 @@ class Scalar(Dimension):
     def _axis_extent(self):
         return self[0], self[-1]
 
-    def _axis_format(self, scalar, label):
+    def _axis_format(
+            self,
+            scalar: bool,
+            label: Union[bool, str],
+    ):
         if scalar:
             if self.tick_format:
                 formatter = FormatStrFormatter(self.tick_format)
@@ -8738,7 +8758,11 @@ class Sensor(Dimension):
     def _as_uv(self):
         return Factor(self.names, name=self.name)
 
-    def _axis_format(self, scalar, label):
+    def _axis_format(
+            self,
+            scalar: bool,
+            label: Union[bool, str],
+    ):
         locator = FixedLocator(np.arange(len(self)), 10)
         formatter = IndexFormatter(self.names)
         return formatter, locator, self._axis_label(label)
@@ -9538,10 +9562,14 @@ class SourceSpaceBase(Dimension):
     def __getitem__(self, index):
         raise NotImplementedError
 
-    def _axis_format(self, scalar, label):
-        return (FormatStrFormatter('%i'),
-                FixedLocator(np.arange(len(self)), 10),
-                self._axis_label(label))
+    def _axis_format(
+            self,
+            scalar: bool,
+            label: Union[bool, str],
+    ):
+        formatter = FormatStrFormatter('%i')
+        locator = FixedLocator(np.arange(len(self)), 10)
+        return formatter, locator, self._axis_label(label)
 
     def _copy(self, subject=None, parc=None):
         if subject is None:
@@ -10411,7 +10439,11 @@ class UTS(Dimension):
     def _axis_im_extent(self):
         return self.tmin - 0.5 * self.tstep, self.tmax + 0.5 * self.tstep
 
-    def _axis_format(self, scalar, label):
+    def _axis_format(
+            self,
+            scalar: bool,
+            label: Union[bool, str],
+    ):
         # display s -> ms
         s_to_ms = (self.unit == 's') and (max(self.tmax, -self.tmin) < 10.) and not (self.tstep % 1.)
 
@@ -10420,7 +10452,7 @@ class UTS(Dimension):
                 unit = 'ms'
             else:
                 unit = self.unit
-            label = f"Time [{unit}]"
+            label = f"{self.name.capitalize()} [{unit}]"
 
         if s_to_ms:
             if scalar:
