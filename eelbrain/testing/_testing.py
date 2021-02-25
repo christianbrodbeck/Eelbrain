@@ -200,6 +200,13 @@ def requires_mne_sample_data(function):
         return pytest.mark.skip('mne sample data unavailable')(function)
 
 
+def requires_mne_testing_data(function):
+    if mne.datasets.testing.data_path(download=False):
+        return function
+    else:
+        return pytest.mark.skip('mne testing data unavailable')(function)
+
+
 def requires_pyarrow(function):
     "Sometimes broken under env-dev on Unix"
     try:

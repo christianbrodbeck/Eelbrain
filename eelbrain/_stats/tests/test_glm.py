@@ -1,6 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import repeat
-from pathlib import Path
 
 import numpy as np
 from numpy import newaxis
@@ -27,10 +26,10 @@ def assert_f_test_equal(f_test, r_res, r_row, f_lmf, f_nd, r_kind='aov'):
         r_res = {'df': r_res[1][r_row], 'SS': r_res[0][r_row],
                  'F': r_res[2][r_row], 'p': r_res[3][r_row]}
     else:
-        raise ValueError("invalid r_kind=%r" % r_kind)
+        raise ValueError(f"{r_kind=}")
 
     assert f_test.df == r_res['df']
-    if 'SS' is r_res:
+    if 'SS' in r_res:
         assert f_test.SS == pytest.approx(r_res['SS'])
     if 'MS' in r_res:
         assert f_test.MS == pytest.approx(r_res['MS'])

@@ -13,11 +13,8 @@ from eelbrain import (
     concatenate, labels_from_clusters, morph_source_space, set_parc, xhemi)
 from eelbrain._data_obj import SourceSpace, asndvar, _matrix_graph
 from eelbrain._mne import shift_mne_epoch_trigger, combination_label
-from eelbrain.testing import requires_mne_sample_data
+from eelbrain.testing import requires_mne_sample_data, requires_mne_testing_data
 from eelbrain.tests.test_data import assert_dataobj_equal
-
-data_dir = mne.datasets.testing.data_path()
-subjects_dir = os.path.join(data_dir, 'subjects')
 
 
 def assert_label_equal(l0, l1, comment=True, color=True):
@@ -171,14 +168,16 @@ def test_epoch_trigger_shift():
                     rtol=1e-1, atol=1e-3)  # ms accuracy
 
 
+@requires_mne_testing_data
 def test_combination_label():
     "Test combination label creation"
-    labels = {l.name: l for l in
-              mne.read_labels_from_annot('fsaverage', subjects_dir=subjects_dir)}
+    data_dir = mne.datasets.testing.data_path(download=False)
+    subjects_dir = os.path.join(data_dir, 'subjects')
+
+    labels = {l.name: l for l in mne.read_labels_from_annot('fsaverage', subjects_dir=subjects_dir)}
 
     # standard
-    l = combination_label('temporal', "superiortemporal + middletemporal + inferiortemporal",
-                          labels, subjects_dir)
+    l = combination_label('temporal', "superiortemporal + middletemporal + inferiortemporal", labels, subjects_dir)
     lh = labels['superiortemporal-lh'] + labels['middletemporal-lh'] + labels['inferiortemporal-lh']
     lh.name = 'temporal-lh'
     rh = labels['superiortemporal-rh'] + labels['middletemporal-rh'] + labels['inferiortemporal-rh']
@@ -208,7 +207,11 @@ def test_combination_label():
     assert_array_equal(l.vertices, labels['LOBE.FRONTAL-lh'].vertices)
 
 
+@requires_mne_testing_data
 def test_morphing():
+    data_dir = mne.datasets.testing.data_path(download=False)
+    subjects_dir = os.path.join(data_dir, 'subjects')
+
     stc = datasets.get_mne_stc()
     y = load.fiff.stc_ndvar(stc, 'sample', 'ico-5', subjects_dir, 'dSPM', name='src')
 
