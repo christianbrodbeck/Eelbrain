@@ -9420,7 +9420,7 @@ class SourceSpaceBase(Dimension):
     _vertex_re = re.compile(r'([RL])(\d+)')
 
     def __init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename):
-        self.vertices = vertices
+        self.vertices = [np.asarray(vertices_i, int) for vertices_i in vertices]
         self.subject = subject
         self.src = src
         self._subjects_dir = subjects_dir
