@@ -3746,7 +3746,13 @@ class NDVar(Named):
             info = self.info
         return NDVar(x_out, dims, name or self.name, info)
 
-    def _aggregate_over_dims(self, axis: AxisArg, regions: dict, func: Callable):
+    def _aggregate_over_dims(
+            self,
+            axis: AxisArg,
+            regions: dict,  # regions keyword arguments
+            func: Callable,
+            mask: Any = None,  # replace masked values with this
+    ):
         name = regions.pop('name', None)
         out = regions.pop('out', None)
         if out is not None:
@@ -3764,8 +3770,10 @@ class NDVar(Named):
                     axis = [axis] + additional_axis
                 else:
                     axis = list(axis) + additional_axis
-            return data._aggregate_over_dims(axis, {'name': name}, func)
+            return data._aggregate_over_dims(axis, {'name': name}, func, mask)
         elif isinstance(axis, NDVar):
+            if mask is not None:
+                raise NotImplementedError
             dims, self_x, index = self._align(axis)
             # move indexed dimensions to the back so they can be flattened
             src = [ax for ax, n in enumerate(index.shape) if n != 1]
@@ -3778,13 +3786,13 @@ class NDVar(Named):
             dims = [dim for i, dim in enumerate(dims) if i not in src]
         elif isinstance(axis, str):
             axis = self._dim_2_ax[axis]
-            x = func(self.x, axis=axis)
+            x = func(self.get_data(mask=mask), axis=axis)
             dims = [self.dims[i] for i in range(self.ndim) if i != axis]
         elif not axis:
-            return func(self.x)
+            return func(self.get_data(mask=mask))
         else:
             axes = tuple(self._dim_2_ax[dim_name] for dim_name in axis)
-            x = func(self.x, axes)
+            x = func(self.get_data(mask=mask), axes)
             dims = [self.dims[i] for i in range(self.ndim) if i not in axes]
 
         return self._package_aggregated_output(x, dims, name, _info.for_data(x, self.info))
@@ -4185,7 +4193,7 @@ class NDVar(Named):
         else:
             return [self.get_axis(dim) for dim in dims]
 
-    def get_data(self, dims: DimsArg, mask: float = None) -> np.ndarray:
+    def get_data(self, dims: DimsArg = None, mask: float = None) -> np.ndarray:
         """Retrieve the NDVar's data with a specific axes order.
 
         Parameters
@@ -4193,25 +4201,27 @@ class NDVar(Named):
         dims
             Sequence of dimension names (or single dimension name). The array
             that is returned will have axes in this order. To insert a new
-            axis with size 1 use ``numpy.newaxis``/``None``.
+            axis with size 1 use ``numpy.newaxis``/``None``. The default is the
+            order of dimensions in the NDVar.
         mask
             If data is a masked array, set masked values to ``mask``.
 
-        Notes
-        -----
-        A shallow copy of the data is returned. To retrieve the data with the
-        stored axes order use the .x attribute.
+        Returns
+        -------
+        data
+            A reference to, view on or copy of the data (conservative memory usage).
         """
-        if isinstance(dims, str):
-            dims = (dims,)
-
-        dims_ = [d for d in dims if d is not newaxis]
-        if set(dims_) != set(self.dimnames) or len(dims_) != len(self.dimnames):
-            raise DimensionMismatchError(f"Requested dimensions {dims} from {self}")
-
-        # transpose
-        axes = [self.dimnames.index(d) for d in dims_]
-        x = self.x.transpose(axes)
+        if dims is None:
+            x = self.x
+        else:
+            if isinstance(dims, str):
+                dims = (dims,)
+            dims_ = [d for d in dims if d is not newaxis]
+            if set(dims_) != set(self.dimnames) or len(dims_) != len(self.dimnames):
+                raise DimensionMismatchError(f"Requested dimensions {dims} from {self}")
+            # transpose
+            axes = [self.dimnames.index(d) for d in dims_]
+            x = self.x.transpose(axes)
 
         # apply mask
         if mask is not None and isinstance(x, np.ma.MaskedArray):
@@ -4223,7 +4233,7 @@ class NDVar(Named):
                 x = x.data
 
         # insert axes
-        if len(dims) > len(dims_):
+        if dims is not None and len(dims) > len(dims_):
             expand_dims = np.ma.expand_dims if isinstance(x, np.ma.MaskedArray) else np.expand_dims
             for ax, dim in enumerate(dims):
                 if dim is newaxis:
@@ -4728,8 +4738,12 @@ class NDVar(Named):
         name : str
             Name of the output NDVar (default is the current name).
         """
-        func = partial(np.quantile, q=q, interpolation=interpolation)
-        return self._aggregate_over_dims(axis, regions, func)
+        if isinstance(self.x, np.ma.masked_array):
+            np_func = np.nanquantile
+        else:
+            np_func = np.quantile
+        func = partial(np_func, q=q, interpolation=interpolation)
+        return self._aggregate_over_dims(axis, regions, func, mask=np.nan)
 
     def repeat(self, repeats, name=None):
         """Repeat slices of the NDVar along the case dimension
