@@ -418,10 +418,12 @@ class BoostingResult(PickleableDataClass):
             if field.name == 'partition_results' and any(v is not None for v in values):
                 if not all(v is not None for v in values):
                     raise ValueError(f'partition_results avaiable for some but not all part-results')
-                new_values = [cls._eelbrain_concatenate(p_results) for p_results in zip(*values)]
+                new_value = [cls._eelbrain_concatenate(p_results) for p_results in zip(*values)]
+            elif any(v is None for v in values):
+                new_value = None
             else:
-                new_values = _concatenate_values(values, dim, field.name)
-            out[field.name] = new_values
+                new_value = _concatenate_values(values, dim, field.name)
+            out[field.name] = new_value
         return cls(**out)
 
 
