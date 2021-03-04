@@ -470,6 +470,8 @@ def morph_source_space(
         mask_sym = concatenate([mask_lh, mask_rh], 'source')
         # morph the result back to the source brain (fsaverage)
         mask = morph_source_space(mask_sym, 'fsaverage', fsa_vertices)
+        # convert to boolean mask (morphing involves interpolation, so the output is in floats)
+        mask = round(mask).astype(bool)
     """
     axis = ndvar.get_axis('source')
     source = ndvar.get_dim('source')
@@ -849,14 +851,10 @@ def xhemi(ndvar, mask=None, hemi='lh', parc=True):
         vert_to = [vert_lh, []] if hemi == 'lh' else [[], vert_rh]
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', r'\d+/\d+ vertices not included in smoothing', module='mne')
-            morph_mat = compute_morph_matrix(
-                'fsaverage_sym', 'fsaverage_sym', vert_from, vert_to,
-                subjects_dir=ndvar.source.subjects_dir, xhemi=True)
+            morph_mat = compute_morph_matrix('fsaverage_sym', 'fsaverage_sym', vert_from, vert_to, subjects_dir=ndvar.source.subjects_dir, xhemi=True)
 
         out_same = ndvar_sym.sub(source=hemi)
-        out_other = morph_source_space(
-            ndvar_sym.sub(source=other_hemi), 'fsaverage_sym',
-            out_same.source.vertices, morph_mat, parc=parc, xhemi=True, mask=mask)
+        out_other = morph_source_space(ndvar_sym.sub(source=other_hemi), 'fsaverage_sym', out_same.source.vertices, morph_mat, parc=parc, xhemi=True, mask=mask)
 
     if hemi == 'lh':
         return out_same, out_other

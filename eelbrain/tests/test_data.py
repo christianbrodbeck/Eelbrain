@@ -1407,7 +1407,7 @@ def test_ndvar_summary_methods():
     idx = x > 0
     x0 = x[0]
     idx0 = idx[0]
-    idx1d = idx[0,:,0]
+    idx1d = idx[0, :, 0]
     xsub = x.sub(time=(0, 0.5))
     idxsub = xsub > 0
     idxsub1d = idxsub[0,0]

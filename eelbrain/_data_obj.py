@@ -3963,7 +3963,7 @@ class NDVar(Named):
             Number of times to difference (default 1).
         pad : bool
             Pad the ``dim`` dimension of the result to conserve NDVar shape
-            (default).
+            (default). For exmaple, ``diff([0, 1, 1, 0]) -> [0, 1, 0, -1]``.
         name : str
             Name of the output NDVar (default is the current name).
 
@@ -3976,8 +3976,7 @@ class NDVar(Named):
             if self.ndim - self.has_case == 1:
                 axis = -1
             else:
-                raise TypeError("Need to specify dimension over which to "
-                                "differentiate")
+                raise TypeError("Need to specify dimension over which to differentiate")
         else:
             axis = self.get_axis(dim)
 
@@ -4913,20 +4912,20 @@ class NDVar(Named):
         >>> std = fwhm / (2 * (sqrt(2 * log(2))))
         """
         if (window_size is None) == (window_samples is None):
-            desc = "" if window_size is None else f"window_size={window_size!r}, window_samples={window_samples!r}: "
-            raise TypeError(f"{desc}Must specify either window_size or window_samples")
+            desc = "" if window_size is None else f"{window_size=}, {window_samples=}: "
+            raise TypeError(f"{desc}Must specify exactly one of window_size or window_samples")
         axis = self.get_axis(dim)
         dim_object = self.get_dim(dim)
         dims = self.dims
         if window == 'gaussian':
             if mode != 'center':
-                raise ValueError(f"mode={mode!r}; for gaussian smoothing, mode must be 'center'")
+                raise ValueError(f"{mode=}; for gaussian smoothing, mode must be 'center'")
             elif fix_edges:
-                raise NotImplementedError("fix_edges=True with window='gaussian'")
+                raise NotImplementedError(f"{fix_edges=} with {window=}")
             elif window_samples is not None:
                 if dim_object._connectivity_type == 'custom':
-                    raise ValueError(f"window_samples={window_samples!r} for dimension with connectivity not based on adjacency")
-                raise NotImplementedError(f"Gaussian smoothing for window_samples")
+                    raise ValueError(f"{window_samples=} for dimension with connectivity not based on adjacency")
+                raise NotImplementedError("Gaussian smoothing for window_samples")
             else:
                 dist = dim_object._distances()
             m = gaussian_smoother(dist, window_size)

@@ -2294,8 +2294,7 @@ class Layout(BaseLayout):
             margins = dict(margins)
             invalid = set(margins).difference(self._default_margins)
             if invalid:
-                keys = ', '.join(map(repr, invalid))
-                raise ValueError(f"margins={margins!r}: Unknown keys {keys}")
+                raise ValueError(f"{margins=}: Unknown keys {invalid}")
         else:
             margins = {k: 0 for k in self._default_margins}
             use_margins = False
