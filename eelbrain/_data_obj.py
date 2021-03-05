@@ -4396,15 +4396,15 @@ class NDVar(Named):
         name : str
             Name of the output NDVar (default is the current name).
         """
-        if base is None:
-            x = np.log(self.x)
-        elif base == 2:
-            x = np.log2(self.x)
+        mod = np.ma if isinstance(self.x, np.ma.masked_array) else np
+        if base == 2:
+            x = mod.log2(self.x)
         elif base == 10:
-            x = np.log10(self.x)
+            x = mod.log10(self.x)
         else:
-            x = np.log(self.x)
-            x /= log(base)
+            x = mod.log(self.x)
+            if base is not None:
+                x /= log(base)
 
         if base is None:
             op = 'log('
@@ -4484,10 +4484,10 @@ class NDVar(Named):
             Name of the output NDVar (default is the current name).
         """
         if isinstance(self.x, np.ma.masked_array):
-            x = self.x.data
+            x: np.ndarray = self.x.data
             if masked is not None:
                 if isinstance(masked, str):
-                    new_value = getattr(x[~self.x.mask], masked)()
+                    new_value = getattr(self.x.compressed(), masked)()
                 else:
                     new_value = masked
                 x = x.copy()
