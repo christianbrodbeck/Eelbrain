@@ -145,7 +145,7 @@ def test_table():
     table.columns = 'll'
 
     # empty table
-    str(fmtxt.Table(''))
+    assert str(fmtxt.Table('')) == ''
 
     # saving
     tempdir = TempDir()

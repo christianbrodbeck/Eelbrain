@@ -43,7 +43,7 @@ import base64
 import csv
 import datetime
 from html.parser import HTMLParser
-from itertools import repeat
+from itertools import repeat, zip_longest
 from math import ceil
 import os
 from pathlib import Path
@@ -1201,7 +1201,7 @@ class Row(list):
     def __str__(self):
         return ' '.join([str(cell) for cell in self])
 
-    def _strlen(self, env):
+    def _col_str_lens(self, env) -> ListType[int]:
         "List of cell-str-lengths; multicolumns are handled poorly"
         lens = []
         for cell in self:
@@ -1257,32 +1257,52 @@ class Row(list):
     def get_rtf(self, env: dict = ENV):
         return '\n'.join([cell.get_rtf(env) for cell in self] + ['\\row'])
 
-    def get_str(self, c_width, c_just, delimiter='   ', env: dict = ENV):
+    def get_row_strings(
+            self,
+            c_width: Sequence[int],  # column width
+            c_just: Sequence[str],  # global color alignment
+            delimiter: str = '   ',
+            env: dict = ENV,
+    ) -> ListType[str]:
         "String of the row using column spacing ``c_width``"
+        # find strings for each column
         col = 0
-        out = []
+        col_strings: ListType[ListType[str]] = []
         for cell in self:
             if cell.width == 1:
-                strlen = c_width[col]
-                if cell.just:
-                    just = cell.just
-                else:
-                    just = c_just[col]
+                target_len = c_width[col]
             else:
-                strlen = sum(c_width[col:col + cell.width])
-                strlen += len(delimiter) * (cell.width - 1)
-                just = cell.just
-            col += cell.width
-            txt = cell.get_str(env)
+                target_len = sum(c_width[col:col + cell.width])
+                target_len += len(delimiter) * (cell.width - 1)
+            raw_lines = cell.get_str(env).splitlines() or ['']
+            # split long lines to fit into column
+            lines: ListType[str] = []
+            for raw_line in raw_lines:
+                if len(raw_line) > target_len:  # TODO: nicer splitting
+                    lines += [raw_line[i: i+target_len] for i in range(0, len(raw_line), target_len)]
+                else:
+                    lines.append(raw_line)
+            # justify text
+            just = cell.just or c_just[col]
             if just == 'l':
-                txt = txt.ljust(strlen)
+                lines = [line.ljust(target_len) for line in lines]
             elif just == 'r':
-                txt = txt.rjust(strlen)
+                lines = [line.rjust(target_len) for line in lines]
             elif just == 'c':
-                rj = strlen // 2
-                txt = txt.rjust(rj).ljust(strlen)
-            out.append(txt)
-        return delimiter.join(out)
+                rj = target_len // 2
+                lines = [line.rjust(rj).ljust(target_len) for line in lines]
+            else:
+                raise ValueError(f'Justification {just=} encountered')
+            col_strings.append(lines)
+            col += cell.width
+
+        # fill in spaces for empty cell-rows
+        n_rows = max(len(col_i) for col_i in col_strings)
+        for lines in col_strings:
+            for _ in range(n_rows - len(lines)):
+                lines.append(' ' * len(lines[0]))
+
+        return [delimiter.join(items) for items in zip(*col_strings)]
 
     def get_tex(self, env=None):
         if env is None:
@@ -1551,35 +1571,67 @@ class Table(FMTextElement):
                 rows.append(row.get_rtf(env))
         return '\n'.join(rows)
 
-    def get_str(self, env: dict = ENV, delim='   ', linesep='\n'):
+    def get_str(
+            self,
+            env: dict = ENV,
+            delim='   ', linesep='\n',
+            max_width: int = None,
+    ):
         """Convert Table to str
 
         Parameters
         ----------
-        env : dict
+        env
             Processing environment.
-        delim : str
+        delim
             Delimiter between columns.
-        linesep : str
+        linesep
             Line separation string
+        max_width
+            Maximum table width in characters, or 0 to disable text wrapping
+            (make the table as wide as necessary). Default is based on the
+            current terminal width (:func:`shutil.get_terminal_size`), unless
+            ``delim`` contains the ``tab`` character, in which the obligatory
+            default is 0.
         """
         if len(self.rows) == 0:
             return ''
+        if max_width is None:
+            if '\t' in delim:
+                max_width = 0
+            else:
+                max_width = shutil.get_terminal_size((0, 80))[0]
 
-        # determine column widths
-        widths = []
-        for row in self.rows:
-            if not isinstance(row, str):  # some commands are str
-                row_strlen = row._strlen(env)
-                while len(row_strlen) < self.n_columns:
-                    row_strlen.append(0)
-                widths.append(row_strlen)
-        widths = np.array(widths, dtype=int)
-        c_width = np.max(widths, axis=0)  # column widths!
+        # determine ideal column widths
+        # TODO: consider multi-column cells separately at the end
+        widths = [row._col_str_lens(env) for row in self.rows if not isinstance(row, str)]
+        column_widths = [max(cols) for cols in zip_longest(*widths, fillvalue=0)]
+        while len(column_widths) < len(self.columns):
+            column_widths.append(0)
 
-        # FIXME: take into account tab length:
-        midrule = delim.join(['-' * w for w in c_width])
-        midrule = midrule.expandtabs(4).replace(' ', '-')
+        # determine table width & actual column widths
+        if '\t' in delim:
+            if max_width:
+                raise ValueError(f'{max_width=} with {delim=}')
+            midrule = delim.join(['-' * w for w in column_widths])
+        else:
+            cumulative_delim_with = len(delim) * (len(self.columns) - 1)
+            cumulative_with = cumulative_delim_with + sum(column_widths)
+            if max_width and cumulative_with > max_width:
+                # determine wrapping
+                if max_width < cumulative_delim_with + len(self.columns):
+                    raise ValueError(f'{max_width=} results in column width < 1')
+                available_width = max_width - cumulative_delim_with
+                new_c_width = [0] * len(self.columns)
+                i = 0
+                while available_width > 0:
+                    if new_c_width[i] < column_widths[i]:
+                        new_c_width[i] += 1
+                        available_width -= 1
+                    i = (i + 1) % len(self.columns)
+                column_widths = new_c_width
+                cumulative_with = max_width
+            midrule = '-' * cumulative_with
 
         # collect lines
         txtlines = []
@@ -1597,16 +1649,15 @@ class Table(FMTextElement):
                     start, end = txt.split('-')
                     start = int(start) - 1
                     end = int(end)
-                    line = [' ' * w for w in c_width[:start]]
-                    rule = delim.join(['-' * w for w in c_width[start:end]])
-                    rule = rule.expandtabs(4).replace(' ', '-')
-                    line += [rule]
-                    line += [' ' * w for w in c_width[start:end]]
+                    line = [' ' * w for w in column_widths[:start]]
+                    rule_delim = '-' * len(delim.expandtabs(4))
+                    line += [rule_delim.join(['-' * w for w in column_widths[start:end]])]
+                    line += [' ' * w for w in column_widths[start:end]]
                     txtlines.append(delim.join(line))
                 else:
                     pass
             else:
-                txtlines.append(row.get_str(c_width, self.columns, delim, env))
+                txtlines += row.get_row_strings(column_widths, self.columns, delim, env)
         out = txtlines
 
         if self._title is not None:
