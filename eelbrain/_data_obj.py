@@ -4467,10 +4467,36 @@ class NDVar(Named):
         x = np.ma.MaskedArray(self.x, x_mask)
         return NDVar(x, self.dims, name or self.name, self.info)
 
-    def unmask(self, name=None):
-        """Remove mask from a masked ``NDVar``"""
-        x = self.x.data if isinstance(self.x, np.ma.masked_array) else self.x
-        return NDVar(x, self.dims, name or self.name, self.info)
+    def unmask(
+            self,
+            masked: Union[float, str] = None,
+            name: str = None,
+    ):
+        """Remove mask from a masked ``NDVar``
+
+        Parameters
+        ----------
+        masked
+            What to do to the previously masked values; can be the name of any
+            numpy method, derived from the previously unmasked values (e.g.,
+            ``mean`` or ``max``).
+        name : str
+            Name of the output NDVar (default is the current name).
+        """
+        if isinstance(self.x, np.ma.masked_array):
+            x = self.x.data
+            if masked is not None:
+                if isinstance(masked, str):
+                    new_value = getattr(x[~self.x.mask], masked)()
+                else:
+                    new_value = masked
+                x = x.copy()
+                x[self.x.mask] = new_value
+        else:
+            x = self.x
+        if name is None:
+            name = self.name
+        return NDVar(x, self.dims, name, self.info)
 
     def get_mask(self, name: str = None) -> NDVar:
         "Retriev the mask as :class:`NDVar`"
