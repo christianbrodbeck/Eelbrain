@@ -95,6 +95,31 @@ def test_cwt():
     assert y.ndim == 3
 
 
+def test_diff():
+    ds = datasets.get_uts()
+    y = ds['uts']
+    time_mask = np.logical_and(y.time.times > 0, y.time.times < 0.100).reshape((1, -1))
+    mask = np.repeat(time_mask, len(y), 0)
+    y_masked = y.mask(mask)
+    # target for time-diff
+    time_mask = np.logical_and(y.time.times > 0, y.time.times < 0.110).reshape((1, -1))
+    target_mask = np.repeat(time_mask, len(y), 0)
+
+    # 1d
+    diff = y_masked[0].diff('time')
+    assert_array_equal(diff.x.data, np.diff(y.x[0], 1, 0, y.x[0, 0]))
+    assert_array_equal(diff.x.mask, target_mask[0])
+
+    # 2d
+    diff = y_masked.diff('case')
+    assert_array_equal(diff.x.data, np.diff(y.x, 1, 0, y.x[:1]))
+    assert_array_equal(diff.x.mask, mask)
+
+    diff = y_masked.diff('time')
+    assert_array_equal(diff.x.data, np.diff(y.x, 1, 1, y.x[:, :1]))
+    assert_array_equal(diff.x.mask, target_mask)
+
+
 def test_dot():
     ds = datasets.get_uts(True)
 

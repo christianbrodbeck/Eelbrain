@@ -156,3 +156,13 @@ def aslice(axis, start=None, stop=None, step=None):
 def take_slice(x, axis, start=None, stop=None, step=None):
     """Like :func:`numpy.take` but with a slice"""
     return x[aslice(axis, start, stop, step)]
+
+
+def deep_array(data, axis, ndim):
+    "Array in which ``data`` lies along ``axis`` of ``ndim`` dimensions"
+    if axis < 0:
+        axis += ndim
+        assert axis >= 0
+    out = np.array(data)
+    out.shape = (1,) * axis + out.shape + (1,) * (ndim - axis - out.ndim)
+    return out

@@ -121,6 +121,7 @@ from nibabel.freesurfer import read_annot, read_geometry
 import numpy as np
 from numpy.typing import ArrayLike
 import scipy.interpolate
+import scipy.ndimage
 import scipy.optimize
 import scipy.signal
 import scipy.stats
@@ -137,7 +138,7 @@ from ._utils import (
     intervals, ui, LazyProperty, n_decimals, natsorted)
 from ._utils.numpy_utils import (
     INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
-    aslice, apply_numpy_index, digitize_index, digitize_slice_endpoint,
+    aslice, apply_numpy_index, deep_array, digitize_index, digitize_slice_endpoint,
     index_length, index_to_int_array, newaxis, slice_to_arange)
 from .mne_fixes import MNE_EPOCHS, MNE_EVOKED, MNE_RAW, MNE_LABEL
 from functools import reduce
@@ -3970,23 +3971,36 @@ class NDVar(Named):
         Returns
         -------
         diff : NDVar
-            NDVar with the ``n`` th differences.
+            NDVar with the ``n`` th differences. If the input is masked, the
+            previous mask is extended by ``n`` to mask all values in ``diff``
+            that incorporate previsouly masked values.
         """
+        if n == 0:
+            return self
+        elif n < 0:
+            raise ValueError(f'{n=}')
+        # find axis
         if dim is None:
             if self.ndim - self.has_case == 1:
-                axis = -1
+                axis = self.ndim - 1
             else:
                 raise TypeError("Need to specify dimension over which to differentiate")
         else:
             axis = self.get_axis(dim)
-
-        x = np.diff(self.x, n, axis)
-        if pad == 1:
-            idx = FULL_AXIS_SLICE * axis + (slice(0, n),)
-            x = np.concatenate((np.zeros_like(x[idx]), x), axis)
+        # find padding
+        if pad:
+            idx = FULL_AXIS_SLICE * axis + (slice(0, 1),)
+            prepend = self.x[idx]
+            if n > 1:
+                prepend = np.repeat(prepend, n, axis)
         else:
-            raise NotImplementedError("pad != 1")
-
+            raise NotImplementedError(f'{pad=}')
+        # differentiate
+        x = np.diff(self.x, n, axis, prepend)
+        if isinstance(self.x, np.ma.masked_array):
+            structure = deep_array([0, 1, 1], axis, x.ndim)
+            mask = scipy.ndimage.binary_dilation(self.x.mask, structure, n)
+            x = np.ma.masked_array(x, mask)
         return NDVar(x, self.dims, name or self.name, self.info)
 
     def dot(
