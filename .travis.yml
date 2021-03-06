@@ -3,17 +3,18 @@ env:
     global: DISPLAY=:99.0
 
 # DOCs: https://docs.travis-ci.com/user/build-matrix/
+# Linux currently hangs with plot.brain tests
 jobs:
   include:
-    - os: osx  # https://github.com/travis-ci/travis-ci/issues/2312
+    - os: osx
       name: "MacOS Python 3.8"
-      env: CONDA_PYTHON="3.8" CONDA_OS="MacOSX" KMP_DUPLICATE_LIB_OK=TRUE CC=g++ CXX=g++
-    - os: osx  # https://github.com/travis-ci/travis-ci/issues/2312
+      env: CONDA_PYTHON="3.8" CONDA_OS="MacOSX" KMP_DUPLICATE_LIB_OK=TRUE CC=g++ CXX=g++ DOWNLOAD_MNE_DATA=TRUE
+    - os: osx
       name: "MacOS Python 3.9"
       env: CONDA_PYTHON="3.9" CONDA_OS="MacOSX" KMP_DUPLICATE_LIB_OK=TRUE CC=g++ CXX=g++
     - os: linux
       name: "Linux Python 3.8 + MNE data tests"
-      env: CONDA_PYTHON="3.8" CONDA_OS="Linux" DOWNLOAD_MNE_DATA=TRUE
+      env: CONDA_PYTHON="3.8" CONDA_OS="Linux"
       addons: {apt: {packages: [libwebkitgtk-dev]}}
     - os: linux
       name: "Linux Python 3.9"
@@ -32,14 +33,8 @@ before_install:
   - hash -r
   # Useful for debugging any issues with conda
   - mamba info -a
-
-#  - chmod +x miniconda.sh
-#  - ./miniconda.sh -b -p $HOME/miniconda
-#  - export PATH=$HOME/miniconda/bin:$PATH
-#  - conda config --set always_yes yes --set changeps1 no
   - mamba create -y -q -n condaenv python=$CONDA_PYTHON
   - mamba env update -q -n condaenv --file env-dev.yml --prune
-#  - . $HOME/miniconda/etc/profile.d/conda.sh
   - conda activate condaenv
   - if [ "${DOWNLOAD_MNE_DATA}" == "TRUE" ]; then
       python -c "import mne; mne.datasets.testing.data_path()";
