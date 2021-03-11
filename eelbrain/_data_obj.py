@@ -10681,15 +10681,15 @@ class UTS(Dimension):
         else:
             return super(UTS, self)._array_index(arg)
 
-    def _array_index_for_slice(self, start, stop=None, step=None):
+    def _array_index_for_slice(self, start: float, stop: float = None, step: float = None):
         "Create a slice into the time axis"
         if (start is not None) and (stop is not None) and (start >= stop):
             raise ValueError("tstart must be smaller than tstop")
 
         if start is None:
             start_ = None
-        elif start <= self.tmin - self.tstep:
-            raise IndexError(f"{start}: out of range ({self.tmin}, {self.tmax})")
+        elif start < self.tmin:
+            start_ = None  # numpy behavior
         else:
             start_float = (start - self.tmin) / self.tstep
             start_ = int(start_float)
@@ -10703,7 +10703,6 @@ class UTS(Dimension):
             stop_ = int(stop_float)
             if stop_float - stop_ > 0.000001:
                 stop_ += 1
-            # stop_ = min(stop_, self.nsamples)
 
         if step is None:
             step_ = None

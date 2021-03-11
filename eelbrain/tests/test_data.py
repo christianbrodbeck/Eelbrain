@@ -666,8 +666,7 @@ def test_dim_uts():
 
     assert uts._array_index(slice(0, 1.4)) == slice(20, 300)
     assert uts._array_index(slice(0, 1.5)) == slice(20, 320)
-    with pytest.raises(IndexError):
-        uts._array_index(slice(-1, 0))
+    assert uts._array_index(slice(-1, 0)) == slice(None, 20)
 
     # make sure indexing rounds correctly for floats
     assert uts._array_index(-0.101) == 0
@@ -1238,8 +1237,7 @@ def test_ndvar_indexing():
 
     # out of range index
     assert_dataobj_equal(x.sub(time=(0.1, 0.81)), x.sub(time=(0.1, 0.91)))
-    with pytest.raises(IndexError):
-        x.sub(time=(-0.25, 0.1))
+    assert_dataobj_equal(x.sub(time=(-0.3, 0.1)), x.sub(time=(-0.2, 0.1)))
 
     # newaxis
     with pytest.raises(IndexError):
