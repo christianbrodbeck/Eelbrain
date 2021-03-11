@@ -367,7 +367,7 @@ class BoostingResult(PickleableDataClass):
                 return tuple(sub_func(obj_) for obj_ in obj)
             return func(obj)
 
-        for attr in ('h', 'r', 'r_rank', 'residual', 'y_mean', 'y_scale'):
+        for attr in ('_h', 'r', 'r_rank', 'residual', 'y_mean', 'y_scale'):
             setattr(self, attr, sub_func(getattr(self, attr)))
         if self.partition_results:
             for res in self.partition_results:
