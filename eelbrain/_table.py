@@ -427,7 +427,7 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None, labels=None):
     out = combine(dss)
     for k, v in dim_vars.items():
         if k not in out:
-            out[k] = v.repeat(base_ds.n_cases)
+            out[k] = v.repeat(len(ndvar))
     return out
 
 
