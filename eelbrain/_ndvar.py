@@ -139,7 +139,7 @@ def concatenate(
         dim_obj = ndvar.dims[axis]
         if isinstance(dim_obj, SourceSpace):
             out_dim = SourceSpace._concatenate([v.get_dim(dim) for v in ndvars])
-            ndvars = [complete_source_space(v, to=out_dim) for v in ndvars]
+            ndvars = [complete_source_space(v, to=out_dim, mask=False) for v in ndvars]
             x = reduce(np.add, [v.get_data(dim_names) for v in ndvars])
         else:
             x = np.concatenate([v.get_data(dim_names) for v in ndvars], axis)
