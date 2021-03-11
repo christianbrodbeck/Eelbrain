@@ -699,7 +699,7 @@ class IncrementalComparisons:
         return '\n'.join(out)
 
 
-class incremental_f_test:
+class IncrementalFTest:
     """Incremental F-Test between two linear models
 
     Test the null hypothesis that the model of lm1 does not explain more
@@ -770,9 +770,12 @@ class incremental_f_test:
         self.p = p
         self.name = name
 
+    def _asfmtext(self, **_):
+        return fmtxt.FMText([fmtxt.eq('F', self.F, (self.df, self.dfe)), ', ', fmtxt.peq(self.p)])
+
     def __repr__(self):
-        name = ' %r' % self.name if self.name else ''
-        return "<incremental_f_test%s: F=%.2f, p=%.3f>" % (name, self.F, self.p)
+        name = f' {self.name!r}' if self.name else ''
+        return f"<{self.__class__.__name__}{name}: {self._asfmtext()}"
 
 
 class ANOVA:
@@ -933,7 +936,7 @@ class ANOVA:
                     ms_e = full_lm.MS_res
                     df_e = full_lm.df_res
 
-                res = incremental_f_test(lm1, lm0, ms_e, df_e, e_test.name)
+                res = IncrementalFTest(lm1, lm0, ms_e, df_e, e_test.name)
                 f_tests.append(res)
                 names.append(e_test.name)
 
