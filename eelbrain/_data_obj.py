@@ -3227,7 +3227,7 @@ class NDVar(Named):
     def __ge__(self, other):
         return NDVar(self.x >= self._ialign(other), self.dims, *op_name(self, '>=', other, _info.for_boolean(self.info)))
 
-    def _align(self, other):
+    def _align(self, other: NDVar):
         """Align data from 2 NDVars.
 
         Notes
@@ -3300,16 +3300,12 @@ class NDVar(Named):
         else:
             raise TypeError(f"{other!r}; need NDVar, Var or scalar")
 
-    def _ialign(self, other, index=None):
-        """Align for self-modifying operations (+=, ...)
-
-        Parameters
-        ----------
-        other : NDVar
-            NDVar with data to align
-        index : tuple
-            Array-index into self to which to align (for assignment).
-        """
+    def _ialign(
+            self,
+            other: NDVar,  # align data in this NDVar to self
+            index: tuple = None,  # Array-index into self to which to align (for assignment)
+    ):
+        "Align for self-modifying operations (+=, ...)"
         if np.isscalar(other):
             return other
         elif isinstance(other, Var):
@@ -7528,10 +7524,10 @@ class Parametrization:
             elif method == 'dummy':
                 x[:, i:j] = e.as_dummy
             else:
-                raise ValueError(f"method={method!r}")
+                raise ValueError(f"{method=}")
             name = longname(e)
             if name in terms:
-                raise KeyError("Duplicate term name: %s" % repr(name))
+                raise KeyError("Duplicate term name: {name!r}")
             terms[name] = slice(i, j)
             effect_names.append(name)
             col_names = e._coefficient_names(method)

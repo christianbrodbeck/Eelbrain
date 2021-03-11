@@ -880,12 +880,9 @@ class ANOVA:
             caption: fmtxt.FMTextLike = None,
     ):
         # prepare kwargs
-        sub = assub(sub, ds)
-        y = asvar(y, sub, ds)
-        x = asmodel(x, sub, ds, require_names=True)
-
-        if len(y) != len(x):
-            raise ValueError("y and x must describe same number of cases")
+        sub, n = assub(sub, ds, return_n=True)
+        y, n = asvar(y, sub, ds, n, return_n=True)
+        x = asmodel(x, sub, ds, n, require_names=True)
         assert_has_no_empty_cells(x)
 
         # save args
@@ -918,8 +915,7 @@ class ANOVA:
             self._log.append(f"{'FM'[is_mixed]}ixed effects model")
 
             # fit the models
-            lms = {idx: LM(y, model) if model.df_error > 0 else None for
-                   model, idx in comparisons.relevant_models}
+            lms = {idx: LM(y, model) if model.df_error > 0 else None for model, idx in comparisons.relevant_models}
 
             # incremental F-tests
             for i_test, (i1, i0) in comparisons.comparisons.items():

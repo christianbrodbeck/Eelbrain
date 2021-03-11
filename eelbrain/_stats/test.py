@@ -612,7 +612,7 @@ class TTestOneSample(TTest):
         ct = Celltable(y, None, match, sub, ds=ds, coercion=asvar)
         n = len(ct.y)
         if n <= 2:
-            raise ValueError("Not enough observations for t-test (n=%i)" % n)
+            raise ValueError(f"Not enough observations for t-test ({n=})")
 
         self.mean = ct.y.mean()
         self.popmean = popmean

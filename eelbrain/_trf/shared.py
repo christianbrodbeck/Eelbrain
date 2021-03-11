@@ -339,9 +339,9 @@ class RevCorrData:
         if y.get_dim('time') != x_data.time_dim:
             raise ValueError("y does not have the same time dimension as x")
         if y.has_case ^ x_data.has_case:
-            raise ValueError(f'y={y!r}: case dimension does not match x')
+            raise ValueError(f'{y=}: case dimension does not match x')
         elif y.has_case and len(y) != x_data.n_cases:
-            raise ValueError(f'y={y!r}: different number of cases from x ({x_data.n_cases})')
+            raise ValueError(f'{y=}: different number of cases from x ({x_data.n_cases})')
 
         # vector dimension
         vector_dims = [dim.name for dim in y.dims if dim._connectivity_type == 'vector']
@@ -350,7 +350,7 @@ class RevCorrData:
         elif len(vector_dims) == 1:
             vector_dim = y.get_dim(vector_dims.pop())
         else:
-            raise NotImplementedError(f"y={y!r}: more than one vector dimension ({', '.join(vector_dims)})")
+            raise NotImplementedError(f"{y=}: more than one vector dimension ({', '.join(vector_dims)})")
 
         # y_data: flatten to ydim x time array
         last = ('time',)
