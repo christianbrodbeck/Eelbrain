@@ -119,7 +119,7 @@ from mne.source_space import label_src_vertno_sel
 import nibabel
 from nibabel.freesurfer import read_annot, read_geometry
 import numpy as np
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, DTypeLike
 import scipy.interpolate
 import scipy.ndimage
 import scipy.optimize
@@ -5335,12 +5335,13 @@ class NDVar(Named):
             dims: Union[Dimension, Sequence[Dimension]],
             name: str = None,
             info: dict = None,
+            dtype: DTypeLike = float,
     ):
         """A new :class:`NDVar` initialized with 0"""
         if isinstance(dims, Dimension):
             dims = (dims,)
         shape = [len(dim) for dim in dims]
-        return cls(np.zeros(shape), dims, name, info)
+        return cls(np.zeros(shape, dtype), dims, name, info)
 
 
 def extrema(x, axis=None):
