@@ -3,6 +3,7 @@ from pathlib import Path
 from pickle import dump, HIGHEST_PROTOCOL, Unpickler
 from itertools import chain
 import os
+from typing import Any
 
 from .._data_obj import Dataset, NDVar, Var, SourceSpaceBase, ismodelobject
 from .._types import PathArg
@@ -32,20 +33,29 @@ class EelUnpickler(Unpickler):
         return Unpickler.find_class(self, module, name)
 
 
-def pickle(obj, dest: PathArg = None, protocol: int = HIGHEST_PROTOCOL):
+def pickle(obj: Any, dest: PathArg = None, protocol: int = HIGHEST_PROTOCOL):
     """Pickle a Python object.
 
     Parameters
     ----------
-    obj : object
+    obj
         Python object to save.
-    dest : Path
+    dest
         Path to destination where to save the file. If no destination is
         provided, a file dialog is shown. If a destination without extension is
         provided, ``.pickle`` is appended.
     protocol : int
-        Pickle protocol (default is ``HIGHEST_PROTOCOL``). For pickles that can
-        be opened in Python 2, use ``protocol<=2``.
+        Pickle protocol (default is ``pickle.HIGHEST_PROTOCOL``).
+
+        .. Warning::
+            Later versions of Python support higher versions of the pickle
+            protocol.
+            For pickles that can be opened in Python 2, use ``protocol<=2``.
+            For pickles that can be opened in Python ≤ 3.7, use ``protocol<=4``.
+
+    See Also
+    --------
+    save.pickle
     """
     if dest is None:
         filetypes = [("Pickled Python Objects (*.pickle)", '*.pickle')]
@@ -74,21 +84,28 @@ def pickle(obj, dest: PathArg = None, protocol: int = HIGHEST_PROTOCOL):
 def unpickle(path: PathArg = None):
     """Load pickled Python objects from a file.
 
-    Almost like ``pickle.load(open(path))``, but also loads object saved
-    with older versions of Eelbrain, and allows using a system file dialog to
-    select a file.
-
     Parameters
     ----------
-    path : Path
+    path
         Path to a pickled file. If omitted, a system file dialog is shown.
         If the user cancels the file dialog, a RuntimeError is raised.
 
     Notes
     -----
-    If you see ``ValueError: unsupported pickle protocol: 4``, the pickle file
-    was saved with Python 3; in order to make pickles backwards-compatible, use
-    :func:`~eelbrain.save.pickle` with ``protocol=2``.
+    If you see ``ValueError: unsupported pickle protocol``, the pickle file
+    was saved with a higher version of Python; in order to make pickles
+    backwards-compatible, use :func:`~eelbrain.save.pickle` with a lower
+    ``protocol=2``.
+    To batch-convert multiple pickle files, use :func:`~eelbrain.load.convert_pickle_protocol`
+
+    This function is similar to ``pickle.load(open(path))``, but also loads object saved
+    with older versions of Eelbrain, and allows using a system file dialog to
+    select a file.
+
+    See Also
+    --------
+    load.unpickle
+    load.convert_pickle_protocol
     """
     if path is None:
         filetypes = [("Pickles (*.pickle|*.pickled)", '*.pickle?'), ("All files", '*')]

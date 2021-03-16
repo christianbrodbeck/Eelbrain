@@ -74,10 +74,15 @@ class BoostingResult(PickleableDataClass):
     h_time : UTS
         Time dimension of the kernel.
     r : float | NDVar
-        Correlation between the measured response and the response predicted
-        with ``h``. Type depends on the ``y`` parameter to :func:`boosting`. For
-        vector data, measured and predicted responses are normalized, and ``r``
+        Correlation between the measured response ``y`` and the predicted
+        response ``h * x``. When using cross-validation (calling
+        :func:`boosting` with ``test=True``), each partition of ``y`` is
+        predicted using the ``h`` estimated from the corresponding training
+        partitions. Otherwise, all of ``y`` is estimated using the average ``h``.
+        For vector data, measured and predicted responses are normalized, and ``r``
         is computed as the average dot product over time.
+        The type of ``r`` depends on the ``y`` parameter to :func:`boosting`:
+        If ``y`` is one-dimensional, ``r`` is scalar, otherwise it is a :class:`NDVar`.
     r_rank : float | NDVar
         As ``r``, the Spearman rank correlation.
     t_run : float

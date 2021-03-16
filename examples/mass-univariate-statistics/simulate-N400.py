@@ -1,5 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
+.. _exa-generate-ndvar:
+
 Generate :class:`NDVar` (with artificial data)
 ==============================================
 

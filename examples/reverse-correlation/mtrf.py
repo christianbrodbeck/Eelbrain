@@ -1,4 +1,6 @@
 """
+.. _exa-mtrf:
+
 EEG speech envelope TRF
 =======================
 Analyze continuous speech data from the mTRF dataset [1]_: use the

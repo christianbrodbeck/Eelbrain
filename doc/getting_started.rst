@@ -5,33 +5,28 @@ Getting Started
 .. contents:: Contents
    :local:
 
+.. currentmodule:: eelbrain
+
 
 Documentation
 -------------
-For an introduction to Eelbrain, see :ref:`exa-intro` and the other
-:ref:`examples`.
-For details on each functionality see the API :ref:`reference`.
+
+For an introduction to Eelbrain, see :ref:`exa-intro` and the other :ref:`examples`.
+For details see the API :ref:`reference`.
 
 
 Interacting with other Python libraries
 ---------------------------------------
 
-Pandas
-^^^^^^
+- `Pandas <https://pandas.pydata.org>`_
+  - Convert an Eelbrain :class:`Dataset` to a :class:`pandas.DataFrame` using :meth:`Dataset.as_dataframe`
+  - Useful libraries:
+    - `Pingouin <https://pingouin-stats.org>`_: statistics
+    - `Seaborn <http://seaborn.pydata.org>`_: plots
 
-Convert an Eelbrain :class:`Dataset` to a :class:`pandas.DataFrame` using :meth:`Dataset.as_dataframe`
-
-Useful libraries:
-
- - `Pingouin <https://pingouin-stats.org>`_: statistics
- - `Seaborn <http://seaborn.pydata.org>`_: plots
-
-R
-^
-
-Use R from Python through the :mod:`rpy2` bridge
-
-Transfer data between R ``data.frame`` and Eelbrain :class:`Dataset` using :meth:`Dataset.from_r` and :meth:`Dataset.to_r`
+- `R <http://r-project.org>`_
+  - Use R from Python through the :mod:`rpy2` bridge
+  - Transfer data between R ``data.frame`` and Eelbrain :class:`Dataset` using :meth:`Dataset.from_r` and :meth:`Dataset.to_r`
 
 
 MacOS: Framework Build

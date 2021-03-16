@@ -3105,17 +3105,9 @@ class NDVar(Named):
 
     Examples
     --------
-    Create an NDVar for 600 time series of 80 time points each:
-
-    >>> data.shape
-    (600, 80)
-    >>> time = UTS(-.2, .01, 80)
-    >>> ndvar = NDVar(data, dims=(Case, time))
-
-    Baseline correction:
-
-    >>> ndvar -= ndvar.mean(time=(None, 0))
-
+    - Generating :class:`NDVar`: :ref:`exa-generate-ndvar`, :ref:`exa-mtrf`
+    - Work with :class:`NDVar`: :ref:`exa-cluster-based-mu`
+    - Convert :class:`NDVar` to univariate :class:`Var`: :ref:`exa-compare-topographies`
     """
     def __init__(
             self,

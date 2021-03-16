@@ -42,10 +42,25 @@ Step by step
 Setting up the file structure
 -----------------------------
 
-.. py:attribute:: MneExperiment.sessions
+The pipeline expects input files in a strictly determined folder/file structure.
+In the schema below, curly brackets indicate slots that the pipeline will replace with specific
+names, for example ``{subject}`` will be replaced with each specific subject's name::
 
-The first step is to define an :class:`MneExperiment` subclass with the name
-of the experiment::
+    root
+    mri-sdir                                /mri
+    mri-dir                                    /{subject}
+    meg-sdir                                /meg
+    meg-dir                                    /{subject}
+    trans-file                                       /{subject}-trans.fif
+    raw-file                                         /{subject}_{session}-raw.fif
+
+
+The first step in working with the pipeline consists in:
+
+ - Arranging the files in the expected file structure
+ - Defining an :class:`MneExperiment` subclass with the parameters required to find those files
+
+The ``{session}`` refers to the name of the recording session. The name of one or several recording session(s) has to be specified on an :class:`MneExperiment` subclass, using the  :attr:`MneExperiment.sessions` attribute. Those names will be used to find the raw data files, by filling in the ``raw-file`` template from above::
 
     from eelbrain import *
 
@@ -54,42 +69,24 @@ of the experiment::
         sessions = 'words'
 
 
-Where ``sessions`` is the name which you included in your raw data files after
-the subject identifier.
+In order to change the directory in which to look for the raw data, use :attr:`MneExperiment.data_dir` (for example, to call the directory ``eeg`` instead of ``meg``).
 
-The pipeline expects input files in a strictly determined folder/file structure.
-In the schema below, curly brackets indicate slots to be replaced with specific
-names, for example ``'{subject}'`` should be replaced with each specific
-subject's label::
-
-    root
-    mri-sdir                                /mri
-    mri-dir                                    /{mrisubject}
-    meg-sdir                                /meg
-    meg-dir                                    /{subject}
-    raw-dir
-    trans-file                                       /{mrisubject}-trans.fif
-    raw-file                                         /{subject}_{session}-raw.fif
+The final step to locating the files is providing the ``root`` location when initializing that subclass::
 
 
-This schema shows path templates according to which the input
-files should be organized. Assuming that ``root="/files"``, for a subject
-called "R0001" this includes:
+    e = WordExperiment("/files")
 
-- MRI-directory at ``/files/mri/R0001``
-- the raw data file at ``/files/meg/R0001/R0001_words-raw.fif`` (the
-  session is called "words" which is specified in ``WordExperiment.sessions``)
-- the trans-file from the coregistration at ``/files/meg/R0001/R0001-trans.fif``
 
-Once the required files are placed in this structure, the experiment class can
-be initialized with the proper root parameter, pointing to where the files are
-located::
+If the files are in the right order, the pipeline will determine the subject names based on the names of the folders inside ``meg-sdir``. Only names matching a specific expression will be considered, for example "R" followed by 3 digits. This expression can be customized in :attr:`MneExperiment.subject_re`.
 
-    >>> e = WordExperiment("/files")
+If that all works, and assuming the first subject is named "R0001", the pipeline will look for data at the following locations:
 
+- The FreeSurfer MRI-directory at ``/files/mri/R0001``
+- The raw data file at ``/files/meg/R0001/R0001_words-raw.fif`` (the session is called "words" which is specified in ``WordExperiment.sessions``)
+- The trans-file from the coregistration at ``/files/meg/R0001/R0001-trans.fif``
 
 The setup can be tested using :meth:`MneExperiment.show_subjects`, which shows
-a list of the subjects that were discovered and the MRIs used::
+a list of the subjects and corresponding MRIs that were discovered::
 
     >>> e.show_subjects()
     #    subject   mri
@@ -391,8 +388,16 @@ subject names to shift values, e.g.
 ``trigger_shift = {'R0001': 0.02, 'R0002': 0.05, ...}``.
 
 
-Subjects
---------
+Finding files
+-------------
+
+.. py:attribute:: MneExperiemnt.sessions
+
+The name, or a list of names of the raw data files (see :ref:`MneExperiment-filestructure`).
+
+.. py:attribute:: MneExperiemnt.data_dir
+
+Folder name for the raw data directory. By default, this is ``meg``, i.e., the experiment will look for raw files at ``root/meg/{subject}/{subject}_{session}-raw.fif``. After setting ``data_dir = 'eeg'``, the experiment will look at ``root/eeg/{subject}/{subject}_{session}-raw.fif``.
 
 .. py:attribute:: MneExperiment.subject_re
 
