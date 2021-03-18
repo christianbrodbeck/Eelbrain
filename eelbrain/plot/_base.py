@@ -636,6 +636,27 @@ def find_data_dims(
     return agg, dimnames
 
 
+def find_labels(
+        cells: Sequence[CellArg],
+        labels_arg: Dict[CellArg: str] = None,
+        delim: str = ' ',
+) -> Dict[CellArg, str]:
+    if not labels_arg:
+        return {cell: cellname(cell, delim) for cell in cells}
+    labels = {}
+    for cell in cells:
+        if cell in labels_arg:
+            label = labels_arg[cell]
+        elif isinstance(cell, str):
+            label = cell
+        elif isinstance(cell, tuple):
+            label = cellname([labels_arg.get(item, item) for item  in cell], delim)
+        else:
+            raise TypeError(f"{cell=}")
+        labels[cell] = label
+    return labels
+
+
 def brain_data(
         data: Union[NDVar, testnd.NDTest],
 ):
@@ -3326,11 +3347,9 @@ class CategorialAxisMixin:
         self.__axis_obj.set_ticks_position('none')
         if ticks:
             if isinstance(ticks, dict) or ticks is True:
-                labels_ = {cell: cellname(cell, tick_delim) for cell in cells}
+                labels_ = find_labels(cells, labels, tick_delim)
                 if isinstance(ticks, dict):
                     labels_.update(ticks)
-                if labels:
-                    labels_.update(labels)
                 tick_labels = [labels_[cell] for cell in cells]
             else:
                 tick_labels = ticks
