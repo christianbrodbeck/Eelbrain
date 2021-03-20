@@ -36,7 +36,7 @@ import numpy as np
 from .._config import CONFIG, mpc
 from .._data_obj import Case, Dataset, Dimension, NDVar, CategorialArg, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
-from .._ndvar import _concatenate_values, convolve_jit
+from .._ndvar import _concatenate_values, convolve_jit, parallel_convolve
 from .._utils import LazyProperty, PickleableDataClass, user_activity
 from .._utils.notebooks import tqdm
 from ._boosting_opt import l1, l2, generate_options, update_error
@@ -315,7 +315,9 @@ class BoostingResult(PickleableDataClass):
             y_dims = self._y_dims
         y_dimnames = [dim.name for dim in y_dims]
         n_y = sum(len(dim) for dim in y_dims) or 1
-        y_pred = np.zeros((n_y, x_data.n_times_flat))
+        y_pred = np.zeros((1, n_y, x_data.n_times_flat))
+        # prepare x:  (n_x_only, n_shared, n_x_times)
+        x_array = x_data.data[np.newaxis, :, :]
         # prepare h
         h_i_start = int(round(self.h_time.tmin / self.h_time.tstep))
         h_i_stop = h_i_start + len(self.h_time)
@@ -328,7 +330,7 @@ class BoostingResult(PickleableDataClass):
                     break
             else:
                 raise RuntimeError(f"Split missing for test segment {result.i_test}")
-            # h to flat array: (y, x, n_times)
+            # h to flat array: (n_h_only == in y, n_shared == in x, n_h_times)
             hs = result.h_scaled if x_data.multiple_x else [result.h_scaled]
             h_array = []
             for h, (name, xdims, index) in zip(hs, x_data.x_meta):
@@ -338,9 +340,8 @@ class BoostingResult(PickleableDataClass):
                 h_array.append(h_data)
             h_array = np.concatenate(h_array, 1)
             # convolution
-            for i_y in range(n_y):
-                for start, stop in segments:
-                    convolve_jit(h_array[i_y], x_data.data[:, start:stop], y_pred[i_y, start:stop], h_i_start, h_i_stop)
+            for start, stop in segments:
+                parallel_convolve(h_array, x_array[:, :, start:stop], y_pred[:, :, start:stop], h_i_start, h_i_stop)
         # package output
         dims = [*y_dims, x_data.time_dim]
         shape = [len(dim) for dim in dims]
