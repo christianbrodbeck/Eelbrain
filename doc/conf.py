@@ -206,15 +206,17 @@ suppress_warnings = ['image.nonlocal_uri']
 # -- Custom Options -----------------------------------------------------------
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3.7', None),
+    'python': ('https://docs.python.org/3.8', None),
     'imageio': ('https://imageio.readthedocs.io/en/stable/', None),
-    'mne': ('https://mne.tools/stable', None),
-    'surfer': ('https://pysurfer.github.io', None),
     'matplotlib': ('https://matplotlib.org', None),
+    'mne': ('https://mne.tools/stable', None),
     'nilearn': ('https://nilearn.github.io', None),
     'numpy': ('https://numpy.org/doc/stable', None),
-    'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
+    'pandas': ('https://pandas.pydata.org', None),
     'pyarrow': ('https://arrow.apache.org/docs/python', None),
+    'rpy2': ('https://rpy2.github.io/doc', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
+    'surfer': ('https://pysurfer.github.io', None),
 }
 # http://sphinx.pocoo.org/ext/intersphinx.html
 

@@ -5988,6 +5988,24 @@ class Dataset(dict):
         self[name] = v
         return v
 
+    def as_dataframe(self):
+        """Convert to a :class:`pandas.DataFrame`
+
+        Notes
+        -----
+        Only includes :class:Var: and :class:`Factor` items.
+        """
+        import pandas
+
+        data = {}
+        for key, column in self.items():
+            if isinstance(column, Var):
+                data[key] = column.x
+            elif isinstance(column, Factor):
+                categories = [column._labels.get(i, '') for i in range(max(column._labels) + 1)]
+                data[key] = pandas.Categorical.from_codes(column.x, categories)
+        return pandas.DataFrame(data)
+
     def as_table(self, cases=0, fmt='%.6g', sfmt='%s', sort=False, header=True,
                  midrule=False, count=False, title=None, caption=None,
                  ifmt='%s', bfmt='%s', lfmt=False):
