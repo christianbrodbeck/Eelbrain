@@ -1293,17 +1293,22 @@ def set_parc(
         ``parc``.
     """
     if isinstance(data, SourceSpaceBase):
-        return data._copy(parc=parc)
-    elif not isinstance(data, NDVar):
+        source = out = data._copy(parc=parc)
+    elif isinstance(data, NDVar):
+        axis = data.get_axis(dim)
+        source = set_parc(data.dims[axis], parc, mask=False)
+        dims = (*data.dims[:axis], source, *data.dims[axis + 1:])
+        out = NDVar(data.x, dims, data.name, data.info)
+    else:
         raise TypeError(data)
-    axis = data.get_axis(dim)
-    source = set_parc(data.dims[axis], parc)
-    dims = (*data.dims[:axis], source, *data.dims[axis + 1:])
-    out = NDVar(data.x, dims, data.name, data.info)
     if mask:
         index = source.parc.startswith('unknown-')
         if np.any(index):
-            out = out.sub(source=np.invert(index, out=index))
+            index = np.invert(index, out=index)
+            if isinstance(out, SourceSpace):
+                out = out[index]
+            else:
+                out = out.sub(source=index)
     return out
 
 
