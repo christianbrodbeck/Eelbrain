@@ -34,7 +34,7 @@ import warnings
 import numpy as np
 
 from .._config import CONFIG, mpc
-from .._data_obj import Case, Dataset, Dimension, NDVar, CategorialArg, NDVarArg, dataobj_repr
+from .._data_obj import Case, Dataset, Dimension, SourceSpaceBase, NDVar, CategorialArg, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
 from .._ndvar import _concatenate_values, convolve_jit, parallel_convolve
 from .._utils import LazyProperty, PickleableDataClass, user_activity
@@ -360,7 +360,7 @@ class BoostingResult(PickleableDataClass):
         return 1 - (self.residual / self._variability)
 
     def _apply_ndvar_transform(self, func: Callable):
-        "Apply func to all NDVars in-place"
+        "Apply func to all NDVars in-place (only for source space transformation)"
         def sub_func(obj):
             if obj is None:
                 return None
@@ -368,8 +368,14 @@ class BoostingResult(PickleableDataClass):
                 return tuple(sub_func(obj_) for obj_ in obj)
             return func(obj)
 
+        # NDVars
         for attr in ('_h', 'r', 'r_rank', 'residual', 'y_mean', 'y_scale'):
             setattr(self, attr, sub_func(getattr(self, attr)))
+
+        # List of Dimension
+        if self._y_dims is not None:
+            self._y_dims = tuple([sub_func(dim) if isinstance(dim, SourceSpaceBase) else dim for dim in self._y_dims])
+
         if self.partition_results:
             for res in self.partition_results:
                 res._apply_ndvar_transform(func)
