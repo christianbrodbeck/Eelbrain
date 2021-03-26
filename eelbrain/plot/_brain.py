@@ -1381,7 +1381,9 @@ class SequencePlotter:
                         label = items[0]
                     labels.append(label)
             else:
-                if self._frame_order is None:
+                if self._frame_dim is None:
+                    labels = []
+                elif self._frame_order is None:
                     labels = list(self._frame_dim)
                 else:
                     index = self._frame_dim._array_index(self._frame_order)
@@ -1520,7 +1522,7 @@ class SequencePlotter:
                     if i is not None:
                         b.set_data_time_index(i)
                         self._capture(b, hemi_rows, views, mode, antialiased)
-            elif self._bin_kind == SPLayer.ITEM:
+            elif self._bin_kind == SPLayer.ITEM or self._bin_kind is None:  # None: overlays only
                 for i in bins:
                     for l in self._data:
                         if l.kind == SPLayer.OVERLAY or l.index == i:
