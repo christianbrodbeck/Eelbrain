@@ -287,8 +287,8 @@ class BoostingResult(PickleableDataClass):
         Parameters
         ----------
         x
-            Predictors used in the original model fit. In order for
-            cross-prediction to be accurate, ``x`` needs to match the ``x``
+            Predictors used in the original model fit, or a subset thereof.
+            In order for cross-prediction to be accurate, ``x`` needs to match the ``x``
             used in the original fit exactly in cases and time.
         ds
             Dataset with predictors. If ``ds`` is specified, ``x`` can be omitted.
@@ -305,14 +305,23 @@ class BoostingResult(PickleableDataClass):
         responses; subtract the mean in order to compute explained variance.
         """
         # predictors
-        if x is None:
-            x = self.x
-        x_data = PredictorData(x, ds)
+        x_ = self.x if x is None else x
+        x_data = PredictorData(x_, ds)
         if not self.partition_results:
             raise ValueError("BoostingResult does not contain partition-specific models; fit with partition_results=True")
         # check predictors match h
-        if x_data.x_name != self.x:
-            raise ValueError(f"x name mismatch:\nx: {', '.join(x_data.x_name)}\nh: {', '.join(self.x)}")
+        if x_data.x_name == self.x:
+            x_use = None
+        else:
+            if isinstance(self.x, str):
+                raise ValueError(f'{x=} for {self}')
+            elif x_data.multiple_x:
+                x_use = x_data.x_name
+            else:
+                x_use = [x_data.x_name]
+            missing = set(x_use).difference(self.x)
+            if missing:
+                raise ValueError(f"{x=}: has variables not in {self}:\nx: {', '.join(missing)}")
         # prepare output array
         if self._y_dims is None:  # only possible in results from dev version
             y_dims = self.y_mean.dims
@@ -336,7 +345,10 @@ class BoostingResult(PickleableDataClass):
             else:
                 raise RuntimeError(f"Split missing for test segment {result.i_test}")
             # h to flat array: (n_h_only == in y, n_shared == in x, n_h_times)
-            hs = result.h_scaled if x_data.multiple_x else [result.h_scaled]
+            hs = [result.h_scaled] if isinstance(result.h_scaled, NDVar) else result.h_scaled
+            if x_use:
+                hs = {h.name: h for h in hs}
+                hs = [hs[x] for x in x_use]
             h_array = []
             for h, (name, xdims, index) in zip(hs, x_data.x_meta):
                 dimnames = [*y_dimnames, *[dim.name for dim in xdims], 'time']
