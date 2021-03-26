@@ -383,7 +383,7 @@ def labels_from_mni_coords(seeds, extent=30., subject='fsaverage',
 
 
 def morph_source_space(
-        ndvar: NDVar,
+        data: Union[NDVar, SourceSpace],
         subject_to: str = None,
         vertices_to: Union[List, str] = None,
         morph_mat: sp.sparse.spmatrix = None,
@@ -396,34 +396,34 @@ def morph_source_space(
 
     Parameters
     ----------
-    ndvar
+    data
         NDVar with SourceSpace dimension.
     subject_to
         Name of the subject on which to morph (by default this is the same as
         the current subject for ``xhemi`` morphing).
     vertices_to : list of array of int | 'lh' | 'rh'
-        The vertices on the destination subject's brain. If ndvar contains a
+        The vertices on the destination subject's brain. If ``data`` contains a
         whole source space, vertices_to can be automatically loaded, although
         providing them as argument can speed up processing by a second or two.
         Use 'lh' or 'rh' to target vertices from only one hemisphere.
     morph_mat
-        The morphing matrix. If ndvar contains a whole source space, the morph
+        The morphing matrix. If ``data`` contains a whole source space, the morph
         matrix can be automatically loaded, although providing a cached matrix
         can speed up processing by a second or two.
     copy
         Make sure that the data of ``morphed_ndvar`` is separate from
-        ``ndvar`` (default False).
+        ``data`` (default False).
     parc
         Parcellation for target source space. The default is to keep the
-        parcellation from ``ndvar``. Set to ``False`` to load no parcellation.
+        parcellation from ``data``. Set to ``False`` to load no parcellation.
         If the annotation files are missing for the target subject an IOError
         is raised.
     xhemi
         Mirror hemispheres (i.e., project data from the left hemisphere to the
         right hemisphere and vice versa).
     mask
-        Restrict output to known sources. If the parcellation of ``ndvar`` is
-        retained keep only sources with labels contained in ``ndvar``, otherwise
+        Restrict output to known sources. If the parcellation of ``data`` is
+        retained keep only sources with labels contained in ``data``, otherwise
         remove only sourves with ``”unknown-*”`` label (default is True unless
         ``vertices_to`` is specified).
 
@@ -440,10 +440,10 @@ def morph_source_space(
     -----
     This function is used to make sure a number of different NDVars are defined
     on the same MRI subject and handles scaled MRIs efficiently. If the MRI
-    subject on which ``ndvar`` is defined is a scaled copy of ``subject_to``,
-    by default a shallow copy of ``ndvar`` is returned. That means that it is
+    subject on which ``data`` is defined is a scaled copy of ``subject_to``,
+    by default a shallow copy of ``data`` is returned. That means that it is
     not safe to assume that ``morphed_ndvar`` can be modified in place without
-    altering ``ndvar``. To make sure the date of the output is independent from
+    altering ``data``. To make sure the date of the output is independent from
     the data of the input, set the argument ``copy=True``.
 
     Examples
@@ -473,8 +473,12 @@ def morph_source_space(
         # convert to boolean mask (morphing involves interpolation, so the output is in floats)
         mask = round(mask).astype(bool)
     """
-    axis = ndvar.get_axis('source')
-    source = ndvar.get_dim('source')
+    if isinstance(data, SourceSpace):
+        source, ndvar, axis = data, None, None
+    else:
+        ndvar = data
+        axis = ndvar.get_axis('source')
+        source = ndvar.get_dim('source')
     subjects_dir = source.subjects_dir
     subject_from = source.subject
     if subject_to is None:
@@ -489,19 +493,25 @@ def morph_source_space(
             if vertices_to is None:
                 pass
             elif vertices_to in ('lh', 'rh'):
-                ndvar = ndvar.sub(source=vertices_to)
+                if ndvar is None:
+                    source = source[source._array_index(vertices_to)]
+                else:
+                    ndvar = ndvar.sub(source=vertices_to)
             elif isinstance(vertices_to, str):
-                raise ValueError(f"vertices_to={vertices_to!r}")
+                raise ValueError(f"{vertices_to=}")
             else:
-                raise TypeError(f"vertices_to={vertices_to!r}")
+                raise TypeError(f"{vertices_to=}")
 
-            x = ndvar.x.copy() if copy else ndvar.x
             parc_arg = None if parc is True else parc
             if subject_is_scaled or parc_arg is not None:
                 source_to = source._copy(subject_to, parc=parc_arg)
             else:
                 source_to = source
 
+            if ndvar is None:
+                return source_to
+
+            x = ndvar.x.copy() if copy else ndvar.x
             dims = (*ndvar.dims[:axis], source_to, *ndvar.dims[axis + 1:])
             return NDVar(x, dims, ndvar.name, ndvar.info)
 
@@ -570,13 +580,16 @@ def morph_source_space(
     elif not sum(len(v) for v in source_to.vertices) == morph_mat.shape[0]:
         raise ValueError('morph_mat.shape[0] must match number of vertices in vertices_to')
 
+    if ndvar is None:
+        return source_to
+
     # flatten data
     x = ndvar.x
     if axis != 0:
         x = x.swapaxes(0, axis)
     n_sources = len(x)
     if not n_sources == morph_mat.shape[1]:
-        raise ValueError('ndvar source dimension length must be the same as morph_mat.shape[0]')
+        raise ValueError('data source dimension length must be the same as morph_mat.shape[0]')
     if ndvar.ndim > 2:
         shape = x.shape
         x = x.reshape((n_sources, -1))
