@@ -71,25 +71,25 @@ setup(
     long_description=DESC,
     python_requires='>=3.8',
     setup_requires=[
-        "numpy >= 1.11",
+        "numpy >= 1.20",
         "cython >= 0.21",
     ],
     extras_require={
         'base': [
             'colormath >= 2.1',
             'keyring >= 5',
-            'mne >= 0.17',
-            'nibabel >= 2.0',
+            'mne >= 0.19',
+            'nibabel >= 2.5',
             'pillow',
-            'tqdm >= 4.8',
+            'tqdm >= 4.40',
         ],
         'full': [
             'numpy >= 1.20',
             'scipy >= 1.3',
-            'matplotlib >= 2.1',
+            'matplotlib >= 3.3.4',
         ],
         'plot.brain': [
-            'pysurfer[save_movie] >= 0.8',
+            'pysurfer[save_movie] >= 0.9',
         ],
     },
     include_dirs=[np.get_include()],

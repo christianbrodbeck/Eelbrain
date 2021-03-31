@@ -31,10 +31,10 @@ dependencies:
 - colormath >= 2.1
 - tqdm >= 4.40
 - keyring >= 5
-- wxpython >= 4.0.3, < 4.1  # double install of libraries
+- wxpython >= 4.0.3, != 4.1.0  # double install of libraries
 # building
 - setuptools >= 17
-- cython
+- cython >= 0.21
 # docs
 - sphinx >= 3
 - sphinx-autodoc-typehints
