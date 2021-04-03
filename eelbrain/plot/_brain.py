@@ -1263,7 +1263,6 @@ class SequencePlotter:
             # apply defaults
             if static is None:
                 static = True if self._frame_dim else False  # None: unset or use multiple NDVars
-            index = self._index(index)
             # extract
             if static:
                 kind = SPLayer.OVERLAY
@@ -1272,6 +1271,7 @@ class SequencePlotter:
             else:
                 kind = SPLayer.ITEM
                 self._bin_kind = SPLayer.ITEM
+                index = self._index(index)
             layer = SequencePlotterLayer(kind, ndvar, args, kwargs, label, index)
         elif self._bin_kind == SPLayer.ITEM:
             raise ValueError(f"Can't add 2d NDVar to SequencePlotter with multiple NDVars")
