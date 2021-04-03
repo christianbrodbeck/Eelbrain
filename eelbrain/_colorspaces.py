@@ -100,6 +100,16 @@ def make_seq_cmap(seq, val, name):
     return LinearSegmentedColormap(name, cdict)
 
 
+def unambiguous_color(color: str, lightness: float = None, chroma: float = None):
+    r, g, b = UNAMBIGUOUS_COLORS[color]
+    l, c, h = rgb_to_lch(r, g, b)
+    if lightness is not None:
+        l = lightness
+    if chroma is not None:
+        c = chroma
+    return lch_to_rgb(l, c, h)
+
+
 def twoway_cmap(n1, hue_start=0.1, hue_shift=0.5, name=None, hues=None):
     """Create colormap for two-way interaction
 
