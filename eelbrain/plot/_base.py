@@ -111,6 +111,7 @@ from .._text import enumeration, ms
 from ..fmtxt import FMTextArg, Image, asfmtext_or_none
 from ..mne_fixes import MNE_EPOCHS
 from ..table import melt_ndvar
+from ._decorations import mark_difference
 from ._styles import Style, find_cell_styles
 from ._utils import adjust_hsv
 
@@ -3381,9 +3382,8 @@ class CategorialAxisMixin:
             cell_1: Union[float, CellArg],
             cell_2: Union[float, CellArg],
             y: float,
-            y0: float = None,
-            p: float = None,
-            label: str = None,
+            dy: float = None,
+            mark: Union[float, str] = None,
             color: Any = None,
             nudge: Union[bool, float] = None,
             **text_args,
@@ -3398,13 +3398,14 @@ class CategorialAxisMixin:
         cell_2
             Second cell to be compared.
         y
-            Level at which to plot the bar and label.
-        y0
-            Add vertica ticks on each side of the bar reaching to ``y0``.
-        p
-            P-value to automatically determine ``color`` and ``label``.
-        label
-            Text to label bar.
+            Level above which to plot the bar.
+        dy
+            Length of vertical ticks on each side of the bar (offsets the
+            location of the bar itself to ``y + dy``; use negative values to
+            flip orientation).
+        mark
+            Text label, or p-value to automatically determine the label and
+            ``color``.
         color
             Color for bar and ``label``.
         nudge
@@ -3414,18 +3415,6 @@ class CategorialAxisMixin:
             All other parameters are used to plot the text label with
             :meth:`matplotlib.axes.Axes.text`.
         """
-        if p is None:
-            if color is None:
-                color = 'k'
-        else:
-            n_stars = test._n_stars(p)
-            if not n_stars:
-                return
-            if color is None:
-                color = ('#FFCC00', '#FF6600', '#FF3300')[n_stars - 1]
-            if label is None:
-                label = '*' * n_stars
-
         if isinstance(cell_1, (str, tuple)):
             x1 = self.__cells.index(cell_1)
         else:
@@ -3434,27 +3423,8 @@ class CategorialAxisMixin:
             x2 = self.__cells.index(cell_2)
         else:
             x2 = cell_2
-        if x1 > x2:
-            x1, x2 = x2, x1
-        if nudge is True:
-            nudge = 0.025
-        if nudge:
-            x1 += nudge
-            x2 -= nudge
-        if y0 is None:
-            xs, ys = [x1, x2], [y, y]
-        else:
-            xs, ys = [x1, x1, x2, x2], [y0, y, y, y0]
-        self.__ax.plot(xs, ys, color=color)
-        if label:
-            text_args = {
-                'size': mpl.rcParams['font.size'] * 1.5,
-                'ha': 'center',
-                'va': 'center',
-                'clip_on': False,
-                **text_args
-            }
-            self.__ax.text((x1 + x2) / 2, y, label, color=color, **text_args)
+        location = {'x': 'top', 'y': 'right'}[self.__axis]
+        mark_difference(x1, x2, y, dy, mark, color, nudge, location, self.__ax, **text_args)
 
 
 class XAxisMixin:
