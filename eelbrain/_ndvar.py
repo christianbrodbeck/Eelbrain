@@ -12,7 +12,7 @@ from itertools import groupby, repeat, zip_longest
 from math import floor
 from numbers import Real
 import operator
-from typing import Any, Callable, Sequence, Union
+from typing import Any, Callable, Literal, Sequence, Union
 
 import mne
 from numba import njit, prange
@@ -1072,25 +1072,32 @@ def rename_dim(ndvar, old_name, new_name):
     return NDVar(ndvar.x, dims, ndvar.name, ndvar.info)
 
 
-def resample(ndvar, sfreq, npad='auto', window=None, pad='edge', name=None):
+def resample(
+        ndvar: NDVar,
+        sfreq: float,
+        npad: Union[int, Literal['auto']] = 'auto',
+        window: Union[str, tuple] = None,
+        pad: str = 'edge',
+        name: str = None,
+):
     """Resample an NDVar along the time dimension
 
     Parameters
     ----------
-    ndvar : NDVar
-        Input data.
-    sfreq : scalar
+    ndvar
+        Input data, with :class:`UTS` time dimension.
+    sfreq
         New sampling frequency.
-    npad : int | 'auto'
+    npad
         Number of samples for padding at the beginning and end (default is
         determined automatically).
-    window : str | tuple
+    window
         Window applied to the signal in the fourier domain (default is no
         window; see :func:`scipy.signal.resample`).
-    pad : str
+    pad
         Padding method (default ``'edge'``; see :func:`numpy.pad` ``mode``
         parameter).
-    name : str
+    name
         Name for the new NDVar (default is ``ndvar.name``).
 
     Notes
@@ -1105,20 +1112,22 @@ def resample(ndvar, sfreq, npad='auto', window=None, pad='edge', name=None):
     if name is None:
         name = ndvar.name
     axis = ndvar.get_axis('time')
+    time: UTS = ndvar.get_dim('time')
     new_tstep = 1. / sfreq
     if npad:
-        old_sfreq = 1.0 / ndvar.time.tstep
-        x = mne.filter.resample(ndvar.x, sfreq, old_sfreq, npad, axis, window, pad=pad)
+        old_sfreq = 1.0 / time.tstep
+        x = ndvar.x if ndvar.x.dtype.kind == 'f' else ndvar.x.astype(float)
+        x = mne.filter.resample(x, sfreq, old_sfreq, npad, axis, window, pad=pad)
         new_num = x.shape[axis]
         if isinstance(ndvar.x, np.ma.masked_array):
             mask = mne.filter.resample(ndvar.x.mask.astype(float), sfreq, old_sfreq, npad, axis, window, pad=pad)
             x = np.ma.masked_array(x, mask > 0.5)
     else:
-        new_num = int(floor((ndvar.time.tstop - ndvar.time.tmin) / new_tstep))
+        new_num = int(floor((time.tstop - time.tmin) / new_tstep))
         # crop input data
         new_duration = new_tstep * new_num
-        old_num = int(round(new_duration / ndvar.time.tstep))
-        if old_num == ndvar.time.nsamples:
+        old_num = int(round(new_duration / time.tstep))
+        if old_num == time.nsamples:
             idx = None
         else:
             idx = (slice(None),) * axis + (slice(None, old_num),)
@@ -1129,7 +1138,7 @@ def resample(ndvar, sfreq, npad='auto', window=None, pad='edge', name=None):
             mask = ndvar.x.mask if idx is None else ndvar.x.mask[idx]
             mask = signal.resample(mask.astype(float), new_num, axis=axis, window=window)
             x = np.ma.masked_array(x, mask > 0.5)
-    time_dim = UTS(ndvar.time.tmin, new_tstep, new_num)
+    time_dim = UTS(time.tmin, new_tstep, new_num)
     dims = (*ndvar.dims[:axis], time_dim, *ndvar.dims[axis + 1:])
     return NDVar(x, dims, name, ndvar.info)
 
