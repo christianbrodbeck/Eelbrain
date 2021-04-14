@@ -20,7 +20,6 @@ Boxplot
 
 Much of the functionality is shared with :class:`plot.Barplot`.
 """
-# %matplotlib inline
 from eelbrain import *
 
 ###############################################################################
