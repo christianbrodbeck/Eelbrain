@@ -1275,7 +1275,8 @@ def pairwise_correlations(
                 table.cell()
             else:
                 corr = Correlation(x_row, x_col)
-                table.cell(fmtxt.stat(corr.r, drop0=True))
+                cell = fmtxt.FMText([fmtxt.eq('r', corr.r, corr.df), fmtxt.Stars.from_p(corr.p), fmtxt.linebreak, fmtxt.peq(corr.p)])
+                table.cell(cell)
         table.endline()
     return table
 

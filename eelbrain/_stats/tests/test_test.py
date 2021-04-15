@@ -49,6 +49,9 @@ def test_correlations():
     res = test.Correlation('fltvar', 'intvar', "(A=='a1')&(B=='b1')", ds)
     assert res.r == pytest.approx(0.315, abs=1e-3)
 
+    # pairwise correlation
+    doc = test.pairwise_correlations(['intvar', 'fltvar', 'fltvar2'], ds=ds)
+
 
 def test_mann_whitney():
     ds = datasets.get_uv()
