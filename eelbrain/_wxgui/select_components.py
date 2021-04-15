@@ -245,7 +245,7 @@ class SharedToolsMenu:
         menu.AppendSubMenu(blmenu, "Baseline")
 
     def OnFindNoisyEpochs(self, event):
-        dlg = FindNoisyEpochsDialog(self)
+        dlg = FindNoisyEpochsDialog(self, unit=self.doc.epochs_ndvar.info.get('unit', '?'))
         rcode = dlg.ShowModal()
         dlg.Destroy()
         if rcode != wx.ID_OK:
@@ -1215,7 +1215,7 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
 class FindNoisyEpochsDialog(EelbrainDialog):
     _default_threshold = 1.5e-12
 
-    def __init__(self, parent, *args, **kwargs):
+    def __init__(self, parent, *args, unit, **kwargs):
         super(FindNoisyEpochsDialog, self).__init__(parent, wx.ID_ANY, "Find Bad Epochs", *args, **kwargs)
         config = parent.config
         threshold = config.ReadFloat("FindNoisyEpochsDialog/threshold", self._default_threshold)
@@ -1224,7 +1224,7 @@ class FindNoisyEpochsDialog(EelbrainDialog):
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Threshold
-        sizer.Add(wx.StaticText(self, label="Threshold for bad epochs [T]:"))
+        sizer.Add(wx.StaticText(self, label=f"Threshold for bad epochs [{unit}]:"))
         validator = REValidator(POS_FLOAT_PATTERN, "Invalid entry: {value}. Please specify a number > 0.", False)
         self.threshold = ctrl = wx.TextCtrl(self, value=str(threshold), validator=validator)
         ctrl.SetHelpText("Find epochs in which the signal exceeds this value at any sensor")
