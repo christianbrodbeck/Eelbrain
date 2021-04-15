@@ -555,6 +555,13 @@ class Frame(SharedToolsMenu, FileFrame):
         top_component = epoch_comp_power.argmax()
         self.GoToComponentEpoch(component=top_component)
 
+    def FindTopEpoch(self, i_comp: int):
+        source = self.doc.sources.sub(component=i_comp)
+        y = source - source.mean()
+        y **= 2
+        ss = y.sum('time')  # ndvar has epoch as index
+        self.GoToComponentEpoch(epoch=ss.argmax())
+
     def GoToComponentEpoch(self, component: int = None, epoch: int = None):
         if not self.source_frame:
             self.ShowSources(0)
@@ -596,6 +603,9 @@ class Frame(SharedToolsMenu, FileFrame):
 
     def OnFindTopComponent(self, event):
         self.FindTopComponent(event.EventObject.i_epoch)
+
+    def OnFindTopEpoch(self, event):
+        self.FindTopEpoch(event.EventObject.i_comp)
 
     def OnPanelResize(self, event):
         w, h = event.GetSize()
@@ -642,6 +652,8 @@ class Frame(SharedToolsMenu, FileFrame):
     def _context_menu(self, i_comp: int = None, i_epoch: int = None):
         menu = ContextMenu(i_comp, i_epoch)
         if i_comp is not None:
+            item = menu.Append(wx.ID_ANY, "Top Epoch")
+            self.Bind(wx.EVT_MENU, self.OnFindTopEpoch, item)
             item = menu.Append(wx.ID_ANY, "Rank Epochs")
             self.Bind(wx.EVT_MENU, self.OnRankEpochs, item)
             item = menu.Append(wx.ID_ANY, "Plot Topomap")
