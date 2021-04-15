@@ -287,6 +287,7 @@ class MneExperiment(FileTree):
         'man': {'kind': 'manual', 'interpolation': True},
     }
     artifact_rejection = {}
+    _artifact_rejection_default = 'man'
 
     # groups can be defined as subject lists: {'group': ('member1', 'member2', ...)}
     # or by exclusion: {'group': {'base': 'all', 'exclude': ('member1', 'member2')}}
@@ -635,7 +636,7 @@ class MneExperiment(FileTree):
 
         raw_default = sorted(self.raw)[0] if self.raw else None
         self._register_field('raw', sorted(self._raw), default=raw_default, repr=True)
-        self._register_field('rej', self._artifact_rejection.keys(), 'man', allow_empty=True)
+        self._register_field('rej', self._artifact_rejection.keys(), self._artifact_rejection_default, allow_empty=True)
 
         # epoch
         epoch_keys = sorted(self._epochs)
