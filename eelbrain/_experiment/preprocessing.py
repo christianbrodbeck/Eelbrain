@@ -847,6 +847,12 @@ class RawReReference(CachedRawPipe):
         raw = self.source.load(subject, recording, preload=True)
         if self.add:
             raw = mne.add_reference_channels(raw, self.add, copy=False)
+            # apply new channel position
+            pipe = self.source
+            while not isinstance(pipe, RawSource):
+                pipe = pipe.source
+            if pipe.montage:
+                raw.set_montage(pipe.montage)
         raw.set_eeg_reference(self.reference)
         if self.drop:
             raw = raw.drop_channels(self.drop)
