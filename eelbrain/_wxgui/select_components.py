@@ -917,7 +917,7 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
         if event.inaxes:
             if event.inaxes.i_comp is None:
                 i_in_axes = ceil(event.ydata / self.y_scale + 0.5)
-                if i_in_axes == 0 and self.show_range:
+                if i_in_axes == 1 and self.show_range:
                     return
                 i_comp = int(self.i_first + self.n_comp + self.show_range - i_in_axes)
                 if i_comp < self.n_comp_in_ica:
