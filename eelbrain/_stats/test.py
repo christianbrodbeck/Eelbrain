@@ -1129,29 +1129,22 @@ def pairwise(
 
     n_stars = 3 + bool(trend)
     for row in range(0, k - 1 + mirror):
-        for subrow in range(subrows):  # contains t/p
-            # names column
-            if subrow == 0:
-                table.cell(cellnames[row])
+        table.cell(cellnames[row])
+        for col in range(1 - mirror, k):
+            if row == col:
+                table.cell()
+            elif mirror or col > row:
+                index = indexes[(row, col)]
+                content = [
+                    fmtxt.eq(statistic, _K[index], _df[index], stars=symbols[index], of=n_stars),
+                    fmtxt.linebreak,
+                    fmtxt.peq(_P[index]),
+                ]
+                if corr:
+                    content.extend([fmtxt.linebreak, fmtxt.peq(_Pc[index], 'c')])
+                table.cell(content)
             else:
                 table.cell()
-            # rows
-            for col in range(1 - mirror, k):
-                if row == col:
-                    table.cell()
-                elif col > row:
-                    index = indexes[(row, col)]
-                    if subrow == 0:
-                        table.cell(fmtxt.eq(statistic, _K[index], _df[index], stars=symbols[index], of=n_stars))
-                    elif subrow == 1:
-                        table.cell(fmtxt.peq(_P[index]))
-                    elif subrow == 2:
-                        table.cell(fmtxt.peq(_Pc[index], 'c'))
-                elif mirror and corr and subrow == 0:
-                    index = indexes[(col, row)]
-                    table.cell(fmtxt.P(_Pc[index]))
-                else:
-                    table.cell()
     return table
 
 
