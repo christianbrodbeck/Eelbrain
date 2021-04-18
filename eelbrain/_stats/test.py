@@ -1057,6 +1057,7 @@ def pairwise(
         trend: Union[bool, str] = False,
         title: str = '{desc}',
         mirror: bool = False,
+        labels: Dict[CellArg, str] = None,
 ):
     """Pairwise comparison table
 
@@ -1084,6 +1085,8 @@ def pairwise(
         Title for the table.
     mirror
         Redundant table including all row/column combinations.
+    labels
+        Alternative labels for ``x`` as ``{cell: label}`` dictionary.
 
     Returns
     -------
@@ -1102,16 +1105,18 @@ def pairwise(
     _Pc = mcp_adjust(_P, corr)
     _df = test['df']
     symbols = test['symbols']
+    cellnames = ct.cellnames()
+    if labels:
+        cellnames = [labels.get(name, name) for name in cellnames]
 
     # create TABLE
     table = fmtxt.Table('l' + 'l' * (k - 1 + mirror))
-    title_desc = "Pairwise {0}".format(test['test'])
+    title_desc = f"Pairwise {test['test']}"
     table.title(title.format(desc=title_desc))
     table.caption(test['caption'])
 
     # headings
     table.cell()
-    cellnames = ct.cellnames()
     for name in cellnames[1 - mirror:]:
         table.cell(name)
     table.midrule()
