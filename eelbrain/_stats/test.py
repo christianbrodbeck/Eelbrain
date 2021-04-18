@@ -1257,20 +1257,18 @@ def pairwise_correlations(
         Table with pairwise correlations.
     """
     sub = assub(sub, ds)
-    x_rows = [asnumeric(x, sub, ds) for x in xs]
-    n_vars = len(x_rows)
+    xs_ = [asnumeric(x, sub, ds) for x in xs]
+    n_vars = len(xs_)
+    x_labels = [nice_label(x, labels) for x in xs_]
 
     table = fmtxt.Table('l' + 'c' * n_vars)
     # header
-    table.cell()
-    for i in range(1, n_vars + 1):
-        table.cell(i)
+    table.cells('', *x_labels)
     table.midrule()
     # body
-    for i_row, x_row in enumerate(x_rows):
-        label = nice_label(x_row, labels)
-        table.cell("%i  %s" % (i_row + 1, label))
-        for x_col in x_rows:
+    for i_row, x_row in enumerate(xs_):
+        table.cell(x_labels[i_row])
+        for x_col in xs_:
             if x_col is x_row:
                 table.cell()
             else:
