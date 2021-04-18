@@ -1099,8 +1099,7 @@ def pairwise(
     statistic = test['statistic']
     _K = test[statistic]
     _P = test['p']
-    if corr:
-        _Pc = mcp_adjust(_P, corr)
+    _Pc = mcp_adjust(_P, corr)
     _df = test['df']
     symbols = test['symbols']
 
