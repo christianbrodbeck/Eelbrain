@@ -166,12 +166,21 @@ def _concatenate_values(
             return concatenate(values, dim)
         elif not all((v == values[0]).all() for v in values[1:]):
             raise ValueError(f'Inconsistent values for {key}: {values}')
+    if isinstance(values[0], Dimension):
+        if values[0].name == dim:
+            return values[0]._concatenate(values)
+        elif not all(dim_i == values[0] for dim_i in values[1:]):
+            raise ValueError(f'Inconsistent values for {key}: {values}')
+        else:
+            return values[:1]
     elif isinstance(values[0], (tuple, list)):
         if isinstance(values[0][0], NDVar) and values[0][0].has_dim(dim):
-            items = [concatenate(items, dim) for items in zip(*values)]
+            items = [concatenate(items, dim) for items in zip_longest(*values)]
             if isinstance(values[0], tuple):
                 items = tuple(items)
             return items
+        elif isinstance(values[0][0], Dimension):
+            return [_concatenate_values(items, dim, f'{key}[{i}') for i, items in enumerate(zip_longest(*values))]
         for values_i in zip_longest(*values):
             value_i_0 = values_i[0]
             if isinstance(value_i_0, (NDVar, np.ndarray)):
