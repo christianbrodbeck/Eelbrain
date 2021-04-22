@@ -86,7 +86,8 @@ def concatenate(
     name
         Name the NDVar holding the result.
     tmin : float | 'first'
-        Time axis start, only applies when ``dim == 'time'``; default is 0.
+        Time axis start, only applies when concatenating along time dimension
+        (``dim='time'``); default is 0.
         Set ``tmin='first'`` to use ``tmin`` of ``ndvars[0]``.
     info
         Info for the returned ``ndvar``.
@@ -142,16 +143,14 @@ def concatenate(
             ndvars = [complete_source_space(v, to=out_dim, mask=False) for v in ndvars]
             x = reduce(np.add, [v.get_data(dim_names) for v in ndvars])
         else:
-            x = np.concatenate([v.get_data(dim_names) for v in ndvars], axis)
-            if isinstance(dim_obj, UTS):
+            out_dim = dim_obj._concatenate([v.get_dim(dim) for v in ndvars])
+            if isinstance(out_dim, UTS):
                 if isinstance(tmin, str):
-                    if tmin == 'first':
-                        tmin = ndvar.time.tmin
-                    else:
+                    if tmin != 'first':
                         raise ValueError(f"tmin={tmin!r}")
-                out_dim = UTS(tmin, ndvar.time.tstep, x.shape[axis])
-            else:
-                out_dim = dim_obj._concatenate(v.get_dim(dim) for v in ndvars)
+                else:
+                    out_dim = set_tmin(out_dim, tmin)
+            x = np.concatenate([v.get_data(dim_names) for v in ndvars], axis)
         dims = ndvar.get_dims(dim_names)
         dims = (*dims[:axis], out_dim, *dims[axis+1:])
     return NDVar(x, dims, name or ndvar.name, info)
@@ -1321,28 +1320,34 @@ def set_parc(
     return out
 
 
-def set_tmin(ndvar, tmin=0.):
+def set_tmin(data: Union[NDVar, UTS], tmin: float = 0.) -> Union[NDVar, UTS]:
     """Shift the time axis of an :class:`NDVar` relative to its data
 
     Parameters
     ----------
-    tmin : scalar
+    data
+        :class:`NDVar` or :class:`UTS` dimension on which to set ``tmin``.
+    tmin
         New ``tmin`` value (default 0).
 
     Returns
     -------
-    out_ndvar : NDVar
-        Shallow copy of ``ndvar`` with updated time axis.
+    out
+        Shallow copy of ``data`` with updated time axis.
 
     See Also
     --------
     set_time : Pad/crop the :class:`NDVar`
     """
-    axis = ndvar.get_axis('time')
-    old = ndvar.dims[axis]
-    dims = list(ndvar.dims)
+    if isinstance(data, UTS):
+        return UTS(tmin, data.tstep, data.nsamples)
+    elif not isinstance(data, NDVar):
+        raise TypeError(f'{data=}')
+    axis = data.get_axis('time')
+    old: UTS = data.dims[axis]
+    dims = list(data.dims)
     dims[axis] = UTS(tmin, old.tstep, old.nsamples)
-    return NDVar(ndvar.x, dims, ndvar.name, ndvar.info)
+    return NDVar(data.x, dims, data.name, data.info)
 
 
 def set_time(

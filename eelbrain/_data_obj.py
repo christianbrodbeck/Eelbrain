@@ -7733,12 +7733,12 @@ class Dimension:
         raise NotImplementedError(f"Binning for {self.__class__.__name__} dimension")
 
     @classmethod
-    def _concatenate(cls, dims):
+    def _concatenate(cls, dims: Sequence[Dimension]):
         "Concatenate multiple dimension instances"
         raise NotImplementedError(f"Can't concatenate along {cls.__name__} dimensions")
 
     @staticmethod
-    def _concatenate_connectivity(dims: List['Dimension']):
+    def _concatenate_connectivity(dims: Sequence[Dimension]):
         c_types = {dim._connectivity_type for dim in dims}
         if len(c_types) > 1:
             raise NotImplementedError(f"concatenating with differing connectivity")
@@ -7748,7 +7748,7 @@ class Dimension:
         return c_type
 
     @staticmethod
-    def _concatenate_attr(dims: List['Dimension'], attr: str):
+    def _concatenate_attr(dims: Sequence[Dimension], attr: str):
         attrs = {getattr(dim, attr) for dim in dims}
         if len(attrs) > 1:
             desc = ', '.join(map(repr, attrs))
@@ -8119,7 +8119,7 @@ class Case(Dimension):
             raise TypeError(f"Index {arg} of type {type(arg)} for Case dimension")
 
     @classmethod
-    def _concatenate(cls, dims):
+    def _concatenate(cls, dims: Sequence[Case]):
         return Case
 
     def _dim_index(self, arg):
@@ -8360,7 +8360,7 @@ class Categorial(Dimension):
             return super(Categorial, self)._array_index(arg)
 
     @classmethod
-    def _concatenate(cls, dims):
+    def _concatenate(cls, dims: Sequence[Categorial]):
         dims = list(dims)
         name = cls._concatenate_attr(dims, 'name')
         connectivity = cls._concatenate_connectivity(dims)
@@ -8606,7 +8606,7 @@ class Scalar(Dimension):
         return [f'{self.name}_min', f'{self.name}_max']
 
     @classmethod
-    def _concatenate(cls, dims):
+    def _concatenate(cls, dims: Sequence[Scalar]):
         dims = list(dims)
         name = cls._concatenate_attr(dims, 'name')
         unit = cls._concatenate_attr(dims, 'unit')
@@ -10029,7 +10029,7 @@ class SourceSpace(SourceSpaceBase):
         return [*SourceSpaceBase._cluster_property_labels(), 'hemi']
 
     @classmethod
-    def _concatenate(cls, dims):
+    def _concatenate(cls, dims: Sequence[SourceSpace]):
         dims = list(dims)
         subject = cls._concatenate_attr(dims, 'subject')
         src = cls._concatenate_attr(dims, 'src')
@@ -10542,6 +10542,15 @@ class UTS(Dimension):
         tmin = start + step / 2 if label == 'center' else start
         out_dim = UTS(tmin, step, n_bins)
         return edges, out_dim
+
+    @classmethod
+    def _concatenate(cls, dims: Sequence[UTS]):
+        if len(tsteps := {uts.tstep for uts in dims}) > 1:
+            raise ValueError(f'UTS dimensions have incompatible tstep: {dims}')
+        tmin = dims[0].tmin
+        tstep = tsteps.pop()
+        n_samples = sum(uts.nsamples for uts in dims)
+        return UTS(tmin, tstep, n_samples)
 
     def __len__(self):
         return self.nsamples
