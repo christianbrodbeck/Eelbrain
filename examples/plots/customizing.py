@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: sphinx
 #       format_version: '1.1'
-#       jupytext_version: 1.5.0
+#       jupytext_version: 1.10.2
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -66,10 +66,13 @@ matplotlib.style.use('default')
 ###############################################################################
 # Modifying components
 # ^^^^^^^^^^^^^^^^^^^^
+# Matplotlib can be used to fully customize a plot's appearance by accessing
+# the underlying :cls:`matplotlib.figure.Figure` object through the plot's
+# :attr:`.figure` aatribute.
 
 p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, w=2)
 
-p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, w=2, xlabel=False)
+p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, w=2, h=3, xlabel=False)
 ax = p.figure.axes[0]
 ax.set_xticklabels(['A long label', 'An even longer label', 'Another label', 'And yet another one'], rotation=45, ha='right')
 ax.grid(axis='y')
@@ -77,3 +80,4 @@ ax.set_yticks([-2, 0, 2])
 ax.tick_params('y', left=False)
 for spine in ax.spines.values():
     spine.set_visible(False)
+p.figure.tight_layout()
