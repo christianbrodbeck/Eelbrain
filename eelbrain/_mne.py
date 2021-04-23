@@ -78,16 +78,22 @@ def complete_source_space(
     source = ndvar.get_dim('source')
     axis = ndvar.get_axis('source')
     is_masked = isinstance(ndvar.x, np.ma.masked_array)
-    # determine source and target vertices
+    # determine target source space
     if to:
-        vertices = to.vertices
+        source_out = to
     else:
         vertices = source_space_vertices(source.kind, source.grade, source.subject, source.subjects_dir)
-    vertex_indices = [np.in1d(v, src_v, True) for v, src_v in zip(vertices, source.vertices)]
+        parc = None if source.parc is None else source.parc.name
+        if isinstance(source, SourceSpace):
+            source_out = SourceSpace(vertices, source.subject, source.src, source.subjects_dir, parc)
+        else:
+            source_out = VolumeSourceSpace(vertices, source.subject, source.src, source.subjects_dir, parc)
+    # locate source vertices
+    vertex_indices = [np.in1d(v, src_v, True) for v, src_v in zip(source_out.vertices, source.vertices)]
     index = (slice(None,),) * axis + (np.concatenate(vertex_indices),)
     # generate target array
     shape = list(ndvar.shape)
-    shape[axis] = sum(map(len, vertices))
+    shape[axis] = sum(map(len, source_out.vertices))
     x = np.empty(shape, ndvar.x.dtype)
     x.fill(fill)
     x[index] = ndvar.x.data if is_masked else ndvar.x
@@ -96,12 +102,7 @@ def complete_source_space(
         x_mask.fill(True if mask is None else mask)
         x_mask[index] = ndvar.x.mask if is_masked else False
         x = np.ma.masked_array(x, x_mask)
-    # set up target Dimension
-    parc = None if source.parc is None else source.parc.name
-    if isinstance(source, SourceSpace):
-        source_out = SourceSpace(vertices, source.subject, source.src, source.subjects_dir, parc)
-    else:
-        source_out = VolumeSourceSpace(vertices, source.subject, source.src, source.subjects_dir, parc)
+    # package output
     dims = list(ndvar.dims)
     dims[axis] = source_out
     return NDVar(x, dims, ndvar.name, ndvar.info)
