@@ -18,7 +18,7 @@ from ._data_obj import (
     cellname, combine, isuv)
 
 
-def difference(y, x, c1, c0, match, sub=None, ds=None, by=None):
+def difference(y, x, c1, c0, match, sub=None, ds=None):
     """Subtract data in one cell from another
 
     Parameters
@@ -73,57 +73,20 @@ def difference(y, x, c1, c0, match, sub=None, ds=None, by=None):
     sub = assub(sub, ds)
     x = ascategorial(x, sub, ds)
     out = Dataset()
-    if by is None:
-        ct = Celltable(y, x, match, sub, ds=ds)
-        if not ct.all_within:
-            raise ValueError("Design is not fully balanced")
-        groups = ct.groups[c1]
-        if isinstance(groups, Interaction):
-            for x in groups.base:
-                out.add(x)
-        else:
-            out.add(groups)
-        yname = y if isinstance(y, str) else ct.y.name
-        out[yname] = ct.data[c1] - ct.data[c0]
-        # Transfer other variables in ds that are compatible with the rm-structure
-        if ds is not None:
-            out.update(ct._align_ds(ds, True, out.keys(), isuv))
+    ct = Celltable(y, x, match, sub, ds=ds)
+    if not ct.all_within:
+        raise ValueError("Design is not fully balanced")
+    groups = ct.groups[c1]
+    if isinstance(groups, Interaction):
+        for x in groups.base:
+            out.add(x)
     else:
-        warn("The by parameter is deprecated; use match instead", DeprecationWarning)
-        by = ascategorial(by, sub, ds)
-        ct = Celltable(y, x % by, match, sub, ds=ds)
-        if not ct.all_within:
-            raise ValueError("Design is not fully balanced")
-
-        yname = y if isinstance(y, str) else ct.y.name
-        if isinstance(c1, str):
-            c1 = (c1,)
-        if isinstance(c0, str):
-            c0 = (c0,)
-        dss = []
-        ds_keep = None
-        for cell in by.cells:
-            if isinstance(cell, str):
-                cell = (cell,)
-            cell_ds = Dataset()
-            cell_ds.add(ct.groups[c1 + cell])
-            cell_ds[yname] = ct.data[c1 + cell] - ct.data[c0 + cell]
-            if isinstance(by, Factor):
-                cell_ds[by.name, :] = cell[0]
-            else:
-                for b, c in zip(by.base, cell):
-                    cell_ds[b.name, :] = c
-            # Transfer other variables in ds that are compatible with the rm-structure
-            if ds_keep is None:
-                if ds is None:
-                    ds_keep = False
-                else:
-                    ds_keep = ct._align_ds(ds, True, cell_ds.keys(), isuv)
-            if ds_keep:
-                cell_ds.update(ds_keep)
-            dss.append(cell_ds)
-        out = combine(dss)
-
+        out.add(groups)
+    yname = y if isinstance(y, str) else ct.y.name
+    out[yname] = ct.data[c1] - ct.data[c0]
+    # Transfer other variables in ds that are compatible with the rm-structure
+    if ds is not None:
+        out.update(ct._align_ds(ds, True, out.keys(), isuv))
     return out
 
 
