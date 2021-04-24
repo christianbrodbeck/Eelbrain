@@ -347,9 +347,12 @@ class ColorBar(EelFigure):
     width
         Width of the color-bar in inches.
     ticks
-        Customize tick-labels on the colormap; either a dictionary with
-        tick-locations and labels, or a sequence of tick locations. To draw no
-        ticks, set to ``()``.
+        Control tick-labels on the colormap. Can be:
+
+         - An integer number of evenly spaced ticks to draw
+         - A sequence of tick locations (``()`` to draw no ticks at all)
+         - A ``{float: str}`` dictionary with tick-locations and labels
+
     threshold
         Set the alpha of values below ``threshold`` to 0 (as well as for
         negative values above ``abs(threshold)``).
@@ -374,7 +377,7 @@ class ColorBar(EelFigure):
             unit: str = None,
             contours: Sequence[float] = (),
             width: float = None,
-            ticks: Union[Dict[float, str], Sequence[float]] = None,
+            ticks: Union[int, Dict[float, str], Sequence[float]] = None,
             threshold: float = None,
             ticklocation: Literal['auto', 'top', 'bottom', 'left', 'right'] = 'auto',
             background: ColorArg = 'white',
@@ -424,8 +427,13 @@ class ColorBar(EelFigure):
             scale = AxisScale(unit or 1, label)
 
         # value ticks
-        if ticks is False:
-            tick_locs = ()
+        if isinstance(ticks, int):
+            if ticks == 0:
+                tick_locs = ()
+            elif ticks == 1:
+                raise ValueError(f'{ticks=}')
+            else:
+                tick_locs = np.linspace(vmin, vmax, ticks)
             formatter = scale.formatter
         elif isinstance(ticks, dict):
             tick_locs = sorted(ticks)
