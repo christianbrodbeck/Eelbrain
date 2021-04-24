@@ -344,6 +344,7 @@ def soft_threshold_colormap(
         vmax: float,
         subthreshold: ColorArg = None,
         symmetric: bool = None,
+        alpha: float = 1,
 ) -> mpl.colors.ListedColormap:
     """Soft-threshold a colormap to make small values transparent
 
@@ -364,6 +365,9 @@ def soft_threshold_colormap(
         Whether the ``cmap`` is symmetric (ranging from ``-vmax`` to ``vmax``)
         or not (ranging from ``0`` to ``vmax``). The default is ``True`` for
         known symmetric colormaps and ``False`` otherwise.
+    alpha
+        Control the global alpha level (opacity) of the colormap (original
+        colormap alpha is multiplied by ``alpha``).
 
     Returns
     -------
@@ -391,6 +395,8 @@ def soft_threshold_colormap(
     else:
         out_colors[:-cmap.N] = subthreshold_color
         out_colors[-cmap.N:] = colors
+    if alpha != 1:
+        out_colors[:, 3] *= alpha
     out = LocatedListedColormap(out_colors, cmap.name)
     out.vmax = vmax
     out.vmin = -vmax if symmetric else 0
