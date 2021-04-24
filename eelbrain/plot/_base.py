@@ -1800,7 +1800,7 @@ class EelFigure(MatplotlibFigure):
             self,
             axis: str,  # 'x' | 'y'
             ticklabels: Union[str, int, Sequence[int]],  # where to show tick-labels
-            params: Iterable,  # (formatter, locator, label) list
+            params: Iterable,  # (formatter, locator, label) for each Axes
             axes: List[matplotlib.axes.Axes] = None,  # axes which to format
     ):
         if axes is None:
@@ -2231,62 +2231,62 @@ class Layout(BaseLayout):
             ax_aspect: float,  # width / height
             axh_default: float,
             tight: bool = True,
-            title=None,
-            h=None,
-            w=None,
-            axh=None,
-            axw=None,
-            nrow=None,
-            ncol=None,
-            dpi=None,
-            margins=None,
-            show=True,
-            run=None,
-            frame=True,
+            title: str = None,
+            h: float = None,
+            w: float = None,
+            axh: float = None,
+            axw: float = None,
+            nrow: int = None,
+            ncol: int = None,
+            dpi: float = None,
+            margins: Dict[str, float] = None,
+            show: bool = True,
+            run: bool = None,
+            frame: Union[bool, str] = True,
             yaxis=True,
-            share_axes=False,
+            share_axes: bool = False,
             **kwargs):
         """Create a grid of axes based on variable parameters.
 
         Parameters
         ----------
-        nax : int | list of bool
+        nax
             Number of axes required. If provided as a list, axes are only added
             for items where ``item`` is True.
-        ax_aspect : scalar
+        ax_aspect
             Width / height aspect of the axes.
-        axh_default : scalar
+        axh_default
             The default axes height if it can not be determined from the other
             parameters.
-        tight : bool
+        tight
             Rescale axes so that the space in the figure is used optimally
             (default True).
         title : str
             Figure title.
-        h : scalar
+        h
             Height of the figure.
-        w : scalar
+        w
             Width of the figure.
-        axh : scalar
+        axh
             Height of the axes.
-        axw : scalar
+        axw
             Width of the axes.
-        nrow : int
+        nrow
             Set a limit to the number of rows (default is no limit).
-        ncol : int
+        ncol
             Set a limit to the number of columns (defaut is no limit). If
             neither nrow or ncol is specified, a square layout is preferred.
-        dpi : int
+        dpi
             DPI for the figure (default is to use matplotlib rc parameters).
-        margins : dict
+        margins
             Absolute subplot parameters (in inches). Implies ``tight=False``. 
             If ``margins`` is specified, ``axw`` and ``axh`` are interpreted 
             exclusive of the margins, i.e., ``axh=2, margins={'top': .5}`` for
             a plot with one axes will result in a total height of 2.5.
-        show : bool
+        show
             Show the figure in the GUI (default True). Use False for creating
             figures and saving them without displaying them on the screen.
-        run : bool
+        run
             Run the Eelbrain GUI app (default is True for interactive plotting and
             False in scripts).
         frame : bool | 't' | 'none'

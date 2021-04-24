@@ -33,18 +33,18 @@ class App(wx.App):
     about_frame = None
     _result = None
     _bash_ui_from_mainloop = None
+    _ipython = None
+    using_prompt_toolkit = False
 
     def OnInit(self):
         self.SetAppName("Eelbrain")
         self.SetAppDisplayName("Eelbrain")
 
         # register in IPython
-        self.using_prompt_toolkit = False
-        self._ipython = None
-        if ('IPython' in sys.modules and
-                LooseVersion(sys.modules['IPython'].__version__) >=
-                LooseVersion('5') and CONFIG['prompt_toolkit']):
-            import IPython
+        if CONFIG['prompt_toolkit'] and 'IPython' in sys.modules and LooseVersion(sys.modules['IPython'].__version__) >= LooseVersion('5'):
+            import IPython.terminal.pt_inputhooks
+            import IPython.core.pylabtools
+            import IPython.core.error
 
             IPython.terminal.pt_inputhooks.register('eelbrain', self.pt_inputhook)
             IPython.core.pylabtools.backend2gui.clear()  # prevent pylab from initializing event-loop
@@ -54,11 +54,7 @@ class App(wx.App):
                 try:
                     shell.enable_gui('eelbrain')
                 except IPython.core.error.UsageError:
-                    print("Prompt-toolkit does not seem to be supported by "
-                          "the current IPython shell (%s); The Eelbrain GUI "
-                          "needs to block Terminal input to work. Use "
-                          "eelbrain.gui.run() to start GUI interaction." %
-                          shell.__class__.__name__)
+                    print(f"Prompt-toolkit does not seem to be supported by the current IPython shell ({shell.__class__.__name__}); The Eelbrain GUI needs to block Terminal input to work. Use eelbrain.gui.run() to start GUI interaction.")
                 else:
                     self.using_prompt_toolkit = True
                     self._ipython = shell
@@ -387,10 +383,7 @@ class App(wx.App):
 
     def Attach(self, obj, desc, default_name, parent):
         if self._ipython is None:
-            self.message_box(
-                "Attach Unavailable",
-                "The attach command requires running from within IPython 5 or "
-                "later", wx.ICON_ERROR|wx.OK, parent)
+            self.message_box("Attach Unavailable", "The attach command requires running from within IPython 5 or later", wx.ICON_ERROR|wx.OK, parent)
             return
         name = self.ask_for_string(
             "Attach", "Variable name for %s in terminal:" % desc, default_name,

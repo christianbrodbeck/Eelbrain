@@ -1764,23 +1764,28 @@ class Var(Named):
             x[index] = np.arange(index.sum())
         return Var(x, self.name)
 
-    def aggregate(self, x, func=np.mean, name=None):
-        """Summarize cases within cells of x
+    def aggregate(
+            self,
+            x: CategorialArg,
+            func: Callable = np.mean,
+            name: str = None,
+    ) -> Var:
+        """Summarize cases within cells of ``x``
 
         Parameters
         ----------
-        x : categorial
+        x
             Model defining cells in which to aggregate.
-        func : callable
+        func
             Function that converts arrays into scalars, used to summarize data
-            within each cell of x.
-        name : str
+            within each cell of ``x``.
+        name
             Name of the output (default is the current name).
 
         Returns
         -------
-        aggregated_var : Var
-            A Var instance with a single value for each cell in x.
+        aggregated_var
+            A :class:`Var` instance with a single value for each cell in ``x``.
         """
         if x is None:
             x_out = [func(self.x)]
@@ -2618,23 +2623,26 @@ class Factor(_Effect):
             items = items[:i]
         return f"{', '.join(items)}{suffix}"
 
-    def aggregate(self, x, name=None):
-        """
-        Summarize the Factor by collapsing within cells in `x`.
+    def aggregate(
+            self,
+            x: CategorialArg,
+            name: str = None,
+    ) -> Factor:
+        """Summarize the Factor by collapsing within the cells of ``x``
 
         Raises an error if there are cells that contain more than one value.
 
         Parameters
         ----------
-        x : categorial
+        x
             A categorial model defining cells to collapse.
-        name : str
+        name
             Name of the output Factor (default is current name).
 
         Returns
         -------
-        f : Factor
-            A copy of self with only one value for each cell in x
+        factor
+            A copy of self with only one value for each cell in ``x``.
         """
         if x is None:
             cells = [None]
@@ -3617,7 +3625,7 @@ class NDVar(Named):
             values between time=0.1 and time=0.2, use
             ``ndvar.any(time=(0.1, 0.2))``.
         name : str
-            Name of the output NDVar (default is the current name).
+            Name of the output :class:`NDVar` (default is the current name).
 
         Returns
         -------
@@ -3694,25 +3702,29 @@ class NDVar(Named):
         if self.dimnames != dims:
             raise DimensionMismatchError(f"Dimensions of {self!r} do not match {dims}")
 
-    def aggregate(self, x=None, func=np.mean, name=None):
-        """
-        Summarize data in each cell of ``x``.
+    def aggregate(
+            self,
+            x: CategorialArg = None,
+            func: Callable = np.mean,
+            name: str = None,
+    ) -> NDVar:
+        """Summarize data in each cell of ``x``
 
         Parameters
         ----------
-        x : categorial
+        x
             Categorial whose cells define which cases to aggregate.
-        func : function with axis argument
+        func
             Function that is used to create a summary of the cases falling
-            into each cell of x. The function needs to accept the data as
+            into each cell of ``x``. The function needs to accept the data as
             first argument and ``axis`` as keyword-argument. Default is
-            ``numpy.mean``.
-        name : str
-            Name of the output NDVar (default is the current name).
+            :func:`numpy.mean`.
+        name
+            Name of the output :class:`NDVar` (default is the current name).
 
         Returns
         -------
-        aggregated_ndvar : NDVar
+        aggregated_ndvar
             NDVar with data aggregated over cells of ``x``.
         """
         if not self.has_case:
@@ -6173,8 +6185,8 @@ class Dataset(dict):
             raise ValueError('not all cases have same length')
         n_cases = n_cases.pop()
         if len(names) != n_cases:
-            raise ValueError('names=%r: %i names but %i cases' % (names, len(names), n_cases))
-        items = {key: combine((case[i] for case in cases), check_dims=check_dims, dim_intersection=dim_intersection) for i, key in enumerate(names)}
+            raise ValueError(f'{names=}: {len(names)} names but {n_cases} cases')
+        items = {key: combine([case[i] for case in cases], check_dims=check_dims, dim_intersection=dim_intersection) for i, key in enumerate(names)}
         for key in random:
             item = items[key]
             if isinstance(item, Factor):
@@ -6267,38 +6279,47 @@ class Dataset(dict):
         return {cell: self.sub(x == cell, name.format(name=self.name, cell=cell)) for
                 cell in x.cells if cell not in exclude}
 
-    def aggregate(self, x=None, drop_empty=True, name='{name}', count='n',
-                  drop_bad=False, drop=(), equal_count=False, never_drop=()):
+    def aggregate(
+            self,
+            x: CategorialArg = None,
+            drop_empty: bool = True,
+            name: str = '{name}',
+            count: Union[bool, str] = 'n',
+            drop_bad: bool = False,
+            drop: Sequence[str] = (),
+            equal_count: bool = False,
+            never_drop: Sequence[str] = (),
+    ) -> Dataset:
         """
         Return a Dataset with one case for each cell in x.
 
         Parameters
         ----------
-        x : None | str | categorial
+        x
             Model defining cells to which to reduce cases. By default (``None``)
             the Dataset is reduced to a single case.
-        drop_empty : bool
-            Drops empty cells in x from the Dataset. This is currently the only
-            option.
-        name : str
+        drop_empty
+            Drops empty cells in ``x`` from the Dataset. Currently has to be
+            ``True``.
+        name
             Name of the new Dataset.
-        count : None | str
+        count
             Add a variable with this name to the new Dataset, containing the
-            number of cases in each cell in x.
-        drop_bad : bool
+            number of cases in each cell of ``x``.
+        drop_bad
             Drop bad items: silently drop any items for which compression
             raises an error. This concerns primarily factors with non-unique
             values for cells in x (if drop_bad is False, an error is raised
             when such a Factor is encountered)
-        drop : sequence of str
+        drop
             Additional data-objects to drop.
-        equal_count : bool
+        equal_count
             Make sure the same number of rows go into each average. First, the
             cell with the smallest number of rows is determined. Then, for each
             cell, rows beyond that number are dropped.
-        never_drop : sequence of str
-            If the drop_bad=True setting would lead to dropping a variable
-            whose name is in never_drop, raise an error instead.
+        never_drop
+            Raise an error if the ``drop_bad=True`` setting would lead to
+            dropping a variable whose name is in ``never_drop``.
 
         Notes
         -----
@@ -6306,7 +6327,7 @@ class Dataset(dict):
         for each cell.
         """
         if not drop_empty:
-            raise NotImplementedError('drop_empty = False')
+            raise NotImplementedError(f'{drop_empty=}')
 
         if x is None:
             pass
@@ -7079,7 +7100,10 @@ class Interaction(_Effect):
         """
         return [delim.join(filter(None, map(str, case))) for case in self]
 
-    def aggregate(self, x):
+    def aggregate(
+            self,
+            x: CategorialArg,
+    ) -> Interaction:
         return Interaction(f.aggregate(x) for f in self.base)
 
     def isin(self, cells):

@@ -4,7 +4,7 @@ from enum import Enum
 from functools import partial
 from itertools import product
 from numbers import Number
-from typing import Any, Sequence, Union
+from typing import Any, Literal, Sequence, Union
 
 import matplotlib
 import mne
@@ -1063,6 +1063,7 @@ def _bin_table_ims(data, hemi, views, brain_func):
 
 
 class SPLayer(Enum):
+    UNDEFINED = 0
     ITEM = 1  # multiple separate NDVars
     SEQUENCE = 2  # One NDVar with multiple images (e.g. time sequence)
     OVERLAY = 3  # static overlay applying to all items/the whole sequence
@@ -1110,11 +1111,18 @@ class SequencePlotterLayer:
 class SequencePlotter:
     """Grid of anatomical images in one figure
 
+    Notes
+    -----
+    For plots with multiple layers, layers are added to the brain in the order
+    they were added to the ``SequencePlotter``.
+
     Examples
     --------
-    Plot an evoked response or TRF (time by source ``ndvar``) in 50 ms bins::
+    Plot an evoked response or TRF (i.e., a time by source :class:`NDVar`)
+    in 50 ms bins between 0 and 300 ms. Use the :meth:`~NDVar.extrema` method to
+    plot peak activity in each time bin::
 
-        ndvar_binned = ndvar.bin(0.05, 0, 0.3, 'extrema')
+        ndvar_binned = ndvar.bin(step=0.050, start=0, stop=0.3, func='extrema')
         sp = plot.brain.SequencePlotter()
         sp.set_brain_args(surf='smoothwm')
         sp.add_ndvar(ndvar_binned)
@@ -1147,7 +1155,7 @@ class SequencePlotter:
         self._data = []
         self._source = None
         self._frame_dim = None
-        self._bin_kind = None
+        self._bin_kind: SPLayer = SPLayer.UNDEFINED
         self._frame_order = None
         self._brain_args = {}
         self._parallel_view = {}
@@ -1404,32 +1412,41 @@ class SequencePlotter:
                 out.append(str(label))
         return out
 
-    def plot_table(self, hemi=None, view=('lateral', 'medial'), orientation='horizontal', labels=True, mode='rgb', antialiased=False, **kwargs):
+    def plot_table(
+            self,
+            hemi: Literal['lh', 'rh', 'both'] = None,
+            view: Union[str, Sequence] = ('lateral', 'medial'),
+            orientation: Literal['horizontal', 'vertical'] = 'horizontal',
+            labels: Union[bool, Sequence[str]] = True,
+            mode: Literal['rgb', 'rgba'] = 'rgb',
+            antialiased: bool = False,
+            **kwargs,
+    ) -> ImageTable:
         """Create a figure with the images
 
         Parameters
         ----------
-        hemi : 'lh' | 'rh' | 'both'
+        hemi
             Hemispheres to plot (default is all hemispheres with data).
-        view : str | list of {str | tuple}
+        view
             Views to plot. A view can be specified as a string, or as a tuple
             including parallel-view parameters ``(view, forward, up, scale)``,
             e.g., ``('lateral', 0, 10, 70)``.
-        orientation : 'vertical' | 'horizontal'
+        orientation
             Direction of the time/case axis.
-        labels : bool | list of str
+        labels
             Headers for columns/rows of images (default is inferred from the data).
-        mode : 'rgb' | 'rgba'
+        mode
             Image mode (default ```'rgb'``, set to ``'rgba'`` to include alpha
             channel).
-        antialiased : bool
+        antialiased
             Apply antialiasing to the images (default ``False``).
         ...
             Layout parameters for the figure.
 
         Returns
         -------
-        fig : plot.ImageTable
+        fig
             Figure created by the plot.
 
         Notes
@@ -1522,7 +1539,7 @@ class SequencePlotter:
                     if i is not None:
                         b.set_data_time_index(i)
                         self._capture(b, hemi_rows, views, mode, antialiased)
-            elif self._bin_kind == SPLayer.ITEM or self._bin_kind is None:  # None: overlays only
+            elif self._bin_kind in (SPLayer.ITEM, SPLayer.UNDEFINED):  # UNDEFINED: has overlays only
                 for i in bins:
                     for l in self._data:
                         if l.kind == SPLayer.OVERLAY or l.index == i:
@@ -1544,13 +1561,6 @@ class SequencePlotter:
         return figure
 
     def _capture(self, b, hemi_rows, views, mode, antialiased):
-        # Alternative saving image files
-        # import os
-        # import tempfile
-        # import PIL.Image
-        # from mayavi import mlab
-        # with tempfile.TemporaryDirectory() as tempdir:
-        # path = os.path.join(tempdir, 'brain.tiff')
         for row, view in zip(hemi_rows, views):
             if isinstance(view, str):
                 b.show_view(view)
@@ -1559,9 +1569,6 @@ class SequencePlotter:
             else:
                 b.show_view(view[0])
                 b.set_parallel_view(*view[1:])
-            # mlab.savefig(path, figure=b.brain_matrix[-1, -1]._f)
-            # image = PIL.Image.open(path)
-            # im = np.array(image)
             im = b.screenshot_single(mode, antialiased)
             row.append(im)
 
