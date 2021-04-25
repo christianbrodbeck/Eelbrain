@@ -484,8 +484,7 @@ class App(wx.App):
         for win in wx.GetTopLevelWindows():
             if not win.Close():
                 return
-        if not self.using_prompt_toolkit:
-            self.ExitMainLoop()
+        self.ExitMainLoop()
 
     def OnRedo(self, event):
         frame = self._get_active_frame()
