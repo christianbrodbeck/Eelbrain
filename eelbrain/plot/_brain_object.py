@@ -275,10 +275,10 @@ class Brain(TimeSlicer, surfer.Brain):
             raise ValueError("Trying to add NDVar without rh data to plot of rh")
         return source
 
-    def add_label(self, label, color=None, alpha=1, scalar_thresh=None,
-                  borders=False, hemi=None, subdir=None):
+    def add_label(self, label, color=None, alpha=1, scalar_thresh=None, borders=False, hemi=None, subdir=None, lighting=False, **kwargs):
         surfer.Brain.add_label(self, label, color, alpha, scalar_thresh,
                                borders, hemi, subdir)
+        self.labels_dict[label.name][0].actor.property.lighting = lighting
         if color is None:
             color = getattr(label, 'color', None) or "crimson"
         name = label if isinstance(label, str) else label.name
