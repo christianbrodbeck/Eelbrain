@@ -1072,13 +1072,14 @@ class SPLayer(Enum):
 class SPPlotType(Enum):
     DATA = 1
     LABEL = 2
-    FUNC = 3
+    MNE_LABEL = 3
+    FUNC = 4
 
 
 @dataclass
 class SequencePlotterLayer:
     kind: SPLayer
-    ndvar: NDVar
+    data: Union[NDVar, mne.Label, mne.BiHemiLabel]
     args: tuple
     kwargs: dict
     label: Sequence[str] = None
@@ -1100,9 +1101,17 @@ class SequencePlotterLayer:
 
     def plot(self, brain):
         if self.plot_type == SPPlotType.DATA:
-            brain.add_ndvar(self.ndvar, *self.args, time_label='', **self.kwargs)
+            brain.add_ndvar(self.data, *self.args, time_label='', **self.kwargs)
         elif self.plot_type == SPPlotType.LABEL:
-            brain.add_ndvar_label(self.ndvar, *self.args, **self.kwargs)
+            brain.add_ndvar_label(self.data, *self.args, **self.kwargs)
+        elif self.plot_type == SPPlotType.MNE_LABEL:
+            if isinstance(self.data, mne.BiHemiLabel):
+                label = getattr(self.data, brain.hemi)
+            elif self.data.hemi == brain.hemi:
+                label = self.data
+            else:
+                return
+            brain.add_label(label, **self.kwargs)
         elif self.plot_type == SPPlotType.FUNC:
             func = self.args[0]
             func(brain)
@@ -1228,6 +1237,23 @@ class SequencePlotter:
             index = self._n_items()
             kind = SPLayer.ITEM
         layer = SequencePlotterLayer(kind, None, args, {}, label, index, SPPlotType.FUNC)
+        self._data.append(layer)
+
+    def add_label(
+            self,
+            mne_label: Union[mne.Label, mne.BiHemiLabel],
+            *,
+            overlay: bool = False,
+            index: int = None,
+            label: str = None,
+            **kwargs,
+    ):
+        if overlay:
+            kind = SPLayer.OVERLAY
+        else:
+            index = self._index(index)
+            kind = SPLayer.ITEM
+        layer = SequencePlotterLayer(kind, mne_label, (), kwargs, label, index, SPPlotType.MNE_LABEL)
         self._data.append(layer)
 
     def add_ndvar(self, ndvar, *args, static=None, index=None, label=None, **kwargs):
@@ -1471,7 +1497,7 @@ class SequencePlotter:
         # determine hemisphere(s) to plot
         if hemi is None:
             hemis = []
-            sss = [data.ndvar.source for data in self._data if data.ndvar is not None]
+            sss = [data.data.source for data in self._data if isinstance(data.data, NDVar)]
             if any(ss.lh_n for ss in sss):
                 hemis.append('lh')
             if any(ss.rh_n for ss in sss):
@@ -1532,7 +1558,7 @@ class SequencePlotter:
                     l.plot(b)
                     if cmap_params is None and l.kind == SPLayer.SEQUENCE:
                         cmap_params = b._get_cmap_params()
-                        cmap_data = l.ndvar
+                        cmap_data = l.data
 
                 # capture images
                 for i in bins:
@@ -1546,7 +1572,7 @@ class SequencePlotter:
                             l.plot(b)
                             if cmap_params is None and l.plot_type == SPPlotType.DATA and l.kind == SPLayer.ITEM:
                                 cmap_params = b._get_cmap_params()
-                                cmap_data = l.ndvar
+                                cmap_data = l.data
                     self._capture(b, hemi_rows, views, mode, antialiased)
                     b.remove_data()
                     b.remove_labels()
