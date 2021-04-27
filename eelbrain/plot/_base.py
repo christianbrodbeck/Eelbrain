@@ -2105,7 +2105,7 @@ class BaseLayout:
             name: str = None,
             right_of: Union[EelFigure, int] = None,
             below: Union[EelFigure, int] = None,
-            axes: List[matplotlib.axes.Axes] = None,
+            axes: Union[matplotlib.axes.Axes, List[matplotlib.axes.Axes]] = None,
     ):
         self.h = h
         self.w = w
@@ -2116,6 +2116,8 @@ class BaseLayout:
         self.autoscale = autoscale
         self.title = asfmtext_or_none(title)
         self.name = asfmtext_or_none(name) or title
+        if isinstance(axes, matplotlib.axes.Axes):
+            axes = [axes]
         self.user_axes = axes
 
         x = y = None
