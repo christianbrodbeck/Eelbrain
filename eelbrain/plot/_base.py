@@ -2858,11 +2858,17 @@ class LegendMixin:
         labels : dict
             Dictionary with labels for cells.
         """
+        # whether to plot default legend
+        if loc is not None:
+            initial_loc = loc
+        elif len(handles) > 1:
+            initial_loc = 'upper right'
+        else:
+            initial_loc = False
         self.__handles = handles
         self.legend = None
         self.__labels = copy(labels)
-        if self.__handles:
-            self.plot_legend(loc, labels)
+        self.plot_legend(initial_loc, labels)
 
     def _fill_toolbar(self, tb):
         from .._wxgui import wx
