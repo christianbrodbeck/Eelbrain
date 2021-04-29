@@ -304,8 +304,11 @@ def op_name(
     return out_name, info
 
 
-def nice_label(x, labels={}):
-    if x.name in labels:
+def nice_label(
+        x: Union[Factor, Var, NDVar],
+        labels: Dict[CellArg, str] = None,
+):
+    if labels is not None and x.name in labels:
         return labels[x.name]
     elif 'label' in x.info:
         return x.info['label']

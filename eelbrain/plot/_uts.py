@@ -55,7 +55,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     legend
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
-    labels : dict
+    labels
         Alternative labels for legend as ``{cell: label}`` dictionary (preserves
         order).
     axtitle

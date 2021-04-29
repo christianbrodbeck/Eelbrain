@@ -2,7 +2,7 @@
 """Statistical tests for univariate variables"""
 from functools import partial
 import itertools
-from typing import Literal, Sequence, Union
+from typing import Dict, Literal, Sequence, Union
 
 import numpy as np
 import scipy.stats
@@ -1053,7 +1053,7 @@ def pairwise(
         sub: IndexArg = None,
         ds: Dataset = None,
         par: bool = True,
-        corr: Union[None, str] = 'Hochberg',
+        corr: MCCArg = 'Hochberg',
         trend: Union[bool, str] = False,
         title: str = '{desc}',
         mirror: bool = False,
@@ -1232,7 +1232,12 @@ def _pairwise(
     return out
 
 
-def pairwise_correlations(xs, sub=None, ds=None, labels={}):
+def pairwise_correlations(
+        xs: Sequence[Union[str, Var, NDVar]],
+        sub: IndexArg = None,
+        ds: Dataset = None,
+        labels: Dict[CellArg, str] = None,
+):
     """Pairwise correlation table
 
     Parameters
@@ -1245,7 +1250,7 @@ def pairwise_correlations(xs, sub=None, ds=None, labels={}):
         If a Dataset is given, all data-objects can be specified as names of
         Dataset variables.
     labels : {str: str} dict
-        Labels for ``xs`` in the table (mapping ``x.name`` to string labels).
+        Alternative labels for ``xs`` as ``{x.name: label}`` dictionary.
 
     Returns
     -------

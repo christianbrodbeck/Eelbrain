@@ -150,6 +150,32 @@ class RawSource(RawPipe):
     See Also
     --------
     MneExperiment.raw
+
+    Examples
+    --------
+    If you would load the EEG data like this::
+
+        form pathlib import Path
+
+        subject = '0001'
+        raw = mne.io.read_raw_brainvision(
+            f'/data/eeg/{subject}/raw/task_{subject}.vhdr',
+            eog=['EOG horizontal left', 'EOG horizontal right', 'EOG vertical below', 'EOG vertical above'],
+        )
+        raw.rename_channels({'FZ': 'Fz', 'OZ': 'Oz', 'CZ': 'Cz', 'Ref right mastoid': 'A1'})
+        raw.set_montage('standard_1020')
+
+    Then the equivalent :class:`RawSource` is::
+
+        raw = {
+            'raw': RawSource(
+                'raw/{recording}_{subject}.vhdr',
+                reader=mne.io.read_raw_brainvision,
+                rename_channels={'FZ': 'Fz', 'OZ': 'Oz', 'CZ': 'Cz', 'Ref right mastoid': 'A1'},
+                eog=['EOG horizontal left', 'EOG horizontal right', 'EOG vertical below', 'EOG vertical above'],
+                montage='standard_1020'),
+        }
+
     """
     _dig_sessions: dict = None  # {subject: {for_recording: use_recording}}
     bads_path: str = None  # set on linking
@@ -799,7 +825,6 @@ class RawReReference(CachedRawPipe):
     --------
     MneExperiment.raw
     """
-
     def __init__(self, source, reference='average', add=None, drop=None, cache=False):
         CachedRawPipe.__init__(self, source, cache)
         if not isinstance(reference, str):

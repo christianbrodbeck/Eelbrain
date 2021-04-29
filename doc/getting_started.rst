@@ -18,15 +18,10 @@ For details see the API :ref:`reference`.
 Interacting with other Python libraries
 ---------------------------------------
 
-- `Pandas <https://pandas.pydata.org>`_
-  - Convert an Eelbrain :class:`Dataset` to a :class:`pandas.DataFrame` using :meth:`Dataset.as_dataframe`
-  - Useful libraries:
-    - `Pingouin <https://pingouin-stats.org>`_: statistics
-    - `Seaborn <http://seaborn.pydata.org>`_: plots
-
-- `R <http://r-project.org>`_
-  - Use R from Python through the :mod:`rpy2` bridge
-  - Transfer data between R ``data.frame`` and Eelbrain :class:`Dataset` using :meth:`Dataset.from_r` and :meth:`Dataset.to_r`
+`Pandas <https://pandas.pydata.org>`_
+    Convert an Eelbrain :class:`Dataset` to a :class:`pandas.DataFrame` using :meth:`Dataset.as_dataframe`. Useful libraries: `Pingouin <https://pingouin-stats.org>`_ (statistics); `Seaborn <http://seaborn.pydata.org>`_ (plotting).
+`R <http://r-project.org>`_
+    When using R from Python through the :mod:`rpy2` bridge, transfer data between R ``data.frame`` and Eelbrain :class:`Dataset` using :meth:`Dataset.from_r` and :meth:`Dataset.to_r`.
 
 
 MacOS: Framework Build
@@ -55,7 +50,7 @@ Quitting iPython
 
 Sometimes iPython seems to get stuck after this line::
 
-	Do you really want to exit ([y]/n)? y
+    Do you really want to exit ([y]/n)? y
 
 In those instances, pressing ctrl-c usually terminates iPython immediately.
 

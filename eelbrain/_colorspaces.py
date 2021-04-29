@@ -261,7 +261,7 @@ def twoway_colors(
 
 
 def two_step_colormap(left_max, left, center='transparent', right=None, right_max=None, name='two-step'):
-    """Colormap using lightness to extend range
+    """Colormap with 2 or 4 gradients (e.g., ``white - red - transparent - blue - white``)
 
     Parameters
     ----------
@@ -273,7 +273,7 @@ def two_step_colormap(left_max, left, center='transparent', right=None, right_ma
         Color for the middle value; 'transparent to make the middle transparent
         (default).
     right : matplotlib color
-        Right middle of the colormap (if not specified, tyhe colormap ends at
+        Right middle of the colormap (if not specified, the colormap ends at
         the location specified by ``center``).
     right_max : matplotlib color
         Right end of the colormap.

@@ -198,7 +198,7 @@ def convert_pickle_protocol(
         to_protocol: int = 4,
         pattern: str = '**/*.pickle',
 ):
-    """Re-save all pickle files with a specific protocol
+    """Load and re-save pickle files with a specific protocol
 
     Parameters
     ----------
@@ -207,13 +207,23 @@ def convert_pickle_protocol(
     to_protocol
         Protocol to re-save with.
     pattern
-        Filename pattern used to find pickle files.
+        Filename pattern used to find pickle files (default is all ``*.pickle``
+        files under ``root``).
 
     Notes
     -----
-    Python 3.8 introduced a new pickle protocol 5, which Python 3.7 can's read.
-    This function converts such files in order to make them readable with older
-    version of Python.
+    Python 3.8 introduced a new pickle protocol 5, which older versions of
+    Python can't read. Trying to unpickle such files results in the following
+    error::
+
+        ValueError: unsupported pickle protocol: 5
+
+    A simple solution to make those files readable in Python 3.7 and below is
+    to use Python 3.8 to load these files and re-save them with a lower protocol
+    version (e.g., version 4).
+    The ``convert_pickle_protocol`` function allows doing that for a large
+    number of files with a single command (by default, to all files in the
+    ``root`` directory).
     """
     if root is None:
         root = ui.ask_dir("Select folder", "Select folder to search for pickle files")
