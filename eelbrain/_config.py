@@ -24,9 +24,10 @@ CONFIG = {
 }
 
 # Python 3.8 switched default to spawn, which makes pytest hang  (https://docs.python.org/3/whatsnew/3.8.html#multiprocessing)
-method = multiprocessing.get_start_method()
 if sys.version_info.minor >= 8 and IS_OSX:
     method = 'fork'
+else:
+    method = None
 mpc = multiprocessing.get_context(method)
 
 
