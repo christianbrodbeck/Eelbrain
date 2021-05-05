@@ -280,7 +280,7 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         if colors is False:
             styles = False
         else:
-            styles = find_cell_styles(ct.x, colors, ct.cells)
+            styles = find_cell_styles(ct.cells, colors)
         if label_fliers and ct.match is None:
             raise TypeError(f"label_fliers={label_fliers!r} without specifying the match parameter: match is needed to determine labels")
         if ct.x is None and test is True:
@@ -416,7 +416,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         if colors is False:
             styles = False
         else:
-            styles = find_cell_styles(ct.x, colors, ct.cells)
+            styles = find_cell_styles(ct.cells, colors)
         if pool_error is None:
             pool_error = ct.all_within
 
@@ -552,7 +552,7 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
         if colors is False:
             styles = False
         else:
-            styles = find_cell_styles(ct.x, colors, ct.cells)
+            styles = find_cell_styles(ct.cells, colors)
         if pool_error is None:
             pool_error = ct.all_within
 
@@ -860,7 +860,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         if not line_plot:
             legend = False
 
-        styles = find_cell_styles(categories, colors)
+        styles = find_cell_styles(categories.cells, colors)
 
         # get axes
         layout = Layout(1, 1, 5, **kwargs)
@@ -1074,7 +1074,7 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
                 cmap = colors
             else:
                 cat = color
-                styles = find_cell_styles(color, colors)
+                styles = find_cell_styles(color.cells, colors)
 
         # size
         if size is not None:

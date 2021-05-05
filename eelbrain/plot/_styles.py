@@ -8,7 +8,7 @@ from functools import reduce
 from itertools import chain, product
 from math import ceil
 import operator
-from typing import Any, Dict, Sequence, Tuple, Union
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import matplotlib as mpl
@@ -77,18 +77,16 @@ def to_styles_dict(colors: Dict[CellArg, Any]) -> StylesDict:
 
 
 def find_cell_styles(
-        x: CategorialVariable,
-        colors: ColorsArg,
         cells: Sequence[CellArg] = None,
+        colors: ColorsArg = None,
         fallback: bool = True,
 ) -> StylesDict:
     """Process the colors arg from plotting functions
 
     Parameters
     ----------
-    x
-        Model for which colors are needed. ``None`` if only a single value is
-        plotted.
+    cells
+        Cells for which colors are needed.
     colors
         Colors for the plots if multiple categories of data are plotted.
         **str**: A colormap name; cells are mapped onto the colormap in
@@ -97,21 +95,17 @@ def find_cell_styles(
         **dict**: A dictionary mapping each cell to a color.
         Colors are specified as `matplotlib compatible color arguments
         <http://matplotlib.org/api/colors_api.html>`_.
-    cells
-        In case only a subset of cells is used.
     fallback
         If a cell is missing, fall back on partial cells (on by default).
     """
-    if x is None:
-        if not isinstance(colors, dict):
+    if cells in (None, (None,)):
+        if isinstance(colors, dict):
+            out = colors
+        else:
             if colors is None:
                 colors = 'k'
-            colors = {None: colors}
-        return to_styles_dict(colors)
-    elif cells is None:
-        cells = x.cells
-
-    if isinstance(colors, (list, tuple)):
+            out = {None: colors}
+    elif isinstance(colors, (list, tuple)):
         if len(colors) < len(cells):
             raise ValueError(f"colors={colors!r}: only {len(colors)} colors for {len(cells)} cells.")
         out = dict(zip(cells, colors))
@@ -132,7 +126,16 @@ def find_cell_styles(
             if missing:
                 raise KeysMissing(missing, 'colors', colors)
     elif colors is None or isinstance(colors, str):
-        out = colors_for_categorial(x, cmap=colors)
+        if all(isinstance(cell, str) for cell in cells):
+            out = colors_for_oneway(cells, cmap=colors)
+        elif all(isinstance(cell, tuple) for cell in cells):
+            ns = {len(cell) for cell in cells}
+            if len(ns) == 1:
+                out = colors_for_nway(list(zip(*cells)))
+            else:
+                raise NotImplementedError(f"{cells=}: unequal cell size")
+        else:
+            raise NotImplementedError(f"{cells=}: unequal cell size")
     else:
         raise TypeError(f"colors={colors!r}")
     return to_styles_dict(out)

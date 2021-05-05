@@ -1258,7 +1258,7 @@ class PlotData:
             x = ct._align(x, ds=ds, coerce=ascategorial)
         title = frame_title(y, x, xax)
         # find styles
-        styles = find_cell_styles(ct.x, colors)
+        styles = find_cell_styles(ct.cells, colors)
         # find masks
         if mask is None:
             masks = defaultdict(lambda: None)
@@ -3479,7 +3479,7 @@ class XAxisMixin:
 
     def _init_with_data(
             self,
-            epochs: List[List[NDVar]],
+            epochs: Sequence[Sequence[NDVar]],
             xdim: str,
             xlim: Union[float, Tuple[float, float]] = None,
             axes: List[matplotlib.axes.Axes] = None,

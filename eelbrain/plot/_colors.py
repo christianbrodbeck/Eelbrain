@@ -5,14 +5,17 @@ from itertools import chain
 from typing import Any, Dict, Literal, Sequence, Union
 
 import numpy as np
-import matplotlib as mpl
+import matplotlib
+import matplotlib.cm
 from matplotlib.colors import LinearSegmentedColormap, Colormap, Normalize, to_rgb
 from matplotlib.colorbar import ColorbarBase
+import matplotlib.patches
 from matplotlib.ticker import FixedFormatter, MaxNLocator
 
 from .._data_obj import CellArg, cellname
 from .._utils import IS_WINDOWS
 from ._base import EelFigure, Layout, AxisScale, CMapArg, ColorArg, fix_vlim_for_cmap
+from ._styles import find_cell_styles
 
 
 POINT_SIZE = 0.0138889  # 1 point in inches
@@ -76,6 +79,12 @@ class ColorGrid(EelFigure):
             else:
                 raise KeyError(f"Neither {(row_cell_0, col_cell_0)} nor {(col_cell_0, row_cell_0)} exist as a key in colors")
 
+        if row_first:
+            cells = list(zip(row_cells, column_cells))
+        else:
+            cells = list(zip(column_cells, row_cells))
+        styles = find_cell_styles(cells, colors)
+
         # reverse rows so we can plot upwards
         row_cells = tuple(reversed(row_cells))
         n_rows = len(row_cells)
@@ -90,7 +99,7 @@ class ColorGrid(EelFigure):
             row_labels = row_cells
 
         # default size
-        chr_size = mpl.rcParams['font.size'] * POINT_SIZE
+        chr_size = matplotlib.rcParams['font.size'] * POINT_SIZE
         if size is None:
             size = chr_size * LEGEND_SIZE
         w_default = size * (n_cols + 1) + chr_size * max(len(l) for l in row_labels)
@@ -113,11 +122,11 @@ class ColorGrid(EelFigure):
                     cell = (column_cells[col], row_cells[row])
 
                 if shape == 'box':
-                    patch = mpl.patches.Rectangle((col, row), 1, 1, fc=colors[cell], ec='none')
+                    patch = matplotlib.patches.Rectangle((col, row), 1, 1, ec='none', **styles[cell].patch_args)
                     ax.add_patch(patch)
                 elif shape == 'line':
                     y = row + 0.5
-                    ax.plot([col, col + 1], [y, y], color=colors[cell])
+                    ax.plot([col, col + 1], [y, y], **styles[cell].line_args)
                 else:
                     raise ValueError(f"shape={shape!r}")
 
@@ -248,13 +257,14 @@ class ColorList(EelFigure):
             shape: str = 'box',
             **kwargs):
         if cells is None:
-            cells = tuple(colors.keys())
+            cells = colors.keys()
         elif isinstance(cells, Iterator):
             cells = tuple(cells)
+        styles = find_cell_styles(cells, colors)
 
         if h == 'auto':
             if size is None:
-                size = mpl.rcParams['font.size'] * LEGEND_SIZE * POINT_SIZE
+                size = matplotlib.rcParams['font.size'] * LEGEND_SIZE * POINT_SIZE
             h = len(cells) * size
         elif size is None:  # size = h / len(cells)
             pass
@@ -278,10 +288,10 @@ class ColorList(EelFigure):
             bottom = n - i - 1
             y = bottom + 0.5
             if shape == 'box':
-                patch = mpl.patches.Rectangle((0, bottom), 1, 1, fc=colors[cell], ec='none', zorder=1)
+                patch = matplotlib.patches.Rectangle((0, bottom), 1, 1, ec='none', **styles[cell].patch_args)
                 ax.add_patch(patch)
             elif shape == 'line':
-                ax.plot([0, 1], [y, y], color=colors[cell])
+                ax.plot([0, 1], [y, y], **styles[cell].line_args)
             else:
                 raise ValueError(f"shape={shape!r}")
             h = ax.text(1.1, y, labels.get(cell, cell), va='center', ha='left', zorder=2)
@@ -392,11 +402,11 @@ class ColorBar(EelFigure):
                 raise NotImplementedError("threshold parameter with cmap=<array>")
             if cmap.max() > 1:
                 cmap = cmap / 255.
-            cm = mpl.colors.ListedColormap(cmap, 'LUT')
+            cm = matplotlib.colors.ListedColormap(cmap, 'LUT')
         elif isinstance(cmap, Colormap):
             cm = cmap
         else:
-            cm = mpl.cm.get_cmap(cmap)
+            cm = matplotlib.cm.get_cmap(cmap)
 
         # prepare layout
         if orientation == 'horizontal':
