@@ -1401,7 +1401,7 @@ class SequencePlotter:
         self._frame_order = order
 
     def _get_frame_labels(self, labels):
-        if labels is None:
+        if labels in (None, False):
             return
         elif labels is True:
             if self._bin_kind == SPLayer.ITEM:
