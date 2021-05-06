@@ -10528,7 +10528,7 @@ class UTS(Dimension):
             label: Union[bool, str],
     ):
         # display s -> ms
-        s_to_ms = (self.unit == 's') and (max(self.tmax, -self.tmin) < 10.) and not (self.tstep % 1.)
+        s_to_ms = self.unit == 's' and -10 < self.tmax < 10 and -10 < self.tmin < 10 and not self.tstep % 0.001
 
         if label is True:
             if s_to_ms:
