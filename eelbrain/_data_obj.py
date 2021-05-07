@@ -6296,6 +6296,7 @@ class Dataset(dict):
             drop: Sequence[str] = (),
             equal_count: bool = False,
             never_drop: Sequence[str] = (),
+            func: Callable = np.mean,
     ) -> Dataset:
         """
         Return a Dataset with one case for each cell in x.
@@ -6327,6 +6328,9 @@ class Dataset(dict):
         never_drop
             Raise an error if the ``drop_bad=True`` setting would lead to
             dropping a variable whose name is in ``never_drop``.
+        func
+            Function for aggregating numerical variables (:class:`Var` and
+            :class:`NDVar`); default is :func:`numpy.mean`
 
         Notes
         -----
@@ -6336,13 +6340,15 @@ class Dataset(dict):
         if not drop_empty:
             raise NotImplementedError(f'{drop_empty=}')
 
-        if x is None:
-            pass
-        elif isinstance(x, str) and x == '':
-            x = None
-        else:
+        if isinstance(x, str):
             if equal_count:
-                self = self.equalize_counts(x)
+                return self.equalize_counts(x).aggregate(x, drop_empty, name, count, drop_bad, drop, False, never_drop, func)
+            elif x == '':
+                x = None
+        elif equal_count:
+            raise NotImplementedError('For equal_count, x needs to be specified as str')
+
+        if x is not None:
             x = ascategorial(x, ds=self)
 
         ds = Dataset(name=name.format(name=self.name), info=self.info)
@@ -6357,7 +6363,9 @@ class Dataset(dict):
             if k in drop:
                 continue
             try:
-                if hasattr(v, 'aggregate'):
+                if isnumeric(v):
+                    ds[k] = v.aggregate(x, func=func)
+                elif hasattr(v, 'aggregate'):
                     ds[k] = v.aggregate(x)
                 elif isinstance(v, MNE_EPOCHS):
                     if x is None:
