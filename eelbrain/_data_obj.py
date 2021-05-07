@@ -5491,17 +5491,22 @@ class Datalist(list):
     def __add__(self, other):
         return Datalist(super(Datalist, self).__add__(other), fmt=self._fmt)
 
-    def aggregate(self, x, merge='mean'):
+    def aggregate(
+            self,
+            x: CategorialArg,
+            func: Union[Callable, str] = 'mean',
+    ) -> Datalist:
         """
         Summarize cases for each cell in x
 
         Parameters
         ----------
-        x : categorial
+        x
             Cells which to aggregate.
-        merge : str
-            How to merge entries.
-            ``'mean'``: sum elements and dividie by cell length
+        func
+            How to merge entries. Can be a :mod:`numpy` function such as
+            :func:`numpy.mean`, or a :class:`str` special method:
+            ``'mean'``: sum elements and divide by cell length (default).
         """
         if x is None:
             cell_xs = [self]
@@ -5511,18 +5516,20 @@ class Datalist(list):
             cell_xs = (self[x == cell] for cell in x.cells)
 
         x_out = []
-        for x_cell in cell_xs:
-            if len(x_cell) == 1:
-                xc = x_cell
-            elif merge == 'mean':
-                try:
+        try:
+            for x_cell in cell_xs:
+                if len(x_cell) == 1:
+                    xc = x_cell[0]
+                elif isinstance(func, Callable):
+                    xc = func(x_cell, axis=1)
+                elif func == 'mean':
                     xc = reduce(operator.add, x_cell)
                     xc /= len(x_cell)
-                except TypeError:
-                    raise TypeError(f"{dataobj_repr(self)}: Objects in Datalist do not support averaging (if aggregating a Dataset, try dropping this variable)")
-            else:
-                raise ValueError(f"merge={merge!r}")
-            x_out.append(xc)
+                else:
+                    raise ValueError(f"{func=}")
+                x_out.append(xc)
+        except TypeError:
+            raise TypeError(f"{dataobj_repr(self)}: Objects in Datalist do not support aggregating with {func=} (if aggregating a Dataset, try dropping this variable)")
 
         return Datalist(x_out, fmt=self._fmt)
 
