@@ -198,11 +198,8 @@ class AbsoluteLayoutFigure(XAxisMixin, Figure):
             if ylim is not None:
                 ax.set_ylim(ylim)
         XAxisMixin.__init__(self, None, None, self._xlim, self.axes)
-
         if outline:
-            artist = matplotlib.patches.Rectangle((0, 0), 1, 1, fc='none', ec='k')
-            self.figure.add_artist(artist)
-
+            self.draw_outline()
         self._show()
 
     @wraps(matplotlib.figure.Figure.text)

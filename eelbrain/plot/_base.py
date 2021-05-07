@@ -93,6 +93,7 @@ import weakref
 import matplotlib as mpl
 import matplotlib.axes
 import matplotlib.font_manager
+import matplotlib.patches
 import matplotlib.text
 from matplotlib.colors import Colormap
 from matplotlib.figure import SubplotParams
@@ -1918,6 +1919,16 @@ class EelFigure(MatplotlibFigure):
         self._draw_crosshairs = enable
         if not enable:
             self._remove_crosshairs(True)
+
+    def draw_outline(self, color='k', **kwargs):
+        """Draw the outline of the figure
+
+        Mainly for fine-tuning the figure layout in Jupyter, which crops
+        the display area based on figure elements rather than actual figure size.
+        """
+        kwargs.setdefault('fc', 'none')
+        artist = matplotlib.patches.Rectangle((0, 0), 1, 1, ec=color, **kwargs)
+        self.figure.add_artist(artist)
 
     def save(self, *args, **kwargs):
         "Short-cut for Matplotlib's :meth:`~matplotlib.figure.Figure.savefig()`"
