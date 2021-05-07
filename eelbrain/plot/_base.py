@@ -2345,7 +2345,8 @@ class Layout(BaseLayout):
             elif h is None:
                 h = w / ax_aspect
         elif nax == 1:
-            ncol = nrow = 1
+            ncol = ncol or 1
+            nrow = nrow or 1
         elif nrow is None and ncol is None:
             if w and axw:
                 trim = 'row'
@@ -2396,10 +2397,8 @@ class Layout(BaseLayout):
 
         if nax:
             if nrow is None:
-                ncol = min(nax, ncol)
                 nrow = math.ceil(nax / ncol)
             elif ncol is None:
-                nrow = min(nax, nrow)
                 ncol = math.ceil(nax / nrow)
 
             if trim == 'row':
