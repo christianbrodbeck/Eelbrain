@@ -1311,6 +1311,12 @@ def test_ndvar_indexing():
     assert x[('L10', 0.1)] == 20
     assert x.sub(source='L10').argmax() == 0.1
     assert x.sub(time=0.1).argmax() == 'L10'
+    # across axis
+    x9 = x[:9]
+    assert_array_equal(x9.argmax('time'), x9.x.argmax(1) * 0.01)
+    assert_array_equal(x9.argmin('time'), x9.x.argmin(1) * 0.01)
+    assert x9[0].argmax('time') == 0.04
+    assert x9[0].argmin('time') == 0.00
 
     # broadcasting
     u = ds[0, 'uts']

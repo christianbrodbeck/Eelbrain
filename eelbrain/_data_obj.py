@@ -3636,30 +3636,70 @@ class NDVar(Named):
         """
         return self._aggregate_over_dims(axis, regions, np.any)
 
-    def argmax(self):
-        """Find the index of the largest value.
+    def argmax(
+            self,
+            axis: Union[str, int] = None,
+            name: str = None,
+    ) -> Union[float, str, tuple, NDVar, Var]:
+        """Find the index of the largest value
 
         ``ndvar[ndvar.argmax()]`` is equivalent to ``ndvar.max()``.
 
+        Parameters
+        ----------
+        axis
+            Axis along which to find the maximum (by default find the maximum
+            in the whole :class:`NDVar`).
+        name
+            Name of the output :class:`NDVar` (default is the current name).
+
         Returns
         -------
-        argmax : index | tuple
+        argmax
             Index appropriate for the NDVar's dimensions. If NDVar has more
             than one dimensions, a tuple of indices.
         """
+        if axis is not None:
+            if isinstance(axis, str):
+                axis = self.get_axis(axis)
+            dim = self.dims[axis]
+            x = np.argmax(self.x, axis)
+            x = dim._dim_index(x)
+            dims = [dim_ for i, dim_ in enumerate(self.dims) if i != axis]
+            return self._package_aggregated_output(x, dims, name)
         return self._dim_index_unravel(self.x.argmax())
 
-    def argmin(self):
-        """Find the index of the smallest value.
+    def argmin(
+            self,
+            axis: Union[str, int] = None,
+            name: str = None,
+    ) -> Union[float, str, tuple, NDVar, Var]:
+        """Find the index of the smallest value
 
         ``ndvar[ndvar.argmin()]`` is equivalent to ``ndvar.min()``.
 
+        Parameters
+        ----------
+        axis
+            Axis along which to find the minimum (by default find the minimum
+            in the whole :class:`NDVar`).
+        name
+            Name of the output :class:`NDVar` (default is the current name).
+
         Returns
         -------
-        argmin : index | tuple
+        argmin
             Index appropriate for the NDVar's dimensions. If NDVar has more
             than one dimensions, a tuple of indices.
         """
+        if axis is not None:
+            if isinstance(axis, str):
+                axis = self.get_axis(axis)
+            dim = self.dims[axis]
+            x = np.argmin(self.x, axis)
+            x = dim._dim_index(x)
+            dims = [dim_ for i, dim_ in enumerate(self.dims) if i != axis]
+            return self._package_aggregated_output(x, dims, name)
         return self._dim_index_unravel(self.x.argmin())
 
     def _array_index(self, arg):
@@ -4647,7 +4687,7 @@ class NDVar(Named):
             mask = all_masked
             x = np.ma.masked_array(x, mask)
         dims = self.dims[:axis] + self.dims[axis + 1:]
-        return self._package_aggregated_output(x, dims, name, self.info)
+        return self._package_aggregated_output(x, dims, name)
 
     def ols(self, x, name=None):
         """Sample-wise ordinary least squares regressions
@@ -4744,14 +4784,17 @@ class NDVar(Named):
                 "dependent variable (%i)" % (len(x), len(self)))
 
         t = stats.lm_t(self.x, x._parametrize())[2][1:]  # drop intercept
-        return NDVar(t, (Case, *self.dims[1:]), name or self.name, self.info)
+        if name is None:
+            name = self.name
+        return NDVar(t, (Case, *self.dims[1:]), name, self.info)
 
     def _package_aggregated_output(self, x, dims, name, info=None):
-        args = op_name(self, info=info, name=name)
-        ndims = len(dims)
-        if ndims == 0:
+        if len(dims) == 0:
             return x
-        elif ndims == 1 and isinstance(dims[0], Case):
+        if info is None:
+            info = self.info
+        args = op_name(self, info=info, name=name)
+        if len(dims) == 1 and isinstance(dims[0], Case):
             return Var(x, *args)
         else:
             return NDVar(x, dims, *args)
