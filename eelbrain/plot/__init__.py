@@ -5,7 +5,7 @@ from .._colorspaces import two_step_colormap
 
 from ._base import reset_rc
 from ._colors import ColorBar, ColorGrid, ColorList
-from ._decorations import mark_difference
+from ._decorations import figure_outline, mark_difference
 from ._figure import Figure
 from ._glassbrain import GlassBrain
 from ._line import LineStack

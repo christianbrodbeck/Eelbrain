@@ -2,8 +2,23 @@
 from typing import Any, Literal, Union
 
 import matplotlib.axes
+import matplotlib.patches
 
 from .._stats import test
+
+
+def figure_outline(color='k', figure=None, **kwargs):
+    """Draw the outline of the current figure
+
+    Mainly for fine-tuning the figure layout in Jupyter, which crops
+    the display area based on figure elements rather than actual figure size.
+    """
+    if figure is None:
+        from matplotlib import pyplot
+        figure = pyplot.gcf()
+    kwargs.setdefault('fc', 'none')
+    artist = matplotlib.patches.Rectangle((0, 0), 1, 1, ec=color, **kwargs)
+    figure.add_artist(artist)
 
 
 def mark_difference(
