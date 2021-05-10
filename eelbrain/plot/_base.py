@@ -2667,6 +2667,75 @@ class VariableAspectLayout(BaseLayout):
             ax.id = i
 
 
+def subplots(
+        nrows: int = 1,
+        ncols: int = 1,
+        axh: float = None,
+        axw: float = None,
+        h: float = None,
+        w: float = None,
+        left: float = None,
+        right: float = None,
+        wspace: float = None,
+        width_ratios: Sequence[float] = None,
+        bottom: float = None,
+        top: float = None,
+        hspace: float = None,
+        height_ratios: Sequence[float] = None,
+        **kwargs,
+):
+    """Specify :func:`matplotlib.pyplot.subplots` parameters in inches
+
+    Parameters
+    ----------
+    nrows
+        Number of subplot rows.
+    ncols
+        Number of subplot columns.
+    axh
+        Height of each axes.
+    axw
+        Width of each axes.
+    h
+        Figure height.
+    w
+        Figure width.
+    left
+        Margin to the left of the axes.
+    right
+        Margin to the right of the axes.
+    wspace
+        Width of the margin between axes.
+    width_ratios
+        The relative widths of the columns (see :class:`matplotlib.gridspec.GridSpec`).
+    bottom
+        Margin below the axes.
+    top
+        Margin above the axes.
+    hspace
+        Height of the margin between axes.
+    height_ratios
+        The relative heights of the rows (see :class:`matplotlib.gridspec.GridSpec`).
+    **
+        Other parameters for :func:`matplotlib.pyplot.subplots`.
+    """
+    from matplotlib import pyplot
+
+    margins = {'left': left, 'bottom': bottom, 'right': right, 'top': top, 'wspace': wspace, 'hspace': hspace}
+    layout = Layout(nrows*ncols, 1, 2, False, None, h, w, axh, axw, nrows, ncols, None, margins)
+    gridspec_kw = {
+        'left': layout.margins['left'] / layout.w,
+        'right': 1 - layout.margins['right'] / layout.w,
+        'wspace': layout.margins['wspace'] / layout.axw,
+        'width_ratios': width_ratios,
+        'bottom': layout.margins['bottom'] / layout.h,
+        'top': 1 - layout.margins['top'] / layout.h,
+        'hspace': layout.margins['hspace'] / layout.axh,
+        'height_ratios': height_ratios,
+    }
+    return pyplot.subplots(layout.nrow, layout.ncol, figsize=(layout.w, layout.h), gridspec_kw=gridspec_kw, **kwargs)
+
+
 class ColorBarMixin:
     """Colorbar toolbar button mixin
 
