@@ -8806,8 +8806,12 @@ class Sensor(Dimension):
         Spatial position of all sensors.
     names : list of str
         Ordered list of sensor names.
-    x, y, z : array  (n_sensors,)
-        Sensor position x, y and z coordinates.
+    right : NDVar
+        Sensor position along left-right axis.
+    anterior : numpy.array  (n_sensors,)
+        Sensor position along posterior-anterior axis.
+    superior : numpy.array  (n_sensors,)
+        Sensor position along inferior-superior axis.
 
     Notes
     -----
@@ -9075,6 +9079,18 @@ class Sensor(Dimension):
             return 'z+'
         else:
             return proj
+
+    @LazyProperty
+    def right(self):
+        return NDVar(self.x, self)
+
+    @LazyProperty
+    def anterior(self):
+        return NDVar(self.y, self)
+
+    @LazyProperty
+    def superior(self):
+        return NDVar(self.z, self)
 
     def get_connectivity(self):
         """Sensor connectivity as list of ``(name_1, name_2)``"""
