@@ -1,9 +1,10 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from dataclasses import dataclass
 from enum import Enum
-from functools import partial
+from functools import partial, reduce
 from itertools import product
 from numbers import Number
+import operator
 from typing import Any, Literal, Sequence, Union
 
 import matplotlib
@@ -652,7 +653,12 @@ class ImageTable(ColorBarMixin, EelFigure):
         if column_labels:
             self.add_column_titles(column_labels)
 
-    def _add_ims(self, ims, cmap_params, cmap_data):
+    def _add_ims(
+            self,
+            ims: Sequence,  # shape = (rows, columns)
+            cmap_params,
+            cmap_data,
+    ):
         for row, column in product(range(self._n_rows), range(self._n_columns)):
             ax = self.axes[row * self._n_columns + column]
             ax.imshow(ims[row][column])
@@ -680,13 +686,16 @@ class ImageTable(ColorBarMixin, EelFigure):
         """
         if len(titles) > self._n_columns:
             raise ValueError(f"titles={titles}: {len(titles)} titles for {self._n_columns} columns")
+        # distribute titles over columns
+        n = self._n_columns / len(titles)  # columns per title
+        column_width = self._layout.axw * n + self._layout.margins['wspace'] * (n - 1)
+        # center
         if x is None:
-            x = self._layout.axw / 2
-        x_left = self._layout.margins['left'] + x
-        x_offset = self._layout.margins['wspace'] + self._layout.axw
+            x = column_width / 2
+        first = self._layout.margins['left'] + x
         y_ = 1 - y / self._layout.h
         for i, label in enumerate(titles):
-            x_ = (x_left + i * x_offset) / self._layout.w
+            x_ = (first + i * column_width) / self._layout.w
             self.figure.text(x_, y_, label, va=va, ha=ha, **kwargs)
         self.draw()
 
@@ -707,13 +716,16 @@ class ImageTable(ColorBarMixin, EelFigure):
         """
         if len(titles) > self._n_rows:
             raise ValueError(f"titles={titles}: {len(titles)} titles for {self._n_rows} rows")
+        # distribute titles over columns
+        n = self._n_rows / len(titles)  # columns per title
+        row_height = self._layout.axh * n + self._layout.margins['hspace'] * (n - 1)
+        # center
         if y is None:
-            y = self._layout.axh / 2
-        y_top = self._layout.margins['top'] + self._layout.axh - y
-        y_offset = self._layout.margins['hspace'] + self._layout.axh
+            y = row_height / 2
+        y_top = self._layout.margins['top'] + y
         x_ = x / self._layout.w
         for i, label in enumerate(titles):
-            y_ = 1 - (y_top + i * y_offset) / self._layout.h
+            y_ = 1 - (y_top + i * row_height) / self._layout.h
             self.figure.text(x_, y_, label, va=va, ha=ha, **kwargs)
         self.draw()
 
@@ -1442,10 +1454,12 @@ class SequencePlotter:
             self,
             hemi: Literal['lh', 'rh', 'both'] = None,
             view: Union[str, Sequence] = ('lateral', 'medial'),
-            orientation: Literal['horizontal', 'vertical'] = 'horizontal',
+            orientation: Literal['horizontal', 'vertical'] = None,
             labels: Union[bool, Sequence[str]] = True,
             mode: Literal['rgb', 'rgba'] = 'rgb',
             antialiased: bool = False,
+            rows: Sequence[str] = ('view',),
+            columns: Sequence[str] = ('bin', 'hemi'),
             **kwargs,
     ) -> ImageTable:
         """Create a figure with the images
@@ -1459,7 +1473,8 @@ class SequencePlotter:
             including parallel-view parameters ``(view, forward, up, scale)``,
             e.g., ``('lateral', 0, 10, 70)``.
         orientation
-            Direction of the time/case axis.
+            Direction of the time/case axis; overrides ``row`` and ``column``
+            settings.
         labels
             Headers for columns/rows of images (default is inferred from the data).
         mode
@@ -1467,6 +1482,10 @@ class SequencePlotter:
             channel).
         antialiased
             Apply antialiasing to the images (default ``False``).
+        rows
+            What to alternate along the rows.
+        columns
+            What to alternate along the columns.
         ...
             Layout parameters for the figure.
 
@@ -1526,30 +1545,39 @@ class SequencePlotter:
             bins = list(range(self._n_items()))
         else:
             bins = [None]
-        n_bins = len(bins)
-        if orientation == 'horizontal':
-            n_columns = n_bins
-            n_rows = n_views
-            transpose = False
-            column_labels = labels
-            row_labels = None
-        elif orientation == 'vertical':
-            n_columns = n_views
-            n_rows = n_bins
-            transpose = True
-            column_labels = None
-            row_labels = labels
+
+        # determine im-table layout
+        if orientation:
+            if orientation == 'vertical':
+                rows, columns = ('bin',), ('view', 'hemi')
+            elif orientation == 'horizontal':
+                rows, columns = ('view',), ('bin', 'hemi')
+            else:
+                raise ValueError(f"{orientation=}")
+        axis_sequences = {'bin': bins, 'hemi': hemis, 'view': views}
+        ns = {key: len(values) for key, values in axis_sequences.items()}
+        specified = set(columns).union(rows)
+        if specified != set(ns) or len(columns) + len(rows) != 3:
+            raise ValueError(f"{rows=}, {columns=}")
+        n_columns = reduce(operator.mul, (ns[key] for key in columns))
+        n_rows = reduce(operator.mul, (ns[key] for key in rows))
+        # labels
+        bin_in_column = 'bin' in columns
+        bin_axis = columns if bin_in_column else rows
+        if labels and (bin_pos := bin_axis.index('bin')):
+            n_tile = reduce(operator.mul, (ns[key] for key in bin_axis[:bin_pos]))
+            labels = labels * n_tile
+        if bin_in_column:
+            column_labels, row_labels = labels, None
         else:
-            raise ValueError(f"orientation={orientation!r}")
+            column_labels, row_labels = None, labels
 
         figure = ImageTable(n_rows, n_columns, row_labels, column_labels, **kwargs)
 
-        im_rows = []
+        ims = {}
         cmap_params = None
         cmap_data = None
         for hemi in hemis:
-            hemi_rows = [[] for _ in views]
-
             # plot brain
             b = brain(self._source, hemi=hemi, views='lateral', w=figure._res_w, h=figure._res_h, time_label='', **self._brain_args)
 
@@ -1564,7 +1592,7 @@ class SequencePlotter:
                 for i in bins:
                     if i is not None:
                         b.set_data_time_index(i)
-                        self._capture(b, hemi_rows, views, mode, antialiased)
+                        self._capture(b, views, mode, antialiased, ims, hemi, i)
             elif self._bin_kind in (SPLayer.ITEM, SPLayer.UNDEFINED):  # UNDEFINED: has overlays only
                 for i in bins:
                     for l in self._data:
@@ -1573,21 +1601,28 @@ class SequencePlotter:
                             if cmap_params is None and l.plot_type == SPPlotType.DATA and l.kind == SPLayer.ITEM:
                                 cmap_params = b._get_cmap_params()
                                 cmap_data = l.data
-                    self._capture(b, hemi_rows, views, mode, antialiased)
+                    self._capture(b, views, mode, antialiased, ims, hemi, i)
                     b.remove_data()
                     b.remove_labels()
             else:
                 raise NotImplementedError(f"{self._bin_kind}")
-            im_rows += hemi_rows
             b.close()
 
-        if transpose:
-            im_rows = list(zip(*im_rows))
-        figure._add_ims(im_rows, cmap_params, cmap_data)
+        # reshape im-order
+        row_pattern = list(product(*[axis_sequences[key] for key in rows]))
+        column_pattern = list(product(*[axis_sequences[key] for key in columns]))
+        im_array = np.ndarray((n_rows, n_columns), object)
+        for i_row, key_row in enumerate(row_pattern):
+            key_dict = {key: value for key, value in zip(rows, key_row)}
+            for i_col, key_col in enumerate(column_pattern):
+                key_dict.update({key: value for key, value in zip(columns, key_col)})
+                key = tuple([key_dict[key] for key in ['hemi', 'bin', 'view']])
+                im_array[i_row, i_col] = ims[key]
+        figure._add_ims(im_array, cmap_params, cmap_data)
         return figure
 
-    def _capture(self, b, hemi_rows, views, mode, antialiased):
-        for row, view in zip(hemi_rows, views):
+    def _capture(self, b, views, mode, antialiased, ims, hemi, i):
+        for view in views:
             if isinstance(view, str):
                 b.show_view(view)
                 if self._parallel_view:
@@ -1595,8 +1630,7 @@ class SequencePlotter:
             else:
                 b.show_view(view[0])
                 b.set_parallel_view(*view[1:])
-            im = b.screenshot_single(mode, antialiased)
-            row.append(im)
+            ims[hemi, i, view] = b.screenshot_single(mode, antialiased)
 
 
 def connectivity(source):
