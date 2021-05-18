@@ -19,7 +19,7 @@ try:
 except ImportError:
     from mne import compute_morph_matrix
 
-from ._data_obj import NDVar, Space, SourceSpace, VolumeSourceSpace
+from ._data_obj import NDVar, Space, SourceSpaceBase, SourceSpace, VolumeSourceSpace
 from ._utils.numpy_utils import index
 
 
@@ -474,7 +474,7 @@ def morph_source_space(
         # convert to boolean mask (morphing involves interpolation, so the output is in floats)
         mask = round(mask).astype(bool)
     """
-    if isinstance(data, SourceSpace):
+    if isinstance(data, SourceSpaceBase):
         source, ndvar, axis = data, None, None
     else:
         ndvar = data
