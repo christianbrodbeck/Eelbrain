@@ -364,9 +364,11 @@ class NDTest:
     def _statistic_map(self):
         return getattr(self, self._statistic)
 
-    def _max_statistic(self):
+    def _max_statistic(self, mask: NDVar = None):
         tail = getattr(self, 'tail', self._statistic_tail)
-        return self._max_statistic_from_map(self._statistic_map, self.p, tail)
+        if mask is None:
+            mask = self.p
+        return self._max_statistic_from_map(self._statistic_map, mask, tail)
 
     @staticmethod
     def _max_statistic_from_map(stat_map: NDVar, p_map: NDVar, tail: int):
@@ -379,6 +381,8 @@ class NDTest:
 
         if p_map is None:
             mask = None
+        elif p_map.x.dtype.kind == 'b':
+            mask = p_map
         else:
             mask = p_map <= .05 if p_map.min() <= .05 else None
 
@@ -1517,11 +1521,13 @@ class MultiEffectNDTest(NDTest):
         else:
             return self._cdist[0]
 
-    def _max_statistic(self, effect: Union[str, int]):
+    def _max_statistic(self, effect: Union[str, int], mask: NDVar = None):
         i = self._effect_index(effect)
         stat_map = self._statistic_map[i]
         tail = getattr(self, 'tail', self._statistic_tail)
-        return self._max_statistic_from_map(stat_map, self.p[i], tail)
+        if mask is None:
+            mask = self.p[i]
+        return self._max_statistic_from_map(stat_map, mask, tail)
 
     def cluster(self, cluster_id, effect=0):
         """Retrieve a specific cluster as NDVar
