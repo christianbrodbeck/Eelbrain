@@ -3670,7 +3670,7 @@ class NDVar(Named):
             if isinstance(axis, str):
                 axis = self.get_axis(axis)
             dim = self.dims[axis]
-            x = np.argmax(self.x, axis)
+            x = self.x.argmax(axis)
             x = dim._dim_index(x)
             dims = [dim_ for i, dim_ in enumerate(self.dims) if i != axis]
             return self._package_aggregated_output(x, dims, name)
@@ -3703,7 +3703,7 @@ class NDVar(Named):
             if isinstance(axis, str):
                 axis = self.get_axis(axis)
             dim = self.dims[axis]
-            x = np.argmin(self.x, axis)
+            x = self.x.argmin(axis)
             x = dim._dim_index(x)
             dims = [dim_ for i, dim_ in enumerate(self.dims) if i != axis]
             return self._package_aggregated_output(x, dims, name)
