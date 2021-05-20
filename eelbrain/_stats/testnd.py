@@ -364,21 +364,23 @@ class NDTest:
     def _statistic_map(self):
         return getattr(self, self._statistic)
 
-    def _max_statistic(self, mask: NDVar = None):
+    def _max_statistic(
+            self,
+            mask: NDVar = None,
+            return_time: bool = False,
+    ):
         tail = getattr(self, 'tail', self._statistic_tail)
         if mask is None:
             mask = self.p
-        return self._max_statistic_from_map(self._statistic_map, mask, tail)
+        return self._max_statistic_from_map(self._statistic_map, mask, tail, return_time)
 
     @staticmethod
-    def _max_statistic_from_map(stat_map: NDVar, p_map: NDVar, tail: int):
-        if tail == 0:
-            func = stat_map.extrema
-        elif tail == 1:
-            func = stat_map.max
-        else:
-            func = stat_map.min
-
+    def _max_statistic_from_map(
+            stat_map: NDVar,
+            p_map: NDVar,
+            tail: int,
+            return_time: bool = False,
+    ):
         if p_map is None:
             mask = None
         elif p_map.x.dtype.kind == 'b':
@@ -386,7 +388,28 @@ class NDTest:
         else:
             mask = p_map <= .05 if p_map.min() <= .05 else None
 
-        return func() if mask is None else func(mask)
+        if tail == 0:
+            max_stat = stat_map.extrema(mask)
+        elif tail == 1:
+            max_stat = stat_map.max(mask)
+        else:
+            max_stat = stat_map.min(mask)
+
+        if return_time:
+            if mask is not None:
+                stat_map = stat_map.mask(~mask)
+            if dims := [dim for dim in stat_map.dimnames if dim != 'time']:
+                if max_stat > 0:
+                    stat_map = stat_map.max(dims)
+                else:
+                    stat_map = stat_map.min(dims)
+            if max_stat > 0:
+                time = stat_map.argmax('time')
+            else:
+                time = stat_map.argmin('time')
+            return max_stat, time
+        else:
+            return max_stat
 
     @property
     def n_samples(self):
@@ -1521,13 +1544,18 @@ class MultiEffectNDTest(NDTest):
         else:
             return self._cdist[0]
 
-    def _max_statistic(self, effect: Union[str, int], mask: NDVar = None):
+    def _max_statistic(
+            self,
+            effect: Union[str, int],
+            mask: NDVar = None,
+            return_time: bool = False,
+    ):
         i = self._effect_index(effect)
         stat_map = self._statistic_map[i]
         tail = getattr(self, 'tail', self._statistic_tail)
         if mask is None:
             mask = self.p[i]
-        return self._max_statistic_from_map(stat_map, mask, tail)
+        return self._max_statistic_from_map(stat_map, mask, tail, return_time)
 
     def cluster(self, cluster_id, effect=0):
         """Retrieve a specific cluster as NDVar
