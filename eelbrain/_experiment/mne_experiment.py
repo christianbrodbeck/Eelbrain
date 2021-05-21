@@ -3131,7 +3131,7 @@ class MneExperiment(FileTree):
         if ndvar:
             if src.startswith('vol'):
                 parc = None
-                assert mask is None
+                assert not mask
             else:
                 self.make_annot()
                 parc = self.get('parc')
