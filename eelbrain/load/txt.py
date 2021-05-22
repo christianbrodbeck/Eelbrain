@@ -8,7 +8,7 @@ Tools for loading data from text files.
    var
 """
 import csv
-import os
+import gzip
 from pathlib import Path
 import re
 from numbers import Number
@@ -31,7 +31,6 @@ def to_num(v: str):
         return float(v)
 
 
-# could use csv module:  http://docs.python.org/3/library/csv.html
 def tsv(
         path: PathArg = None,
         names: Union[Sequence[str], bool] = True,
@@ -49,7 +48,8 @@ def tsv(
     Parameters
     ----------
     path : str
-        Path to the file (if omitted, use a system file dialog).
+        Path to the file (if omitted, use a system file dialog). Files ending
+        in ``*.gz`` are automatically decompressed.
     names : Sequence of str | bool
         Column/variable names.
 
@@ -109,17 +109,23 @@ def tsv(
     else:
         random = list(random)
 
+    suffix = path.suffix.lower()
+    if suffix == '.gz':
+        open_ = gzip.open
+        suffix = path.with_suffix('').suffix.lower()
+    else:
+        open_ = open
+
     if delimiter is None:  # legacy option
         delimiter = ' '
         fmtparams['skipinitialspace'] = True
     elif delimiter == 'auto':
-        suffix = path.suffix.lower()
         if suffix == '.csv':
             delimiter = ','
         else:
             delimiter = '\t'
 
-    with open(path, newline='') as fid:
+    with open_(path, 'rt', newline='') as fid:
         reader = csv.reader(fid, delimiter=delimiter, **fmtparams)
         lines = list(reader)
 
@@ -197,7 +203,7 @@ def tsv(
 
     # convert values to data-objects
     float_pattern = re.compile(FLOAT_NAN_PATTERN)
-    ds = _data.Dataset(name=os.path.basename(path))
+    ds = _data.Dataset(name=path.name)
     np_vars = {
         'NA': np.nan,
         'na': np.nan,
