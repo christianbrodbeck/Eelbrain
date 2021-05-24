@@ -3,11 +3,11 @@ import ast
 from typing import Set
 
 
-FLOAT_PATTERN = "^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$"
-POS_FLOAT_PATTERN = "^[+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$"
-INT_PATTERN = "^-?\d+$"
+FLOAT_PATTERN = r"^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$"
+POS_FLOAT_PATTERN = r"^[+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$"
+INT_PATTERN = r"^-?\d+$"
 # matches float as well as NaN:
-FLOAT_NAN_PATTERN = "^([Nn][Aa][Nn]$)|([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)$"
+FLOAT_NAN_PATTERN = r"^\s*(([Nn][Aa][Nn])|([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?))\s*$"
 
 
 def find_variables(expr: str) -> Set[str]:
@@ -21,5 +21,5 @@ def find_variables(expr: str) -> Set[str]:
     try:
         st = ast.parse(expr)
     except SyntaxError as error:
-        raise ValueError("Invalid expression: %r (%s)" % (expr, error))
+        raise ValueError(f"Invalid expression: {expr:r} ({error})")
     return {n.id for n in ast.walk(st) if isinstance(n, ast.Name)}
