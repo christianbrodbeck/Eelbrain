@@ -41,6 +41,7 @@ def tsv(
         ignore_missing: bool = False,
         empty: Union[str, float] = None,
         random: Union[str, Sequence[str]] = None,
+        strip: bool = False,
         **fmtparams,
 ):
     r"""Load a :class:`Dataset` from a text file.
@@ -91,6 +92,8 @@ def tsv(
         With ``empty='nan'``, it is read as ``Var([5, 3, nan])``.
     random : str | sequence of str
         Names of the columns that should be assigned as random factor.
+    strip
+        Strip white-space from all categorial variables.
     **fmtparams
         Further formatting parameters for :func:`csv.reader`. For example, a
         fixed-width column file can be loaded with ``skipinitialspace=True``
@@ -246,14 +249,17 @@ def tsv(
         # create data-object
         if type_ == 'f':
             f_random = name in random
-            dob = _data.Factor(values, labels={None: ''}, name=name, random=f_random)
+            d_obj = _data.Factor(values, labels={None: ''}, name=name, random=f_random)
+            if strip:
+                if any(cell.strip() != cell for cell in d_obj.cells):
+                    d_obj.update_labels({cell: cell.strip() for cell in d_obj.cells})
         elif name in random:
             raise ValueError(f"random={random}: {name} is not categorial")
         else:
-            dob = _data.Var(values, name)
+            d_obj = _data.Var(values, name)
         key = _data.Dataset.as_key(name)
         keys[name] = key
-        ds[key] = dob
+        ds[key] = d_obj
 
     if any(k != v for k, v in keys.items()):
         ds.info['keys'] = keys
