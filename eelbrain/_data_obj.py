@@ -10510,8 +10510,8 @@ class UTS(Dimension):
     _default_connectivity = 'grid'
     _tol = 0.000001  # tolerance for deciding if time values are equal
 
-    def __init__(self, tmin: float, tstep: float, nsamples: int, unit: str = 's'):
-        Dimension.__init__(self, 'time', 'grid')
+    def __init__(self, tmin: float, tstep: float, nsamples: int, unit: str = 's', name: str = 'time'):
+        Dimension.__init__(self, name, 'grid')
         self.tmin = float(tmin)  # Python float has superior precision
         self.tstep = float(tstep)
         self.nsamples = int(nsamples)
