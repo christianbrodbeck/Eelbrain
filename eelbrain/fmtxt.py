@@ -761,6 +761,8 @@ class FMText(FMTextElement):
         Formatting tag.
     options : dict
         Options for HTML tags.
+    rasterize
+        Try to rasterize images in ``content``.
 
     Notes
     -----
@@ -779,13 +781,14 @@ class FMText(FMTextElement):
             content: FMTextLike = None,
             tag: str = None,
             options: dict = None,
+            rasterize: bool = False,
     ):
         if content is None:
             content = []
         elif isinstance(content, (list, tuple)):
-            content = [asfmtext(item) for item in content]
+            content = [asfmtext(item, rasterize=rasterize) for item in content]
         else:
-            content = [asfmtext(content)]
+            content = [asfmtext(content, rasterize=rasterize)]
         FMTextElement.__init__(self, content, tag, options)
 
     def append(self, content):
@@ -1959,10 +1962,18 @@ class Figure(FMText):
 
 
 class FloatingLayout(FMText):
-    "Arrange contents as floating elements"
+    """Arrange contents as floating elements
 
-    def __init__(self, content: FMTextLike):
-        FMText.__init__(self, content)
+    Parameters
+    ----------
+    content
+        Floating layout contents.
+    rasterize
+        Try to rasterize images in ``content``.
+    """
+
+    def __init__(self, content: FMTextLike, rasterize: bool = False):
+        FMText.__init__(self, content, rasterize=rasterize)
         self._options = {
             'display': 'inline-block',
             'margin': '10px',
@@ -1977,7 +1988,7 @@ class FloatingLayout(FMText):
         ))
         items = (item.get_html(env) for item in self.content)
         items = (f'<div class="floating-box">\n{item}\n</div>' for item in items)
-        return '\n\n'.join((header, *items))
+        return '\n\n'.join([header, *items])
 
 
 class Section(FMText):
