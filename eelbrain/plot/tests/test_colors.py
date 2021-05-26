@@ -59,7 +59,7 @@ def test_plot_colorbar():
     p = plot.ColorBar('jet', -1, 1)
     p.close()
     p = plot.ColorBar('jet', -1, 1, ticks=[-1, 0, 1])
-    assert ticks(p) == ['-1', '0', '1']
+    assert ticks(p) == ['−1', '0', '1']
     p = plot.ColorBar('jet', -1, 1, orientation='vertical')
     p.close()
     p = plot.ColorBar('jet', -1, 1, label_position='top')

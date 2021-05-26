@@ -175,7 +175,7 @@ UNIT_FORMAT = {
     int: int,
 }
 SCALE_FORMATTERS = {
-    1: FuncFormatter(lambda x, pos: '%g' % x),
+    1: None,
     1e3: FuncFormatter(lambda x, pos: '%g' % (1e3 * x)),
     1e6: FuncFormatter(lambda x, pos: '%g' % (1e6 * x)),
     1e9: FuncFormatter(lambda x, pos: '%g' % (1e9 * x)),
