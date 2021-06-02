@@ -3,6 +3,12 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.36
+-----------
+
+* Preview cross-validation data partitions with :func:`plot.preview_partitions`
+
+
 New in 0.35
 -----------
 

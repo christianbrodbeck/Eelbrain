@@ -916,6 +916,10 @@ def boosting(
 
     The boosting algorithm is described in [1]_.
 
+    See Also
+    --------
+    plot.preview_partitions : preview data partitions for cross-validation
+
     References
     ----------
     .. [1] David, S. V., Mesgarani, N., & Shamma, S. A. (2007). Estimating

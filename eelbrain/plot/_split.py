@@ -3,8 +3,10 @@
 from typing import Union
 
 from matplotlib.patches import Rectangle
+import numpy
 
-from .._trf.shared import Splits
+from .._trf.shared import Splits, split_data
+from .._data_obj import Dataset, CategorialArg, NDVarArg, asndvar
 from ._base import EelFigure, Layout, LegendMixin
 from ._styles import colors_for_oneway
 
@@ -70,3 +72,46 @@ class DataSplit(EelFigure, LegendMixin):
         ax.set_xlim(splits.segments[0, 0], splits.segments[-1, 1])
         LegendMixin.__init__(self, legend, handles, labels)
         self._show()
+
+
+def preview_partitions(
+    cases: Union[int, NDVarArg] = 0,
+    partitions: int = None,
+    model: CategorialArg = None,
+    validate: int = 1,
+    test: int = 0,
+    ds: Dataset = None,
+    **kwargs,
+) -> DataSplit:
+    """Preview how data will be partitioned for the boosting function
+
+    Parameters
+    ----------
+    cases
+        Description of the data that will be used. Can be specified as
+        :class:`NDVar` data, or as integer describing the number of trials
+        (the default assumes continuous data).
+    ...
+        For a description of the splitting parameters see :func:`boosting`.
+        For plotting parameters see :class:`DataSplit`.
+    """
+    if isinstance(cases, int):
+        if cases == 0:
+            if partitions is None:
+                partitions = 2 + test + validate if test else 10
+            ns = [partitions]
+        else:
+            if partitions is None:
+                raise NotImplementedError('Automatic partitions with trials')
+            ns = [1] * cases
+    else:
+        y = asndvar(cases, ds=ds)
+        if y.has_case:
+            n_cases = len(y)
+        else:
+            n_cases = 1
+        ns = [len(y.get_dim('time'))] * n_cases
+    index = numpy.cumsum([0] + ns)
+    segments = numpy.hstack([index[:-1, None], index[1:, None]])
+    splits = split_data(segments, partitions, model, ds, validate, test)
+    return DataSplit(splits, **kwargs)

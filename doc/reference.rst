@@ -375,6 +375,7 @@ Method related plots:
 .. autosummary::
    :toctree: generated
 
+   plot.preview_partitions
    plot.DataSplit
 
 
