@@ -556,7 +556,8 @@ def filter_data(
     Returns
     -------
     filtered_ndvar
-        NDVar with same dimensions as ``ndvar`` and filtered data.
+        NDVar with same dimensions as ``ndvar`` and filtered data. The output
+        type is always floating point regardless of the type of ``ndvar``.
     """
     axis = ndvar.get_axis('time')
     if axis == ndvar.ndim:
@@ -565,6 +566,9 @@ def filter_data(
     else:
         data = ndvar.x.swapaxes(axis, -1)
     sfreq = 1. / ndvar.time.tstep
+
+    if data.dtype.kind != 'f':
+        data = data.astype(float)
 
     filter_kwargs.setdefault('copy', True)
     x = mne.filter.filter_data(data, sfreq, low, high, **filter_kwargs)
