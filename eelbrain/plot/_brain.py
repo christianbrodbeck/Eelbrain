@@ -1460,6 +1460,7 @@ class SequencePlotter:
             antialiased: bool = False,
             rows: Sequence[str] = ('view',),
             columns: Sequence[str] = ('bin', 'hemi'),
+            hemi_magnet: float = 0,
             **kwargs,
     ) -> ImageTable:
         """Create a figure with the images
@@ -1486,6 +1487,9 @@ class SequencePlotter:
             What to alternate along the rows.
         columns
             What to alternate along the columns.
+        hemi_magnet
+            Pull the two hemispheres of the same plot closer together (movement
+            in inches).
         ...
             Layout parameters for the figure.
 
@@ -1573,6 +1577,7 @@ class SequencePlotter:
             column_labels, row_labels = None, labels
 
         figure = ImageTable(n_rows, n_columns, row_labels, column_labels, **kwargs)
+        hemi_shift = int(round(figure._layout.dpi * hemi_magnet))
 
         ims = {}
         cmap_params = None
@@ -1592,7 +1597,7 @@ class SequencePlotter:
                 for i in bins:
                     if i is not None:
                         b.set_data_time_index(i)
-                        self._capture(b, views, mode, antialiased, ims, hemi, i)
+                        self._capture(b, views, mode, antialiased, ims, hemi, i, hemi_shift)
             elif self._bin_kind in (SPLayer.ITEM, SPLayer.UNDEFINED):  # UNDEFINED: has overlays only
                 for i in bins:
                     for l in self._data:
@@ -1601,7 +1606,7 @@ class SequencePlotter:
                             if cmap_params is None and l.plot_type == SPPlotType.DATA and l.kind == SPLayer.ITEM:
                                 cmap_params = b._get_cmap_params()
                                 cmap_data = l.data
-                    self._capture(b, views, mode, antialiased, ims, hemi, i)
+                    self._capture(b, views, mode, antialiased, ims, hemi, i, hemi_shift)
                     b.remove_data()
                     b.remove_labels()
             else:
@@ -1621,7 +1626,7 @@ class SequencePlotter:
         figure._add_ims(im_array, cmap_params, cmap_data)
         return figure
 
-    def _capture(self, b, views, mode, antialiased, ims, hemi, i):
+    def _capture(self, b, views, mode, antialiased, ims, hemi, i, shift):
         for view in views:
             if isinstance(view, str):
                 b.show_view(view)
@@ -1630,7 +1635,13 @@ class SequencePlotter:
             else:
                 b.show_view(view[0])
                 b.set_parallel_view(*view[1:])
-            ims[hemi, i, view] = b.screenshot_single(mode, antialiased)
+            im = b.screenshot_single(mode, antialiased)
+            if shift:
+                if hemi == 'lh':
+                    im = np.concatenate([im[:, -shift:], im[:, :-shift]], axis=1)
+                else:
+                    im = np.concatenate([im[:, shift:], im[:, :shift]], axis=1)
+            ims[hemi, i, view] = im
 
 
 def connectivity(source):
