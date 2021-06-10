@@ -14,7 +14,7 @@ dependencies:
 - numpy >= 1.20
 - scipy >= 1.5
 - numba
-- matplotlib-base >= 3.3.4  # https://github.com/matplotlib/matplotlib/issues/15410
+- matplotlib-base >= 3.4  # https://github.com/matplotlib/matplotlib/issues/15410
 - pyarrow
 - pillow
 - psutil

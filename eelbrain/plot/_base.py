@@ -1814,23 +1814,36 @@ class EelFigure(MatplotlibFigure):
         nax = len(axes)
         if isinstance(ticklabels, bool):
             show_ticklabels = [ticklabels] * nax
-        else:
-            if isinstance(ticklabels, str):
-                if ticklabels == 'bottom':
-                    ticklabels = range(-min(self._layout.ncol, nax), 0)
-                elif ticklabels == 'left':
-                    ticklabels = range(0, nax, self._layout.ncol)
-                elif ticklabels == 'all':
-                    ticklabels = [True] * nax
-                elif ticklabels == 'none':
-                    ticklabels = [False] * nax
+        elif isinstance(ticklabels, str):
+            if ticklabels == 'bottom':
+                if all(isinstance(ax, matplotlib.axes.SubplotBase) for ax in axes):
+                    subplotspecs = [ax.get_subplotspec() for ax in axes]
+                    bottom = min([spec.rowspan.stop for spec in subplotspecs])
+                    show_ticklabels = [spec.rowspan.stop == bottom for spec in subplotspecs]
                 else:
-                    raise ValueError(f"ticklabels={ticklabels!r}")
-            elif isinstance(ticklabels, int):
-                ticklabels = [ticklabels]
+                    first = len(axes) - min(self._layout.ncol, nax)
+                    show_ticklabels = [i >= first for i in range(len(axes))]
+            elif ticklabels == 'left':
+                if all(isinstance(ax, matplotlib.axes.SubplotBase) for ax in axes):
+                    subplotspecs = [ax.get_subplotspec() for ax in axes]
+                    left = min([spec.colspan.start for spec in subplotspecs])
+                    show_ticklabels = [spec.colspan.start == left for spec in subplotspecs]
+                else:
+                    ncol = self._layout.ncol or nax
+                    show_ticklabels = [i % ncol == 0 for i in range(len(axes))]
+            elif ticklabels == 'all':
+                show_ticklabels = [True] * nax
+            elif ticklabels == 'none':
+                show_ticklabels = [False] * nax
+            else:
+                raise ValueError(f"ticklabels={ticklabels!r}")
+        else:
             show_ticklabels = [False] * nax
-            for i in ticklabels:
-                show_ticklabels[i] = True
+            if isinstance(ticklabels, int):
+                show_ticklabels[ticklabels] = True
+            else:
+                for i in ticklabels:
+                    show_ticklabels[i] = True
 
         # parameter for hiding tick-labels
         if axis == 'y':
