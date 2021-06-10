@@ -2130,6 +2130,8 @@ class BaseLayout:
         self.name = asfmtext_or_none(name) or title
         if isinstance(axes, matplotlib.axes.Axes):
             axes = [axes]
+        elif axes is not None:
+            axes = list(axes)
         self.user_axes = axes
 
         x = y = None
