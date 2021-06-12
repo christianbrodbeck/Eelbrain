@@ -140,7 +140,7 @@ from ._utils import (
 from ._utils.numpy_utils import (
     INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
     aslice, apply_numpy_index, deep_array, digitize_index, digitize_slice_endpoint,
-    index_length, index_to_int_array, newaxis, slice_to_arange)
+    index_length, index_to_bool_array, index_to_int_array, newaxis, slice_to_arange)
 from .mne_fixes import MNE_EPOCHS, MNE_EVOKED, MNE_RAW, MNE_LABEL
 from functools import reduce
 
@@ -9939,7 +9939,7 @@ class SourceSpaceBase(Dimension):
             name = label.name
         else:
             raise TypeError(f"{label!r}")
-        return NDVar(idx, (self,), name)
+        return NDVar(index_to_bool_array(idx, len(self)), (self,), name)
 
     def _is_superset_of(self, dim):
         self._assert_same_base(dim)
@@ -10295,19 +10295,19 @@ class SourceSpace(SourceSpaceBase):
         path = Path(f'{self.subjects_dir}/{self.subject}/surf/{hemi}.{surf}')
         return read_geometry(path)
 
-    def index_for_label(self, label):
+    def index_for_label(self, label: Union[str, Sequence[str], mne.Label, mne.BiHemiLabel]) -> NDVar:
         """Return the index for a label
 
         Parameters
         ----------
-        label : str | sequence of str | Label | BiHemiLabel
-            The name of a region in the current parcellation, or an :mod:`mne`
-            :class:`~mne.label.Label` object. If the label does not
+        label
+            The name of a region in the current parcellation, ``'lh'``, ``'rh'``,
+            or an :mod:`mne`:class:`~mne.label.Label` object. If the label does not
             match any sources in the SourceEstimate, a ValueError is raised.
 
         Returns
         -------
-        index : NDVar of bool
+        index : boolean NDVar
             Index into the source space dim that corresponds to the label.
         """
         return SourceSpaceBase.index_for_label(self, label)

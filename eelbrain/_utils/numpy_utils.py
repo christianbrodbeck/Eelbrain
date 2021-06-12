@@ -67,6 +67,15 @@ def index(index, at: int):
     return FULL_AXIS_SLICE * at + (index,)
 
 
+def index_to_bool_array(index, n):
+    if isinstance(index, np.ndarray):
+        if index.dtype.kind == 'b':
+            return index
+    out = np.zeros(n, bool)
+    out[index] = True
+    return out
+
+
 def index_to_int_array(index, n):
     if isinstance(index, np.ndarray):
         if index.dtype.kind == 'i':
