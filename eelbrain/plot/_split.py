@@ -92,7 +92,7 @@ def preview_partitions(
         :class:`NDVar` data, or as integer describing the number of trials
         (the default assumes continuous data).
     ...
-        For a description of the splitting parameters see :func:`boosting`.
+        For a description of the splitting parameters see :func:`~eelbrain.boosting`.
         For plotting parameters see :class:`DataSplit`.
     """
     if isinstance(cases, int):

@@ -462,12 +462,12 @@ def cast_to_ndvar(
 
     # determine NDVar dimension
     if isinstance(dim_values, Factor):
-        unique_dim_vales = dim_values.cells
-        dim = Categorial(dim or dim_values.name, unique_dim_vales)
+        unique_dim_values = dim_values.cells
+        dim = Categorial(dim or dim_values.name, unique_dim_values)
     else:
-        unique_dim_vales = np.unique(dim_values.x)
+        unique_dim_values = np.unique(dim_values.x)
         if dim == 'uts':
-            diff = np.diff(unique_dim_vales)
+            diff = np.diff(unique_dim_values)
             unique_diff = np.unique(diff)
             if len(unique_diff) > 1:
                 if np.diff(unique_diff).max() > 1e-15:
@@ -475,22 +475,26 @@ def cast_to_ndvar(
                 tstep = round(unique_diff.mean(), 17)
             else:
                 tstep = unique_diff[0]
-            dim = UTS(unique_dim_vales[0], tstep, len(unique_dim_vales), unit)
+            dim = UTS(unique_dim_values[0], tstep, len(unique_dim_values), unit)
         else:
-            dim = Scalar(dim or dim_values.name, unique_dim_vales)
+            dim = Scalar(dim or dim_values.name, unique_dim_values)
 
     # find NDVar data
     n_samples = len(dim)
     n_cases = len(match.cells)
     case_indexes = [match == case for case in match.cells]
-    samples_indexes = [dim_values == v for v in unique_dim_vales]
+    samples_indexes = [dim_values == v for v in unique_dim_values]
     xs = [np.empty((n_cases, n_samples)) for _ in data_vars]
     index = None
     for i, case_index in enumerate(case_indexes):
-        for j, sample_index in enumerate(samples_indexes):
-            index = np.logical_and(case_index, sample_index, out=index)
-            for x, data_var in zip(xs, data_vars):
-                x[i, j] = data_var.x[index]
+        try:
+            for j, sample_index in enumerate(samples_indexes):
+                index = np.logical_and(case_index, sample_index, out=index)
+                for x, data_var in zip(xs, data_vars):
+                    x[i, j] = data_var.x[index]
+        except ValueError:
+            if not np.any(index):
+                raise ValueError(f"Case {match.cells[i]!r} is missing some values")
 
     # package output dataset
     if ds is None:

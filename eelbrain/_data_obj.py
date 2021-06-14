@@ -110,9 +110,10 @@ import operator
 import os
 import re
 import string
-from typing import Any, Callable, Collection, Dict, Iterable, Iterator, Optional, Union, Sequence, Tuple, List
+from typing import Any, Callable, Collection, Dict, Iterable, Iterator, Optional, Type, Union, Sequence, Tuple, List
 from warnings import warn
 
+import numpy
 from matplotlib.ticker import FixedLocator, Formatter, FormatStrFormatter, FuncFormatter
 import mne
 from mne.source_space import label_src_vertno_sel
@@ -377,27 +378,26 @@ def iscategorial(x):
 # type checks
 #############
 # _Effect -> Factor, Interaction, NestedEffect
-def isdatacontainer(x):
+def isdatacontainer(x: Any) -> bool:
     "Determine whether x is a data-object, including Datasets"
-    return isinstance(x, (Datalist, Dataset, Model, NDVar, Var, _Effect,
-                          NonbasicEffect))
+    return isinstance(x, (Datalist, Dataset, Model, NDVar, Var, _Effect, NonbasicEffect))
 
 
-def isdataobject(x):
+def isdataobject(x: Any) -> bool:
     "Determine whether x is a data-object, excluding Datasets"
     return isinstance(x, (Datalist, Model, NDVar, Var, _Effect, NonbasicEffect))
 
 
-def isdatalist(x, contains=None, test_all=True):
+def isdatalist(x: Any, contains: Type = None, test_all: bool = True) -> bool:
     """Test whether x is a Datalist instance
 
     Parameters
     ----------
-    x : object
+    x
         Object to test.
-    contains : None | class
+    contains
         Test whether the content is instances of a specific class.
-    test_all : bool
+    test_all
         If contains is provided, test all items' class (otherwise just test the
         first item).
     """
@@ -410,15 +410,15 @@ def isdatalist(x, contains=None, test_all=True):
     return is_dl
 
 
-def iseffect(x):
+def iseffect(x: Any) -> bool:
     return isinstance(x, (Var, _Effect, NonbasicEffect))
 
 
-def ismodelobject(x):
+def ismodelobject(x: Any) -> bool:
     return isinstance(x, (Model, Var, _Effect, NonbasicEffect))
 
 
-def isnestedin(item, item2):
+def isnestedin(item, item2) -> bool:
     "Determine whether ``item`` is nested in ``item2``"
     if isinstance(item, NestedEffect):
         return item2 in find_factors(item.nestedin)
@@ -426,7 +426,7 @@ def isnestedin(item, item2):
         return False
 
 
-def partially_nested(item1, item2):
+def partially_nested(item1, item2) -> bool:
     """Determine whether there is a complete or partial nesting relationship
 
     Used to determine whether a model should include an interaction effect
@@ -445,12 +445,12 @@ def partially_nested(item1, item2):
         return False
 
 
-def isnumeric(x):
+def isnumeric(x: Any) -> bool:
     "Determine wether x is numeric (a Var or an NDVar)"
     return isinstance(x, (NDVar, Var))
 
 
-def isuv(x, interaction=False):
+def isuv(x: Any, interaction: bool = False) -> bool:
     "Determine whether x is univariate (a Var or a Factor)"
     if interaction:
         return isinstance(x, (Factor, Var, Interaction))
@@ -458,12 +458,12 @@ def isuv(x, interaction=False):
         return isinstance(x, (Factor, Var))
 
 
-def isboolvar(x):
+def isboolvar(x: Any) -> bool:
     "Determine whether x is a Var whose data type is boolean"
     return isinstance(x, Var) and x.x.dtype.kind == 'b'
 
 
-def isintvar(x):
+def isintvar(x: Any) -> bool:
     "Determine whether x is a Var whose data type is integer"
     return isinstance(x, Var) and x.x.dtype.kind in 'iu'
 
@@ -540,7 +540,7 @@ def as_case_identifier(x, ds=None):
     return x
 
 
-def asarray(x, kind=None, sub=None, ds=None, n=None, return_n=False):
+def asarray(x, kind=None, sub=None, ds=None, n=None, return_n=False) -> numpy.ndarray:
     "Coerce input to array"
     if isinstance(x, str):
         if ds is None:
@@ -607,7 +607,7 @@ def asdataobject(x, sub=None, ds=None, n=None, return_n=False):
     return _apply_sub(x, sub, n, return_n)
 
 
-def asepochs(x, sub=None, ds=None, n=None, return_n=False):
+def asepochs(x, sub=None, ds=None, n=None, return_n=False) -> mne.BaseEpochs:
     "Convert to mne Epochs object"
     if isinstance(x, str):
         if ds is None:
@@ -622,7 +622,7 @@ def asepochs(x, sub=None, ds=None, n=None, return_n=False):
     return _apply_sub(x, sub, n, return_n)
 
 
-def asfactor(x, sub=None, ds=None, n=None, return_n=False):
+def asfactor(x, sub=None, ds=None, n=None, return_n=False) -> Factor:
     if isinstance(x, str):
         if ds is None:
             raise TypeError(f"{x!r}: Factor was specified as string, but no Dataset was specified")
@@ -638,7 +638,7 @@ def asfactor(x, sub=None, ds=None, n=None, return_n=False):
     return _apply_sub(x, sub, n, return_n)
 
 
-def asindex(x):
+def asindex(x) -> numpy.ndarray:
     if isinstance(x, Factor):
         return x != ''
     elif isinstance(x, Var):
@@ -647,7 +647,7 @@ def asindex(x):
         return x
 
 
-def asmodel(x, sub=None, ds=None, n=None, return_n=False, require_names=False):
+def asmodel(x, sub=None, ds=None, n=None, return_n=False, require_names=False) -> Model:
     if isinstance(x, str):
         if ds is None:
             raise TypeError(f"{x!r}: Model was specified as string, but no Dataset was specified")
@@ -664,7 +664,14 @@ def asmodel(x, sub=None, ds=None, n=None, return_n=False, require_names=False):
     return _apply_sub(x, sub, n, return_n)
 
 
-def asndvar(x, sub=None, ds=None, n=None, dtype=None, return_n=False):
+def asndvar(
+        x: NDVarArg,
+        sub: IndexArg = None,
+        ds: Dataset = None,
+        n: int = None,
+        dtype: np.dtype = None,
+        return_n: bool = False,
+) -> NDVar:
     if isinstance(x, str):
         if ds is None:
             raise TypeError(f"{x!r}: Ndvar was specified as string, but no Dataset was specified")
@@ -754,7 +761,7 @@ def asuv(x, sub=None, ds=None, n=None, return_n=False, interaction=False):
     return _apply_sub(x, sub, n, return_n)
 
 
-def asvar(x, sub=None, ds=None, n=None, return_n=False):
+def asvar(x, sub=None, ds=None, n=None, return_n=False) -> Var:
     "Coerce to Var"
     if isinstance(x, str):
         if ds is None:

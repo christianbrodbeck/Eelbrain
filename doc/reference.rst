@@ -462,6 +462,16 @@ Plots that do take those parameters can be identified by the ``**layout`` in
 their function signature.
 
 
+Helper functions
+================
+
+.. autosummary::
+   :toctree: generated
+
+   plot.subplots
+   plot.figure_outline
+
+
 GUI Interaction
 ===============
 

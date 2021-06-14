@@ -3,7 +3,7 @@ from dataclasses import dataclass, fields
 from functools import reduce
 from itertools import product
 from operator import mul
-from typing import List, Union
+from typing import List, Sequence, Union
 
 import numpy as np
 import scipy.signal
@@ -210,19 +210,19 @@ class PredictorData:
 
     def __init__(
             self,
-            x: Union[NDVarArg, List[NDVarArg]],
+            x: Union[NDVarArg, Sequence[NDVarArg]],
             ds: Dataset = None,
     ):
-        if isinstance(x, (tuple, list, Iterator)):
-            multiple_x = True
-            xs = [asndvar(x_, ds=ds) for x_ in x]
-            if len(xs) == 0:
-                raise ValueError(f"x={x!r} of length 0")
-            x_name = [x_.name for x_ in xs]
-        else:
+        if isinstance(x, (NDVar, str)):
             multiple_x = False
             xs = [asndvar(x, ds=ds)]
             x_name = xs[0].name
+        else:
+            multiple_x = True
+            xs = [asndvar(x_, ds=ds) for x_ in x]
+            if len(xs) == 0:
+                raise ValueError(f"{x=} of length 0")
+            x_name = [x_.name for x_ in xs]
 
         time_dim = xs[0].get_dim('time')
         if any(xi.get_dim('time') != time_dim for xi in xs[1:]):
@@ -328,7 +328,7 @@ class RevCorrData:
     def __init__(
             self,
             y: NDVarArg,
-            x: Union[NDVarArg, List[NDVarArg]],
+            x: Union[NDVarArg, Sequence[NDVarArg]],
             ds: Dataset = None,
             in_place: bool = False,
     ):
