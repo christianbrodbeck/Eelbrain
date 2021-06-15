@@ -15,7 +15,7 @@ import matplotlib as mpl
 from matplotlib.colors import LinearSegmentedColormap, to_rgb, to_rgba
 
 from .._colorspaces import LocatedListedColormap, lch_to_rgb, rgb_to_lch, oneway_colors, twoway_colors, symmetric_cmaps
-from .._data_obj import CategorialVariable, Factor, Interaction, CellArg
+from .._data_obj import Factor, Interaction, CellArg
 from .._exceptions import KeysMissing
 from .._utils import LazyProperty
 
@@ -26,7 +26,14 @@ modifer_keys = {'alpha', 'saturation'}
 
 @dataclass
 class Style:
-    """Control color/pattern by category"""
+    """Control color/pattern by category.
+
+    For options, see :class:`~matplotlib.lines.Line2D` and :class:`~matplotlib.patches.Patch`.
+
+    Examples
+    --------
+    - :ref:`exa-utsstat`
+    """
     color: Any = (0, 0, 0)
     marker: str = None
     hatch: str = ''

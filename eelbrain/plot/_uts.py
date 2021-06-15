@@ -119,6 +119,10 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     ...
         Also accepts :ref:`general-layout-parameters`.
 
+    Examples
+    --------
+    - :ref:`exa-utsstat`
+
     Notes
     -----
     Navigation:

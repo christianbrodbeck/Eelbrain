@@ -112,6 +112,7 @@ example_order = NameOrder({
     ],
     'plots': [
         'boxplot.py',
+        'utsstat.py',
         'colors.py',
         'colormaps.py',
         'customizing.py',
