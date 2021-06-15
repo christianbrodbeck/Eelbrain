@@ -20,15 +20,21 @@ def _topo(sensor, center, falloff=1):
     return NDVar(topo, (sensor,))
 
 
-def simulate_erp(n_trials=80, seed=0):
+def simulate_erp(
+        n_trials: int = 80,
+        seed: int = 0,
+        snr: float = 0.2,
+) -> Dataset:
     """Simulate event-related EEG data
 
     Parameters
     ----------
-    n_trials : int
+    n_trials
         Number of trials (default 100).
-    seed : int
+    seed
         Random seed.
+    snr
+        Signal-to-noise ratio.
 
     Examples
     --------
@@ -95,7 +101,7 @@ def simulate_erp(n_trials=80, seed=0):
     # Add noise
     noise = powerlaw_noise(signal, 1, rng)
     noise = noise.smooth('sensor', 0.02, 'gaussian')
-    noise *= 5
+    noise *= (signal.std() / noise.std() / snr)
     signal += noise
 
     # Data scale
