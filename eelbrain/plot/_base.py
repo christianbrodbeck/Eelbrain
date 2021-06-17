@@ -109,7 +109,7 @@ from .._stats import test, testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._ndvar import erode, resample
 from .._text import enumeration, ms
-from ..fmtxt import FMTextArg, Image, asfmtext_or_none
+from ..fmtxt import FMTextArg, Image, asfmtext, asfmtext_or_none
 from ..mne_fixes import MNE_EPOCHS
 from ..table import melt_ndvar
 from ._decorations import mark_difference
@@ -1651,7 +1651,8 @@ class EelFigure(MatplotlibFigure):
             return axtitle
 
         for title, ax in zip(axtitle, axes):
-            ax.set_title(title, **kwargs)
+            if title is not None:
+                ax.set_title(asfmtext(title), **kwargs)
 
     def _show(self, crosshair_axes=None):
         if self._layout.user_axes:
