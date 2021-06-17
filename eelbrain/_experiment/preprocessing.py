@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Pre-processing operations based on NDVars"""
+import warnings
 from copy import deepcopy
 import fnmatch
 from itertools import chain
@@ -589,7 +590,9 @@ class RawICA(CachedRawPipe):
         path = self._ica_path(subject, visit)
         if not exists(path):
             raise FileMissing(f"ICA file {basename(path)} does not exist for raw={self.name!r}. Run e.make_ica_selection() to create it.")
-        return mne.preprocessing.read_ica(path)
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', 'Version 0.23 introduced max_iter', DeprecationWarning)
+            return mne.preprocessing.read_ica(path)
 
     @staticmethod
     def _check_ica_channels(
