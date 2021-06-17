@@ -903,8 +903,7 @@ def align(d1, d2, i1='index', i2=None, out='data'):
     i1 = as_case_identifier(i1, ds=d1)
     i2 = as_case_identifier(i2, ds=d2)
     if type(i1) is not type(i2):
-        raise TypeError("i1 and i2 need to be of the same type, got: \n"
-                        "i1=%r\ni2=%r" % (i1, i2))
+        raise TypeError(f"i1 and i2 need to be of the same type, got:\n{i1=}\n{i2=}")
 
     idx1 = []
     idx2 = []

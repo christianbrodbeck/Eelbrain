@@ -546,7 +546,7 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
             **kwargs,
     ):
         if test is not False:
-            raise NotImplemented("Horizontal barplot with pairwise significance")
+            raise NotImplementedError("Horizontal barplot with pairwise significance")
 
         ct = Celltable(y, x, match, sub, cells, ds, asvar)
         if colors is False:

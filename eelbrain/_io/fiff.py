@@ -8,7 +8,7 @@ from math import floor
 import os
 from pathlib import Path
 import re
-from typing import Any, List, Optional, Sequence, Tuple, Union
+from typing import Any, List, Literal, Optional, Sequence, Tuple, Union
 import warnings
 
 import numpy as np
@@ -43,6 +43,7 @@ except ImportError:
     }
 
 BaselineArg = Optional[Tuple[Optional[float], Optional[float]]]
+DataArg = Literal['eeg', 'mag', 'grad']
 PicksArg = Any
 
 
@@ -336,72 +337,88 @@ def _sensor_info(data, vmax, mne_info, user_info=None, mult=1):
     return info
 
 
-def epochs(ds, tmin=-0.1, tmax=None, baseline=None, decim=1, mult=1, proj=False,
-           data=None, reject=None, exclude='bads', info=None, name=None,
-           raw=None, sensors=None, i_start='i_start', tstop=None, sysname=None):
+def epochs(
+        ds: Dataset,
+        tmin: float = -0.1,
+        tmax: float = None,
+        baseline: BaselineArg = None,
+        decim: int = 1,
+        mult: float = 1,
+        proj: bool = False,
+        data: DataArg = None,
+        reject: float = None,
+        exclude: Union[str, Sequence[str]] = 'bads',
+        info: dict = None,
+        name: str = None,
+        raw: mne.io.BaseRaw = None,
+        sensors: Sensor = None,
+        i_start: str = 'i_start',
+        tstop: float = None,
+        sysname: str = None,
+) -> NDVar:
     """
     Load epochs as :class:`NDVar`.
 
     Parameters
     ----------
-    ds : Dataset
+    ds
         Dataset containing a variable which defines epoch cues (i_start).
-    tmin : scalar
+    tmin
         First sample to include in the epochs in seconds (Default is -0.1).
-    tmax : scalar
+    tmax
         Last sample to include in the epochs in seconds (Default 0.6; use
         ``tstop`` instead to specify index exclusive of last sample).
-    baseline : (float, float) | None
+    baseline
         Time interval for baseline correction. ``(tmin, tmax)`` tuple in
         seconds, or ``None`` to use all the data (e.g., ``(None, 0)`` uses all
         the data from the beginning of the epoch up to ``t = 0``). Set to
         ``None`` for no baseline correction (default).
-    decim : int
+    decim
         Downsample the data by this factor when importing. ``1`` means no
         downsampling. Note that this function does not low-pass filter
         the data. The data is downsampled by picking out every
         n-th sample (see `Wikipedia <http://en.wikipedia.org/wiki/Downsampling>`_).
-    mult : scalar
+    mult
         multiply all data by a constant.
-    proj : bool
+    proj
         mne.Epochs kwarg (subtract projections when loading data)
-    data : 'eeg' | 'mag' | 'grad'
+    data
         Which data channels data to include (default based on channels in data).
-    reject : None | scalar
+    reject
         Threshold for rejecting epochs (peak to peak). Requires a for of
         mne-python which implements the Epochs.model['index'] variable.
-    exclude : list of string | str
+    exclude
         Channels to exclude (:func:`mne.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
         If empty do not exclude any.
-    info : None | dict
+    info
         Entries for the ndvar's info dict.
-    name : str
+    name
         name for the new NDVar.
-    raw : None | mne Raw
+    raw
         Raw file providing the data; if ``None``, ``ds.info['raw']`` is used.
-    sensors : None | Sensor
+    sensors
         The default (``None``) reads the sensor locations from the fiff file.
         If the fiff file contains incorrect sensor locations, a different
         Sensor instance can be supplied through this kwarg.
-    i_start : str
+    i_start
         name of the variable containing the index of the events.
-    tstop : scalar
+    tstop
         Alternative to ``tmax``: While ``tmax`` specifies the last samples to 
         include, ``tstop`` can be used to specify the epoch time excluding the 
         last time point (i.e., standard Python/Eelbrain indexing convention).
         For example, at 100 Hz the epoch with ``tmin=-0.1, tmax=0.4`` will have 
         51 samples, while the epoch specified with ``tmin=-0.1, tstop=0.4`` will
         have 50 samples.
-    sysname : str
+    sysname
         Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
         inferred automatically for KIT data converted with a recent version of
         MNE-Python).
 
     Returns
     -------
-    epochs : NDVar
-        The epochs as NDVar object.
+    epochs
+        The data epochs as (case, sensor, time) data.
     """
     if raw is None:
         raw = ds.info['raw']
@@ -762,18 +779,18 @@ def variable_length_mne_epochs(
 
     Parameters
     ----------
-    ds : Dataset
+    ds
         Dataset containing a variable which defines epoch cues (i_start).
-    tmin : scalar
+    tmin
         First sample to include in the epochs in seconds (Default is -0.1).
-    tmax : sequence of scalar
+    tmax
         Last sample to include in each epoch in seconds.
-    baseline : (float, float) | None
+    baseline
         Time interval for baseline correction. ``(tmin, tmax)`` tuple in
         seconds, or ``None`` to use all the data (e.g., ``(None, 0)`` uses all
         the data from the beginning of the epoch up to ``t = 0``). Set to
         ``None`` for no baseline correction (default).
-    allow_truncation : bool
+    allow_truncation
         If a ``tmax`` value falls outside the data available in ``raw``,
         automatically truncate the epoch (by default this raises a
         ``ValueError``).
@@ -896,7 +913,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
 def epochs_ndvar(
         epochs: Union[mne.BaseEpochs, PathArg],
         name: str = None,
-        data: str = None,
+        data: DataArg = None,
         exclude: Union[str, Sequence[str]] = 'bads',
         mult: float = 1,
         info: dict = None,
@@ -914,7 +931,7 @@ def epochs_ndvar(
         The epochs object or path to an epochs FIFF file.
     name
         Name for the NDVar.
-    data : 'eeg' | 'mag' | 'grad'
+    data
         Which data channels data to include (default based on channels in data).
     exclude
         Channels to exclude (:func:`mne.pick_types` kwarg).
