@@ -42,6 +42,7 @@ def tsv(
         empty: Union[str, float] = None,
         random: Union[str, Sequence[str]] = None,
         strip: bool = False,
+        encoding: str = None,
         **fmtparams,
 ):
     r"""Load a :class:`Dataset` from a text file.
@@ -94,6 +95,8 @@ def tsv(
         Names of the columns that should be assigned as random factor.
     strip
         Strip white-space from all categorial variables.
+    encoding
+        Text file encoding (see :func:`open`).
     **fmtparams
         Further formatting parameters for :func:`csv.reader`. For example, a
         fixed-width column file can be loaded with ``skipinitialspace=True``
@@ -128,7 +131,7 @@ def tsv(
         else:
             delimiter = '\t'
 
-    with open_(path, 'rt', newline='') as fid:
+    with open_(path, 'rt', encoding=encoding, newline='') as fid:
         reader = csv.reader(fid, delimiter=delimiter, **fmtparams)
         lines = list(reader)
 
