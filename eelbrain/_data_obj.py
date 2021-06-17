@@ -903,11 +903,15 @@ def align(d1, d2, i1='index', i2=None, out='data'):
             idx1.append(i)
             idx2.append(i2.index(case_id)[0])
 
+    # simplify
+    idxs = [idx1, idx2]
+    for i in range(2):
+        if all(j == v for j, v in enumerate(idxs[i])):
+            idxs[i] = slice(idxs[i][0], idxs[i][-1] + 1)
+    idx1, idx2 = idxs
+
     if out == 'data':
-        if all(i == v for i, v in enumerate(idx1)):
-            return d1, d2[idx2]
-        else:
-            return d1[idx1], d2[idx2]
+        return d1[idx1], d2[idx2]
     elif out == 'index':
         return idx1, idx2
     else:
