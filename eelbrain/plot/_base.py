@@ -291,21 +291,24 @@ def find_uts_hlines(ndvar):
                 yield level, {'color': args}
 
 
-def find_uts_ax_vlim(layers, vlims={}):
+def find_uts_ax_vlim(
+        layers: Sequence[NDVar],
+        vlims: Dict = (),
+) -> (Optional[float], Optional[float]):
     """Find y axis limits for uts axes
 
     Parameters
     ----------
-    layers : list of NDVar
+    layers
         Data to be plotted.
-    vlims : dict
+    vlims
         Vmax and vmin values by (meas, cmap).
 
     Returns
     -------
-    bottom : None | scalar
+    bottom
         Lowest value on y axis.
-    top : None | scalar
+    top
         Highest value on y axis.
     """
     bottom = None

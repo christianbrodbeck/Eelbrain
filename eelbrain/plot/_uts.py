@@ -511,13 +511,10 @@ class UTSClusters(EelFigure):
 
         colors = colors_for_oneway(range(data.n_plots), cmap=cm)
         self._caxes = []
-        if overlay:
-            ax = self.axes[0]
 
         for i, layers in enumerate(data.data):
+            ax = self.axes[0] if overlay else self.axes[i]
             stat = layers[0]
-            if not overlay:
-                ax = self.axes[i]
 
             # ax clusters
             if clusters_:
@@ -605,8 +602,17 @@ class _plt_uts:
 
 
 class _ax_uts_clusters:
-    def __init__(self, ax, y, clusters, color=None, pmax=0.05, ptrend=0.1,
-                 xdim='time'):
+
+    def __init__(
+            self,
+            ax: matplotlib.axes.Axes,
+            y: NDVar,
+            clusters,
+            color: Any = None,
+            pmax: float = 0.05,
+            ptrend: float = 0.1,
+            xdim: str = 'time',
+    ):
         self._bottom, self._top = _base.find_vlim_args(y)
         if color is None:
             color = y.info.get('color')

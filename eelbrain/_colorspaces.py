@@ -165,7 +165,7 @@ def oneway_colors(
         always_cycle_hue: bool = False,
         locations: Sequence[float] = None,
         unambiguous: Union[bool, Sequence[int]] = None,
-):
+) -> list:
     "Create colors for categories (see docs at colors_for_oneway)"
     if unambiguous:
         if unambiguous is True:
