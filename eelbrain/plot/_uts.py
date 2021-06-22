@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, Sequence, Tuple, Union
 
 import matplotlib.axes
 import matplotlib.colors
-import matplotlib as mpl
+import matplotlib.patches
 import numpy as np
 
 from .._colorspaces import oneway_colors, to_rgba
@@ -15,7 +15,7 @@ from ._base import (
     LegendMixin, YLimMixin, XAxisMixin, TimeSlicerEF,
     AxisData, StatLayer,
 )
-from ._styles import colors_for_oneway
+from ._styles import Style, colors_for_oneway, to_styles_dict
 
 
 class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
@@ -395,14 +395,14 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
 
         n_colors = max(map(len, data.data))
         if colors is None:
-            colors_ = oneway_colors(n_colors)
+            styles = [Style._coerce(color) for color in oneway_colors(n_colors)]
         elif isinstance(colors, dict):
-            colors_ = colors
+            styles = to_styles_dict(colors)
         else:
-            colors_ = (colors,) * n_colors
+            styles = (Style._coerce(colors),) * n_colors
 
         for ax, layers in zip(self.axes, data.data):
-            h = _ax_uts(ax, layers, xdim, vlims, colors_, stem)
+            h = _ax_uts(ax, layers, xdim, vlims, styles, stem)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
@@ -555,15 +555,22 @@ class UTSClusters(EelFigure):
 
 class _ax_uts:
 
-    def __init__(self, ax, layers, xdim, vlims, colors, stem):
+    def __init__(
+            self,
+            ax,
+            layers,
+            xdim,
+            vlims,
+            styles: Union[Sequence, Dict],
+            stem: bool,
+    ):
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
-        if isinstance(colors, dict):
-            colors = [colors[l.name] for l in layers]
+        if isinstance(styles, dict):
+            styles = [styles[l.name] for l in layers]
 
         self.legend_handles = {}
-        for l, color in zip(layers, colors):
-            color = l.info.get('color', color)
-            p = _plt_uts(ax, l, xdim, color, stem)
+        for l, style in zip(layers, styles):
+            p = _plt_uts(ax, l, xdim, style, stem)
             self.legend_handles[longname(l)] = p.plot_handle
             contours = l.info.get('contours', None)
             if contours:
@@ -582,7 +589,14 @@ class _ax_uts:
 
 class _plt_uts:
 
-    def __init__(self, ax, ndvar, xdim, color, stem=False):
+    def __init__(
+            self,
+            ax: matplotlib.axes.Axes,
+            ndvar: NDVar,
+            xdim: str,
+            style: Style,
+            stem: bool = False,
+    ):
         y = ndvar.get_data((xdim,))
         x = ndvar.get_dim(xdim)._axis_data()
         label = longname(ndvar)
@@ -590,14 +604,12 @@ class _plt_uts:
             nonzero = y != 0
             nonzero[0] = True
             nonzero[-1] = True
-            color = matplotlib.colors.to_hex(color)
+            color = matplotlib.colors.to_hex(style.color)
             self.plot_handle = ax.stem(x[nonzero], y[nonzero], bottom=0, linefmt=color, markerfmt=' ', basefmt=f'#808080', use_line_collection=True, label=label)
         else:
-            self.plot_handle = ax.plot(x, y, color=color, label=label)[0]
+            self.plot_handle = ax.plot(x, y, label=label, **style.line_args)[0]
 
         for y, kwa in _base.find_uts_hlines(ndvar):
-            if color is not None:
-                kwa['color'] = color
             ax.axhline(y, **kwa)
 
 
@@ -616,14 +628,15 @@ class _ax_uts_clusters:
         self._bottom, self._top = _base.find_vlim_args(y)
         if color is None:
             color = y.info.get('color')
+        style = Style._coerce(color)
 
-        _plt_uts(ax, y, xdim, color)
+        _plt_uts(ax, y, xdim, style)
 
         if np.any(y.x < 0) and np.any(y.x > 0):
             ax.axhline(0, color='k')
 
         # pmap
-        self.cluster_plt = _plt_uts_clusters(ax, clusters, pmax, ptrend, color)
+        self.cluster_plt = _plt_uts_clusters(ax, clusters, pmax, ptrend, style)
 
         # save ax attr
         self.ax = ax
@@ -648,14 +661,14 @@ class _plt_uts_clusters:
             clusters: Dataset,  # 'tstart', 'tstop', 'p', 'effect'
             pmax: float,
             ptrend: float,
-            color: Any = None,
+            style: Style = None,
     ):
         self.pmax = pmax
         self.ptrend = ptrend
         self.h = []
         self.ax = ax
         self.clusters = clusters
-        self.color = color
+        self.style = style
         self.y = None
         self.dy = None
         self.kwargs = {}
@@ -667,7 +680,7 @@ class _plt_uts_clusters:
             self.update()
 
     def set_color(self, color, update=True):
-        self.color = color
+        self.style = Style._coerce(color)
         if update:
             self.update()
 
@@ -711,13 +724,18 @@ class _plt_uts_clusters:
             tstart = cluster['tstart']
             tstop = cluster['tstop']
             effect = cluster.get('effect')
-            color = self.color[effect] if isinstance(self.color, dict) else self.color
             y = self.y[effect] if isinstance(self.y, dict) else self.y
             if y is None:
                 kwargs = {'zorder': -10, **self.kwargs}
-                h = self.ax.axvspan(tstart, tstop, color=color, fill=True, alpha=alpha, **kwargs)
+                if self.style:
+                    kwargs = {**self.style.patch_args, **kwargs}
+                h = self.ax.axvspan(tstart, tstop, fill=True, alpha=alpha, **kwargs)
             else:
-                h = mpl.patches.Rectangle((tstart, y - dy / 2.), tstop - tstart, dy, facecolor=color, linewidth=0, **self.kwargs)
+                if self.style:
+                    kwargs = {**self.style.patch_args, **self.kwargs}
+                else:
+                    kwargs = self.kwargs
+                h = matplotlib.patches.Rectangle((tstart, y - dy / 2.), tstop - tstart, dy, linewidth=0, **kwargs)
                 self.ax.add_patch(h)
             self.h.append(h)
 
@@ -743,7 +761,7 @@ class _plt_uts_stat:
             y_main = layer.get_statistic(main)
             kwargs = layer.style.line_args
             if error == 'all':
-                lw = kwargs['linewidth'] or mpl.rcParams['lines.linewidth']
+                lw = kwargs['linewidth'] or matplotlib.rcParams['lines.linewidth']
                 kwargs = {**kwargs, 'linewidth': lw * 2}
             self.main = ax.plot(x, y_main, label=label, clip_on=clip, **kwargs)
         elif error == 'all':
