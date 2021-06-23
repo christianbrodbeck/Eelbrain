@@ -2288,11 +2288,11 @@ class MneExperiment(FileTree):
         decim = decim_param(samplingrate, decim, epoch, ds.info['sfreq'])
 
         if variable_tmax:
-            ds['epochs'] = load.fiff.variable_length_mne_epochs(ds, tmin, tmax, baseline, allow_truncation=True, decim=decim)
+            ds['epochs'] = load.fiff.variable_length_mne_epochs(ds, tmin, tmax, baseline, allow_truncation=True, decim=decim, reject_by_annotation=False)
             epochs_list = ds['epochs']
         else:
             n = ds.n_cases
-            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim, drop_bad_chs=False, tstop=tstop)
+            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim, drop_bad_chs=False, tstop=tstop, reject_by_annotation=False)
             if ds.n_cases != n:
                 self._log.warning(f"{n_of(n - ds.n_cases, 'epoch')} missing for {subject}/{epoch_name}")
 
