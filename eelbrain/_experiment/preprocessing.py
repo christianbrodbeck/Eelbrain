@@ -15,7 +15,7 @@ from scipy import signal
 from .. import load
 from .._data_obj import NDVar, Sensor
 from .._exceptions import DefinitionError
-from .._io.fiff import KIT_NEIGHBORS
+from .._io.fiff import KIT_NEIGHBORS, find_mne_channel_types
 from ..mne_fixes._version import MNE_VERSION, V0_19
 from .._ndvar import filter_data
 from .._text import enumeration
@@ -302,9 +302,13 @@ class RawSource(RawPipe):
         with open(path, 'w') as fid:
             fid.write(text)
 
-    def make_bad_channels_auto(self, subject, recording, flat=1e-14, redo=False):
+    def make_bad_channels_auto(self, subject, recording, flat=None, redo=False):
         raw = self.load(subject, recording, add_bads=False)
         bad_chs = raw.info['bads']
+        if flat is None:
+            # flat EEG channel is probably the reference
+            if find_mne_channel_types(raw.info) != ['eeg']:
+                flat = 1e-14
         if flat:
             raw = load.fiff.raw_ndvar(raw)
             bad_chs.extend(raw.sensor.names[raw.std('time') < flat])
