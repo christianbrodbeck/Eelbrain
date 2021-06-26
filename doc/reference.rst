@@ -320,6 +320,7 @@ Color tools for plotting:
    plot.colors_for_categorial
    plot.colors_for_oneway
    plot.colors_for_twoway
+   plot.unambiguous_color
    plot.soft_threshold_colormap
    plot.two_step_colormap
    plot.Style

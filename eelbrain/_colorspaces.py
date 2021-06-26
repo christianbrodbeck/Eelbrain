@@ -101,6 +101,18 @@ def make_seq_cmap(seq, val, name):
 
 
 def unambiguous_color(color: str, lightness: float = None, chroma: float = None):
+    """Generate an `unambiguous color <https://jfly.uni-koeln.de/html/color_blind/#pallet>`_
+    
+    Prameters
+    ---------
+    color
+        Color name, one of: black, orange, sky blue, bluish green, yellow,
+        blue, vermilion, reddish purple.
+    lightness
+        Adjust the lightness (in percent).
+    chroma
+        Adjust the saturation (in percent).
+    """
     r, g, b = UNAMBIGUOUS_COLORS[color]
     l, c, h = rgb_to_lch(r, g, b)
     if lightness is not None:
