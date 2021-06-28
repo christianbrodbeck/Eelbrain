@@ -70,3 +70,6 @@ class DataSplit(EelFigure, LegendMixin):
         ax.set_xlim(splits.segments[0, 0], splits.segments[-1, 1])
         LegendMixin.__init__(self, legend, handles, labels)
         self._show()
+
+    def _fill_toolbar(self, tb):
+        LegendMixin._fill_toolbar(self, tb)
