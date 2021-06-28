@@ -73,6 +73,9 @@ class DataSplit(EelFigure, LegendMixin):
         LegendMixin.__init__(self, legend, handles, labels)
         self._show()
 
+    def _fill_toolbar(self, tb):
+        LegendMixin._fill_toolbar(self, tb)
+
 
 def preview_partitions(
     cases: Union[int, NDVarArg] = 0,
