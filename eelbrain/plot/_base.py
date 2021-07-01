@@ -126,6 +126,7 @@ defaults = {'maxw': 16, 'maxh': 10}
 # Types
 CMapArg = Any
 ColorArg = Any
+LegendArg = Optional[Union[str, int, Tuple[float, float], bool]]
 
 
 class PlotType(Enum):
@@ -2943,12 +2944,17 @@ class LegendMixin:
     __args = (False, 'fig', 'draggable', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
     _has_frame = None
 
-    def __init__(self, loc, handles, labels=None):
+    def __init__(
+            self,
+            loc: LegendArg,
+            handles: Dict[CellArg, Any],
+            labels: Dict[CellArg, str] = None,
+    ):
         """Legend toolbar menu mixin
 
         Parameters
         ----------
-        loc : str | int | 'fig' | None
+        loc
             Matplotlib figure legend location argument or 'fig' to plot the
             legend in a separate figure.
         handles : dict
@@ -2979,12 +2985,16 @@ class LegendMixin:
     def __OnChoice(self, event):
         self.__plot(self.__args[event.GetSelection()])
 
-    def plot_legend(self, loc='fig', labels=None, *args, **kwargs):
+    def plot_legend(
+            self,
+            loc: LegendArg = 'fig',
+            labels=None,
+            *args, **kwargs):
         """Plot the legend (or remove it from the figure).
 
         Parameters
         ----------
-        loc : False | 'fig' | 'draggable' | str | int
+        loc
             Where to plot the legend (see Notes; default 'fig').
         labels : dict
             Dictionary with alternate labels for all cells.
@@ -3005,27 +3015,13 @@ class LegendMixin:
 
         ``False``:
             Make the current legend invisible
-        'fig':
+        ``'fig'``:
             Plot the legend in a new figure
-        'draggable':
+        ``'draggable'``:
             The legend can be dragged to the desired position with the mouse
             pointer.
-        str | int:
-            Matplotlib position argument: plot the legend on the figure
-
-
-        Matplotlib Position Arguments:
-
-         - 'upper right'  : 1,
-         - 'upper left'   : 2,
-         - 'lower left'   : 3,
-         - 'lower right'  : 4,
-         - 'right'        : 5,
-         - 'center left'  : 6,
-         - 'center right' : 7,
-         - 'lower center' : 8,
-         - 'upper center' : 9,
-         - 'center'       : 10,
+        str | int | (float, float):
+            Matplotlib :meth:`~matplotlib.figure.Figure.legend` position argument.
         """
         if loc in self.__choices:
             choice = self.__choices.index(loc)
@@ -3033,6 +3029,12 @@ class LegendMixin:
         elif loc is None:
             choice = 0
             arg = False
+        elif loc is True:
+            choice = 3
+            arg = 'best'
+        elif isinstance(loc, Sequence) and not isinstance(loc, str):
+            choice = 0
+            arg = loc
         elif loc not in self.__args:
             raise ValueError(f"Invalid legend location: {loc!r}; use one of: {enumeration(map(repr, self.__choices), 'or')}")
         else:
@@ -3057,7 +3059,7 @@ class LegendMixin:
         p.save(*args, **kwargs)
         p.close()
 
-    def __plot(self, loc, labels=None, *args, **kwargs):
+    def __plot(self, loc: LegendArg, labels: Dict[CellArg, str] = None, *args, **kwargs):
         if loc and self.__handles:
             if labels is None:
                 labels = self.__labels

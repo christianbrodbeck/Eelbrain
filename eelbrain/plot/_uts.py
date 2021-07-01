@@ -10,11 +10,7 @@ import numpy as np
 from .._colorspaces import oneway_colors, to_rgba
 from .._data_obj import NDVarArg, CategorialArg, CellArg, IndexArg, Dataset, NDVar, cellname, longname
 from . import _base
-from ._base import (
-    PlotType, EelFigure, PlotData, Layout,
-    LegendMixin, YLimMixin, XAxisMixin, TimeSlicerEF,
-    AxisData, StatLayer,
-)
+from ._base import AxisData, EelFigure, Layout, LegendArg, LegendMixin, PlotType, PlotData, StatLayer, TimeSlicerEF, XAxisMixin, YLimMixin
 from ._styles import Style, colors_for_oneway, to_styles_dict
 
 
@@ -142,7 +138,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             main: Callable = np.mean,
             error: str = 'sem',
             pool_error: bool = None,
-            legend: Union[str, int, bool] = None,
+            legend: LegendArg = None,
             labels: Dict[CellArg, str] = None,
             axtitle: Union[bool, Sequence[str]] = True,
             xlabel: Union[bool, str] = True,
@@ -375,7 +371,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
             yticklabels: Union[str, int, Sequence[int]] = 'left',
             bottom: float = None,
             top: float = None,
-            legend: Union[str, int, bool] = None,
+            legend: LegendArg = None,
             labels: Dict[CellArg, str] = None,
             xlim: Union[float, Tuple[float, float]] = None,
             colors: Union[Any, dict] = None,

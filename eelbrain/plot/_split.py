@@ -7,7 +7,7 @@ import numpy
 
 from .._trf.shared import Splits, split_data
 from .._data_obj import Dataset, CategorialArg, NDVarArg, asndvar
-from ._base import EelFigure, Layout, LegendMixin
+from ._base import EelFigure, Layout, LegendMixin, LegendArg
 from ._styles import colors_for_oneway
 
 
@@ -16,7 +16,7 @@ class DataSplit(EelFigure, LegendMixin):
     def __init__(
             self,
             splits: Splits,
-            legend: Union[str, int, bool] = 'upper right',
+            legend: LegendArg = 'upper right',
             colors: dict = None,
             **kwargs,
     ):

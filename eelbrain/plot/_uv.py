@@ -15,7 +15,7 @@ import matplotlib as mpl
 from .._celltable import Celltable
 from .._data_obj import VarArg, CategorialArg, UVArg, IndexArg, CellArg, Dataset, Var, asuv, asvar, ascategorial, assub, cellname
 from .._stats import test, stats
-from ._base import EelFigure, Layout, LegendMixin, CategorialAxisMixin, ColorBarMixin, XAxisMixin, YLimMixin, frame_title
+from ._base import EelFigure, Layout, LegendArg, LegendMixin, CategorialAxisMixin, ColorBarMixin, XAxisMixin, YLimMixin, frame_title
 from ._styles import ColorsArg, find_cell_styles
 
 
@@ -826,7 +826,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
             xlabel: Union[bool, str] = True,
             ylabel: Union[bool, str] = True,
             timelabels: Union[Sequence, Dict, str] = None,
-            legend: Union[str, int, bool] = None,
+            legend: LegendArg = None,
             labels: Dict = None,
             colors: ColorsArg = None,
             **kwargs,
@@ -1054,7 +1054,7 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
             vmin: str = None,
             vmax: str = None,
             markers: str = None,
-            legend: Union[str, int, bool] = None,
+            legend: LegendArg = None,
             labels: dict = None,
             alpha: float = 1.,
             xlabel: Union[bool, str] = True,
@@ -1159,7 +1159,7 @@ class Regression(EelFigure, LegendMixin):
             xlabel: Union[bool, str] = True,
             ylabel: Union[bool, str] = True,
             alpha: float = .2,
-            legend: Union[str, int, bool] = None,
+            legend: LegendArg = None,
             labels: dict = None,
             c: Any = ('#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'),
             **kwargs):
