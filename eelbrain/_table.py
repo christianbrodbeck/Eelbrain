@@ -514,7 +514,7 @@ def stats(
         match: CategorialArg = None,
         sub: IndexArg = None,
         fmt: str = '%.4g',
-        funcs: Sequence[Callable] = (np.mean,),
+        funcs: Sequence[Union[str, Callable]] = ('mean',),
         ds: Dataset = None,
         title: fmtxt.FMTextArg = None,
         caption: fmtxt.FMTextArg = None,
@@ -538,7 +538,8 @@ def stats(
         How to format values.
     funcs
         A list of statistics functions to show (all functions must take an
-        array argument and return a scalar).
+        array argument and return a scalar; strings are interpreted as
+        :mod:`numpy` functions).
     ds
         If a Dataset is provided, ``y``, ``row``, and ``col`` can be strings
         specifying members.
@@ -564,7 +565,7 @@ def stats(
     a0   0.1668    -0.3646
     a1   -0.4897   0.8746
 
-    >>> table.stats('Y', 'A', ds=ds, funcs=[np.mean, np.std])
+    >>> table.stats('Y', 'A', ds=ds, funcs=['mean', 'std'])
     Condition   Mean     Std
     --------------------------
     a0          0.6691   1.37
@@ -576,6 +577,10 @@ def stats(
     row = ascategorial(row, sub, ds)
     if match is not None:
         match = ascategorial(match, sub, ds)
+
+    if isinstance(funcs, str):
+        funcs = [funcs]
+    funcs = [getattr(np, f) if isinstance(f, str) else f for f in funcs]
 
     if col is None:
         ct = Celltable(y, row, match=match)
