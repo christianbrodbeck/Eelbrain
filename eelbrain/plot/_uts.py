@@ -333,6 +333,9 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     xlim
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).
+    clip
+        Clip lines outside of axes (the default depends on whether ``frame`` is
+        closed or open).
     colors
         Dictionary mapping ``y`` names to color, or a single color to use for
         all lines.
@@ -374,6 +377,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
             legend: LegendArg = None,
             labels: Dict[CellArg, str] = None,
             xlim: Union[float, Tuple[float, float]] = None,
+            clip: bool = None,
             colors: Union[Any, dict] = None,
             stem: bool = False,
             **kwargs):
@@ -384,6 +388,8 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         self._set_axtitle(axtitle, data)
         self._configure_axis_dim('x', xdim, xlabel, xticklabels, data=data.data)
         self._configure_axis_data('y', data, ylabel, yticklabels)
+        if clip is None:
+            clip = layout.frame is True
 
         self.plots = []
         legend_handles = {}
@@ -398,7 +404,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
             styles = (Style._coerce(colors),) * n_colors
 
         for ax, layers in zip(self.axes, data.data):
-            h = _ax_uts(ax, layers, xdim, vlims, styles, stem)
+            h = _ax_uts(ax, layers, xdim, vlims, styles, stem, clip)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
@@ -559,6 +565,7 @@ class _ax_uts:
             vlims,
             styles: Union[Sequence, Dict],
             stem: bool,
+            clip: bool = True,
     ):
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
         if isinstance(styles, dict):
@@ -566,7 +573,7 @@ class _ax_uts:
 
         self.legend_handles = {}
         for l, style in zip(layers, styles):
-            p = _plt_uts(ax, l, xdim, style, stem)
+            p = _plt_uts(ax, l, xdim, style, stem, clip)
             self.legend_handles[longname(l)] = p.plot_handle
             contours = l.info.get('contours', None)
             if contours:
@@ -592,6 +599,7 @@ class _plt_uts:
             xdim: str,
             style: Style,
             stem: bool = False,
+            clip: bool = True,
     ):
         y = ndvar.get_data((xdim,))
         x = ndvar.get_dim(xdim)._axis_data()
@@ -603,7 +611,7 @@ class _plt_uts:
             color = matplotlib.colors.to_hex(style.color)
             self.plot_handle = ax.stem(x[nonzero], y[nonzero], bottom=0, linefmt=color, markerfmt=' ', basefmt=f'#808080', use_line_collection=True, label=label)
         else:
-            self.plot_handle = ax.plot(x, y, label=label, **style.line_args)[0]
+            self.plot_handle = ax.plot(x, y, label=label, clip_on=clip, **style.line_args)[0]
 
         for y, kwa in _base.find_uts_hlines(ndvar):
             ax.axhline(y, **kwa)
