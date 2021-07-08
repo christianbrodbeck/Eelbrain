@@ -355,6 +355,7 @@ def epochs(
         i_start: str = 'i_start',
         tstop: float = None,
         sysname: str = None,
+        connectivity: Union[str, Sequence] = None,
 ) -> NDVar:
     """
     Load epochs as :class:`NDVar`.
@@ -414,6 +415,18 @@ def epochs(
         Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
         inferred automatically for KIT data converted with a recent version of
         MNE-Python).
+    connectivity
+        Connectivity between elements. Can be specified as:
+
+        - ``"none"`` for no connections
+        - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
+        - :class:`numpy.ndarray` of int, shape (n_edges, 2), to specify
+          connections in terms of indices. Each row should specify one
+          connection [i, j] with i < j. If the array's dtype is uint32,
+          property checks are disabled to improve efficiency.
+        - ``"grid"`` to use adjacency in the sensor names
+
+        If unspecified, it is inferred from ``sysname`` if possible.
 
     Returns
     -------
@@ -428,10 +441,8 @@ def epochs(
     picks = _picks(raw.info, data, exclude)
     reject = _ndvar_epochs_reject(data, reject)
 
-    epochs_ = mne_epochs(ds, tmin, tmax, baseline, i_start, raw, decim=decim,
-                         picks=picks, reject=reject, proj=proj, tstop=tstop)
-    ndvar = epochs_ndvar(epochs_, name, data, mult=mult, info=info,
-                         sensors=sensors, sysname=sysname)
+    epochs_ = mne_epochs(ds, tmin, tmax, baseline, i_start, raw, decim=decim, picks=picks, reject=reject, proj=proj, tstop=tstop)
+    ndvar = epochs_ndvar(epochs_, name, data, 'bads', mult, info, sensors, None, sysname, connectivity)
 
     if len(epochs_) == 0:
         raise RuntimeError(f"No events left in {raw.filenames[0]}")
