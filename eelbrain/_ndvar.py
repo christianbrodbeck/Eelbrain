@@ -1091,7 +1091,7 @@ def resample(
         window: Union[str, tuple] = None,
         pad: str = 'edge',
         name: str = None,
-):
+) -> NDVar:
     """Resample an NDVar along the time dimension
 
     Parameters
@@ -1290,6 +1290,7 @@ def set_parc(
         parc: Union[str, Factor],
         dim: str = 'source',
         mask: bool = False,
+        name: str = None,
 ) -> Union[NDVar, SourceSpace]:
     """Change the parcellation of an :class:`NDVar` or :class:`SourceSpace` dimension
 
@@ -1306,6 +1307,8 @@ def set_parc(
         Name of the dimension to operate on (usually ``'source'``, the default).
     mask
         Remove ``unknown-*`` vertices.
+    name
+        Name for the new NDVar.
 
     Returns
     -------
@@ -1316,10 +1319,12 @@ def set_parc(
     if isinstance(data, SourceSpaceBase):
         source = out = data._copy(parc=parc)
     elif isinstance(data, NDVar):
+        if name is None:
+            name = data.name
         axis = data.get_axis(dim)
         source = set_parc(data.dims[axis], parc, mask=False)
         dims = (*data.dims[:axis], source, *data.dims[axis + 1:])
-        out = NDVar(data.x, dims, data.name, data.info)
+        out = NDVar(data.x, dims, name, data.info)
     else:
         raise TypeError(data)
     if mask:
@@ -1333,7 +1338,11 @@ def set_parc(
     return out
 
 
-def set_tmin(data: Union[NDVar, UTS], tmin: float = 0.) -> Union[NDVar, UTS]:
+def set_tmin(
+        data: Union[NDVar, UTS],
+        tmin: float = 0.,
+        name: str = None,
+) -> Union[NDVar, UTS]:
     """Shift the time axis of an :class:`NDVar` relative to its data
 
     Parameters
@@ -1342,6 +1351,8 @@ def set_tmin(data: Union[NDVar, UTS], tmin: float = 0.) -> Union[NDVar, UTS]:
         :class:`NDVar` or :class:`UTS` dimension on which to set ``tmin``.
     tmin
         New ``tmin`` value (default 0).
+    name
+        Name for the new NDVar.
 
     Returns
     -------
@@ -1356,17 +1367,20 @@ def set_tmin(data: Union[NDVar, UTS], tmin: float = 0.) -> Union[NDVar, UTS]:
         return UTS(tmin, data.tstep, data.nsamples)
     elif not isinstance(data, NDVar):
         raise TypeError(f'{data=}')
+    if name is None:
+        name = data.name
     axis = data.get_axis('time')
     old: UTS = data.dims[axis]
     dims = list(data.dims)
     dims[axis] = UTS(tmin, old.tstep, old.nsamples)
-    return NDVar(data.x, dims, data.name, data.info)
+    return NDVar(data.x, dims, name, data.info)
 
 
 def set_time(
         ndvar: NDVar,
         time: Union[NDVar, UTS],
         mode: str = 'constant',
+        name: str = None,
         **kwargs,
 ):
     """Crop and/or pad an :class:`NDVar` to match the time axis ``time``
@@ -1379,6 +1393,8 @@ def set_time(
         New time axis, or :class:`NDVar` with time axis to match.
     mode : str
         How to pad ``ndvar``, see :func:`numpy.pad`.
+    name
+        Name for the new NDVar.
     **
         See :func:`numpy.pad`.
 
@@ -1388,6 +1404,8 @@ def set_time(
     """
     if isinstance(time, NDVar):
         time = time.get_dim('time')
+    if name is None:
+        name = ndvar.name
     axis = ndvar.get_axis('time')
     ndvar_time = ndvar.get_dim('time')
     if ndvar_time.tstep != time.tstep:
@@ -1407,4 +1425,4 @@ def set_time(
         pad_width = [*repeat(no_pad, axis), pad, *repeat(no_pad, ndvar.ndim-axis-1)]
         x = np.pad(x, pad_width, mode, **kwargs)
     dims = [*ndvar.dims[:axis], time, *ndvar.dims[axis+1:]]
-    return NDVar(x, dims, ndvar.name, ndvar.info)
+    return NDVar(x, dims, name, ndvar.info)
