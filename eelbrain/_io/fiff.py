@@ -777,6 +777,74 @@ def sensor_dim(
     return Sensor(ch_locs, ch_names, sysname, connectivity=connectivity)
 
 
+def variable_length_epochs(
+        ds: Dataset,
+        tmin: float,
+        tmax: Sequence[float],
+        baseline: BaselineArg = None,
+        allow_truncation: bool = False,
+        data: DataArg = None,
+        exclude: Union[str, Sequence[str]] = 'bads',
+        sysname: str = None,
+        connectivity: Union[str, Sequence] = None,
+        name: str = None,
+        **kwargs,
+) -> List[NDVar]:
+    """Load data epochs where each epoch has a different length
+
+    Parameters
+    ----------
+    ds
+        Dataset containing a variable which defines epoch cues (i_start).
+    tmin
+        First sample to include in the epochs in seconds (Default is -0.1).
+    tmax
+        Last sample to include in each epoch in seconds.
+    baseline
+        Time interval for baseline correction. ``(tmin, tmax)`` tuple in
+        seconds, or ``None`` to use all the data (e.g., ``(None, 0)`` uses all
+        the data from the beginning of the epoch up to ``t = 0``). Set to
+        ``None`` for no baseline correction (default).
+    allow_truncation
+        If a ``tmax`` value falls outside the data available in ``raw``,
+        automatically truncate the epoch (by default this raises a
+        ``ValueError``).
+    data
+        Which data channels data to include (default based on channels in data).
+    exclude
+        Channels to exclude (:func:`mne.pick_types` kwarg).
+        If 'bads' (default), exclude channels in info['bads'].
+        If empty do not exclude any.
+    sysname
+        Name of the sensor system to load sensor connectivity (e.g. 'neuromag306',
+        inferred automatically for KIT data converted with a recent version of
+        MNE-Python).
+    connectivity : str | list of (str, str) | array of int, (n_edges, 2)
+        Connectivity between elements. Can be specified as:
+
+        - ``"none"`` for no connections
+        - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
+        - :class:`numpy.ndarray` of int, shape (n_edges, 2), to specify
+          connections in terms of indices. Each row should specify one
+          connection [i, j] with i < j. If the array's dtype is uint32,
+          property checks are disabled to improve efficiency.
+        - ``"grid"`` to use adjacency in the sensor names
+
+        If unspecified, it is inferred from ``sysname`` if possible.
+    name
+        Name for the NDVar.
+    ...
+        :class:`mne.Epochs` parameters.
+
+    Returns
+    -------
+    epochs
+        List of data epochs of shape.
+    """
+    epochs_ = variable_length_mne_epochs(ds, tmin, tmax, baseline, allow_truncation, **kwargs)
+    return [epochs_ndvar(epoch, name, data, exclude, sysname=sysname, connectivity=connectivity)[0] for epoch in epochs_]
+
+
 def variable_length_mne_epochs(
         ds: Dataset,
         tmin: float,

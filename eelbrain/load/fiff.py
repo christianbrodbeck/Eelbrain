@@ -5,7 +5,9 @@
 
    events
    epochs
+   variable_length_epochs
    mne_epochs
+   variable_length_mne_epochs
    add_epochs
    add_mne_epochs
    epochs_ndvar
@@ -108,7 +110,7 @@ with :meth:`~load.fiff.DatasetSTCLoader.make_dataset`.
 from .._io.fiff import (
     add_epochs, add_mne_epochs, epochs, epochs_ndvar, events, evoked_ndvar,
     forward_operator, inverse_operator, mne_epochs, mne_raw, raw_ndvar,
-    sensor_dim, stc_ndvar, variable_length_mne_epochs,
+    sensor_dim, stc_ndvar, variable_length_epochs, variable_length_mne_epochs,
 )
 
 from .._io.stc_dataset import DatasetSTCLoader
