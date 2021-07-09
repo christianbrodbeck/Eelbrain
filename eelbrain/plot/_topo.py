@@ -914,22 +914,15 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
             ntopo = len(t) if t else 3
 
         data = PlotData.from_args(y, ('time', 'sensor'), xax, ds, sub).for_plot(PlotType.IMAGE)
-        n_topo_total = ntopo * data.n_plots
 
         # create figure
-        layout = Layout(data.plot_used, 1.5, 4, tight=False, **kwargs)
+        if 'ncol' not in kwargs and 'nrow' not in kwargs:
+            kwargs['nrow'] = 1
+        layout = Layout(data.plot_used, 1.5, 3, tight=False, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         all_plots = []
         ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, contours, all_plots)
         TopoMapKey.__init__(self, self._topo_data)
-
-        # fig coordinates
-        x_frame_l = .6 / self._layout.axw / data.n_plots
-        x_frame_r = .025 / data.n_plots
-        x_sep = .01 / data.n_plots
-        x_per_ax = (1 - x_frame_l - x_frame_r) / data.n_plots
-
-        self.figure.subplots_adjust(left=x_frame_l, right=1 - x_frame_r, bottom=.05, top=.9, wspace=.1, hspace=.3)
 
         # save important properties
         self._data = data
@@ -937,22 +930,41 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
         self._default_xlabel_ax = -1 - ntopo
         self._proj = proj
 
+        # prepare axes
+        if layout.user_axes:
+            self.axes = layout.user_axes
+        else:
+            x_frame_l = .6 / layout.axw / data.n_plots
+            x_frame_r = .025 / data.n_plots
+            gs = self.figure.add_gridspec(layout.nrow * 2, layout.ncol * ntopo, left=x_frame_l, right=1 - x_frame_r, bottom=.05, top=.9, wspace=.1, hspace=.3)
+            if layout.nrow == 1:
+                for col, used in enumerate(data.plot_used):
+                    if not used:
+                        continue
+                    self.figure.add_subplot(gs[0, col*ntopo:(col+1)*ntopo], picker=True)
+                    for j in range(ntopo):
+                        self.figure.add_subplot(gs[1, col*ntopo+j], picker=True, xticks=[], yticks=[])
+            elif layout.ncol == 1:
+                for row, used in enumerate(data.plot_used):
+                    if not used:
+                        continue
+                    self.figure.add_subplot(gs[row*2, 0:ntopo], picker=True)
+                    for j in range(ntopo):
+                        self.figure.add_subplot(gs[row*2+1, j], picker=True, xticks=[], yticks=[])
+            else:
+                raise ValueError("Layout with multiple columns and rows; set either ncol=1 or nrow=1")
+            self.axes = self.figure.axes
+
         # im_array plots
         self._array_axes = []
         self._array_plots = []
         self._topo_windows = []
-        ax_height = .4 + .07 * (not layout.title)
-        ax_bottom = .45  # + .05*(not title)
         for i, layers in enumerate(data):
-            ax_left = x_frame_l + i * (x_per_ax + x_sep)
-            ax_right = 1 - x_frame_r - (data.n_plots - i - 1) * (x_per_ax + x_sep)
-            ax_width = ax_right - ax_left
-            ax = self.figure.add_axes((ax_left, ax_bottom, ax_width, ax_height),
-                                      picker=True)
+            ax_i = i * (ntopo + 1)
+            ax = self.axes[ax_i]
             ax.ID = i
             ax.type = 'main'
             im_plot = _ax_im_array(ax, layers, 'time', im_interpolation, self._vlims, self._cmaps, self._contours)
-            self.axes.append(ax)
             self._array_axes.append(ax)
             self._array_plots.append(im_plot)
             if i > 0:
@@ -960,11 +972,8 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
 
             # topo plots
             for j in range(ntopo):
-                ID = i * ntopo + j
-                ax = self.figure.add_subplot(3, n_topo_total,
-                                             2 * n_topo_total + 1 + ID,
-                                             picker=True, xticks=[], yticks=[])
-                ax.ID = ID
+                ax = self.axes[ax_i + 1 + j]
+                ax.ID = i * ntopo + j
                 ax.type = 'window'
                 win = _TopoWindow(ax, im_plot, connectionstyle=connectionstyle, clip=clip, clip_distance=clip_distance, sensorlabels=sensorlabels, mark=mark, mcolor=mcolor, proj=proj, res=res, im_interpolation=im_interpolation, vlims=self._vlims, cmaps=self._cmaps, contours=self._contours, interpolation=interpolation, head_radius=head_radius, head_pos=head_pos)
                 self.axes.append(ax)
