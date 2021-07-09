@@ -372,6 +372,21 @@ class BoostingResult(PickleableDataClass):
             name = self.y
         return NDVar(y_pred, dims, name, self._y_info)
 
+    def partition_result_data(self) -> Dataset:
+        """Results from the different test partitions in a :class:`Dataset`"""
+        h_is_list = isinstance(self._h, tuple)
+        rows = []
+        for res in self.partition_results:
+            hs = res.h if h_is_list else [res.h]
+            rows.append([res.i_test, res.r, res.proportion_explained, *hs])
+        if self.x in (None, (None,)):
+            xs = ['x']
+        elif isinstance(self.x, str):
+            xs = [self.x]
+        else:
+            xs = [f'x_{i}' if x is None else x for i, x in enumerate(self.x)]
+        return Dataset.from_caselist(['i_test', 'r', 'det', *xs], rows)
+
     @LazyProperty
     def proportion_explained(self):
         return 1 - (self.residual / self._variability)
