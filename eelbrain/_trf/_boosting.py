@@ -23,6 +23,7 @@ from dataclasses import dataclass, field, fields
 from functools import reduce
 import inspect
 from itertools import chain, product, repeat
+from math import ceil
 from multiprocessing.sharedctypes import RawArray
 from operator import mul
 import os
@@ -569,7 +570,7 @@ class Boosting:
         # TRF extent in indices
         tstep = self.data.time.tstep
         i_start_by_x = np.asarray([int(round(t / tstep)) for t in tstart], np.int64)
-        i_stop_by_x = np.asarray([int(round(t / tstep)) for t in tstop], np.int64)
+        i_stop_by_x = np.asarray([int(ceil(t / tstep)) for t in tstop], np.int64)
         self._i_start = i_start = np.min(i_start_by_x)
         i_stop = np.max(i_stop_by_x)
         h_n_times = i_stop - i_start
