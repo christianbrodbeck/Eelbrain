@@ -47,6 +47,11 @@ DataArg = Literal['eeg', 'mag', 'grad']
 PicksArg = Any
 
 
+def mne_neighbor_files():
+    neighbor_dir = Path(mne.channels.__file__).parent / 'data' / 'neighbors'
+    return [re.match(r'([\w-]+)_neighb', path.stem).group(1) for path in neighbor_dir.glob('*_neighb.mat')]
+
+
 def mne_raw(path=None, proj=False, **kwargs):
     """Load a :class:`mne.io.Raw` object
 
@@ -696,7 +701,7 @@ def sensor_dim(
         inferred automatically for KIT data converted with a recent version of
         MNE-Python).
     connectivity : str | list of (str, str) | array of int, (n_edges, 2)
-        Connectivity between elements. Can be specified as:
+        Sensor connectivity (adjacency graph). Can be specified as:
 
         - ``"none"`` for no connections
         - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
@@ -716,7 +721,7 @@ def sensor_dim(
     if not isinstance(info, mne.Info):
         info_ = getattr(info, 'info', info)
         if not isinstance(info_, mne.Info):
-            raise TypeError("No mne.Info object: %r" % (info,))
+            raise TypeError(f"{info=}: no mne.Info object")
         info = info_
 
     if picks is None:
