@@ -317,7 +317,7 @@ def nice_label(
         return longname(x)
 
 
-def dataobj_repr(obj, value=False):
+def dataobj_repr(obj: Any, value: bool = False):
     """Describe data-objects as parts of __repr__"""
     if isdataobject(obj):
         if obj.name is not None:
@@ -333,20 +333,8 @@ def rank(x, tol=1e-8):
     http://mail.scipy.org/pipermail/numpy-discussion/2008-February/031218.html
 
     """
-    s = np.linalg.svd(x, compute_uv=0)
+    s = np.linalg.svd(x, compute_uv=False)
     return np.sum(np.where(s > tol, 1, 0))
-
-
-def check_length(objs, n=None):
-    for obj in objs:
-        if obj is None:
-            pass
-        elif n is None:
-            n = len(obj)
-        elif n != len(obj):
-            err = ("%r has wrong length: %i (%i needed)." %
-                   (obj.name, len(obj), n))
-            raise ValueError(err)
 
 
 def isbalanced(x):
