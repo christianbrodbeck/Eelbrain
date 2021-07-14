@@ -176,19 +176,18 @@ class _plt_map2d:
             self.show_labels(labels)
 
         if mark is not None:
-            self.mark_sensors(mark, 20, mcolor, mmarker)
+            self.mark_sensors(mark, size=20, color=mcolor, marker=mmarker)
 
-    def mark_sensors(self, sensors, s=20, c='yellow', marker='o',
-                     *args, **kwargs):
+    def mark_sensors(self, sensors, **kwargs):
         """Mark specific sensors
 
         Parameters
         ----------
         sensors : None | Sensor dimension index
             Sensors which should be marked (None to clear all markings).
-        s : scalar | sequence of scalars
+        size : scalar | sequence of scalars
             Marker size(s) in points^2 (default 20).
-        c : color | sequence of colors
+        color : color | sequence of colors
             Marker color(s) (default ``'yellow'``).
         marker : str
             Marker style (default: ``'o'``).
@@ -199,15 +198,11 @@ class _plt_map2d:
             while self._mark_handles:
                 self._mark_handles.pop().remove()
             return
-
-        if c is None:
-            c = 'yellow'
-        if marker is None:
-            marker = 'o'
-
+        kwargs.setdefault('s', kwargs.pop('size', 20))
+        kwargs.setdefault('c', kwargs.pop('color', 'yellow'))
+        kwargs.setdefault('marker', kwargs.pop('m', 'o'))
         idx = self.sensors._array_index(sensors)
-        h = self.ax.scatter(self.locs[idx, 0], self.locs[idx, 1], s, c, marker,
-                            *args, **kwargs)
+        h = self.ax.scatter(self.locs[idx, 0], self.locs[idx, 1], **kwargs)
         self._mark_handles.append(h)
 
     def remove(self):
@@ -389,7 +384,7 @@ class SensorMapMixin:
         color = ['k', 'w', 'b', 'g', 'r', 'c', 'm', 'y'][sel]
         self.set_label_color(color)
 
-    def mark_sensors(self, sensors, axis=None, s=20, c='yellow', marker='o', *args, **kwargs):
+    def mark_sensors(self, sensors, axis=None, **kwargs):
         """Mark given sensors on the plots
 
         Parameters
@@ -398,9 +393,9 @@ class SensorMapMixin:
             Sensors which should be marked (None to clear all markings).
         axis : int | list of int
             Which axes to mark (default is all).
-        s : scalar | sequence of scalars
+        size : scalar | sequence of scalars
             Marker size(s) in points^2 (default 20).
-        c : color | sequence of colors
+        color : color | sequence of colors
             Marker color(s) (default ``'yellow'``).
         marker : str
             Marker style (default: ``'o'``).
@@ -415,7 +410,7 @@ class SensorMapMixin:
             plots = [self.__sensor_plots[i] for i in axis]
 
         for p in plots:
-            p.mark_sensors(sensors, s, c, marker, *args, **kwargs)
+            p.mark_sensors(sensors, **kwargs)
         self.draw()
 
     def separate_labels(self, pad=10):
