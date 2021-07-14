@@ -103,6 +103,10 @@ class Correlation:
     def _asfmtext(self, **_):
         return fmtxt.FMText([fmtxt.eq('r', self.r, self.df), ', ', fmtxt.peq(self.p)])
 
+    @property
+    def stars(self):
+        return fmtxt.Stars.from_p(self.p)
+
 
 def lilliefors(data, formatted=False, **kwargs):
     """Lilliefors' test for normal distribution
@@ -550,6 +554,10 @@ class TTest:
         self.p = stats.ttest_p(self.t, self.df, tail)
         self.tail = tail
 
+    @property
+    def stars(self):
+        return fmtxt.Stars.from_p(self.p)
+
     def _asfmtext(
             self,
             rasterize: bool = None,
@@ -825,6 +833,10 @@ class MannWhitneyU:
     def _asfmtext(self, **_):
         return fmtxt.FMText([fmtxt.eq('U', self.u), ', ', fmtxt.peq(self.p)])
 
+    @property
+    def stars(self):
+        return fmtxt.Stars.from_p(self.p)
+
 
 class TTestRelated(TTest):
     """Related-measures t-test
@@ -1044,6 +1056,10 @@ class WilcoxonSignedRank:
 
     def _asfmtext(self, **_):
         return fmtxt.FMText([fmtxt.eq('W', self.w), ', ', fmtxt.peq(self.p)])
+
+    @property
+    def stars(self):
+        return fmtxt.Stars.from_p(self.p)
 
 
 def pairwise(
