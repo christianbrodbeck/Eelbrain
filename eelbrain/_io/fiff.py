@@ -405,9 +405,9 @@ def epochs(
     i_start
         name of the variable containing the index of the events.
     tstop
-        Alternative to ``tmax``: While ``tmax`` specifies the last samples to 
-        include, ``tstop`` can be used to specify the epoch time excluding the 
-        last time point (i.e., standard Python/Eelbrain indexing convention).
+        Alternative to ``tmax``. While ``tmax`` specifies the last samples to
+        include, ``tstop`` specifies the sample before which to stop (standard
+        Python indexing convention).
         For example, at 100 Hz the epoch with ``tmin=-0.1, tmax=0.4`` will have 
         51 samples, while the epoch specified with ``tmin=-0.1, tstop=0.4`` will
         have 50 samples.
@@ -625,9 +625,9 @@ def mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, i_start='i_start',
     picks, reject
         :class:`mne.Epochs` parameters.
     tstop : scalar
-        Alternative to ``tmax``: While ``tmax`` specifies the last samples to 
-        include, ``tstop`` can be used to specify the epoch time excluding the 
-        last time point (i.e., standard Python/Eelbrain indexing convention).
+        Alternative to ``tmax``. While ``tmax`` specifies the last samples to
+        include, ``tstop`` specifies the sample before which to stop (standard
+        Python indexing convention).
         For example, at 100 Hz the epoch with ``tmin=-0.1, tmax=0.4`` will have 
         51 samples, while the epoch specified with ``tmin=-0.1, tstop=0.4`` will
         have 50 samples.
@@ -780,13 +780,14 @@ def sensor_dim(
 def variable_length_epochs(
         ds: Dataset,
         tmin: float,
-        tmax: Sequence[float],
+        tmax: Sequence[float] = None,
         baseline: BaselineArg = None,
         allow_truncation: bool = False,
         data: DataArg = None,
         exclude: Union[str, Sequence[str]] = 'bads',
         sysname: str = None,
         connectivity: Union[str, Sequence] = None,
+        tstop: Sequence[float] = None,
         name: str = None,
         **kwargs,
 ) -> List[NDVar]:
@@ -800,6 +801,7 @@ def variable_length_epochs(
         First sample to include in the epochs in seconds (Default is -0.1).
     tmax
         Last sample to include in each epoch in seconds.
+        Use ``tstop`` instead to specify index exclusive of last sample
     baseline
         Time interval for baseline correction. ``(tmin, tmax)`` tuple in
         seconds, or ``None`` to use all the data (e.g., ``(None, 0)`` uses all
@@ -831,6 +833,13 @@ def variable_length_epochs(
         - ``"grid"`` to use adjacency in the sensor names
 
         If unspecified, it is inferred from ``sysname`` if possible.
+    tstop
+        Alternative to ``tmax``. While ``tmax`` specifies the last samples to
+        include, ``tstop`` specifies the sample before which to stop (standard
+        Python indexing convention).
+        For example, at 100 Hz the epoch with ``tmin=-0.1, tmax=0.4`` will have
+        51 samples, while the epoch specified with ``tmin=-0.1, tstop=0.4`` will
+        have 50 samples.
     name
         Name for the NDVar.
     ...
@@ -841,17 +850,19 @@ def variable_length_epochs(
     epochs
         List of data epochs of shape.
     """
-    epochs_ = variable_length_mne_epochs(ds, tmin, tmax, baseline, allow_truncation, **kwargs)
+    epochs_ = variable_length_mne_epochs(ds, tmin, tmax, baseline, allow_truncation, tstop=tstop, **kwargs)
     return [epochs_ndvar(epoch, name, data, exclude, sysname=sysname, connectivity=connectivity)[0] for epoch in epochs_]
 
 
 def variable_length_mne_epochs(
         ds: Dataset,
         tmin: float,
-        tmax: Sequence[float],
+        tmax: Sequence[float] = None,
         baseline: BaselineArg = None,
         allow_truncation: bool = False,
+        tstop: Sequence[float] = None,
         picks: PicksArg = None,
+        decim: int = 1,
         **kwargs,
 ) -> List[mne.Epochs]:
     """Load mne Epochs where each epoch has a different length
@@ -873,12 +884,27 @@ def variable_length_mne_epochs(
         If a ``tmax`` value falls outside the data available in ``raw``,
         automatically truncate the epoch (by default this raises a
         ``ValueError``).
+    tstop
+        Alternative to ``tmax``. While ``tmax`` specifies the last samples to
+        include, ``tstop`` specifies the sample before which to stop (standard
+        Python indexing convention).
+        For example, at 100 Hz the epoch with ``tmin=-0.1, tmax=0.4`` will have
+        51 samples, while the epoch specified with ``tmin=-0.1, tstop=0.4`` will
+        have 50 samples.
     ...
         :class:`mne.Epochs` parameters.
     """
     if baseline is False:
         baseline = None
     raw = ds.info['raw']
+    if tmax is None:
+        if tstop is None:
+            raise TypeError(f"{tmax=}, {tstop=}: must specify at least one")
+        else:
+            sfreq = raw.info['sfreq'] / decim
+            start_index = int(round(tmin * sfreq))
+            stop_index = [int(round(t * sfreq)) for t in tstop]
+            tmax = [tmin + (i - start_index - 1) / sfreq for i in stop_index]
     if picks is None and raw.info['bads']:
         picks = mne.pick_types(raw.info, meg=True, eeg=True, eog=True, ref_meg=False, exclude=[])
     events = _mne_events(ds)
@@ -891,7 +917,7 @@ def variable_length_mne_epochs(
             else:
                 missing = (i_max - raw.last_samp) / raw.info['sfreq']
                 raise ValueError(f"tmax={tmax}, tmax[{i}] {tmax_i} is outside of data range by {missing:g} s")
-        epochs_i = mne.Epochs(raw, events[i:i+1], None, tmin, tmax_i, baseline, picks, preload=True, **kwargs)
+        epochs_i = mne.Epochs(raw, events[i:i+1], None, tmin, tmax_i, baseline, picks, preload=True, decim=decim, **kwargs)
         out.append(epochs_i)
     return out
 
