@@ -130,7 +130,8 @@ def for_stat_map(meas, c0=None, c1=None, c2=None, tail=0, contours=None, old=Non
                 contours[c2] = (1.0, 1.0, 0.8)
             if tail <= 0:
                 contours[-c2] = (1.0, 0.8, 1.0)
-    info['contours'] = contours
+    if contours:
+        info['contours'] = contours
     return _update(info, old)
 
 
