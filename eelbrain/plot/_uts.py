@@ -379,6 +379,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
             xlim: Union[float, Tuple[float, float]] = None,
             clip: bool = None,
             colors: Union[Any, dict] = None,
+            color: Any = None,
             stem: bool = False,
             **kwargs):
         data = PlotData.from_args(y, (None,), xax, ds, sub)
@@ -397,7 +398,10 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
 
         n_colors = max(map(len, data.data))
         if colors is None:
-            styles = [Style._coerce(color) for color in oneway_colors(n_colors)]
+            if color is None:
+                styles = [Style._coerce(color) for color in oneway_colors(n_colors)]
+            else:
+                styles = [Style._coerce(color)] * n_colors
         elif isinstance(colors, dict):
             styles = to_styles_dict(colors)
         else:
