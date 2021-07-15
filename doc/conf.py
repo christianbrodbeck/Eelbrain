@@ -117,7 +117,7 @@ example_order = NameOrder({
         'colormaps.py',
         'customizing.py',
     ],
-    'reverse-correlation': [
+    'deconvolution': [
         'trf_intro.py',
         'mtrf.py',
         'epoch_impulse.py',

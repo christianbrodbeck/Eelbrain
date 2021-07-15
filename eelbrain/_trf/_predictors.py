@@ -1,4 +1,4 @@
-"""Predictors for reverse correlation"""
+"""Predictors for deconvolution"""
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import repeat
 

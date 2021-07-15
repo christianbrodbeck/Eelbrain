@@ -41,7 +41,7 @@ from .._ndvar import _concatenate_values, convolve_jit, parallel_convolve
 from .._utils import LazyProperty, PickleableDataClass, user_activity
 from .._utils.notebooks import tqdm
 from ._boosting_opt import l1, l2, generate_options, update_error
-from .shared import PredictorData, RevCorrData, Split, Splits, merge_segments
+from .shared import PredictorData, DeconvolutionData, Split, Splits, merge_segments
 from ._fit_metrics import get_evaluators
 
 
@@ -499,7 +499,7 @@ class Boosting:
     Standard usage of the object-oriented API for a model with
     cross-validation, comparable to the :func:`boosting` function::
 
-        data = RevCorrData(y, x, ds)
+        data = DeconvolutionData(y, x, ds)
         data.apply_basis(0.05, 'hamming'')
         data.normalize('l1')
         data.initialize_cross_validation(5, test=1)
@@ -527,7 +527,7 @@ class Boosting:
 
     def __init__(
             self,
-            data: RevCorrData,
+            data: DeconvolutionData,
     ):
         self.data = data
 
@@ -958,7 +958,7 @@ def boosting(
     if selective_stopping < 0:
         raise ValueError(f"selective_stopping={selective_stopping}")
 
-    data = RevCorrData(y, x, ds, scale_in_place)
+    data = DeconvolutionData(y, x, ds, scale_in_place)
     data.apply_basis(basis, basis_window)
     if scale_data:
         data.normalize(error)

@@ -4,21 +4,21 @@ from numpy.testing import assert_array_equal
 import pytest
 
 from eelbrain import Factor, datasets, epoch_impulse_predictor
-from eelbrain._trf.shared import RevCorrData
+from eelbrain._trf.shared import DeconvolutionData
 
 
-def test_revcorr_data_continuous():
+def test_deconvolution_data_continuous():
     ds = datasets._get_continuous(ynd=True)
 
     # normalizing
-    data = RevCorrData(ds['y'][:8], ds['x1'][:8])
+    data = DeconvolutionData(ds['y'][:8], ds['x1'][:8])
     data.normalize('l1')
     assert data.x[0].mean() == pytest.approx(0, abs=1e-16)
     assert abs(data.x).mean() == pytest.approx(1, abs=1e-10)
     with pytest.raises(ValueError):
         data.apply_basis(0.050, 'hamming')
     # with basis
-    data = RevCorrData(ds['y'][:8], ds['x1'][:8])
+    data = DeconvolutionData(ds['y'][:8], ds['x1'][:8])
     data.apply_basis(0.500, 'hamming')
     data.normalize('l1')
     assert data.x[0].mean() == pytest.approx(0, abs=1e-16)
@@ -65,13 +65,13 @@ def test_revcorr_data_continuous():
     assert_array_equal(data.splits.splits[11].train, [[0, 40]])
 
 
-def test_revcorr_data_trials():
+def test_deconvolution_data_trials():
     ds = datasets.get_uts()
     n_times = len(ds['uts'].time)
     ds['imp'] = epoch_impulse_predictor('uts', ds=ds)
     ds['imp_a'] = epoch_impulse_predictor('uts', "A == 'a1'", ds=ds)
 
-    data = RevCorrData('uts', 'imp', ds)
+    data = DeconvolutionData('uts', 'imp', ds)
     data.normalize('l1')
     assert_array_equal(data.segments, [[i * n_times, (i + 1) * n_times] for i in range(60)])
 
