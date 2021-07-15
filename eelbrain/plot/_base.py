@@ -153,6 +153,12 @@ def mpl_font_size(key: str) -> float:
     return p.get_size() * POINT
 
 
+def inch_to_figure(figure: matplotlib.figure.Figure, x: float = 0, y: float = 0):
+    "Transform (x, y) vector in inches to figure coordinates"
+    coords = figure.dpi_scale_trans.transform((x, y))
+    return figure.transFigure.inverted().transform(coords)
+
+
 DISPLAY_UNIT = {
     's': 'ms',
     'V': 'µV',

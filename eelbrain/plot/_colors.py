@@ -6,6 +6,7 @@ from typing import Any, Dict, Literal, Sequence, Union
 
 import numpy as np
 import matplotlib
+import matplotlib.axes
 import matplotlib.cm
 from matplotlib.colors import LinearSegmentedColormap, Colormap, Normalize, to_rgb
 from matplotlib.colorbar import ColorbarBase
@@ -14,7 +15,7 @@ from matplotlib.ticker import FixedFormatter, MaxNLocator
 
 from .._data_obj import CellArg, cellname
 from .._utils import IS_WINDOWS
-from ._base import EelFigure, Layout, AxisScale, CMapArg, ColorArg, fix_vlim_for_cmap
+from ._base import EelFigure, Layout, AxisScale, CMapArg, ColorArg, fix_vlim_for_cmap, inch_to_figure
 from ._styles import find_cell_styles
 
 
@@ -372,6 +373,13 @@ class ColorBar(EelFigure):
         Background color (for colormaps including transparency).
     ...
         Also accepts :ref:`general-layout-parameters`.
+    right_of
+        Plot the colorbar to the right of, and matching in height of the axes
+        specified in ``right_of``.
+    left_of
+        Plot the colorbar to the keft of, and matching in height of these axes.
+    below
+        Plot the colorbar below, and matching in width of these axes.
     """
     def __init__(
             self,
@@ -394,6 +402,10 @@ class ColorBar(EelFigure):
             tight: bool = True,
             h: float = None,
             w: float = None,
+            axes: matplotlib.axes.Axes = None,
+            right_of: matplotlib.axes.Axes = None,
+            left_of: matplotlib.axes.Axes = None,
+            below: matplotlib.axes.Axes = None,
             **kwargs,
     ):
         # get Colormap
@@ -408,8 +420,46 @@ class ColorBar(EelFigure):
         else:
             cm = matplotlib.cm.get_cmap(cmap)
 
+        if any([right_of, left_of, below]):
+            if sum(map(bool, [axes, right_of, left_of, below])) != 1:
+                raise TypeError(f"{axes=}, {right_of=}, {left_of=}, {below=}: can only specify one at a time")
+            source_axes = right_of or left_of or below
+            figure = source_axes.get_figure()
+            source_bbox = source_axes.get_position()
+            if right_of or left_of:
+                thickness, _ = inch_to_figure(figure, x=width or 0.05)
+                y0 = source_bbox.y0
+                if h:
+                    _, height = inch_to_figure(figure, y=h)
+                    y0 += (source_bbox.bounds[3] - height) / 2
+                else:
+                    height = source_bbox.bounds[3]
+                if right_of:
+                    x0 = source_bbox.x1 + 2*thickness
+                else:
+                    x0 = source_bbox.x0 - 3*thickness
+                    if ticklocation == 'auto':
+                        ticklocation = 'left'
+                rect = (x0, y0, thickness, height)
+                orientation = 'vertical'
+            elif below:
+                _, thickness = inch_to_figure(figure, y=width or 0.05)
+                x0 = source_bbox.x0
+                if w:
+                    ax_width, _ = inch_to_figure(figure, x=w)
+                    x0 += (source_bbox.bounds[2] - ax_width) / 2
+                else:
+                    ax_width = source_bbox.bounds[2]
+                rect = (x0, source_bbox.y0 - 3*thickness, ax_width, thickness)
+                orientation = 'horizontal'
+            else:
+                raise RuntimeError
+            axes = figure.add_axes(rect)
+
         # prepare layout
-        if orientation == 'horizontal':
+        if axes:
+            ax_aspect = 1
+        elif orientation == 'horizontal':
             if h is None and w is None:
                 h = 1
             ax_aspect = 4
@@ -418,9 +468,9 @@ class ColorBar(EelFigure):
                 h = 4
             ax_aspect = 0.3
         else:
-            raise ValueError("orientation=%s" % repr(orientation))
+            raise ValueError(f"{orientation=}")
 
-        layout = Layout(1, ax_aspect, 2, tight, h=h, w=w, **kwargs)
+        layout = Layout(1, ax_aspect, 2, tight, h=h, w=w, axes=axes, **kwargs)
         EelFigure.__init__(self, cm.name, layout)
         ax = self.axes[0]
 
