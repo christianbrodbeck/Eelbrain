@@ -2943,29 +2943,16 @@ class Factor(_Effect):
 
         >>> Factor(f, labels={'c': 'v3'})
         Factor(['v1', 'v1', 'v1', 'v2', 'v2', 'v2', 'v3', 'v3', 'v3'])
-
-        Notes
-        -----
-        If ``labels`` contains a key that is not a label of the Factor, a
-        ``KeyError`` is raised.
         """
-        missing = [old for old in labels if old not in self._codes]
-        if missing:
-            if len(missing) == 1:
-                msg = ("Factor does not contain label %r" % missing[0])
-            else:
-                msg = ("Factor does not contain labels %s"
-                       % ', '.join(repr(m) for m in missing))
-            raise KeyError(msg)
-
+        new_labels = {code: labels.get(label, label) for code, label in self._labels.items()}
         # check for merged labels
-        new_labels = {c: labels.get(l, l) for c, l in self._labels.items()}
         codes_ = sorted(new_labels)
-        labels_ = tuple(new_labels[c] for c in codes_)
+        labels_ = [new_labels[c] for c in codes_]
         for i, label in enumerate(labels_):
-            if label in labels_[:i]:
+            first_i = labels_.index(label)
+            if first_i < i:
                 old_code = codes_[i]
-                new_code = codes_[labels_.index(label)]
+                new_code = codes_[first_i]
                 self.x[self.x == old_code] = new_code
                 del new_labels[old_code]
 

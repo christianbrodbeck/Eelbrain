@@ -816,8 +816,9 @@ def test_factor_relabel():
     assert_array_equal(f, Factor('cccbbbddd'))
     f.update_labels({'d': 'c'})
     assert_array_equal(f, Factor('cccbbbccc'))
-    with pytest.raises(KeyError):
-        f.update_labels({'a': 'c'})
+    # label not in f
+    f.update_labels({'b': 'x', 'a': 'c'})
+    assert_array_equal(f, Factor('cccxxxccc'))
 
 
 def test_interaction():
