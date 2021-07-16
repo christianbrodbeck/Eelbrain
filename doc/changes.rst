@@ -294,7 +294,7 @@ New in 0.25
   - The ``model`` parameter for ANOVA tests is now optional (see
     :attr:`MneExperiment.tests`).
 
-* Reverse correlation using :func:`boosting`.
+* Deconvolution using :func:`boosting`.
 * Loading and saving ``*.wav`` files (:func:`load.wav` and :func:`save.wav`).
 
 

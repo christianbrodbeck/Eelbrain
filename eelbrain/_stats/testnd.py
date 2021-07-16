@@ -701,7 +701,7 @@ class Correlation(NDTest):
             match = ascategorial(match, sub, ds, n)
 
         self.x = x.name
-        name = "%s corr %s" % (y.name, x.name)
+        name = f"{longname(y)} ~ {longname(x)}"
 
         # Normalize by z-scoring the data for each subject
         # normalization is done before the permutation b/c we are interested in

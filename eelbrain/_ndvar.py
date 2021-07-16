@@ -368,7 +368,10 @@ def correlation_coefficient(x, y, dim=None, name=None):
     if np.any(isnan):
         np.place(out, isnan, 0)
     dims = x.get_dims(shared_dims + x_only) + y.get_dims(y_only)
-    return NDVar(out, dims, name or x.name, x.info)
+    if name is None:
+        name = x.name
+    info = _info.for_stat_map('r', old=x.info)
+    return NDVar(out, dims, name, info)
 
 
 def cross_correlation(in1, in2, name=None):

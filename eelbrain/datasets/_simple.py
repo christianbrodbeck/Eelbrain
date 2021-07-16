@@ -46,7 +46,7 @@ def _get_continuous(
         seed: int = 0,
         xn: int = 0,
 ) -> Dataset:
-    """Generate continuous data for reverse correlation
+    """Generate continuous data for deconvolution tests
 
     Parameters
     ----------

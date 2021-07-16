@@ -19,7 +19,7 @@ from eelbrain import (
 )
 
 from eelbrain.testing import assert_dataobj_equal
-from eelbrain._trf._boosting import Boosting, RevCorrData, Split, boost, convolve as boosting_convolve
+from eelbrain._trf._boosting import Boosting, DeconvolutionData, Split, boost, convolve as boosting_convolve
 
 
 def assert_res_equal(res1, res):
@@ -158,7 +158,7 @@ def test_boosting_epochs():
 
 def test_boosting_oo():
     ds = datasets._get_continuous(ynd=True)
-    data = RevCorrData('y', 'x2', ds)
+    data = DeconvolutionData('y', 'x2', ds)
     data.apply_basis(0.2, 'hamming')
     data.normalize('l1')
     data.initialize_cross_validation(4, test=1)

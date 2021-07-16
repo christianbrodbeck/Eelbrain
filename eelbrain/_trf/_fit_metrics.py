@@ -7,7 +7,7 @@ from scipy.linalg import norm
 from scipy.stats import spearmanr, SpearmanRConstantInputWarning
 
 from ._boosting_opt import l1, l2
-from .shared import RevCorrData
+from .shared import DeconvolutionData
 
 
 class Evaluator:
@@ -18,7 +18,7 @@ class Evaluator:
 
     def __init__(
             self,
-            data: RevCorrData,
+            data: DeconvolutionData,
             segments: List[np.ndarray] = None,  # evaluations for different test-segments
     ):
         n = len(data.y)
@@ -247,7 +247,7 @@ EVALUATORS = {
 
 def get_evaluators(
         keys: List[str],
-        data: RevCorrData,
+        data: DeconvolutionData,
         segments: List[np.ndarray] = None,  # evaluations for different test-segments
 ) -> (List[Evaluator], List[Evaluator], List[Evaluator]):
     evaluators = [EVALUATORS[key](data, segments) for key in keys]

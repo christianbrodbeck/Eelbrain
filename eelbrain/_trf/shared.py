@@ -206,7 +206,7 @@ def split_data(
 
 
 class PredictorData:
-    """Restructure model NDVars (like RevCorrData but for x only)"""
+    """Restructure model NDVars (like DeconvolutionData but for x only)"""
 
     def __init__(
             self,
@@ -298,8 +298,8 @@ class PredictorData:
         self.segments = segments
 
 
-class RevCorrData:
-    """Restructure input NDVars into arrays for reverse correlation
+class DeconvolutionData:
+    """Restructure input NDVars into arrays for deconvolution
     
     Attributes
     ----------

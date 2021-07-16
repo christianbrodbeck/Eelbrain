@@ -166,9 +166,9 @@ functions. See also :class:`NDVar` methods.
    xhemi
 
 
-^^^^^^^^^^^^^^^^^^^
-Reverse Correlation
-^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^
+Deconvolution
+^^^^^^^^^^^^^
 
 .. autosummary::
    :toctree: generated

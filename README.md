@@ -6,7 +6,7 @@
 
 | Stable | Pre-release |
 | ------ | ----------- |
-| [![Conda Version](https://img.shields.io/conda/vn/conda-forge/eelbrain.svg)](https://anaconda.org/conda-forge/eelbrain) | [![Anaconda-Server Badge](https://anaconda.org/christianbrodbeck/eelbrain/badges/version.svg)](https://anaconda.org/christianbrodbeck/eelbrain) |
+| [![Conda Version](https://img.shields.io/conda/vn/conda-forge/eelbrain)](https://anaconda.org/conda-forge/eelbrain) | [![Anaconda-Server Badge](https://anaconda.org/conda-forge/eelbrain/badges/version.svg)](https://anaconda.org/conda-forge/eelbrain/labels) |
 
 Main documentation at: http://eelbrain.readthedocs.io
 
