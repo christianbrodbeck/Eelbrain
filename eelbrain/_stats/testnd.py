@@ -3180,14 +3180,14 @@ class NDPermutationDistribution:
                 if state['_dist_dims'] is None:
                     state['parc'] = None
                 else:
-                    raise OldVersionError("This pickled file is from a previous version of Eelbrain and is not compatible anymore. Please recompute this test.")
+                    raise OldVersionError("This pickled test is from a previous version of Eelbrain and is not compatible anymore. Please recompute this test.")
             elif isinstance(state['parc'], tuple):
                 if len(state['parc']) == 0:
                     state['parc'] = None
                 elif len(state['parc']) == 1:
                     state['parc'] = state['parc'][0]
                 else:
-                    raise OldVersionError("This pickled file is from a previous version of Eelbrain and is not compatible anymore. Please recompute this test.")
+                    raise OldVersionError("This pickled test is from a previous version of Eelbrain and is not compatible anymore. Please recompute this test.")
 
             nad_ax = state['_nad_ax']
             state['dims'] = dims = state['dims'][1:]

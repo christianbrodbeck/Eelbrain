@@ -87,7 +87,7 @@ def select_epochs(
     path : None | str
         Path to the desired rejection file. If the file already exists it
         is loaded as starting values. The extension determines the format
-        (``*.pickled`` or ``*.txt``).
+        (``*.pickle`` or ``*.txt``).
     nplots : None | int | tuple of 2 int
         Number of epoch plots per page. Can be an ``int`` to produce a
         square layout with that many epochs, or an ``(n_rows, n_columns)``

@@ -23,7 +23,7 @@ def get_ui():
 
 
 def ask_saveas(title="Save File", message="Please Pick a File Name",
-               filetypes=(("Pickled Python Objects (*.pickled)", '*.pickled'),),
+               filetypes=(("Pickled Python Objects (*.pickle)", '*.pickle'),),
                defaultDir=None, defaultFile=False):
     """Display a save-as dialog
 

@@ -6,7 +6,7 @@ from eelbrain import datasets, save
 
 mne.set_log_level('warning')
 
-fname = 'temp.pickled'
+fname = 'temp.pickle'
 if not os.path.exists(fname):
     ds = datasets.get_mne_sample(-0.1, 0.2, src='ico', sub="modality == 'A'")
     source = ds['src'].source

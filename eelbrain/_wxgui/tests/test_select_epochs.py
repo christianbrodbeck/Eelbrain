@@ -26,7 +26,7 @@ def test_select_epochs():
     false_at = lambda index: np.isin(arange, index, invert=True)
 
     tempdir = TempDir()
-    path = join(tempdir, 'rej.pickled')
+    path = join(tempdir, 'rej.pickle')
 
     # Test Document
     # =============

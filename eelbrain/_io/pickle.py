@@ -87,7 +87,7 @@ def unpickle(path: PathArg = None):
     Parameters
     ----------
     path
-        Path to a pickled file. If omitted, a system file dialog is shown.
+        Path to a pickle file. If omitted, a system file dialog is shown.
         If the user cancels the file dialog, a RuntimeError is raised.
 
     Notes
@@ -108,7 +108,7 @@ def unpickle(path: PathArg = None):
     load.convert_pickle_protocol
     """
     if path is None:
-        filetypes = [("Pickles (*.pickle|*.pickled)", '*.pickle?'), ("All files", '*')]
+        filetypes = [("Pickles (*.pickle|*.pickled)", '*.pickle*'), ("All files", '*')]
         path = ui.ask_file("Select File to Unpickle", "Select a file to unpickle", filetypes)
         if path is False:
             raise RuntimeError("User canceled")

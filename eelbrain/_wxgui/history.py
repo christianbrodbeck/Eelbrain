@@ -184,8 +184,7 @@ class FileFrame(EelbrainFrame):
     _doc_name = 'document'
     _name = 'Default'  # internal, for config
     _title = 'Title'  # external, for frame title
-    _wildcard = ("Tab Separated Text (*.txt)|*.txt|"
-                 "Pickle (*.pickled)|*.pickled")
+    _wildcard = "Tab Separated Text (*.txt)|*.txt|Pickle (*.pickle)|*.pickle"
 
     def __init__(
             self,

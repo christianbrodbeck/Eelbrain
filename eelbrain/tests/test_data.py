@@ -1637,7 +1637,7 @@ def test_io_pickle():
     ds.info['info'] = "Some very useful information about the Dataset"
     tempdir = tempfile.mkdtemp()
     try:
-        dest = os.path.join(tempdir, 'test.pickled')
+        dest = os.path.join(tempdir, 'test.pickle')
         with open(dest, 'wb') as fid:
             pickle.dump(ds, fid, protocol=pickle.HIGHEST_PROTOCOL)
         with open(dest, 'rb') as fid:
