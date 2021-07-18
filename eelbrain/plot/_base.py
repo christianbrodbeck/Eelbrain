@@ -260,12 +260,12 @@ class AxisScale:
         self.formatter = SCALE_FORMATTERS[scale]  # Matplotlib tick formatter
 
         if label is True:
-            if meas and unit and meas != unit:
+            if meas and unit and meas not in unit:
                 label = f'{meas} [{unit}]'
-            elif meas:
-                label = meas
             elif unit:
                 label = unit
+            elif meas:
+                label = meas
             elif isinstance(v, PlotData):
                 label = v.default_y_label
             elif isnumeric(v):
