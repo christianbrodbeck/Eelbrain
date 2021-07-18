@@ -9467,16 +9467,17 @@ class Sensor(Dimension):
         return self.names
 
 
-def as_sensor(obj):
+def as_sensor(obj) -> Sensor:
     "Coerce to Sensor instance"
     if isinstance(obj, Sensor):
         return obj
-    elif isinstance(obj, NDVar) and obj.has_dim('sensor'):
-        return obj.sensor
-    elif hasattr(obj, 'pos') and hasattr(obj, 'ch_names') and hasattr(obj, 'kind'):
-        return Sensor(obj.pos, obj.ch_names, obj.kind)
+    elif isinstance(obj, NDVar):
+        return obj.get_dim('sensor')
+    elif isinstance(obj, (mne.Info, mne.channels.channels.UpdateChannelsMixin)):
+        from .load.fiff import sensor_dim
+        return sensor_dim(obj)
     else:
-        raise TypeError("Can't get sensors from %r" % (obj,))
+        raise TypeError(f"Can't get sensors from {obj}")
 
 
 def _point_graph(coords, dist_threshold):
