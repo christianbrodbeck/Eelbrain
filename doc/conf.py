@@ -124,6 +124,7 @@ example_order = NameOrder({
     'deconvolution': [
         'trf_intro.py',
         'mtrf.py',
+        'partitions.py',
         'epoch_impulse.py',
     ],
 })
