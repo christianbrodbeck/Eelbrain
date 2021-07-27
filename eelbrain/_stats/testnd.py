@@ -945,6 +945,8 @@ class TTestOneSample(NDDifferenceTest):
         check_for_vector_dim(ct.y)
 
         n = len(ct.y)
+        if n < 3:
+            raise ValueError(f"{y=}: not enough cases for t-test")
         df = n - 1
         y = ct.y.summary()
         tmap = stats.t_1samp(ct.y.x)
