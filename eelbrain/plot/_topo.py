@@ -2,6 +2,7 @@
 """Plot topographic maps of sensor space data."""
 from __future__ import annotations
 
+import dataclasses
 from itertools import repeat
 from math import floor, sqrt
 from typing import Any, Dict, Literal, Sequence, Tuple, Union
@@ -748,30 +749,25 @@ class _ax_topomap(_ax_im_array):
         self.set_vlim(bottom, top)
 
 
+@dataclasses.dataclass
 class _TopoWindow:
     """Helper class for TopoArray.
 
     Maintains a topomap corresponding to one segment with flexible time point.
     """
+    ax: matplotlib.axes.Axes  # topomap-axes
+    parent: _ax_im_array  # array-plot
+    topomap_args: dict
+    connectionstyle: str = "angle3,angleA=90,angleB=0"
+    label_position: Literal['above', 'below', 'none'] = 'above'
+    color: ColorArg = UNAMBIGUOUS_COLORS['bluish green']
+    annotation_xy: Tuple[float, float] = (0.5, 1.05)
+    # internal plot handles
     t_line = None
     pointer = None
+    text_pointer = None
     plot = None
     t = None
-    _annotation_xy = (0.5, 1.05)
-
-    def __init__(
-            self,
-            ax: matplotlib.axes.Axes,  # topomap-axes
-            parent: _ax_im_array,  # array-plot
-            color: ColorArg = UNAMBIGUOUS_COLORS['bluish green'],
-            connectionstyle: str = "angle3,angleA=90,angleB=0",
-            **topomap_args,
-    ):
-        self.ax = ax
-        self.parent = parent
-        self.color = color
-        self.connectionstyle = connectionstyle
-        self.topomap_args = topomap_args
 
     def update(self, t):
         if t is not None:
@@ -783,13 +779,19 @@ class _TopoWindow:
             if self.pointer:
                 self.pointer.axes = self.parent.ax
                 self.pointer.xy = (t, 1)
-                self.pointer.set_text(t_str)
+                if self.text_pointer:
+                    self.text_pointer.set_text(t_str)
                 self.pointer.set_visible(True)
             else:
+                text = t_str if self.label_position == 'above' else ''
                 arrowprops = {'arrowstyle': '-', 'shrinkB': 0, 'color': self.color}
                 if self.connectionstyle:
                     arrowprops['connectionstyle'] = self.connectionstyle
-                self.pointer = self.parent.ax.annotate(t_str, (t, 0), xycoords='data', xytext=self._annotation_xy, textcoords=self.ax.transData, horizontalalignment='center', verticalalignment='center', arrowprops=arrowprops, zorder=4)
+                self.pointer = self.parent.ax.annotate(text, (t, 0), xycoords='data', xytext=self.annotation_xy, textcoords=self.ax.transData, horizontalalignment='center', verticalalignment='center', arrowprops=arrowprops, zorder=4)
+                if self.label_position == 'above':
+                    self.text_pointer = self.pointer
+                elif self.label_position == 'below':
+                    self.text_pointer = self.ax.text(0.5, 0, t_str, va='top', ha='center', transform=self.ax.transAxes)
 
             if self.plot is None:
                 layers = self.parent.data.sub_time(t)
@@ -907,6 +909,10 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
         Style for the connections between the image array-plot and the
         topo-maps. Set to ``''`` for straight connections. See
         `Matplotlib demo <https://matplotlib.org/stable/gallery/userdemo/connectionstyle_demo.html>`_.
+    connection_color
+        Color for connection line.
+    topo_labels
+        Where to label time on topo-maps.
     ...
         Also accepts :ref:`general-layout-parameters`.
 
@@ -952,6 +958,8 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
             xticklabels: Union[int, Sequence[int]] = -1,
             yticklabels: Union[int, Sequence[int]] = 0,
             connectionstyle: str = "angle3,angleA=90,angleB=0",
+            connection_color: ColorArg = UNAMBIGUOUS_COLORS['bluish green'],
+            topo_labels: Literal['above', 'below', 'none'] = 'above',
             **kwargs,
     ):
         if ntopo is None:
@@ -1003,6 +1011,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
         self._array_axes = []
         self._array_plots = []
         self._topo_windows = []
+        topomap_args = dict(clip=clip, clip_distance=clip_distance, sensorlabels=sensorlabels, mark=mark, mcolor=mcolor, proj=proj, res=res, im_interpolation=im_interpolation, vlims=self._vlims, cmaps=self._cmaps, contours=self._contours, interpolation=interpolation, head_radius=head_radius, head_pos=head_pos)
         for i, layers in enumerate(data):
             ax_i = i * (ntopo + 1)
             ax = self.axes[ax_i]
@@ -1019,7 +1028,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
                 ax = self.axes[ax_i + 1 + j]
                 ax.ID = i * ntopo + j
                 ax.type = 'window'
-                win = _TopoWindow(ax, im_plot, connectionstyle=connectionstyle, clip=clip, clip_distance=clip_distance, sensorlabels=sensorlabels, mark=mark, mcolor=mcolor, proj=proj, res=res, im_interpolation=im_interpolation, vlims=self._vlims, cmaps=self._cmaps, contours=self._contours, interpolation=interpolation, head_radius=head_radius, head_pos=head_pos)
+                win = _TopoWindow(ax, im_plot, topomap_args, connectionstyle, topo_labels, connection_color)
                 self.axes.append(ax)
                 self._topo_windows.append(win)
         all_plots.extend(self._array_plots)
