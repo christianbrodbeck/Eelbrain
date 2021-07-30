@@ -162,7 +162,7 @@ SRC_RE = re.compile(r'^(ico|oct|vol)-(\d+)(?:-(\w+))?$')
 UNNAMED = '<?>'
 LIST_INDEX_TYPES = (*INT_TYPES, slice)
 EXPAND_INDEX_TYPES = (*INT_TYPES, np.ndarray)
-_pickled_ds_wildcard = ("Pickled Dataset (*.pickled)", '*.pickled')
+_pickled_ds_wildcard = ("Pickled Dataset (*.pickle)", '*.pickle')
 _tex_wildcard = ("TeX (*.tex)", '*.tex')
 _tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
 _txt_wildcard = ("Plain Text (*.txt)", '*.txt')
@@ -6635,16 +6635,14 @@ class Dataset(dict):
         filetypes = [_pickled_ds_wildcard, _tsv_wildcard, _tex_wildcard]
         path = ui.ask_saveas(title, msg, filetypes, defaultFile=self.name)
         _, ext = os.path.splitext(path)
-        if ext == '.pickled':
+        if ext == '.pickle':
             self.save_pickled(path)
         elif ext == '.txt':
             self.save_txt(path)
         elif ext == '.tex':
             self.save_tex(path)
         else:
-            err = ("Unrecognized extension: %r. Needs to be .pickled, .txt or "
-                   ".tex." % ext)
-            raise ValueError(err)
+            raise ValueError(f"Unrecognized extension: {ext!r}. Needs to be .pickle, .txt or .tex.")
 
     def save_rtf(self, path=None, fmt='%.3g'):
         """Save the Dataset as TeX table.
@@ -6725,7 +6723,7 @@ class Dataset(dict):
         ----------
         path : None | str
             Target file name (if ``None`` is supplied, a save file dialog is
-            displayed). If no extension is specified, '.pickled' is appended.
+            displayed). If no extension is specified, '.pickle' is appended.
         """
         if not isinstance(path, str):
             title = "Pickle Dataset"
@@ -6737,7 +6735,7 @@ class Dataset(dict):
 
         _, ext = os.path.splitext(path)
         if not ext:
-            path += '.pickled'
+            path += '.pickle'
 
         with open(path, 'wb') as fid:
             pickle.dump(self, fid, pickle.HIGHEST_PROTOCOL)
@@ -9469,16 +9467,17 @@ class Sensor(Dimension):
         return self.names
 
 
-def as_sensor(obj):
+def as_sensor(obj) -> Sensor:
     "Coerce to Sensor instance"
     if isinstance(obj, Sensor):
         return obj
-    elif isinstance(obj, NDVar) and obj.has_dim('sensor'):
-        return obj.sensor
-    elif hasattr(obj, 'pos') and hasattr(obj, 'ch_names') and hasattr(obj, 'kind'):
-        return Sensor(obj.pos, obj.ch_names, obj.kind)
+    elif isinstance(obj, NDVar):
+        return obj.get_dim('sensor')
+    elif isinstance(obj, (mne.Info, mne.channels.channels.UpdateChannelsMixin)):
+        from .load.fiff import sensor_dim
+        return sensor_dim(obj)
     else:
-        raise TypeError("Can't get sensors from %r" % (obj,))
+        raise TypeError(f"Can't get sensors from {obj}")
 
 
 def _point_graph(coords, dist_threshold):

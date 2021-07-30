@@ -283,6 +283,10 @@ def test_trf_len(n_workers):
     res = boosting(y, x, 0, 0.5, partitions=3)
     assert correlation_coefficient(res.h, k) > 0.99
     assert repr(res) == '<boosting y ~ x, 0 - 0.5, partitions=3>'
+    # split the predictor into two complementary time windows (should be identical)
+    res2 = boosting(y, [x, x], [0.000, 0.250], [0.250, 0.500], partitions=3)
+    assert_array_equal(res2.h[0] + res2.h[1], res.h)
+    assert res2.r == res.r
 
     # test multiple tstart, tend
     x2 = NDVar(rng.normal(0, 1, 1000), UTS(0, 0.1, 1000), name='x2')

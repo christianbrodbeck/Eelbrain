@@ -361,7 +361,7 @@ class Document(FileDocument):
         ----------
         path : str
             Path under which to save. The extension determines the way file
-            (*.pickled -> pickled Dataset; *.txt -> tsv)
+            (*.pickle -> pickled Dataset; *.txt -> tsv)
         """
         root, ext = os.path.splitext(path)
         if ext == '':
@@ -455,7 +455,7 @@ class Document(FileDocument):
         info = {BAD_CHANNELS: self.bad_channel_names, 'epochs.selection': self.epochs_selection}
         ds = Dataset([self.trigger, self.accept, self.tag, self.interpolate], info=info)
 
-        if ext == '.pickled':
+        if ext.startswith('.pickle'):
             save.pickle(ds, self.path)
         elif ext == '.txt':
             ds.save_txt(self.path)

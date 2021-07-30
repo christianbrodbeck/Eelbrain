@@ -69,6 +69,10 @@ qualname_overrides = {
 }
 
 
+################################################################################
+# Sphinx-Gallery
+################################################################################
+
 def use_pyplot(gallery_conf, fname):
     eelbrain.configure(frame=False)
 
@@ -120,6 +124,7 @@ example_order = NameOrder({
     'deconvolution': [
         'trf_intro.py',
         'mtrf.py',
+        'partitions.py',
         'epoch_impulse.py',
     ],
 })
@@ -140,6 +145,39 @@ sphinx_gallery_conf = {
 
 # download datasets (to avoid progress bar output in example gallery)
 root = mne.datasets.mtrf.data_path()
+
+################################################################################
+# Bibliography
+################################################################################
+# import pybtex.plugin
+import pybtex.plugin
+from pybtex.style.formatting.unsrt import Style
+from pybtex.style.sorting.author_year_title import SortingStyle
+from pybtex.style.template import field, href, words
+
+
+class MySortingStyle(SortingStyle):
+
+    def sorting_key(self, entry):
+        author, year, title = SortingStyle.sorting_key(self, entry)
+        year = -int(year) if year.isdigit() else 1
+        return year, author, title
+
+
+class MyBibStyle(Style):
+    default_sorting_style = MySortingStyle
+
+    def format_url(self, e):
+        url = field('url', raw=True)
+        return href[url, url]  # will change to href(url)[url]
+
+
+pybtex.plugin.register_plugin('pybtex.style.formatting', 'year', MyBibStyle)
+
+
+################################################################################
+# Sphinx basics
+################################################################################
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['templates']

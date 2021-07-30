@@ -3,6 +3,7 @@
 from typing import Union
 
 from matplotlib.patches import Rectangle
+from matplotlib.ticker import MaxNLocator
 import numpy
 
 from .._trf.shared import Splits, split_data
@@ -18,6 +19,7 @@ class DataSplit(EelFigure, LegendMixin):
             splits: Splits,
             legend: LegendArg = 'upper right',
             colors: dict = None,
+            xlabel: str = 'Segment',
             **kwargs,
     ):
         """Plot data splits
@@ -45,7 +47,8 @@ class DataSplit(EelFigure, LegendMixin):
         if colors is None:
             colors = colors_for_oneway(attrs, unambiguous=[6, 3, 5])
 
-        layout = Layout(1, 16/9, 2, **kwargs)
+        h_default = max(2, 0.5 + 0.15 * len(splits.splits))
+        layout = Layout(1, 16/9, h_default, **kwargs)
         EelFigure.__init__(self, None, layout)
         ax = self.figure.axes[0]
 
@@ -68,7 +71,9 @@ class DataSplit(EelFigure, LegendMixin):
         labels = {key: labels[key] for key in handles}
         ax.set_ylabel('Split')
         ax.set_ylim(-0.5, len(splits.splits)-0.5)
-        ax.set_xlabel('Sample')
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+        if xlabel:
+            ax.set_xlabel(xlabel)
         ax.set_xlim(splits.segments[0, 0], splits.segments[-1, 1])
         LegendMixin.__init__(self, legend, handles, labels)
         self._show()
@@ -100,15 +105,18 @@ def preview_partitions(
     """
     if isinstance(cases, int):
         if cases == 0:
+            has_case = False
             if partitions is None:
                 partitions = 2 + test + validate if test else 10
             ns = [partitions]
         else:
+            has_case = True
             if partitions is None:
                 raise NotImplementedError('Automatic partitions with trials')
             ns = [1] * cases
     else:
         y = asndvar(cases, ds=ds)
+        has_case = y.has_case
         if y.has_case:
             n_cases = len(y)
         else:
@@ -117,4 +125,5 @@ def preview_partitions(
     index = numpy.cumsum([0] + ns)
     segments = numpy.hstack([index[:-1, None], index[1:, None]])
     splits = split_data(segments, partitions, model, ds, validate, test)
+    kwargs.setdefault('xlabel', 'Case' if has_case else 'Segment')
     return DataSplit(splits, **kwargs)

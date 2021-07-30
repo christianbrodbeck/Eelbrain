@@ -96,6 +96,11 @@ a list of the subjects and corresponding MRIs that were discovered::
     2    R0176     fsaverage * 0.954746600461
     ...
 
+
+.. note::
+    To specify an alternative input data format, replace ``MneExperiment.raw["raw"]`` with a custom :class:`RawSource` instance.
+
+
 .. py:attribute:: MneExperiment.visits
 
 .. note::
@@ -438,9 +443,7 @@ Define a pre-processing pipeline as a series of linked processing steps
    RawReReference
 
 
-The raw data that constitutes the input to the pipeline can be accessed in a
-pipe named ``"raw"``
-(the input data can be customized by adding a :class:`RawSource` pipe).
+The raw data that constitutes the input to the pipeline can be accessed in a pipe named ``"raw"``
 Each subsequent preprocessing step is defined with its input as first argument
 (``source``).
 

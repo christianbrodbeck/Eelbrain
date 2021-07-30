@@ -175,6 +175,7 @@ class RawSource(RawPipe):
                 rename_channels={'FZ': 'Fz', 'OZ': 'Oz', 'CZ': 'Cz', 'Ref right mastoid': 'A1'},
                 eog=['EOG horizontal left', 'EOG horizontal right', 'EOG vertical below', 'EOG vertical above'],
                 montage='standard_1020'),
+            ...
         }
 
     """

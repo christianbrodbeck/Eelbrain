@@ -97,7 +97,7 @@ def load_arrow(file_path=None):
     Parameters
     ----------
     file_path : None | str
-        Path to a pickled file. If None (default), a system file dialog will be
+        Path to an arrow file. If None (default), a system file dialog will be
         shown. If the user cancels the file dialog, a RuntimeError is raised.
     """
     if file_path is None:
