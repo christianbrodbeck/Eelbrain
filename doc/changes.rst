@@ -3,6 +3,11 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.37
+-----------
+
+
+
 New in 0.36
 -----------
 
