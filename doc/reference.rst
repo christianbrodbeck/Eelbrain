@@ -86,6 +86,7 @@ Functions and modules for loading specific file formats as Eelbrain object:
    load.eyelink
    load.fiff
    load.txt
+   load.cnd
    load.besa
 
 

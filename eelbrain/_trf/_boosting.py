@@ -886,6 +886,7 @@ def boosting(
         If data has cases, cases are divided with ``[::partitions]`` slices
         (default ``min(n_cases, 10)``; if ``model`` is specified, ``n_cases``
         is the lowest number of cases in any cell of the model).
+        See :ref:`exa-data_split` example.
     model
         If data has cases, divide cases into different categories (division
         for crossvalidation is done separately for each cell).
@@ -919,6 +920,10 @@ def boosting(
     -------
     result : BoostingResult
         Results (see :class:`BoostingResult`).
+
+    See Also
+    --------
+    plot.preview_partitions
 
     Notes
     -----

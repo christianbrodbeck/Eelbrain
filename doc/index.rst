@@ -1,11 +1,3 @@
-.. Building: $ make html
-   If you get ValueError: unknown locale: UTF-8, run 
-   export LC_ALL=en_US.UTF-8 
-   before make (http://readthedocs.org/docs/flightdeck/en/latest/installation.html).
-
-Eelbrain
-========
-
 .. image:: https://zenodo.org/badge/3651023.svg
    :target: https://zenodo.org/badge/latestdoi/3651023
 
@@ -15,16 +7,11 @@ Eelbrain
 .. image:: https://img.shields.io/conda/pn/conda-forge/eelbrain.svg
    :target: https://anaconda.org/conda-forge/eelbrain
 
-Eelbrain is an open-source `Python <https://www.python.org>`_ package for
-accessible statistical analysis of MEG and EEG data.
-It is maintained by
-`Christian Brodbeck <http://christianbrodbeck.net>`_
-at the `Computational sensorimotor systems lab
-<http://www.isr.umd.edu/Labs/CSSL/simonlab/Home.html>`_
-at University of Maryland, College Park.
+|
 
-If you use Eelbrain in work that is published, please acknowledge it by citing
-it with the appropriate version and DOI.
+Eelbrain
+========
+`Open-source <https://github.com/christianbrodbeck/Eelbrain>`_ `Python <https://www.python.org>`_ toolkit for MEG and EEG data analysis.
 
 
 Manual
@@ -49,33 +36,25 @@ Manual
 
 
 .. seealso::
-   - `Wiki <https://github.com/christianbrodbeck/Eelbrain/wiki>`_ on GitHub
+   - `GitHub <http://github.com/christianbrodbeck/Eelbrain>`_: `Wiki <https://github.com/christianbrodbeck/Eelbrain/wiki>`_, `Discussions <https://github.com/christianbrodbeck/Eelbrain/discussions>`_ and `Issues <https://github.com/christianbrodbeck/Eelbrain/issues>`_
    - `Mailing list <https://groups.google.com/forum/#!forum/eelbrain>`_ for announcements
-   - Source code on `GitHub <http://github.com/christianbrodbeck/Eelbrain>`_
    - Eelbrain on the `Python Package Index <https://pypi.python.org/pypi/eelbrain>`_
 
-
-Indices and tables
-------------------
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
-
+To cite Eelbrain, find the appropriate `DOI <https://doi.org/10.5281/zenodo.598150>`_.
 Eelbrain relies on
 `NumPy <http://www.numpy.org>`_,
+`Numba <http://numba.pydata.org>`_,
+`Cython <http://cython.org>`_,
 `SciPy <http://scipy.org>`_,
 `Matplotlib <http://matplotlib.org>`_,
 `MNE-Python <http://martinos.org/mne/stable/index.html>`_,
 `PySurfer <http://pysurfer.github.io>`_,
 `WxPython <http://wxpython.org>`_,
-`Cython <http://cython.org>`_ and incorporates icons from the
-`Tango Desktop Project <http://tango.freedesktop.org>`_.
-
+and incorporates icons from the `Tango Desktop Project <http://tango.freedesktop.org>`_.
 
 ----
 
+Eelbrain is maintained by `Christian Brodbeck <http://christianbrodbeck.net>`_.
 Current funding:
 `NSF <http://nsf.gov>`_ `1754284 <https://www.nsf.gov/awardsearch/showAward?AWD_ID=1754284>`_ (2020-);
 Past funding:
