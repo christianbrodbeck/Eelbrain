@@ -6,7 +6,8 @@ Changes
 New in 0.36
 -----------
 
-* Preview cross-validation data partitions with :func:`plot.preview_partitions`
+* Preview cross-validation data partitions with :func:`plot.preview_partitions`.
+* :meth:`BoostingResult.partition_result_data` method to retrieve results from different partitions.
 
 
 New in 0.35

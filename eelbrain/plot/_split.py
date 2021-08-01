@@ -102,6 +102,10 @@ def preview_partitions(
     ...
         For a description of the splitting parameters see :func:`~eelbrain.boosting`.
         For plotting parameters see :class:`DataSplit`.
+
+    See Also
+    --------
+    :ref:`exa-data_split` example
     """
     if isinstance(cases, int):
         if cases == 0:

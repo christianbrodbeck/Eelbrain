@@ -7746,9 +7746,9 @@ class Dimension:
             connectivity = 'custom'
 
         if not isinstance(connectivity, str):
-            raise TypeError("connectivity=%r" % (connectivity,))
+            raise TypeError(f"{connectivity=}")
         elif connectivity not in self._CONNECTIVITY_TYPES:
-            raise ValueError("connectivity=%r" % (connectivity,))
+            raise ValueError(f"{connectivity=}")
         self._connectivity_type = connectivity
 
     def _coerce_connectivity(self, connectivity):
@@ -8832,24 +8832,28 @@ class Sensor(Dimension):
     >>> sensor_dim = Sensor(locs, names=["Cz", "Pz"])
     """
     _default_connectivity = 'custom'
-    _proj_aliases = {'left': 'x-', 'right': 'x+', 'back': 'y-', 'front': 'y+',
-                     'top': 'z+', 'bottom': 'z-'}
+    _proj_aliases = {'left': 'x-', 'right': 'x+', 'back': 'y-', 'front': 'y+', 'top': 'z+', 'bottom': 'z-'}
 
-    def __init__(self, locs, names=None, sysname=None, proj2d='z root', connectivity='none'):
+    def __init__(
+            self,
+            locs: numpy.ndarray,
+            names: Sequence[str] = None,
+            sysname: str = None,
+            proj2d: str = 'z root',
+            connectivity: Union[str, Sequence] = 'none',
+    ):
         # 'z root' transformation fails with 32-bit floats
         self.locs = locs = np.asarray(locs, dtype=np.float64)
         n = len(locs)
         if locs.shape != (n, 3):
-            raise ValueError("locs needs to have shape (n_sensors, 3), got "
-                             "array of shape %s" % (locs.shape,))
+            raise ValueError(f"locs needs to have shape (n_sensors, 3), got {locs.shape=}")
         self.sysname = sysname
         self.default_proj2d = self._interpret_proj(proj2d)
 
         if names is None:
             names = [str(i) for i in range(n)]
         elif len(names) != n:
-            raise ValueError("Length mismatch: got %i locs but %i names" %
-                             (n, len(names)))
+            raise ValueError(f"Length mismatch: got {n} locs but {len(names)} names")
         self.names = Datalist(names)
         Dimension.__init__(self, 'sensor', connectivity)
         self._init_secondary()
