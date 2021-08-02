@@ -29,7 +29,7 @@ from operator import mul
 import os
 import time
 from threading import Event, Thread
-from typing import Any, Callable, List, Union, Tuple, Sequence
+from typing import Any, Callable, List, Literal, Union, Tuple, Sequence
 import warnings
 
 import numpy as np
@@ -823,7 +823,7 @@ def boosting(
         scale_data: Union[bool, str] = True,  # normalize y and x; can be 'inplace'
         delta: float = 0.005,  # coordinate search step
         mindelta: float = None,  # narrow search by reducing delta until reaching mindelta
-        error: str = 'l2',  # 'l1' | 'l2', for scaling data
+        error: Literal['l1', 'l2'] = 'l2',
         basis: float = 0,
         basis_window: str = 'hamming',
         partitions: int = None,  # Number of partitionings for cross-validation
@@ -834,7 +834,7 @@ def boosting(
         selective_stopping: int = 0,
         partition_results: bool = False,
         debug: bool = False,
-):
+) -> BoostingResult:
     """Estimate a linear filter with coordinate descent
 
     Parameters
@@ -855,13 +855,13 @@ def boosting(
         value (when ``error='l1'``). Use ``'inplace'`` to save memory by scaling
         the original objects specified as ``y`` and ``x`` instead of making a 
         copy.
-    delta : scalar
+    delta
         Step for changes in the kernel.
-    mindelta : scalar
+    mindelta
         If the error for the training data can't be reduced, divide ``delta``
         in half until ``delta < mindelta``. The default is ``mindelta = delta``,
         i.e. ``delta`` is constant.
-    error : 'l2' | 'l1'
+    error
         Error function to use (default is ``l2``).
 
         - ``error='l1'``: the sum of the absolute differences between ``y`` and
@@ -916,17 +916,14 @@ def boosting(
     debug
         Add additional attributes to the returned result.
 
-    Returns
-    -------
-    result : BoostingResult
-        Results (see :class:`BoostingResult`).
-
     See Also
     --------
-    plot.preview_partitions
+    plot.preview_partitions : preview data partitions for cross-validation
 
     Notes
     -----
+    The boosting algorithm is described in [1]_.
+
     In order to predict data, use the :func:`convolve` function::
 
     >>> ds = datasets.get_uts()
@@ -934,12 +931,6 @@ def boosting(
     >>> ds['a0'] = epoch_impulse_predictor('uts', 'A=="a0"', ds=ds)
     >>> res = boosting('uts', ['a0', 'a1'], 0, 0.5, partitions=10, model='A', ds=ds)
     >>> y_pred = convolve(res.h_scaled, ['a0', 'a1'], ds=ds)
-
-    The boosting algorithm is described in [1]_.
-
-    See Also
-    --------
-    plot.preview_partitions : preview data partitions for cross-validation
 
     References
     ----------
