@@ -27,14 +27,18 @@ def read_cnd(
     filename
         Path to the data file (``*.mat``). If unspecified, open a file dialog.
     connectivity
-        Sensor adjacency graph for EEG sensors. Can be a string to use a `FieldTrip neighbor file
+        Sensor adjacency graph for EEG sensors.
+        By default, the function tries to use the ``deviceName`` entry and falls
+        back on distance-based connectivity for unkown devices.
+        Can be explicitly specified as a `FieldTrip neighbor file
         <https://www.fieldtriptoolbox.org/template/neighbours/>`_ (e.g., ``'biosemi64'``;
-        Use a :class:`float` for disance-based connectivity (see :meth:`Sensor.set_connectivity`).
+        Use a :class:`float` for distance-based connectivity (see :meth:`Sensor.set_connectivity`).
         For more options see :class:`Sensor`.
 
     Notes
     -----
-    This format is experimental and the returned data format might change in the future.
+    This format is experimental and the returned data format might change in the future;
+    Please report any problems you might encounter.
     """
     if filename is None:
         path = ui.ask_file("Load CND File", "Select CND file to load as NDVar", FILETYPES)
