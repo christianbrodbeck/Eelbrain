@@ -3423,13 +3423,7 @@ class MneExperiment(FileTree):
         if samplingrate or preload:
             raw.load_data()
         if samplingrate:
-            if ndvar:
-                # avoid warning for downsampling event channel
-                stim_picks = np.empty(0)
-                events = np.empty((0, 3))
-            else:
-                stim_picks = events = None
-            raw.resample(samplingrate, stim_picks=stim_picks, events=events)
+            raw.resample(samplingrate)
 
         if ndvar:
             data = TestDims('sensor')
