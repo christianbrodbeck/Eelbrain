@@ -6,6 +6,7 @@ Changes
 New in 0.37
 -----------
 
+* ICA-GUI (:func:`gui.select_components`): Sort noisy epochs by dominant components - makes it easier to find components that capture specific artifacts
 
 
 New in 0.36

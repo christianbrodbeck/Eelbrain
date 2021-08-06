@@ -8,9 +8,11 @@
 #  - visualizaes Document
 #  - listens to Document changes
 #  - issues commands to Model
+from collections import defaultdict
 from distutils.version import LooseVersion
 from itertools import repeat
 from math import ceil
+from operator import itemgetter
 import re
 from typing import Optional, Sequence, Tuple, Union
 
@@ -252,6 +254,7 @@ class SharedToolsMenu:
             return
         threshold = float(dlg.threshold.GetValue())
         apply_rejection = dlg.apply_rejection.GetValue()
+        sort_by_component = dlg.sort_by_component.GetValue()
         dlg.StoreConfig()
 
         # compute and rank
@@ -259,22 +262,54 @@ class SharedToolsMenu:
             epochs = asndvar(self.doc.apply(self.doc.epochs))
         else:
             epochs = self.doc.epochs_ndvar
-        y = epochs.extrema(('time', 'sensor')).abs().x
+        peaks = epochs.extrema(('time', 'sensor')).abs().x
 
         # collect output
-        res = [(i, v) for i, v in enumerate(y) if v >= threshold]  # epoch, value
+        res = [(i, peak) for i, peak in enumerate(peaks) if peak >= threshold]  # epoch, value
         if len(res) == 0:
             wx.MessageBox(f"No epochs with signals exceeding {threshold} were found.", "No Noisy Epochs Found", style=wx.ICON_INFORMATION)
             return
 
+        if sort_by_component:
+            res_by_component = defaultdict(list)
+            # Find contribution of each component
+            component_magnitude = self.doc.components.abs().sum('sensor')
+            if apply_rejection:
+                component_magnitude.x *= self.doc.accept
+            magnitude = self.doc.sources.abs().sum('time') * component_magnitude
+            for i, peak in res:
+                magnitude_i = magnitude[i]
+                c_max = magnitude_i.argmax()
+                ratio = magnitude_i[c_max] / magnitude_i.sum()
+                res_by_component[c_max].append((i, peak, ratio))
+            # Sort epochs by ratio
+            for res_list in res_by_component.values():
+                res_list.sort(key=itemgetter(2), reverse=True)
+            # Sort components by max ratio
+            max_ratio = {component: values[0][2] for component, values in res_by_component.items()}
+            sorted_components = sorted(max_ratio, key=lambda c: max_ratio[c], reverse=True)
+            res_by_component = {c: res_by_component[c] for c in sorted_components}
+        else:
+            res_by_component = None
+
         # format output
         doc = fmtxt.Section("Noisy epochs")
-        doc.add_paragraph(f"Epochs with signal exceeding {threshold}:")
+        doc.add_paragraph(f"Epochs with signal exceeding {threshold}")
+        if sort_by_component:
+            doc.add_paragraph(f"Sorted by dominant component")
         doc.append(fmtxt.linebreak)
-        for i, value in res:
-            doc.append(fmtxt.Link(self.doc.epoch_labels[i], f'epoch:{i}'))
-            doc.append(f": {value:g}")
-            doc.append(fmtxt.linebreak)
+        if sort_by_component:
+            for component, values in res_by_component.items():
+                sec = doc.add_section(f"#{component}")
+                for i, peak, ratio in values:
+                    sec.append(fmtxt.Link(self.doc.epoch_labels[i], f'component:{component} epoch:{i}'))
+                    sec.append(f": {peak:g} – {ratio:.0%}")
+                    sec.append(fmtxt.linebreak)
+        else:
+            for i, peak in res:
+                doc.append(fmtxt.Link(self.doc.epoch_labels[i], f'epoch:{i}'))
+                doc.append(f": {peak:g}")
+                doc.append(fmtxt.linebreak)
         InfoFrame(self, "Noisy Epochs", doc, 300, 900)
 
     def OnFindRareEvents(self, event):
@@ -1231,6 +1266,7 @@ class FindNoisyEpochsDialog(EelbrainDialog):
         config = parent.config
         threshold = config.ReadFloat("FindNoisyEpochsDialog/threshold", self._default_threshold)
         apply_rejection = config.ReadBool("FindNoisyEpochsDialog/apply_rejection", True)
+        sort_by_component = config.ReadBool("FindNoisyEpochsDialog/sort_by_component", True)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -1245,6 +1281,11 @@ class FindNoisyEpochsDialog(EelbrainDialog):
         # Apply rejection before finding noisy epochs
         self.apply_rejection = ctrl = wx.CheckBox(self, label="Apply ICA rejection")
         ctrl.SetValue(apply_rejection)
+        sizer.Add(ctrl)
+
+        # Sort noisy epochs by component
+        self.sort_by_component = ctrl = wx.CheckBox(self, label="Sort by ICA component")
+        ctrl.SetValue(sort_by_component)
         sizer.Add(ctrl)
 
         # default button
@@ -1275,6 +1316,7 @@ class FindNoisyEpochsDialog(EelbrainDialog):
         config = self.Parent.config
         config.WriteFloat("FindNoisyEpochsDialog/threshold", float(self.threshold.GetValue()))
         config.WriteBool("FindNoisyEpochsDialog/apply_rejection", self.apply_rejection.GetValue())
+        config.WriteBool("FindNoisyEpochsDialog/sort_by_component", self.sort_by_component.GetValue())
         config.Flush()
 
 
