@@ -2,7 +2,7 @@
 """Plot sensor maps."""
 from math import sin, cos, asin
 import os
-from typing import Literal, Sequence, Union
+from typing import Any, Literal, Sequence, Union
 
 import numpy as np
 import matplotlib as mpl
@@ -24,8 +24,8 @@ kwargs_mono = dict(mc='k',
 
 
 def _head_outlines(
-        radius: Union[float, Sequence[float]],
-        center: Union[float, Sequence[float]] = 0,
+        head_radius: Union[float, Sequence[float]] = None,
+        head_pos: Union[float, Sequence[float]] = 0,
 ):
     # generate outlines for center 0, radius 1
     nose_alpha = 0.2
@@ -43,18 +43,18 @@ def _head_outlines(
     ear_x_left = -ear_x_right
 
     # apply radius and center
-    if isinstance(radius, Sequence):
-        rx, ry = radius
+    if isinstance(head_radius, Sequence):
+        rx, ry = head_radius
     else:
-        rx = ry = radius
+        rx = ry = head_radius
 
-    if isinstance(center, Sequence):
-        cx, cy = center
+    if isinstance(head_pos, Sequence):
+        cx, cy = head_pos
         cx += 0.5
         cy += 0.5
     else:
         cx = 0.5
-        cy = center + 0.5
+        cy = head_pos + 0.5
 
     for item in (head_x, nose_x, ear_x_right, ear_x_left):
         item *= rx
@@ -92,14 +92,24 @@ class _plt_connectivity:
 
 class _ax_map2d:
 
-    def __init__(self, ax, sensors, proj, extent, size, color, marker,
-                 mark=None, head_radius=None, head_pos=0., head_linewidth=None,
-                 labels='none'):
+    def __init__(
+            self,
+            ax: matplotlib.axes.Axes,
+            sensors: Sensor,
+            proj: str,
+            extent: float,
+            marker: str,
+            size: float,
+            color: ColorArg,
+            mark: Union[Sequence[str], str, Sequence[int], int] = None,
+            head_radius: Union[float, Sequence[float]] = None,
+            head_pos: Union[float, Sequence[float]] = 0,
+            head_linewidth: float = None,
+            labels: Literal['none', 'index', 'name', 'fullname'] = 'none',
+    ):
         self.ax = ax
 
-        self.sensors = _plt_map2d(ax, sensors, proj, extent, marker, size,
-                                  color, mark, None, None, labels, True,
-                                  head_radius, head_pos, head_linewidth)
+        self.sensors = _plt_map2d(ax, sensors, proj, extent, marker, size, color, mark, None, 'o', labels, True, head_radius, head_pos, head_linewidth)
 
         locs = sensors.get_locs_2d(proj, extent, SENSORMAP_FRAME)
         self.connectivity = _plt_connectivity(ax, locs, None)
@@ -140,11 +150,11 @@ class _plt_map2d:
             color: ColorArg,
             mark: Union[Sequence[str], str, Sequence[int], int],
             mcolor: ColorArg,
-            mmarker: str,
-            labels: Literal['', 'none', 'index', 'name', 'fullname'],
-            invisible: bool,
-            head_radius: Union[float, Sequence[float]],
-            head_pos: Union[float, Sequence[float]],
+            mmarker: str = 'o',
+            labels: Literal['', 'none', 'index', 'name', 'fullname'] = 'none',
+            invisible: bool = False,
+            head_radius: Union[float, Sequence[float]] = None,
+            head_pos: Union[float, Sequence[float]] = 0,
             head_linewidth: float = None,
     ):
         self.ax = ax
@@ -211,8 +221,7 @@ class _plt_map2d:
         while self._mark_handles:
             self._mark_handles.pop().remove()
 
-    def show_labels(self, text='name', xpos=0, ypos=0, ha='center', va='bottom',
-                    **text_kwargs):
+    def show_labels(self, text='name', xpos=0, ypos=0, ha='center', va='bottom', **text_kwargs):
         """Plot labels for the sensors
 
         Parameters
@@ -515,7 +524,7 @@ class SensorMaps(EelFigure):
         ax.extent = False
         ax.set_xlim(xlim)
         ax.set_ylim(zlim)
-        self._h0 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
+        self._h0 = _ax_map2d(ax, sensors, ax.proj, ax.extent, marker, size, color)
 
         # left
         ax = self.ax1 = self.axes[1]
@@ -523,7 +532,7 @@ class SensorMaps(EelFigure):
         ax.extent = False
         ax.set_xlim(ylim)
         ax.set_ylim(zlim)
-        self._h1 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
+        self._h1 = _ax_map2d(ax, sensors, ax.proj, ax.extent, marker, size, color)
 
         # top
         ax = self.ax2 = self.axes[2]
@@ -531,13 +540,13 @@ class SensorMaps(EelFigure):
         ax.extent = False
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
-        self._h2 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
+        self._h2 = _ax_map2d(ax, sensors, ax.proj, ax.extent, marker, size, color)
 
         # proj
         ax = self.ax3 = self.axes[3]
         ax.proj = proj
         ax.extent = 1
-        self._h3 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
+        self._h3 = _ax_map2d(ax, sensors, ax.proj, ax.extent, marker, size, color)
         self.ax3.set_xlim(-frame, 1 + frame)
         self.ax3.set_ylim(-frame, 1 + frame)
 
@@ -688,7 +697,7 @@ class SensorMap(SensorMapMixin, EelFigure):
     sensors : Sensor | NDVar
         The :class:`Sensor` dimension, or an :class:`NDVar` with a sensor
         dimension.
-    labels : 'none' | 'index' | 'name' | 'fullname'
+    labels
         Content of the labels. For 'name', any prefix common to all names
         is removed; with 'fullname', the full name is shown.
     proj:
@@ -711,17 +720,27 @@ class SensorMap(SensorMapMixin, EelFigure):
     head_pos : scalar
         Head outline position along the anterior axis (0 is the center, 0.5 is
         the top end of the plot).
-    connectivity : bool
+    connectivity
         Show sensor connectivity (default False).
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, sensors, labels='name', proj='default', size=1,
-                 color='k', marker='.', mark=None, head_radius=None,
-                 head_pos=0., connectivity=False, margins=None, **kwargs):
+    def __init__(
+            self,
+            sensors: Any,
+            labels: Literal['none', 'index', 'name', 'fullname'] = 'name',
+            proj: str = 'default',
+            size: float = 1,
+            color: ColorArg = 'k',
+            marker: str = '.',
+            mark: Sequence = None,
+            head_radius: Union[float, Sequence[float]] = None,
+            head_pos: Union[float, Sequence[float]] = 0,
+            connectivity: bool = False,
+            **kwargs):
         sensors = as_sensor(sensors)
         kwargs.setdefault('frame', 'none')
-        layout = ImLayout(1, 1, 5, margins, {}, **kwargs)
+        layout = ImLayout(1, 1, 5, default_margins={}, **kwargs)
         EelFigure.__init__(self, sensors.sysname, layout)
         ax = self.axes[0]
 
@@ -731,8 +750,7 @@ class SensorMap(SensorMapMixin, EelFigure):
         self._marker_handles = []
         self._connectivity = None
 
-        self._markers = _ax_map2d(ax, sensors, proj, 1, size, color, marker,
-                                  mark, head_radius, head_pos, labels=labels)
+        self._markers = _ax_map2d(ax, sensors, proj, 1, marker, size, color, mark, head_radius, head_pos, labels=labels)
         SensorMapMixin.__init__(self, [self._markers.sensors])
 
         if connectivity:

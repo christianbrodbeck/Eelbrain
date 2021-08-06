@@ -625,10 +625,9 @@ class Frame(SharedToolsMenu, FileFrame):
         except RuntimeError:
             return  # can be called after the window closes (Windows)
         if event.inaxes:
-            sb.SetStatusText("#%i of %i ICA Components" %
-                             (event.inaxes.i, len(self.doc.components)))
+            sb.SetStatusText(f"#{event.inaxes.i} of len(self.doc.components) ICA Components")
         else:
-            sb.SetStatusText("%i ICA Components" % len(self.doc.components))
+            sb.SetStatusText(f"{len(self.doc.components)} ICA Components")
 
     def OnRankEpochs(self, event):
         i_comp = event.EventObject.i_comp

@@ -121,7 +121,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
             clip: Union[bool, str] = 'even',
             clip_distance: float = 0.05,
             head_radius: Union[float, Tuple[float, float]] = None,
-            head_pos: float = 0,
+            head_pos: Union[float, Sequence[float]] = 0,
             im_interpolation: str = None,
             # sensor-map args
             sensorlabels: SensorLabelsArg = None,
@@ -260,7 +260,7 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
             clip: Union[bool, str] = 'even',
             clip_distance: float = 0.05,
             head_radius: Union[float, Tuple[float, float]] = None,
-            head_pos: float = 0,
+            head_pos: Union[float, Sequence[float]] = 0,
             im_interpolation: str = None,
             # sensor-map args
             sensorlabels: SensorLabelsArg = None,
@@ -436,7 +436,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMix
             clip: Union[bool, str] = 'even',
             clip_distance: float = 0.05,
             head_radius: Union[float, Tuple[float, float]] = None,
-            head_pos: float = 0,
+            head_pos: Union[float, Sequence[float]] = 0,
             im_interpolation: str = None,
             # sensor-map args
             sensorlabels: SensorLabelsArg = None,
@@ -711,8 +711,8 @@ class _ax_topomap(_ax_im_array):
             cmaps: dict = {},
             contours: dict = {},
             interpolation: InterpolationArg = None,  # topomap interpolation method
-            head_radius: float = None,
-            head_pos: Union[float, Tuple[float, float]] = 0.,  # y if centered on x, or (x, y)
+            head_radius: Union[float, Sequence[float]] = None,
+            head_pos: Union[float, Tuple[float, float]] = 0.,
             head_linewidth: float = None,
     ):
         self.ax = ax
@@ -945,7 +945,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
             clip: Union[bool, str] = 'even',
             clip_distance: float = 0.05,
             head_radius: Union[float, Tuple[float, float]] = None,
-            head_pos: float = 0,
+            head_pos: Union[float, Sequence[float]] = 0,
             im_interpolation: str = None,
             # sensor-map args
             sensorlabels: SensorLabelsArg = None,

@@ -277,8 +277,7 @@ class App(wx.App):
         return self._bash_ui_finalize(result)
 
     def ask_for_file(self, title, message, filetypes, directory, mult):
-        return self._bash_ui(self._ask_for_file, title, message, filetypes,
-                             directory, mult)
+        return self._bash_ui(self._ask_for_file, title, message, filetypes, directory, mult)
 
     def _ask_for_file(self, title, message, filetypes, directory, mult):
         """Return path(s) or False.
@@ -297,8 +296,7 @@ class App(wx.App):
         style = wx.FD_OPEN
         if mult:
             style = style | wx.FD_MULTIPLE
-        dialog = wx.FileDialog(None, message, directory,
-                               wildcard=wildcard(filetypes), style=style)
+        dialog = wx.FileDialog(None, message, directory, wildcard=wildcard(filetypes), style=style)
         dialog.SetTitle(title)
         if dialog.ShowModal() == wx.ID_OK:
             if mult:
@@ -311,8 +309,7 @@ class App(wx.App):
         return self._bash_ui_finalize(result)
 
     def ask_for_string(self, title, message, default='', parent=None):
-        return self._bash_ui(self._ask_for_string, title, message, default,
-                             parent)
+        return self._bash_ui(self._ask_for_string, title, message, default, parent)
 
     def _ask_for_string(self, title, message, default, parent):
         dialog = wx.TextEntryDialog(parent, message, title, default)
@@ -324,13 +321,11 @@ class App(wx.App):
         return self._bash_ui_finalize(result)
 
     def ask_saveas(self, title, message, filetypes, defaultDir, defaultFile):
-        return self._bash_ui(self._ask_saveas, title, message, filetypes,
-                             defaultDir, defaultFile)
+        return self._bash_ui(self._ask_saveas, title, message, filetypes, defaultDir, defaultFile)
 
     def _ask_saveas(self, title, message, filetypes, defaultDir, defaultFile):
         # setup file-dialog
-        dialog = wx.FileDialog(None, message, wildcard=wildcard(filetypes),
-                               style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+        dialog = wx.FileDialog(None, message, wildcard=wildcard(filetypes), style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
         dialog.SetTitle(title)
         if defaultDir:
             dialog.SetDirectory(defaultDir)
@@ -357,9 +352,7 @@ class App(wx.App):
         if self._ipython is None:
             self.message_box("Attach Unavailable", "The attach command requires running from within IPython 5 or later", wx.ICON_ERROR|wx.OK, parent)
             return
-        name = self.ask_for_string(
-            "Attach", "Variable name for %s in terminal:" % desc, default_name,
-            parent)
+        name = self.ask_for_string("Attach", f"Variable name for {desc} in terminal:", default_name, parent)
         if name:
             self._ipython.user_global_ns[name] = obj
 
@@ -418,7 +411,7 @@ class App(wx.App):
                 menu.Remove(item)
                 self.Unbind(wx.EVT_MENU, id=item.GetId())
             # add new entries
-            self.window_menu_window_items = []
+            self.window_menu_window_items.clear()
             for window in wx.GetTopLevelWindows():
                 id_ = window.GetId()
                 label = window.GetTitle()

@@ -3336,17 +3336,21 @@ class MneExperiment(FileTree):
                                       vertices_to, None, subjects_dir)
         return mm, vertices_to
 
-    def load_neighbor_correlation(self, subjects=None, epoch=None, **state):
+    def load_neighbor_correlation(
+            self,
+            subjects: SubjectArg = None,
+            epoch: str = None,
+            **state):
         """Load sensor neighbor correlation
 
         Parameters
         ----------
-        subjects : str | 1 | -1
+        subjects
             Subject(s) for which to load data. Can be a single subject
             name or a group name such as ``'all'``. ``1`` to use the current
             subject; ``-1`` for the current group. Default is current subject
             (or group if ``group`` is specified).
-        epoch : str
+        epoch
             Epoch to use for computing neighbor-correlation (by default, the
             whole session is used).
 

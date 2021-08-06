@@ -40,7 +40,7 @@ def get_levels(
         else:
             return DEFAULT_LEVELS
     elif trend:
-        raise TypeError("trend=%r only valid when levels=True" % (trend,))
+        raise TypeError(f"{trend=} only valid when levels=True")
     return levels
 
 
@@ -812,7 +812,7 @@ class MannWhitneyU:
         elif tail == -1:
             alternative = 'less'
         else:
-            raise ValueError(f"tail={tail!r}")
+            raise ValueError(f"{tail=}")
         self.u, self.p = scipy.stats.mannwhitneyu(y1.x, y0.x, continuity, alternative)
         self._y = dataobj_repr(y1)
         self._x = x_name

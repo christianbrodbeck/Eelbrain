@@ -505,7 +505,7 @@ class TestDims:
             return cls(obj, time, morph)
 
     def __repr__(self):
-        return "TestDims(%r)" % (self.string,)
+        return f"TestDims({self.string!r})"
 
     def __eq__(self, other):
         if not isinstance(other, TestDims):

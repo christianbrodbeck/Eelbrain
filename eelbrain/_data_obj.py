@@ -3826,10 +3826,10 @@ class NDVar(Named):
             axis = self._dim_2_ax[axis]
             x = func(self.get_data(mask=mask), axis=axis)
             dims = [self.dims[i] for i in range(self.ndim) if i != axis]
-        elif not axis:
+        elif axis is None:
             return func(self.get_data(mask=mask))
         else:
-            axes = tuple(self._dim_2_ax[dim_name] for dim_name in axis)
+            axes = tuple([self._dim_2_ax[dim_name] for dim_name in axis])
             x = func(self.get_data(mask=mask), axes)
             dims = [self.dims[i] for i in range(self.ndim) if i not in axes]
 
@@ -9403,31 +9403,26 @@ class Sensor(Dimension):
                 raise DimensionMismatchError("Sensor locations don't match between dimension objects")
         return self[index]
 
-    def neighbors(self, connect_dist):
+    def neighbors(self, connect_dist: float) -> Dict[int, np.ndarray]:
         """Find neighboring sensors.
 
         Parameters
         ----------
-        connect_dist : scalar
+        connect_dist
             For each sensor, neighbors are defined as those sensors within
             ``connect_dist`` times the distance of the closest neighbor.
 
         Returns
         -------
-        neighbors : dict
+        neighbors
             Dictionaries whose keys are sensor indices, and whose values are
             lists of neighbors represented as sensor indices.
         """
         nb = {}
-        pd = pdist(self.locs)
-        pd = squareform(pd)
-        n = len(self)
-        for i in range(n):
-            d = pd[i, np.arange(n)]
-            d[i] = d.max()
-            idx = np.nonzero(d < d.min() * connect_dist)[0]
-            nb[i] = idx
-
+        pairwise_distances = squareform(pdist(self.locs))
+        np.fill_diagonal(pairwise_distances, pairwise_distances.max() * 99)
+        for i, distances in enumerate(pairwise_distances):
+            nb[i] = np.flatnonzero(distances < (distances.min() * connect_dist))
         return nb
 
     def set_connectivity(self, neighbors=None, connect_dist=None):
