@@ -2,7 +2,7 @@
 """Plot sensor maps."""
 from math import sin, cos, asin
 import os
-from typing import Any, Literal, Sequence, Union
+from typing import Any, Literal, Optional, Sequence, Union
 
 import numpy as np
 import matplotlib as mpl
@@ -127,6 +127,25 @@ class _ax_map2d:
         self.sensors.remove()
 
 
+def sensor_labels(
+        sensors: Sensor,
+        labels: Literal['none', 'index', 'name', 'fullname'] = 'none',
+) -> Optional[Sequence[str]]:
+    if labels == 'none':
+        return
+    elif labels == 'index':
+        return list(map(str, range(len(sensors))))
+    elif labels == 'name':
+        out = sensors.names
+        prefix = os.path.commonprefix(out)
+        pf_len = len(prefix)
+        return [label[pf_len:] for label in out]
+    elif labels == 'fullname':
+        return sensors.names
+    else:
+        raise ValueError(f"{labels=}")
+
+
 class _plt_map2d:
     """Sensor-map plot
 
@@ -137,7 +156,7 @@ class _plt_map2d:
     sensors
         Sensor dimension.
     """
-    _label_text = 'none'  # currently shown label text
+    _labels_arg = 'none'  # currently shown label text
 
     def __init__(
             self,
@@ -221,7 +240,7 @@ class _plt_map2d:
         while self._mark_handles:
             self._mark_handles.pop().remove()
 
-    def show_labels(self, text='name', xpos=0, ypos=0, ha='center', va='bottom', **text_kwargs):
+    def show_labels(self, labels='name', xpos=0, ypos=0, ha='center', va='bottom', **text_kwargs):
         """Plot labels for the sensors
 
         Parameters
@@ -234,42 +253,25 @@ class _plt_map2d:
         text_kwargs : **
             Matplotlib text parameters.
         """
-        if not text:
-            text = 'none'
-        elif text not in ('none', 'index', 'name', 'fullname'):
-            raise ValueError("Invalid sensor label argument: %s. Need one of "
-                             "'none' | 'index' | 'name' | 'fullname'" %
-                             repr(text))
-
-        if text == self._label_text:
+        if labels == self._labels_arg:
             return
-        self._label_text = text
+        label_text = sensor_labels(self.sensors, labels)
 
         # remove existing labels
         while self._label_h:
             self._label_h.pop().remove()
+        self._labels_arg = labels
 
-        if text == 'none':
+        if label_text is None:
             return
-        elif text == 'index':
-            labels = list(map(str, range(len(self.sensors))))
-        elif text == 'name':
-            labels = self.sensors.names
-            prefix = os.path.commonprefix(labels)
-            pf_len = len(prefix)
-            labels = [label[pf_len:] for label in labels]
-        elif text == 'fullname':
-            labels = self.sensors.names
-        else:
-            raise RuntimeError("text=%s" % repr(text))
 
         locs = self.locs
         if self._index is not None:
-            labels = Datalist(labels)[self._index]
+            label_text = Datalist(label_text)[self._index]
             locs = locs[self._index]
 
         locs = locs + [[xpos, ypos]]
-        for (x, y), txt in zip(locs, labels):
+        for (x, y), txt in zip(locs, label_text):
             h = self.ax.text(x, y, txt, ha=ha, va=va, **text_kwargs)
             self._label_h.append(h)
 
@@ -341,7 +343,7 @@ class SensorMapMixin:
         if not self._has_frame:
             return
         # find current label text
-        sel = self.__label_option_args.index(sensor_plots[0]._label_text)
+        sel = self.__label_option_args.index(sensor_plots[0]._labels_arg)
         self.__LabelChoice.SetSelection(sel)
 
     def _fill_toolbar(self, tb):
@@ -781,30 +783,52 @@ class SensorMap(SensorMapMixin, EelFigure):
         self.draw()
 
 
-def map3d(sensors, marker='c*', labels=False, head=0):
-    """3d plot of a Sensors instance"""
-    import matplotlib.pyplot as plt
+class SensorMap3d(EelFigure):
+    """Plot sensor positions in 3 dimensions
 
-    sensors = as_sensor(sensors)
+    Parameters
+    ----------
+    sensors : Sensor | NDVar
+        The :class:`Sensor` dimension, or an :class:`NDVar` with a sensor
+        dimension.
+    labels
+        Content of the labels. For 'name', any prefix common to all names
+        is removed; with 'fullname', the full name is shown.
+    connectivity
+        Show sensor connectivity (default False).
+    ...
+        Also accepts :ref:`general-layout-parameters`.
+    """
+    _make_axes = False
 
-    locs = sensors.locs
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(locs[:, 0], locs[:, 1], locs[:, 2])
-    # plot head ball
-    if head:
-        u = np.linspace(0, 1 * np.pi, 10)
-        v = np.linspace(0, np.pi, 10)
+    def __init__(
+            self,
+            sensors: Any,
+            labels: Literal['none', 'index', 'name', 'fullname'] = 'none',
+            connectivity: bool = False,
+            **kwargs):
+        sensors = as_sensor(sensors)
+        layout = ImLayout(1, 1, 5, default_margins={}, **kwargs)
+        EelFigure.__init__(self, sensors.sysname, layout)
 
-        x = 5 * head * np.outer(np.cos(u), np.sin(v))
-        z = 10 * (head * np.outer(np.sin(u), np.sin(v)) - .5)  # vertical
-        y = 5 * head * np.outer(np.ones(np.size(u)), np.cos(v))  # axis of the sphere
-        ax.plot_surface(x, y, z, rstride=1, cstride=1, color='w')
-    # n = 100
-    # for c, zl, zh in [('r', -50, -25), ('b', -30, -5)]:
-    # xs, ys, zs = zip(*
-    #               [(random.randrange(23, 32),
-    #                 random.randrange(100),
-    #                 random.randrange(zl, zh)
-    #                 ) for i in range(n)])
-    # ax.scatter(xs, ys, zs, c=c)
+        ax = self.figure.add_subplot(111, projection='3d')
+        locs = sensors.locs
+        ax.scatter(locs[:, 0], locs[:, 1], locs[:, 2])
+        ax.set_xlabel('Left -> Right')
+        ax.set_ylabel('Posterior -> Anterior')
+        ax.set_zlabel('Inferior -> Superior')
+
+        if connectivity:
+            from mpl_toolkits.mplot3d.art3d import Line3D
+
+            for c, r in sensors.connectivity():
+                xs, ys, zs = locs[[c, r]].T
+                line = Line3D(xs, ys, zs)
+                ax.add_line(line)
+
+        label_text = sensor_labels(sensors, labels)
+        if label_text:
+            for loc, txt in zip(locs, label_text):
+                ax.text(*loc, txt)
+
+        self._show()

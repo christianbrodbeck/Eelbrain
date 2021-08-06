@@ -371,6 +371,7 @@ Plot sensor layout maps:
 
    plot.SensorMap
    plot.SensorMaps
+   plot.SensorMap3d
 
 Method related plots:
 
