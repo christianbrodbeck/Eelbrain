@@ -30,7 +30,7 @@ from .._io.fiff import _picks
 from .._types import PathArg
 from .._utils.parse import POS_FLOAT_PATTERN
 from .._utils.system import IS_OSX
-from ..plot._base import AxisData, DataLayer, PlotType
+from ..plot._base import DISPLAY_UNIT, UNIT_FORMAT, AxisData, DataLayer, PlotType
 from ..plot._topo import _ax_topomap
 from .frame import EelbrainDialog
 from .history import Action, FileDocument, FileModel, FileFrame, FileFrameChild
@@ -247,12 +247,22 @@ class SharedToolsMenu:
         menu.AppendSubMenu(blmenu, "Baseline")
 
     def OnFindNoisyEpochs(self, event):
-        dlg = FindNoisyEpochsDialog(self, unit=self.doc.epochs_ndvar.info.get('unit', '?'))
+        unit = self.doc.epochs_ndvar.info.get('unit', '<unknown unit>')
+        if unit in DISPLAY_UNIT:
+            display_unit = DISPLAY_UNIT[unit]
+            scale_factor = 1 / UNIT_FORMAT[display_unit]
+        else:
+            display_unit = unit
+            scale_factor = None
+        dlg = FindNoisyEpochsDialog(self, unit=display_unit)
         rcode = dlg.ShowModal()
         dlg.Destroy()
         if rcode != wx.ID_OK:
             return
         threshold = float(dlg.threshold.GetValue())
+        threshold_desc = f'{threshold:g} {display_unit}'
+        if scale_factor:
+            threshold *= scale_factor
         apply_rejection = dlg.apply_rejection.GetValue()
         sort_by_component = dlg.sort_by_component.GetValue()
         dlg.StoreConfig()
@@ -267,7 +277,7 @@ class SharedToolsMenu:
         # collect output
         res = [(i, peak) for i, peak in enumerate(peaks) if peak >= threshold]  # epoch, value
         if len(res) == 0:
-            wx.MessageBox(f"No epochs with signals exceeding {threshold} were found.", "No Noisy Epochs Found", style=wx.ICON_INFORMATION)
+            wx.MessageBox(f"No epochs with signals exceeding {threshold_desc} were found.", "No Noisy Epochs Found", style=wx.ICON_INFORMATION)
             return
 
         if sort_by_component:
@@ -294,7 +304,7 @@ class SharedToolsMenu:
 
         # format output
         doc = fmtxt.Section("Noisy epochs")
-        doc.add_paragraph(f"Epochs with signal exceeding {threshold}")
+        doc.add_paragraph(f"Epochs with signal exceeding {threshold_desc}")
         if sort_by_component:
             doc.add_paragraph(f"Sorted by dominant component")
         doc.append(fmtxt.linebreak)
@@ -1259,24 +1269,28 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
 
 
 class FindNoisyEpochsDialog(EelbrainDialog):
-    _default_threshold = 1.5e-12
+    _default_thresholds = {'µV': 100, 'fT': 1000}
 
-    def __init__(self, parent, *args, unit, **kwargs):
-        super(FindNoisyEpochsDialog, self).__init__(parent, wx.ID_ANY, "Find Bad Epochs", *args, **kwargs)
+    def __init__(self, parent, unit, **kwargs):
+        self.unit = unit
+        super(FindNoisyEpochsDialog, self).__init__(parent, wx.ID_ANY, "Find Bad Epochs", **kwargs)
         config = parent.config
-        threshold = config.ReadFloat("FindNoisyEpochsDialog/threshold", self._default_threshold)
+        threshold = config.ReadFloat(f"FindNoisyEpochsDialog/threshold_{unit}", self._default_threshold())
         apply_rejection = config.ReadBool("FindNoisyEpochsDialog/apply_rejection", True)
         sort_by_component = config.ReadBool("FindNoisyEpochsDialog/sort_by_component", True)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Threshold
-        sizer.Add(wx.StaticText(self, label=f"Threshold for bad epochs [{unit}]:"))
+        h_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        h_sizer.Add(wx.StaticText(self, label=f"Threshold for bad epochs: "))
         validator = REValidator(POS_FLOAT_PATTERN, "Invalid entry: {value}. Please specify a number > 0.", False)
-        self.threshold = ctrl = wx.TextCtrl(self, value=str(threshold), validator=validator)
+        self.threshold = ctrl = wx.TextCtrl(self, value=f'{threshold:g}', validator=validator, style=wx.TE_RIGHT)
         ctrl.SetHelpText("Find epochs in which the signal exceeds this value at any sensor")
         ctrl.SelectAll()
-        sizer.Add(ctrl)
+        h_sizer.Add(ctrl)
+        h_sizer.Add(wx.StaticText(self, label=unit))
+        sizer.Add(h_sizer)
 
         # Apply rejection before finding noisy epochs
         self.apply_rejection = ctrl = wx.CheckBox(self, label="Apply ICA rejection")
@@ -1309,12 +1323,15 @@ class FindNoisyEpochsDialog(EelbrainDialog):
         self.SetSizer(sizer)
         sizer.Fit(self)
 
+    def _default_threshold(self):
+        return self._default_thresholds.get(self.unit, 1)
+
     def OnSetDefault(self, event):
-        self.threshold.SetValue(f'{self._default_threshold}')
+        self.threshold.SetValue(f'{self._default_threshold()}')
 
     def StoreConfig(self):
         config = self.Parent.config
-        config.WriteFloat("FindNoisyEpochsDialog/threshold", float(self.threshold.GetValue()))
+        config.WriteFloat(f"FindNoisyEpochsDialog/threshold_{self.unit}", float(self.threshold.GetValue()))
         config.WriteBool("FindNoisyEpochsDialog/apply_rejection", self.apply_rejection.GetValue())
         config.WriteBool("FindNoisyEpochsDialog/sort_by_component", self.sort_by_component.GetValue())
         config.Flush()
