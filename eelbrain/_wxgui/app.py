@@ -403,24 +403,9 @@ class App(wx.App):
                 f0.link_time_axis(figure)
 
     def OnMenuOpened(self, event):
-        "Update window names in the window menu"
+        "Update the window-specific Tools menu"
         menu = event.GetMenu()
-        if menu.GetTitle() == 'Window':
-            # clear old entries
-            for item in self.window_menu_window_items:
-                menu.Remove(item)
-                self.Unbind(wx.EVT_MENU, id=item.GetId())
-            # add new entries
-            self.window_menu_window_items.clear()
-            for window in wx.GetTopLevelWindows():
-                id_ = window.GetId()
-                label = window.GetTitle()
-                if not label:
-                    continue
-                item = menu.Append(id_, label)
-                self.Bind(wx.EVT_MENU, self.OnWindowRaise, id=id_)
-                self.window_menu_window_items.append(item)
-        elif menu.GetTitle() == 'Tools':
+        if menu.GetTitle() == 'Tools':
             for item in menu.GetMenuItems():
                 menu.Remove(item)
             frame = self._get_parent_gui()
