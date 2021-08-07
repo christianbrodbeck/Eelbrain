@@ -28,7 +28,7 @@ from .._colorspaces import UNAMBIGUOUS_COLORS
 from .._data_obj import Dataset, Factor, NDVar, asndvar, Categorial, Scalar
 from .._io.fiff import _picks
 from .._types import PathArg
-from .._utils.parse import POS_FLOAT_PATTERN
+from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN
 from .._utils.system import IS_OSX
 from ..plot._base import DISPLAY_UNIT, UNIT_FORMAT, AxisData, DataLayer, PlotType
 from ..plot._topo import _ax_topomap
@@ -265,6 +265,11 @@ class SharedToolsMenu:  # Frame mixin
             threshold *= scale_factor
         apply_rejection = dlg.apply_rejection.GetValue()
         sort_by_component = dlg.sort_by_component.GetValue()
+        max_ch_ratio = dlg.max_ch_ratio.GetValue()
+        if max_ch_ratio:
+            max_ch_ratio = float(max_ch_ratio)
+        else:
+            max_ch_ratio = 0
         dlg.StoreConfig()
 
         # compute and rank
@@ -310,10 +315,21 @@ class SharedToolsMenu:  # Frame mixin
         doc.append(fmtxt.linebreak)
         if sort_by_component:
             for component, values in res_by_component.items():
+                # test whether this is a single noisy channel
+                channel_values = np.sort(np.abs(self.doc.components[component].x))
+                max_channel_ratio = channel_values[-1] / channel_values[-2]
+                if max_ch_ratio and max_channel_ratio > max_ch_ratio:
+                    continue
+                # add links to epochs
                 sec = doc.add_section(f"#{component}")
+                sec.add_paragraph([f"Ch 1/2 ratio: {max_channel_ratio:.1f}", fmtxt.linebreak])
+                by_ratio = defaultdict(list)
                 for i, peak, ratio in values:
-                    sec.append(fmtxt.Link(self.doc.epoch_labels[i], f'component:{component} epoch:{i}'))
-                    sec.append(f": {peak:g} – {ratio:.0%}")
+                    by_ratio[f'{ratio:.0%}'].append(i)
+                for ratio, epochs in by_ratio.items():
+                    sec.append(f'{ratio}: ')
+                    for i in epochs:
+                        sec.append([fmtxt.Link(self.doc.epoch_labels[i], f'component:{component} epoch:{i}'), ', '])
                     sec.append(fmtxt.linebreak)
         else:
             for i, peak in res:
@@ -1278,12 +1294,13 @@ class FindNoisyEpochsDialog(EelbrainDialog):
         threshold = config.ReadFloat(f"FindNoisyEpochsDialog/threshold_{unit}", self._default_threshold())
         apply_rejection = config.ReadBool("FindNoisyEpochsDialog/apply_rejection", True)
         sort_by_component = config.ReadBool("FindNoisyEpochsDialog/sort_by_component", True)
+        max_ch_ratio = config.Read(f"FindNoisyEpochsDialog/max_ch_ratio", '')
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Threshold
         h_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        h_sizer.Add(wx.StaticText(self, label=f"Threshold for bad epochs: "))
+        h_sizer.Add(wx.StaticText(self, label="Threshold for bad epochs: "))
         validator = REValidator(POS_FLOAT_PATTERN, "Invalid entry: {value}. Please specify a number > 0.", False)
         self.threshold = ctrl = wx.TextCtrl(self, value=f'{threshold:g}', validator=validator, style=wx.TE_RIGHT)
         ctrl.SetHelpText("Find epochs in which the signal exceeds this value at any sensor")
@@ -1301,6 +1318,16 @@ class FindNoisyEpochsDialog(EelbrainDialog):
         self.sort_by_component = ctrl = wx.CheckBox(self, label="Sort by ICA component")
         ctrl.SetValue(sort_by_component)
         sizer.Add(ctrl)
+
+        # Filter by ch 1/2 ratio
+        h_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        h_sizer.Add(wx.StaticText(self, label="Max channel ratio filter: "))
+        validator = REValidator(FLOAT_PATTERN, "Invalid entry: {value}. Please specify a number ≥ 0.", True)
+        self.max_ch_ratio = ctrl = wx.TextCtrl(self, value=max_ch_ratio, validator=validator, style=wx.TE_RIGHT)
+        ctrl.SetHelpText("Filter components that are due to bad channels through the first / second channel ratio")
+        ctrl.SelectAll()
+        h_sizer.Add(ctrl)
+        sizer.Add(h_sizer)
 
         # default button
         btn = wx.Button(self, wx.ID_DEFAULT, "Default Settings")
@@ -1334,6 +1361,7 @@ class FindNoisyEpochsDialog(EelbrainDialog):
         config.WriteFloat(f"FindNoisyEpochsDialog/threshold_{self.unit}", float(self.threshold.GetValue()))
         config.WriteBool("FindNoisyEpochsDialog/apply_rejection", self.apply_rejection.GetValue())
         config.WriteBool("FindNoisyEpochsDialog/sort_by_component", self.sort_by_component.GetValue())
+        config.Write(f"FindNoisyEpochsDialog/max_ch_ratio", self.max_ch_ratio.GetValue())
         config.Flush()
 
 
