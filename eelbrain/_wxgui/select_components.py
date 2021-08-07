@@ -204,7 +204,7 @@ class ContextMenu(wx.Menu):
         self.i_epoch = i_epoch
 
 
-class SharedToolsMenu:
+class SharedToolsMenu:  # Frame mixin
     # set by FileFrame:
     doc = None
     config = None
@@ -320,7 +320,7 @@ class SharedToolsMenu:
                 doc.append(fmtxt.Link(self.doc.epoch_labels[i], f'epoch:{i}'))
                 doc.append(f": {peak:g}")
                 doc.append(fmtxt.linebreak)
-        InfoFrame(self, "Noisy Epochs", doc, 300, 900)
+        InfoFrame(self, "Noisy Epochs", doc, 300)
 
     def OnFindRareEvents(self, event):
         dlg = FindRareEventsDialog(self)
@@ -362,7 +362,7 @@ class SharedToolsMenu:
             doc.append(f"{c} ({ft:.1f}):  ")
             doc.append(fmtxt.delim_list((fmtxt.Link(self.doc.epoch_labels[e], f'component:{c} epoch:{e}') for e in epochs)))
             doc.append(fmtxt.linebreak)
-        InfoFrame(self, "Rare Events", doc, 500, 900)
+        InfoFrame(self, "Rare Events", doc, 500)
 
     def OnPlotButterfly(self, event):
         self.PlotConditionAverages(self)
@@ -691,7 +691,7 @@ class Frame(SharedToolsMenu, FileFrame):
             link = fmtxt.Link(self.doc.epoch_labels[i], f'component:{i_comp} epoch:{i}')
             lst.add_item(link + f': {ss[i]:.1f}')
         doc = fmtxt.Section(f"#{i_comp} Ranked Epochs", lst)
-        InfoFrame(self, f"Component {i_comp} Epoch SS", doc, 200, 900)
+        InfoFrame(self, f"Component {i_comp} Epoch SS", doc, 200)
 
     def _context_menu(self, i_comp: int = None, i_epoch: int = None):
         menu = ContextMenu(i_comp, i_epoch)
@@ -1386,15 +1386,16 @@ class FindRareEventsDialog(EelbrainDialog):
 
 class InfoFrame(HTMLFrame):
 
-    def __init__(self, parent, title, doc, w, h):
+    def __init__(self, parent: wx.Window, title: str, doc, w: int, h: int = -1):
         pos, size = self.find_pos(w, h)
         style = wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX | wx.RESIZE_BORDER | wx.CAPTION | wx.CLOSE_BOX | wx.FRAME_FLOAT_ON_PARENT | wx.FRAME_TOOL_WINDOW
         HTMLFrame.__init__(self, parent, title, doc.get_html(), pos=pos, size=size, style=style)
 
     @staticmethod
-    def find_pos(w, h):
+    def find_pos(w: int, h: int):
         display_w, display_h = wx.DisplaySize()
-        h = min(h, display_h - 44)
+        h_max = display_h - 44
+        h = h_max if h <= 0 else min(h, h_max)
         pos = (display_w - w, int(round((display_h - h) / 2)))
         return pos, (w, h)
 
