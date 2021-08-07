@@ -378,7 +378,17 @@ class LimitsValidator(wx.Validator):
 
     def TransferToWindow(self):
         ctrl = self.GetWindow()
-        ctrl.SetValue("%s %s" % getattr(self.parent, self.attr))
+        vmin, vmax = getattr(self.parent, self.attr)
+        if self.single == 'symmetric':
+            use_single = -vmin == vmax
+        elif self.single == 'offset':
+            use_single = vmin == 0
+        else:
+            raise RuntimeError(f'{self.single=}')
+        if use_single:
+            ctrl.SetValue(f'{vmax}')
+        else:
+            ctrl.SetValue(f'{vmin} {vmax}')
         ctrl.SelectAll()
         return True
 
