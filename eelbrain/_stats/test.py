@@ -68,6 +68,8 @@ class Correlation:
     df : int
         Degrees of freedom.
     """
+    _statistic = 'r'
+
     def __init__(
             self,
             y: NumericArg,
@@ -546,6 +548,7 @@ def ttest(y, x=None, against=0, match=None, sub=None, corr='Hochberg',
 
 
 class TTest:
+    _statistic = 't'
 
     def __init__(self, difference, t, df, tail):
         self._difference = difference
@@ -792,6 +795,8 @@ class MannWhitneyU:
     -----
     Based on :func:`scipy.stats.mannwhitneyu`.
     """
+    _statistic = 'U'
+
     def __init__(
             self,
             y: VarArg,
@@ -1011,6 +1016,8 @@ class WilcoxonSignedRank:
     -----
     Based on :func:`scipy.stats.wilcoxon`.
     """
+    _statistic = 'W'
+
     def __init__(
             self,
             y: VarArg,
