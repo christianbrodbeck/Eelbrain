@@ -1593,22 +1593,24 @@ class MneExperiment(FileTree):
         criteria = self._cluster_criteria[self.get('select_clusters')]
         return {'min' + dim: criteria[dim] for dim in data.dims if dim in criteria}
 
-    def _add_vars(self, ds, vardef: Union[None, str, Variables], groupvars=False):
+    def _add_vars(
+            self,
+            ds: Dataset,
+            vardef: Union[None, str, Variables],
+            group_only: bool = False,
+    ):
         """Add vars to the dataset
 
         Parameters
         ----------
-        ds : Dataset
+        ds
             Event dataset.
-        vardef : dict | tuple
+        vardef
             Variable definition.
-        groupvars : bool
+        group_only
             Apply GroupVars in ``self.variables`` (when adding variables to a
             dataset that does not originate from events, such as TRFs).
         """
-        if groupvars:
-            self._variables.apply(ds, self, group_only=True)
-
         if vardef is None:
             return
         elif isinstance(vardef, str):
@@ -1618,7 +1620,7 @@ class MneExperiment(FileTree):
                 raise ValueError(f"vardef={vardef!r}")
         elif not isinstance(vardef, Variables):
             vardef = Variables(vardef)
-        vardef.apply(ds, self)
+        vardef.apply(ds, self, group_only)
 
     def _backup(self, dst_root, v=False):
         """Backup all essential files to ``dst_root``.
@@ -2717,7 +2719,7 @@ class MneExperiment(FileTree):
                         err.append(f"{l}: {subjects}")
                     raise DimensionMismatchError('\n'.join(err))
         else:  # single subject
-            ds = self._make_evoked(samplingrate, decim, data_raw)
+            ds = self._make_evoked(samplingrate, decim, data_raw, vardef)
 
             if cat:
                 if not model:
@@ -2727,8 +2729,6 @@ class MneExperiment(FileTree):
                 ds = ds.sub(idx)
                 if ds.n_cases == 0:
                     raise RuntimeError(f"Selection with cat={cat!r} resulted in empty Dataset")
-
-            self._add_vars(ds, vardef)
 
             # baseline correction
             if isinstance(baseline, str):
@@ -3732,6 +3732,7 @@ class MneExperiment(FileTree):
                 ds['i_start'] += np.round(shift * ds.info['sfreq']).astype(int)
 
         # Additional variables
+        self._add_vars(ds, self._variables)
         self._add_vars(ds, epoch.vars)
         self._add_vars(ds, vardef)
 
@@ -4291,7 +4292,7 @@ class MneExperiment(FileTree):
 
         cov.save(dest)
 
-    def _make_evoked(self, samplingrate, decim, data_raw):
+    def _make_evoked(self, samplingrate, decim, data_raw, vardef):
         """Make files with evoked sensor data"""
         dst = self.get('evoked-file', mkdir=True)
         epoch = self._epochs[self.get('epoch')]
@@ -4317,7 +4318,7 @@ class MneExperiment(FileTree):
         if use_cache and exists(dst) and cache_valid(getmtime(dst), self._evoked_mtime()):
             evoked = mne.read_evokeds(dst, proj=False)
             if int(evoked[0].info['description'].split(' ')[1]) >= 13:
-                ds = self.load_selected_events(data_raw=data_raw)
+                ds = self.load_selected_events(data_raw=data_raw, vardef=vardef)
                 ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count, drop=('i_start', 't_edf', 'T', 'index', 'trigger'))
                 # check cells
                 if model_vars:
@@ -4333,9 +4334,9 @@ class MneExperiment(FileTree):
         # load the epochs (post baseline-correction trigger shift requires
         # baseline corrected evoked
         if epoch.post_baseline_trigger_shift:
-            ds = self.load_epochs(ndvar=False, baseline=True, samplingrate=samplingrate, decim=decim, data_raw=data_raw, interpolate_bads='keep')
+            ds = self.load_epochs(ndvar=False, baseline=True, samplingrate=samplingrate, decim=decim, data_raw=data_raw, interpolate_bads='keep', vardef=vardef)
         else:
-            ds = self.load_epochs(ndvar=False, samplingrate=samplingrate, decim=decim, data_raw=data_raw, interpolate_bads='keep')
+            ds = self.load_epochs(ndvar=False, samplingrate=samplingrate, decim=decim, data_raw=data_raw, interpolate_bads='keep', vardef=vardef)
 
         # aggregate
         ds_agg = ds.aggregate(model, drop_bad=True, equal_count=equal_count, drop=('i_start', 't_edf', 'T', 'index', 'trigger'), never_drop=('epochs',))
