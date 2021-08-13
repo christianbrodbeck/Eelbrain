@@ -840,6 +840,7 @@ def neighbor_correlation(
         dim: str = 'sensor',
         obs: str = 'time',
         func: Callable = np.mean,
+        flat: float = 0,
         name: str = None,
 ) -> NDVar:
     """Calculate Neighbor correlation
@@ -857,6 +858,8 @@ def neighbor_correlation(
         Numpy function to summarize the neighbors. Default :fun:`numpy.mean`;
         for example, use :fun:`numpy.max` to test whether any neighbor is
         correlated.
+    flat
+        Value to substitute for flat channels (default 0).
     name
         Name for the new NDVar.
 
@@ -867,30 +870,32 @@ def neighbor_correlation(
         correlation coefficient with its neighbors.
     """
     x = asndvar(x)
-    low_var = x.std(obs).x < 1e-25
+    is_flat = x.std(obs).x < 1e-25
     dim_obj = x.get_dim(dim)
-    if numpy.any(low_var):
-        raise ValueError(f"Low variance at {dim} = {dim_obj._dim_index(low_var)}")
     if name is None:
         name = x.name
 
     # find neighbors
     neighbors = defaultdict(list)
     for a, b in dim_obj.connectivity():
+        if is_flat[a] or is_flat[b]:
+            continue
         neighbors[a].append(b)
         neighbors[b].append(a)
 
     # for each point, find the average correlation with its neighbors
     data = x.get_data((dim, obs))
     cc = numpy.corrcoef(data)
-    try:
-        y = numpy.array([func(cc[i, neighbors[i]]) for i in range(len(dim_obj))])
-    except ValueError:
-        if any(len(ns) == 0 for ns in neighbors.values()):
+    ncs = numpy.zeros(len(dim_obj))
+    for i in range(len(ncs)):
+        if is_flat[i]:
+            ncs[i] = flat
+        elif i not in neighbors:
             raise ValueError(f"Some elements do not have any neighbors")
-        raise
+        else:
+            ncs[i] = func(cc[i, neighbors[i]])
     info = _info.for_stat_map('r', old=x.info)
-    return NDVar(y, (dim_obj,), name, info)
+    return NDVar(ncs, (dim_obj,), name, info)
 
 
 def normalize_in_cells(
