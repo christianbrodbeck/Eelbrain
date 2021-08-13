@@ -3337,6 +3337,7 @@ class MneExperiment(FileTree):
             self,
             subjects: SubjectArg = None,
             epoch: str = None,
+            add_bads: bool = True,
             **state):
         """Load sensor neighbor correlation
 
@@ -3350,6 +3351,8 @@ class MneExperiment(FileTree):
         epoch
             Epoch to use for computing neighbor-correlation (by default, the
             whole session is used).
+        add_bads
+            Reject bad channels first (default ``True``).
 
         Returns
         -------
@@ -3361,7 +3364,7 @@ class MneExperiment(FileTree):
         if group is not None:
             if state:
                 self.set(**state)
-            lines = [(subject, self.load_neighbor_correlation(1, epoch)) for subject in self]
+            lines = [(subject, self.load_neighbor_correlation(1, epoch, add_bads)) for subject in self]
             return Dataset.from_caselist(['subject', 'nc'], lines)
         if epoch:
             if epoch is True:
@@ -3369,10 +3372,10 @@ class MneExperiment(FileTree):
             epoch_params = self._epochs[epoch]
             if len(epoch_params.sessions) != 1:
                 raise ValueError(f"epoch={epoch!r}: epoch has multiple session")
-            ds = self.load_epochs(epoch=epoch, reject=False, decim=1, **state)
+            ds = self.load_epochs(add_bads=add_bads, epoch=epoch, reject=False, decim=1, **state)
             data = concatenate(ds['meg'])
         else:
-            data = self.load_raw(ndvar=True, **state)
+            data = self.load_raw(ndvar=True, add_bads=add_bads, **state)
         return neighbor_correlation(data)
 
     def load_raw(
