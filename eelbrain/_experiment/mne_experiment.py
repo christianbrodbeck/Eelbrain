@@ -3146,7 +3146,7 @@ class MneExperiment(FileTree):
             else:
                 self.make_annot()
                 parc = self.get('parc')
-            fwd = load.fiff.forward_operator(fwd_file, src, self.get('mri-sdir'), parc)
+            fwd = load.fiff.forward_operator(fwd_file, src, self.get('mri-sdir'), parc, connectivity=False)
             if mask:
                 fwd = fwd.sub(source=np.invert(
                     fwd.source.parc.startswith('unknown')))

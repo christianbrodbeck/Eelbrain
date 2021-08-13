@@ -7757,10 +7757,12 @@ class Dimension:
         self._connectivity_type, self._connectivity = self._connectivity_arg(connectivity)
 
     def _connectivity_arg(self, connectivity: Union[str, Sequence]):
-        if isinstance(connectivity, str) or len(connectivity) == 0:
+        if isinstance(connectivity, str):
             if connectivity not in self._CONNECTIVITY_TYPES and connectivity != 'custom':
                 raise ValueError(f"{connectivity=}")
             return connectivity, None
+        elif len(connectivity) == 0:
+            return 'none', None
         elif isinstance(connectivity, np.ndarray) and connectivity.dtype == np.uint32:
             # assume that connectivity is inherited, skip checks
             return 'custom', connectivity

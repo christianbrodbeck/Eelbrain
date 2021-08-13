@@ -752,23 +752,34 @@ def sensor_dim(
             raise ValueError(f"Unknown channel unit for sysname={sysname!r}: {ch_unit!r}")
 
     if connectivity is None:
-        connectivity = sysname  # or 'auto'
+        connectivity = sysname or 'auto'
+
+    ch_type = None
+    if connectivity == 'auto':
+        ch_types = find_mne_channel_types({'chs': chs})
+        if len(ch_types) == 1:
+            ch_type = ch_types[0]
+            if ch_type == 'eog':
+                connectivity = 'none'
+        else:
+            # TODO: connectivity for vector data
+            connectivity = 'none'
 
     if connectivity in ('grid', 'none'):
         pass
     elif isinstance(connectivity, str):
         if connectivity == 'auto':
-            ch_type = _guess_ndvar_data_type({'chs': chs})
             c_matrix, names = mne.channels.find_ch_adjacency(info, ch_type)
+            fix_ch_names = any(ch not in names for ch in ch_names)
         else:
             c_matrix, names = mne.channels.read_ch_adjacency(connectivity)
-            if connectivity.startswith('neuromag'):
-                vec_ids = {name[-1] for name in ch_names}
-                if len(vec_ids) > 1:
-                    raise NotImplementedError("Connectivity for Neuromag vector data")
-                vec_id = vec_ids.pop()
-                # fix channel names
-                names = [f'MEG {n[3:-1]}{vec_id}' for n in names]
+            fix_ch_names = connectivity.startswith('neuromag')
+
+        if fix_ch_names:
+            vec_ids = {name[-1] for name in ch_names}
+            if len(vec_ids) > 1:
+                raise NotImplementedError("Connectivity for Neuromag vector data")
+            names = [f'{n[:3]} {n[3:]}' for n in names]
 
         # fix channel order
         if names != ch_names:
@@ -1211,7 +1222,15 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
     return NDVar(x, dims, name, info)
 
 
-def forward_operator(fwd, src, subjects_dir=None, parc='aparc', name=None):
+def forward_operator(
+        fwd,
+        src,
+        subjects_dir=None,
+        parc='aparc',
+        sysname: str = None,
+        connectivity: Union[str, Sequence] = None,
+        name=None,
+):
     """Load forward operator as :class:`NDVar`
 
     Parameters
@@ -1239,11 +1258,10 @@ def forward_operator(fwd, src, subjects_dir=None, parc='aparc', name=None):
         if name is None:
             name = os.path.basename(fwd)
         fwd = mne.read_forward_solution(fwd)
-        mne.convert_forward_solution(fwd, force_fixed=not is_vol, use_cps=True,
-                                     copy=False)
+        mne.convert_forward_solution(fwd, force_fixed=not is_vol, use_cps=True, copy=False)
     elif name is None:
         name = 'fwd'
-    sensor = sensor_dim(fwd['info'])
+    sensor = sensor_dim(fwd['info'], sysname=sysname, connectivity=connectivity)
     assert np.all(sensor.names == fwd['sol']['row_names'])
     subject = fwd['src'][0]['subject_his_id']
     if is_vol:
