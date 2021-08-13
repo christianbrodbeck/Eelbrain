@@ -185,10 +185,9 @@ class CacheDict(dict):
 
 def cache_valid(mtime, *source_mtimes):
     "Determine whether mtime is up-to-date"
-    return (
-        mtime is not None
-        and all(t is not None for t in source_mtimes)
-        and mtime >= max(source_mtimes))
+    if mtime is not None:
+        if all(t is not None for t in source_mtimes):
+            return mtime >= max(source_mtimes)
 
 
 class MneExperiment(FileTree):
@@ -2570,14 +2569,12 @@ class MneExperiment(FileTree):
         subject = self.get('subject')
 
         # search for and check cached version
-        raw_mtime = self._raw_mtime(bad_chs=False, subject=subject)
+        ds = None
         if exists(evt_file):
+            raw_mtime = self._raw_mtime(bad_chs=False, subject=subject)
             ds = load.unpickle(evt_file)
             if self.check_raw_mtime and ds.info['raw-mtime'] != raw_mtime:
                 self._log.debug("Raw file  %s %s %s modification time changed %s -> %s", self.get('raw'), subject, self.get('recording'), ds.info['raw-mtime'], raw_mtime)
-                ds = None
-        else:
-            ds = None
 
         # refresh cache
         if ds is None:
@@ -2586,7 +2583,7 @@ class MneExperiment(FileTree):
             ds = load.fiff.events(raw, self.merge_triggers)
             del ds.info['raw']
             ds.info['sfreq'] = raw.info['sfreq']
-            ds.info['raw-mtime'] = raw_mtime
+            ds.info['raw-mtime'] = self._raw_mtime(bad_chs=False, subject=subject)
 
             # add edf
             if self.has_edf[subject]:
