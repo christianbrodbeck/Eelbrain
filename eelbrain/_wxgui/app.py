@@ -29,6 +29,7 @@ def wildcard(filetypes):
 
 
 class App(wx.App):
+    _pt_thread = None
     about_frame = None
     _result = None
     _bash_ui_from_mainloop = None
@@ -41,14 +42,19 @@ class App(wx.App):
 
         # register in IPython
         if CONFIG['prompt_toolkit'] and 'IPython' in sys.modules and LooseVersion(sys.modules['IPython'].__version__) >= LooseVersion('5'):
-            import IPython.core.pylabtools
             import IPython.core.error
 
-            IPython.core.pylabtools.backend2gui.clear()  # prevent pylab from initializing event-loop
+            if CONFIG['prompt_toolkit'] == 'eelbrain':
+                import IPython.terminal.pt_inputhooks
+                import IPython.core.pylabtools
+
+                IPython.terminal.pt_inputhooks.register('eelbrain', self.pt_inputhook)
+                IPython.core.pylabtools.backend2gui.clear()  # prevent pylab from initializing event-loop
             shell = IPython.get_ipython()
             if shell is not None:
+                self._pt_thread = self._pt_thread_win if IS_WINDOWS else self._pt_thread_linux
                 try:
-                    shell.enable_gui('wx')
+                    shell.enable_gui(CONFIG['prompt_toolkit'])
                 except IPython.core.error.UsageError:
                     print(f"Prompt-toolkit does not seem to be supported by the current IPython shell ({shell.__class__.__name__}); The Eelbrain GUI needs to block Terminal input to work. Use eelbrain.gui.run() to start GUI interaction.")
                 else:
@@ -208,6 +214,24 @@ class App(wx.App):
 
         return menu_bar
 
+    def _pt_thread_win(self, context):
+        # On Windows, select.poll() is not available
+        while context._input_is_ready is None or not context.input_is_ready():
+            sleep(0.020)
+        wx.CallAfter(self.ExitMainLoop, True)
+
+    def _pt_thread_linux(self, context):
+        poll = select.poll()
+        poll.register(context.fileno(), select.POLLIN)
+        poll.poll(-1)
+        wx.CallAfter(self.ExitMainLoop, True)
+
+    def pt_inputhook(self, context):
+        """prompt_toolkit inputhook"""
+        # prompt_toolkit.eventloop.inputhook.InputHookContext
+        Thread(target=self._pt_thread, args=(context,)).start()
+        self.MainLoop()
+
     def jumpstart(self):
         wx.CallLater(JUMPSTART_TIME, self.ExitMainLoop)
         self.MainLoop()
@@ -348,6 +372,12 @@ class App(wx.App):
         dialog.Destroy()
         return self._bash_ui_finalize(result)
 
+    def ExitMainLoop(self, event_with_pt=True):
+        if event_with_pt or not self.using_prompt_toolkit:
+            # with prompt-toolkit, this leads to hanging when terminating the
+            # interpreter
+            wx.App.ExitMainLoop(self)
+
     def Attach(self, obj, desc, default_name, parent):
         if self._ipython is None:
             self.message_box("Attach Unavailable", "The attach command requires running from within IPython 5 or later", wx.ICON_ERROR|wx.OK, parent)
@@ -434,7 +464,6 @@ class App(wx.App):
         for win in wx.GetTopLevelWindows():
             if not win.Close():
                 return
-        # self.ProcessPendingEvents()
         self.ExitMainLoop()
 
     def OnRedo(self, event):

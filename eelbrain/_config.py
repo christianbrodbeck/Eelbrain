@@ -18,7 +18,7 @@ CONFIG = {
     'show': True,
     'format': 'svg',
     'figure_background': 'white',
-    'prompt_toolkit': True,
+    'prompt_toolkit': 'eelbrain',
     'animate': True,
     'nice': 0,
     'tqdm': False,  # disable=CONFIG['tqdm']
@@ -39,7 +39,7 @@ def configure(
         show: bool = None,
         format: str = None,
         figure_background: Any = None,
-        prompt_toolkit: bool = None,
+        prompt_toolkit: Union[bool, str] = None,
         animate: bool = None,
         nice: int = None,
         tqdm: bool = None,
@@ -119,7 +119,12 @@ def configure(
             to_rgb(figure_background)
         new['figure_background'] = figure_background
     if prompt_toolkit is not None:
-        new['prompt_toolkit'] = bool(prompt_toolkit)
+        if prompt_toolkit is True:
+            new['prompt_toolkit'] = 'eelbrain'
+        elif prompt_toolkit in ('eelbrain', 'wx', False):
+            new['prompt_toolkit'] = prompt_toolkit
+        else:
+            raise ValueError(f"{prompt_toolkit=}; needs to be 'wx', 'eelbrain' or False")
     if animate is not None:
         new['animate'] = bool(animate)
     if nice is not None:
