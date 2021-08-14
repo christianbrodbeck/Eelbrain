@@ -135,8 +135,7 @@ from ._exceptions import DimensionMismatchError, EvalError, IncompleteModel
 from ._data_opt import gaussian_smoother
 from ._text import enumeration
 from ._types import PathArg
-from ._utils import (
-    intervals, ui, LazyProperty, n_decimals, natsorted)
+from ._utils import mne_utils, intervals, ui, LazyProperty, n_decimals, natsorted
 from ._utils.numpy_utils import (
     INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
     aslice, apply_numpy_index, deep_array, digitize_index, digitize_slice_endpoint,
@@ -10427,7 +10426,7 @@ class VolumeSourceSpace(SourceSpaceBase):
         x, y, z = voxel_coords.T
         data = mgz.get_data()
         x = data[x, y, z]
-        labels = {item[0]: item[1] for item in mne.source_space._get_lut()}
+        labels = mne_utils.get_volume_source_space_labels()
         return Factor(x, labels=labels, name=parc)
 
     def _init_secondary(self):

@@ -1,6 +1,8 @@
 "Utilities for MNE data processing"
 import os
+from pathlib import Path
 
+import mne
 from mne.label import _get_annot_fname
 from mne.utils import get_subjects_dir
 from nibabel.freesurfer import read_annot, write_annot
@@ -62,3 +64,16 @@ def is_fake_mri(mri_dir):
     """
     fname = os.path.join(mri_dir, 'MRI scaling parameters.cfg')
     return os.path.exists(fname)
+
+
+def get_volume_source_space_labels():
+    # see mne.source_space._get_lut
+    path = Path(mne.__file__).parent / 'data' / 'FreeSurferColorLUT.txt'
+    labels = {}
+    with path.open() as file:
+        for line in file:
+            if line.startswith('#') or not line:
+                continue
+            id_, label, _ = line.split(maxsplit=2)
+            labels[int(id_)] = label
+    return labels
