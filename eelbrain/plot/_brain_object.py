@@ -17,7 +17,7 @@ import numpy as np
 from .._data_obj import NDVar, SourceSpace, asndvar
 from .._exceptions import KeysMissing
 from .._text import ms
-from .._utils import LazyProperty
+from .._utils import IS_OSX, LazyProperty
 from ..fmtxt import Image
 from ..mne_fixes import reset_logger
 from ._base import CONFIG, TimeSlicer, AxisScale, do_autorun, find_fig_cmaps, find_fig_vlims, fix_vlim_for_cmap, use_inline_backend
@@ -1009,14 +1009,19 @@ class Brain(TimeSlicer, surfer.Brain):
             else:
                 scale = 75
 
+        i = 0
         for figs in self._figures:
             for fig in figs:
                 if forward is not None or up is not None:
                     mlab.view(focalpoint=(0, forward or 0, up or 0), figure=fig)
                 if scale is not None:
-                    fig.scene.camera.parallel_scale = scale
+                    if IS_OSX and self._frame and i == 0:
+                        fig.scene.camera.parallel_scale = 2 * scale
+                    else:
+                        fig.scene.camera.parallel_scale = scale
                 fig.scene.camera.parallel_projection = True
                 fig.render()
+                i += 1
 
     def set_size(self, width, height):
         """Set image size in pixels"""

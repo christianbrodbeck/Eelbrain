@@ -14,6 +14,7 @@ from traitsui.api import View, Item, HGroup, VGroup
 from tvtk.api import tvtk
 from tvtk.pyface.toolkit import toolkit_object
 
+from .._utils import IS_OSX
 from .._wxgui import wx, ID, Icon
 from .._wxgui.app import get_app
 from .._wxgui.frame import EelbrainFrame
@@ -104,6 +105,10 @@ class BrainFrame(EelbrainFrame):
         # Hide the toolbar (the edit_traits command assigns scene_editor)
         for scene in self.mayavi_view.scenes:
             scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
+        if IS_OSX:
+            # Bug in Mayavi/VTK: the render_window has twice the size of its panel, so it's only partially visible; this moves the relevant part into the center; see also Brain.set_parallel_view()
+            figure = self.mayavi_view.figures[0]
+            figure.scene.camera.window_center = [0.5, 0.5]
 
         self.SetImageSize(width, height)
 
