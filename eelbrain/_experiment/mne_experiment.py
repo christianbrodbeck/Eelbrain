@@ -5965,8 +5965,17 @@ class MneExperiment(FileTree):
         fig.show()
         return fig
 
-    def plot_evoked(self, subjects=None, separate=False, baseline=True, ylim='same',
-                    run=None, **kwargs):
+    def plot_evoked(
+            self,
+            subjects: SubjectArg = None,
+            data: DataArg = None,
+            separate: bool = False,
+            baseline: BaselineArg = True,
+            ylim: Literal['same', 'different'] = 'same',
+            name: str = None,
+            h: float = 2.5,
+            run: bool = None,
+            **kwargs):
         """Plot evoked sensor data
 
         Parameters
@@ -5976,22 +5985,34 @@ class MneExperiment(FileTree):
             name or a group name such as ``'all'``. ``1`` to use the current
             subject; ``-1`` for the current group. Default is current subject
             (or group if ``group`` is specified).
-        separate : bool
+        data
+            By default, plot sensor data and source estimates; set to ``meg``/
+            ``eeg``/``source`` to plot only one.
+        separate
             When plotting a group, plot all subjects separately instead or the group
             average (default False).
-        baseline : bool | tuple
+        baseline
             Apply baseline correction using this period. True to use the epoch's
             baseline specification (default).
-        ylim : 'same' | 'different'
+        ylim
             Use the same or different y-axis limits for different subjects
             (default 'same').
-        run : bool
+        name
+            Name to display as window title (default is subject epoch model).
+        h
+            Height per plot.
+        run
             Run the GUI after plotting (default in accordance with plotting
             default).
         ...
             State parameters.
         """
         subject, group = self._process_subject_arg(subjects, kwargs)
+        if data is None:
+            sns = src = True
+        else:
+            data = TestDims.coerce(data)
+            sns, src = bool(data.sensor), bool(data.source)
         model = self.get('model') or None
         epoch = self.get('epoch')
         if model:
@@ -6000,20 +6021,21 @@ class MneExperiment(FileTree):
             model_name = "Average"
         else:
             model_name = "Grand Average"
+        is_vector_data = src and self.get('inv').startswith('vec')
+        is_volume_source_space = src and self.get('src').startswith('vol')
+        if is_vector_data and not is_volume_source_space:
+            raise NotImplementedError(f"Vector data currently can only be plotted for volume source space")
 
-        if subject:
-            ds = self.load_evoked(baseline=baseline)
-            y = guess_y(ds)
-            title = f"{subject} {epoch} {model_name}"
-            return plot.TopoButterfly(y, model, ds=ds, title=title, run=run)
-        elif separate:
+        if separate and not subject:
+            if src:
+                raise NotImplementedError(f"{separate=} for source estimates")
             plots = []
             vlim = []
             for subject in self.iter(group=group):
                 ds = self.load_evoked(baseline=baseline)
                 y = guess_y(ds)
                 title = f"{subject} {epoch} {model_name}"
-                p = plot.TopoButterfly(y, model, ds=ds, title=title, run=False)
+                p = plot.TopoButterfly(y, model, ds=ds, axh=h, name=title, run=False)
                 plots.append(p)
                 vlim.append(p.get_vlim())
 
@@ -6023,15 +6045,46 @@ class MneExperiment(FileTree):
                 for p in plots:
                     p.set_vlim(vmax)
             elif not ylim.startswith('d'):
-                raise ValueError("ylim=%s" % repr(ylim))
+                raise ValueError(f"{ylim=}")
 
             if run or plot._base.do_autorun():
                 gui.run()
+
+        if subject:
+            title = name or f"{subject} {epoch} {model_name}"
+            subject_arg = subject
+            src_key = 'src'
         else:
-            ds = self.load_evoked(group, baseline=baseline)
-            y = guess_y(ds)
-            title = f"{group} {epoch} {model_name}"
-            return plot.TopoButterfly(y, model, ds=ds, title=title, run=run)
+            title = name or f"{group} {epoch} {model_name}"
+            subject_arg = group
+            src_key = 'srcm'
+
+        if src:
+            ds = self.load_evoked_stc(subject_arg, baseline=baseline, keep_evoked=sns)
+            out = [ds]
+            if model:
+                x = ds.eval(model)
+                ys = [ds[src_key].mean(case=x == cell) for cell in x.cells]
+            else:
+                ys = [ds[src_key]]
+            for y in ys:
+                if is_volume_source_space:
+                    plots = plot.GlassBrain.butterfly(y, w=2*h, h=h, name=title)
+                else:
+                    plots = plot.brain.butterfly(y, w=2*h, h=h, name=title)
+                out.extend(plots)
+            right_of = out[2]
+        else:
+            ds = self.load_evoked(subject_arg, baseline=baseline)
+            out = [ds]
+            right_of = None
+        if sns:
+            key = 'meg' if 'meg' in ds else 'eeg'
+            p = plot.TopoButterfly(key, model, ds=ds, axh=h, w=2.5*h, name=title, right_of=right_of, run=run)
+            if right_of:
+                p.link_time_axis(right_of)
+            out.append(p)
+        return out
 
     def plot_label(self, label, surf=None, views=None, w=600):
         """Plot a label"""

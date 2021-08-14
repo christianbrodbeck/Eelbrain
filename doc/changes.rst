@@ -7,6 +7,9 @@ New in 0.37
 -----------
 
 * ICA-GUI (:func:`gui.select_components`): Sort noisy epochs by dominant components - makes it easier to find components that capture specific artifacts
+* :class:`MneExperiment`:
+
+   - :meth:`MneExperiment.plot_evoked`:  plot sensor data with corresponding source estimates
 
 
 New in 0.36
