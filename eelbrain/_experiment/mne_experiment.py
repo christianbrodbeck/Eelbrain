@@ -2382,7 +2382,7 @@ class MneExperiment(FileTree):
             src_baseline: BaselineArg = False,
             cat: Sequence[CellArg] = None,
             keep_epochs: Union[bool, str] = False,
-            morph: bool = False,
+            morph: bool = None,
             mask: Union[bool, str] = False,
             data_raw: bool = False,
             vardef: str = None,
@@ -2418,7 +2418,8 @@ class MneExperiment(FileTree):
             False; True to keep :class:`mne.Epochs` object; ``'ndvar'`` to keep
             :class:`NDVar`; ``'both'`` to keep both).
         morph
-            Morph the source estimates to the common_brain (default False).
+            Morph the source estimates to the common brain
+            (default ``False``, except when loading multiple subjects and ``ndvar=True``).
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
@@ -2467,11 +2468,13 @@ class MneExperiment(FileTree):
         subject, group = self._process_subject_arg(subjects, state)
         if group is not None:
             if data_raw:
-                raise ValueError(f"data_raw={data_raw!r} with group: Can not combine raw data from multiple subjects.")
+                raise ValueError(f"{data_raw=} with group: Can not combine raw data from multiple subjects.")
             elif keep_epochs:
-                raise ValueError(f"keep_epochs={keep_epochs!r} with group: Can not combine Epochs objects for different subjects. Set keep_epochs=False (default).")
+                raise ValueError(f"{keep_epochs=} with group: Can not combine Epochs objects for different subjects. Set keep_epochs=False (default).")
+            elif morph is None:
+                morph = True
             elif not morph:
-                raise ValueError(f"morph={morph!r} with group: Source estimates can only be combined after morphing data to common brain model. Set morph=True.")
+                raise ValueError(f"{morph=} with group: Source estimates can only be combined after morphing data to common brain model. Set morph=True.")
             dss = []
             for _ in self.iter(group=group, progress_bar=f"Load {epoch_name} STC"):
                 ds = self.load_epochs_stc(None, baseline, src_baseline, cat, keep_epochs, morph, mask, False, vardef, samplingrate, decim, pad, ndvar, reject)
@@ -2756,7 +2759,7 @@ class MneExperiment(FileTree):
             subjects: Union[str, int] = None,
             baseline: BaselineArg = True,
             mask: Union[bool, str] = True,
-            morph: bool = False,
+            morph: bool = None,
             keep_stc: bool = False,
             **state):
         """Load frequency space single trial data
@@ -2777,7 +2780,8 @@ class MneExperiment(FileTree):
             ``True`` to use the :ref:`state-parc`` state parameter.
             Only applies when ``ndvar=True``, default ``True``.
         morph
-            Morph the source estimates to the common_brain (default False).
+            Morph the source estimates to the common brain
+            (default ``False``, except when loading multiple subjects and ``ndvar=True``).
         keep_stc
             Keep the source timecourse data in the Dataset that is returned
             (default False).
@@ -2785,7 +2789,7 @@ class MneExperiment(FileTree):
             State parameters.
         """
         ds = self.load_epochs_stc(subjects, baseline, ndvar=True, morph=morph, mask=mask, **state)
-        name = 'srcm' if morph else 'src'
+        name = 'srcm' if 'srcm' in ds else 'src'
 
         # apply morlet transformation
         freq_params = self.freqs[self.get('freq')]
@@ -2802,7 +2806,7 @@ class MneExperiment(FileTree):
             subjects: Union[str, int] = None,
             baseline: BaselineArg = True,
             mask: Union[bool, str] = True,
-            morph: bool = False,
+            morph: bool = None,
             keep_stc: bool = False,
             **state):
         """Load frequency space evoked data
@@ -2823,7 +2827,8 @@ class MneExperiment(FileTree):
             ``True`` to use the :ref:`state-parc`` state parameter.
             Only applies when ``ndvar=True``, default ``True``.
         morph
-            Morph the source estimates to the common_brain (default False).
+            Morph the source estimates to the common brain
+            (default ``False``, except when loading multiple subjects and ``ndvar=True``).
         keep_stc
             Keep the source timecourse data in the Dataset that is returned
             (default False).
@@ -2831,7 +2836,7 @@ class MneExperiment(FileTree):
             State parameters.
         """
         ds = self.load_evoked_stc(subjects, baseline, morph=morph, mask=mask, **state)
-        name = 'srcm' if morph else 'src'
+        name = 'srcm' if 'srcm' in ds else 'src'
 
         # apply morlet transformation
         freq_params = self.freqs[self.get('freq')]
@@ -2850,7 +2855,7 @@ class MneExperiment(FileTree):
             src_baseline: BaselineArg = False,
             cat: Sequence[CellArg] = None,
             keep_evoked: bool = False,
-            morph: bool = False,
+            morph: bool = None,
             mask: Union[bool, str] = False,
             data_raw: bool = False,
             vardef: str = None,
@@ -2880,7 +2885,8 @@ class MneExperiment(FileTree):
             Keep the sensor space data in the Dataset that is returned (default
             False).
         morph
-            Morph the source estimates to the common_brain (default False).
+            Morph the source estimates to the common brain
+            (default ``False``, except when loading multiple subjects and ``ndvar=True``).
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
@@ -2939,6 +2945,8 @@ class MneExperiment(FileTree):
 
         # make sure annot files are available (needed only for NDVar)
         if ndvar:
+            if morph is None and len(meg_subjects) > 1:
+                morph = True
             if morph:
                 self.make_annot(mrisubject=common_brain)
             elif len(meg_subjects) > 1:
