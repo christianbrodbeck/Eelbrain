@@ -3201,7 +3201,9 @@ class TimeSlicer:
 
     def _init_time_dim(self, time_dim: Union[UTS, Case]):
         if self._time_dim is not None:
-            raise RuntimeError("Time dim already set")
+            if time_dim == self._time_dim:
+                return
+            raise ValueError(f"An incompatible time dimension is already set on {self}\nold: {self._time_dim}\nnew: {time_dim}")
         self._time_dim = time_dim
         if isinstance(time_dim, UTS):
             if self._initial_time is None:
@@ -3213,6 +3215,7 @@ class TimeSlicer:
             raise TypeError(f'{time_dim=}')
 
     def _init_controller(self):
+        # Only instantiated if more than one plots need to be linked
         tc = TimeController(self._initial_time, self._time_fixed)
         tc.add_plot(self)
 
@@ -3234,7 +3237,7 @@ class TimeSlicer:
     def _nudge_time(self, offset):
         if self._time_dim is None:
             return
-        current_i = self._time_dim._array_index(self._current_time)
+        current_i = self._time_dim._array_index(self.get_time())
         if offset > 0:
             new_i = min(self._time_dim.nsamples - 1, current_i + offset)
         else:
@@ -3243,6 +3246,8 @@ class TimeSlicer:
 
     def get_time(self):
         "Retrieve the current time"
+        if self._current_time is None:
+            return self._initial_time
         return self._current_time
 
     def play_movie(self, time_dilation=4.):
