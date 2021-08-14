@@ -2159,7 +2159,7 @@ class BaseLayout:
         self.user_axes = axes
 
         x = y = None
-        if isinstance(right_of, EelFigure):
+        if hasattr(right_of, '_frame'):
             rect = right_of._frame.GetRect()
             x = rect.GetRight() + 1
             if below is None:
@@ -2167,9 +2167,9 @@ class BaseLayout:
         elif isinstance(right_of, int):
             x = right_of
         elif right_of is not None:
-            raise TypeError(f"right_of={right_of!r}")
+            raise TypeError(f"{right_of=}")
 
-        if isinstance(below, EelFigure):
+        if hasattr(below, '_frame'):
             rect = below._frame.GetRect()
             y = rect.GetBottom() + 1
             if x is None:
@@ -2177,7 +2177,7 @@ class BaseLayout:
         elif isinstance(below, int):
             y = below
         elif below is not None:
-            raise TypeError(f"below={below!r}")
+            raise TypeError(f"{below=}")
 
         if x is None and y is None:
             self.pos = None
