@@ -803,7 +803,7 @@ class MneExperiment(FileTree):
                     subjects_with_raw_changes.add((subject, visit))
                     raw_mtimes[key] = events_in.info['raw-mtime']
             # log missing raw files
-            if raw_missing:
+            if raw_missing and self.check_raw_mtime:
                 log.debug("Raw files missing:")
                 missing = defaultdict(list)
                 for subject, recording in raw_missing:
