@@ -1,5 +1,5 @@
 from ._experiment.mne_experiment import MneExperiment
-from ._experiment.preprocessing import RawSource, RawFilter, RawICA, RawMaxwell, RawReReference, RawApplyICA
+from ._experiment.preprocessing import RawSource, RawFilter, RawICA, RawMaxwell, RawOversampledTemporalProjection, RawReReference, RawApplyICA
 from ._experiment.epochs import ContinuousEpoch, EpochCollection, PrimaryEpoch, SecondaryEpoch, SuperEpoch
 from ._experiment.groups import Group, SubGroup
 from ._experiment.parc import SubParc, CombinationParc, FreeSurferParc, FSAverageParc, SeededParc, IndividualSeededParc

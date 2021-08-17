@@ -712,6 +712,7 @@ Pre-processing:
    RawFilter
    RawICA
    RawMaxwell
+   RawOversampledTemporalProjection
    RawReReference
    RawApplyICA
 

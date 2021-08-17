@@ -812,6 +812,28 @@ class RawMaxwell(CachedRawPipe):
             return mne.preprocessing.maxwell_filter(raw, bad_condition=self.bad_condition, **self.kwargs)
 
 
+class RawOversampledTemporalProjection(CachedRawPipe):
+    """Oversampled temporal projection: see :func:`mne.preprocessing.oversampled_temporal_projection`"""
+
+    def __init__(
+            self,
+            source: str,
+            duration: float = 10.0,
+            cache: bool = True,
+    ):
+        CachedRawPipe.__init__(self, source, cache)
+        self.duration = duration
+
+    def as_dict(self, args: Sequence[str] = ()):
+        return CachedRawPipe.as_dict(self, [*args, 'duration'])
+
+    def _make(self, subject, recording):
+        raw = self.source.load(subject, recording)
+        self.log.info(f"Raw %s: computing oversampled temporal projection for %s/%s", self.name, subject, recording)
+        with user_activity:
+            return mne.preprocessing.oversampled_temporal_projection(raw, self.duration)
+
+
 class RawReReference(CachedRawPipe):
     """Re-reference EEG data
 
