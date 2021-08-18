@@ -4406,8 +4406,8 @@ class MneExperiment(FileTree):
             Data decimation factor (alternative to ``samplingrate``).
         session : str | list of str
             One or more sessions for which to plot the raw data (this parameter
-            can not be used together with ``epoch``; default is the session in
-            the current state).
+            can not be used together with ``epoch``; default is the session used
+            for ICA estimation).
         ...
             State parameters.
 
@@ -4431,14 +4431,14 @@ class MneExperiment(FileTree):
             warnings.filterwarnings('ignore', 'The measurement information indicates a low-pass', RuntimeWarning)
             if epoch is None:
                 if session is None:
-                    session = self.get('session')
+                    session = pipe.session
                 raw = pipe.load_concatenated_source_raw(subject, session, self.get('visit'))
                 events = mne.make_fixed_length_events(raw)
                 ds = Dataset()
                 decim = decim_param(samplingrate, decim, None, raw.info['sfreq']) or int(raw.info['sfreq'] // 100)
                 ds['epochs'] = mne.Epochs(raw, events, 1, 0, 1, baseline=None, proj=False, decim=decim, preload=True)
             elif session is not None:
-                raise TypeError(f"session={session!r} with epoch={epoch!r}")
+                raise TypeError(f"{session=} with {epoch=}")
             else:
                 ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, samplingrate=samplingrate, decim=decim, add_bads=bads)
         info = ds['epochs'].info
