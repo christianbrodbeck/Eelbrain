@@ -60,6 +60,7 @@ class App(wx.App):
                 else:
                     self.using_prompt_toolkit = True
                     self._ipython = shell
+                    getLogger('Eelbrain').debug("Initialized prompt_toolkit with %s", CONFIG['prompt_toolkit'])
 
         self.SetExitOnFrameDelete(not self.using_prompt_toolkit)
 
@@ -221,6 +222,7 @@ class App(wx.App):
         wx.CallAfter(self.ExitMainLoop, True)
 
     def _pt_thread_linux(self, context):
+        # getLogger('Eelbrain').debug("PTK: poll")
         poll = select.poll()
         poll.register(context.fileno(), select.POLLIN)
         poll.poll(-1)
@@ -403,8 +405,7 @@ class App(wx.App):
         win = self._get_active_frame()
         if hasattr(win, 'CanCopy'):
             return win.Copy()
-        getLogger('Eelbrain').debug(
-            "App.OnCopy() call but neither focus nor frame have CanCopy()")
+        getLogger('Eelbrain').debug("App.OnCopy() call but neither focus nor frame have CanCopy()")
         event.Skip()
 
     def OnCopyAsPNG(self, event):
@@ -461,9 +462,11 @@ class App(wx.App):
         win.Paste()
 
     def OnQuit(self, event):
+        getLogger('Eelbrain').debug("App.OnQuit()")
         for win in wx.GetTopLevelWindows():
             if not win.Close():
                 return
+        getLogger('Eelbrain').debug("App.ExitMainLoop()")
         self.ExitMainLoop()
 
     def OnRedo(self, event):

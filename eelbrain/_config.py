@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Configure Eelbrain"""
+import logging
 import multiprocessing
 import os
 import sys
@@ -7,7 +8,7 @@ from typing import Any, Union
 
 from matplotlib.colors import to_rgb
 
-from ._utils import IS_OSX
+from ._utils import IS_OSX, ScreenHandler
 
 
 SUPPRESS_WARNINGS = True
@@ -22,6 +23,7 @@ CONFIG = {
     'animate': True,
     'nice': 0,
     'tqdm': False,  # disable=CONFIG['tqdm']
+    'log': False,
 }
 
 # Python 3.8 switched default to spawn, which makes pytest hang  (https://docs.python.org/3/whatsnew/3.8.html#multiprocessing)
@@ -43,6 +45,7 @@ def configure(
         animate: bool = None,
         nice: int = None,
         tqdm: bool = None,
+        log: bool = None,
 ):
     """Set basic configuration parameters for the current session
 
@@ -136,5 +139,20 @@ def configure(
         new['nice'] = nice
     if tqdm is not None:
         new['tqdm'] = not tqdm
+
+    # logging
+    if log is True and not CONFIG['log']:
+        logger = logging.getLogger('Eelbrain')
+        logger.setLevel(logging.DEBUG)
+        handler = ScreenHandler()
+        handler.setLevel(logging.DEBUG)
+        logger.addHandler(handler)
+        logger.debug("Enabling logger")
+        new['log'] = handler
+    elif log is False and CONFIG['log']:
+        handler = CONFIG['log']
+        logger = logging.getLogger('Eelbrain')
+        logger.removeHandler(handler)
+        new['log'] = False
 
     CONFIG.update(new)
