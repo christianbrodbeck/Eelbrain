@@ -17,7 +17,9 @@ import re
 from typing import Optional, Sequence, Tuple, Union
 
 import mne
+import matplotlib.figure
 from matplotlib.patches import Rectangle
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 import numpy as np
 from scipy import linalg
 import wx
@@ -35,7 +37,7 @@ from ..plot._topo import _ax_topomap
 from .frame import EelbrainDialog
 from .history import Action, FileDocument, FileModel, FileFrame, FileFrameChild
 from .mpl_canvas import FigureCanvasPanel
-from .text import HTMLFrame
+from .text import HTML2Frame as HTMLFrame
 from .utils import Icon, REValidator
 from . import ID
 
@@ -320,9 +322,22 @@ class SharedToolsMenu:  # Frame mixin
                 max_channel_ratio = channel_values[-1] / channel_values[-2]
                 if max_ch_ratio and max_channel_ratio > max_ch_ratio:
                     continue
+                # plot component map
+                figure = matplotlib.figure.Figure(figsize=(1, 1))
+                canvas = FigureCanvasAgg(figure)
+                axes = figure.add_subplot()
+                plot.Topomap(self.doc.components[component], axes=axes)
+                image = fmtxt.Image(f'#{component}', 'jpg')
+                canvas.print_jpeg(image)
+                # Component properties
+                # sec = doc.add_section(f"#{component}")
+                sec = doc
+                heading = fmtxt.FMTextElement(f"#{component}", 'h2')
+                table = fmtxt.Table('lll', rules=False)
+                table.cells(image, heading, f'{max_channel_ratio:.1f}')
+                sec.add_paragraph(table)
+                # sec.add_paragraph([image, f"Ch 1/2 ratio: {max_channel_ratio:.1f}", fmtxt.linebreak])
                 # add links to epochs
-                sec = doc.add_section(f"#{component}")
-                sec.add_paragraph([f"Ch 1/2 ratio: {max_channel_ratio:.1f}", fmtxt.linebreak])
                 by_ratio = defaultdict(list)
                 for i, peak, ratio in values:
                     by_ratio[f'{ratio:.0%}'].append(i)
@@ -1417,7 +1432,8 @@ class InfoFrame(HTMLFrame):
     def __init__(self, parent: wx.Window, title: str, doc, w: int, h: int = -1):
         pos, size = self.find_pos(w, h)
         style = wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX | wx.RESIZE_BORDER | wx.CAPTION | wx.CLOSE_BOX | wx.FRAME_FLOAT_ON_PARENT | wx.FRAME_TOOL_WINDOW
-        HTMLFrame.__init__(self, parent, title, doc.get_html(), pos=pos, size=size, style=style)
+        html_doc = fmtxt.make_html_doc(doc)
+        HTMLFrame.__init__(self, parent, title, html_doc, pos=pos, size=size, style=style)
 
     @staticmethod
     def find_pos(w: int, h: int):

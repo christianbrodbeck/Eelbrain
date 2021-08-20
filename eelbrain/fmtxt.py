@@ -397,7 +397,7 @@ def html(text: FMTextLike, env: dict = ENV):
         return str(text)
 
 
-def make_html_doc(body, root, resource_dir=None, title=None, meta=None):
+def make_html_doc(body, root=None, resource_dir=None, title=None, meta=None):
     """Generate HTML document
 
     Parameters
@@ -632,11 +632,17 @@ class FMTextElement:
         "Complete HTML representation"
         txt = self._get_html_core(env)
 
-        if self.tag and self.tag in _HTML_TAGS:
-            tag = _HTML_TAGS[self.tag]
-            return _html_element(tag, txt, env, self.options)
+        tag = None
+        if self.tag:
+            if self.tag in _HTML_TAGS:
+                tag = _HTML_TAGS[self.tag]
+            elif re.match(r'h\d', self.tag):
+                tag = self.tag
 
-        return txt
+        if tag:
+            return _html_element(tag, txt, env, self.options)
+        else:
+            return txt
 
     def _get_html_core(self, env):
         "HTML representation of everything inside the tag"
