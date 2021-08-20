@@ -946,13 +946,13 @@ def boosting(
         if scale_data == 'inplace':
             scale_in_place = True
         else:
-            raise ValueError(f"scale_data={scale_data!r}")
+            raise ValueError(f"{scale_data=}")
     else:
-        raise TypeError(f"scale_data={scale_data!r}, need bool or str")
+        raise TypeError(f"{scale_data=}, need bool or str")
     # selective_stopping
     selective_stopping = int(selective_stopping)
     if selective_stopping < 0:
-        raise ValueError(f"selective_stopping={selective_stopping}")
+        raise ValueError(f"{selective_stopping=}")
 
     data = DeconvolutionData(y, x, ds, scale_in_place)
     data.apply_basis(basis, basis_window)

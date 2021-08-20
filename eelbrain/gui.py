@@ -40,6 +40,11 @@ def select_components(path, ds, sysname=None, connectivity=None):
     The ICA object does not need to be computed on the same data that is in
     ``ds``. For example, the ICA can be computed on a raw file but component
     selection done using the epochs that will be analyzed.
+
+    .. note::
+        If the terminal becomes unresponsive after closing the GUI, try
+        disabling ``prompt_toolkit`` with :func:`configure`:
+        ``eelbrain.configure(prompt_toolkit=False)``.
     """
     from ._wxgui.app import get_app
     from ._wxgui.select_components import TEST_MODE, Document, Frame, Model

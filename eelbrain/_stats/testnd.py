@@ -166,8 +166,7 @@ class NDTest:
 
     def _repr_cdist(self):
         """List of results (override for MultiEffectResult)"""
-        return (self._cdist._repr_test_args(self.pmin) +
-                self._cdist._repr_clusters())
+        return self._cdist._repr_test_args(self.pmin) + self._cdist._repr_clusters()
 
     def _expand_state(self):
         "Override to create secondary results"
@@ -197,7 +196,7 @@ class NDTest:
     def _asfmtext(self, **_):
         p = self.p.min()
         max_stat = self._max_statistic()
-        return FMText((fmtxt.eq(self._statistic, max_stat, 'max', stars=p), ', ', fmtxt.peq(p)))
+        return FMText([fmtxt.eq(self._statistic, max_stat, 'max', stars=p), ', ', fmtxt.peq(p)])
 
     def _default_plot_obj(self):
         raise NotImplementedError
@@ -1518,7 +1517,7 @@ class MultiEffectNDTest(NDTest):
         return table
 
     def _expand_state(self):
-        self.effects = tuple(e.name for e in self._effects)
+        self.effects = tuple([e.name for e in self._effects])
 
         # clusters
         cdists = self._cdist
@@ -2851,7 +2850,7 @@ class NDPermutationDistribution:
         assert y.has_case
         assert parc is None or isinstance(parc, str)
         if tfce and threshold:
-            raise RuntimeError(f"threshold={threshold!r}, tfce={tfce!r}: mutually exclusive parameters")
+            raise RuntimeError(f"{threshold=}, {tfce=}: mutually exclusive parameters")
         elif tfce:
             if tfce is not True:
                 tfce = abs(tfce)

@@ -437,8 +437,7 @@ def make_html_doc(body, root, resource_dir=None, title=None, meta=None):
 
     env = {'root': root, 'resource_dir': resource_dir}
     txt_body = html(body, env)
-    return _html_doc_template.format(meta=meta, title=title, style=style,
-                                     body=txt_body)
+    return _html_doc_template.format(meta=meta, title=title, style=style, body=txt_body)
 
 
 def tex(text, env=None):
@@ -592,9 +591,8 @@ class FMTextElement:
         self.options = options
 
     def __repr__(self):
-        name = self.__class__.__name__
         args = ', '.join(self._repr_items())
-        return "%s(%s)" % (name, args)
+        return f"{self.__class__.__name__}({args})"
 
     def _repr_items(self):
         items = [repr(self.content)]

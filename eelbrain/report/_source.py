@@ -4,7 +4,8 @@ import numpy as np
 from .. import fmtxt
 from .. import plot
 from .. import test
-from .._data_obj import combine
+from .. import testnd
+from .._data_obj import Dataset, combine
 from .._stats.stats import ttest_t
 from .._text import ms
 from ..fmtxt import Section, linebreak
@@ -82,8 +83,16 @@ def source_cluster_im(ndvar, surfer_kwargs, mark_sources=None):
     return out
 
 
-def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
-                        title="Results", parc=True, y=None):
+def source_time_results(
+        res: testnd.NDTest,
+        ds: Dataset,
+        colors: dict = None,
+        include: float = 0.1,
+        surfer_kwargs: dict = {},
+        title: str = None,
+        parc: bool = True,
+        y: str = None,
+):
     report = Section(title)
     y = ds[y or res.y]
     if parc is True:
@@ -145,22 +154,18 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
 
 
 def source_bin_table(section, res, surfer_kwargs, pmin=1):
-    caption = ("All clusters in time bins. Each plot shows all sources "
-               "that are part of a cluster at any time during the "
-               "relevant time bin. Only the general minimum duration and "
-               "source number criterion are applied.")
-
+    caption = "All clusters in time bins. Each plot shows all sources that are part of a cluster at any time during the relevant time bin. Only the general minimum duration and source number criterion are applied."
     for effect, cdist in res._iter_cdists():
         ndvar = cdist.masked_parameter_map(pmin)
         if not ndvar.any():
             if effect:
-                text = '%s: nothing\n' % effect
+                text = f'{effect}: nothing\n'
             else:
                 text = 'Nothing\n'
             section.add_paragraph(text)
             continue
         elif effect:
-            caption_ = "%s: %s" % (effect, caption)
+            caption_ = f"{effect}: {caption}"
         else:
             caption_ = caption
         im = plot.brain.bin_table(ndvar, **surfer_kwargs)

@@ -93,7 +93,7 @@ inv_re = re.compile(r"^(free|fixed|loose\.\d+|vec)"  # orientation constraint
 # Argument types
 BaselineArg = Union[bool, Tuple[Optional[float], Optional[float]]]
 DataArg = Union[str, TestDims]
-PMinArg = Union[str, float, None]
+PMinArg = Union[Literal['tfce'], float, None]
 SubjectArg = Union[str, Literal[1, -1]]
 
 # Eelbrain 0.24 raw/preprocessing pipeline
@@ -725,13 +725,9 @@ class MneExperiment(FileTree):
 
         # log package versions
         from .. import __version__
-        log.info("*** %s initialized with root %s on %s ***", self.__class__.__name__, 
-                 root, datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        msg = "Using eelbrain %s, mne %s." % (__version__, mne.__version__)
-        if any('dev' in v for v in (__version__, mne.__version__)):
-            log.warning(f"{msg} Development versions are more likely to contain errors.")
-        else:
-            log.info(msg)
+        log.info("*** %s initialized with root %s on %s ***", self.__class__.__name__, root, datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        level = logging.DEBUG if any('dev' in v for v in (__version__, mne.__version__)) else logging.INFO
+        log.log(level, "Using eelbrain %s, mne %s.", __version__, mne.__version__)
 
         ########################################################################
         # Finalize
@@ -1458,7 +1454,7 @@ class MneExperiment(FileTree):
         if raw is None:
             raw = self.get('raw')
         elif raw not in self._raw:
-            raise RuntimeError(f"raw-mtime with raw={raw!r}")
+            raise RuntimeError(f"{raw=}")
         pipe = self._raw[raw]
         if subject is None:
             subject = self.get('subject')
@@ -1616,7 +1612,7 @@ class MneExperiment(FileTree):
             try:
                 vardef = self._tests[vardef].vars
             except KeyError:
-                raise ValueError(f"vardef={vardef!r}")
+                raise ValueError(f"{vardef=}")
         elif not isinstance(vardef, Variables):
             vardef = Variables(vardef)
         vardef.apply(ds, self, group_only)
@@ -2115,7 +2111,7 @@ class MneExperiment(FileTree):
             tmin: float = None,
             tmax: float = None,
             tstop: float = None,
-            interpolate_bads: bool = False,
+            interpolate_bads: Literal[True, False, 'keep'] = False,
             **state,
     ) -> Dataset:
         """
@@ -2229,10 +2225,10 @@ class MneExperiment(FileTree):
         with self._temporary_state:
             ds = self.load_selected_events(add_bads=add_bads, reject=reject, data_raw=True, vardef=vardef, cat=cat)
             if ds.n_cases == 0:
-                err = f"No events left for epoch={epoch.name!r}, subject={subject!r}"
                 if cat:
-                    err += f", cat={cat!r}"
-                raise RuntimeError(err)
+                    raise RuntimeError(f"No events left for epoch={epoch.name!r}, {subject=} in {cat=}")
+                else:
+                    raise RuntimeError(f"No events left for epoch={epoch.name!r}, {subject=}")
 
         if isinstance(epoch, ContinuousEpoch):
             # find splitting points
@@ -2322,7 +2318,7 @@ class MneExperiment(FileTree):
                 if interpolate_bads == 'keep':
                     reset_bads = False
                 else:
-                    raise ValueError(f"interpolate_bads={interpolate_bads!r}")
+                    raise ValueError(f"{interpolate_bads=}")
             else:
                 reset_bads = True
 
@@ -2618,9 +2614,18 @@ class MneExperiment(FileTree):
 
         return self._label_events(ds)
 
-    def load_evoked(self, subjects=None, baseline=False, ndvar=True, cat=None,
-                    samplingrate=None, decim=None, data_raw=False, vardef=None, data='sensor',
-                    **kwargs):
+    def load_evoked(
+            self,
+            subjects: Union[str, int] = None,
+            baseline: BaselineArg = False,
+            ndvar: Union[bool, int] = True,
+            cat: Sequence[CellArg] = None,
+            samplingrate: int = None,
+            decim: int = None,
+            data_raw: bool = False,
+            vardef: str = None,
+            data: DataArg = 'sensor',
+            **state):
         """
         Load a Dataset with the evoked responses for each subject.
 
@@ -2631,7 +2636,7 @@ class MneExperiment(FileTree):
             name or a group name such as ``'all'``. ``1`` to use the current
             subject; ``-1`` for the current group. Default is current subject
             (or group if ``group`` is specified).
-        baseline : bool | tuple
+        baseline
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to not apply baseline
             correction.
@@ -2640,19 +2645,19 @@ class MneExperiment(FileTree):
             name in the Dataset is ``'meg'`` or ``'eeg'``). With
             ``ndvar=False``, the :class:`mne.Evoked` objects are added as
             ``'evoked'``. ``2`` to add both.
-        cat : sequence of cell-names
+        cat
             Only load data for these cells (cells of model).
-        samplingrate : int
+        samplingrate
             Samplingrate in Hz for the analysis (default is specified in epoch
             definition).
-        decim : int
+        decim
             Data decimation factor (alternative to ``samplingrate``).
-        data_raw : bool
+        data_raw
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
             (default False).
-        vardef : str
+        vardef
             Name of a test defining additional variables.
-        data : str
+        data
             Data to load; 'sensor' to load all sensor data (default);
             'sensor.rms' to return RMS over sensors. Only applies to NDVar
             output.
@@ -2672,7 +2677,7 @@ class MneExperiment(FileTree):
         bad/excluded. When loading group level data, datasets are merged using
         interpolated data.
         """
-        subject, group = self._process_subject_arg(subjects, kwargs)
+        subject, group = self._process_subject_arg(subjects, state)
         epoch_name = self.get('epoch')
         epoch = self._epochs[epoch_name]
         data = TestDims.coerce(data)
@@ -2723,12 +2728,12 @@ class MneExperiment(FileTree):
 
             if cat:
                 if not model:
-                    raise TypeError(f"cat={cat!r}: Can't set cat when model is ''")
+                    raise TypeError(f"{cat=}: Can't set cat when model is ''")
                 model = ds.eval(model)
                 idx = model.isin(cat)
                 ds = ds.sub(idx)
                 if ds.n_cases == 0:
-                    raise RuntimeError(f"Selection with cat={cat!r} resulted in empty Dataset")
+                    raise RuntimeError(f"Selection with {cat=} resulted in empty Dataset")
 
             # baseline correction
             if isinstance(baseline, str):
@@ -3534,9 +3539,7 @@ class MneExperiment(FileTree):
         from .._result_plots import ClusterPlotter
 
         # calls _set_analysis_options():
-        ds, res = self.load_test(test, tstart, tstop, pmin, parc, mask, samples,
-                                 data, baseline, src_baseline, True,
-                                 **kwargs)
+        ds, res = self.load_test(test, tstart, tstop, pmin, parc, mask, samples, data, baseline, None, src_baseline, True, **kwargs)
         if dst is None:
             dst = self.get('res-plot-dir', mkdir=True)
 
@@ -3784,34 +3787,48 @@ class MneExperiment(FileTree):
                 self.get('mri-sdir'), self.get('mrisubject'), src, self.get('parc'))
         return mne.read_source_spaces(fpath, add_geom)
 
-    def load_test(self, test, tstart=None, tstop=None, pmin=None, parc=None,
-                  mask=None, samples=10000, data='source', baseline=True,
-                  src_baseline=None, return_data=False, make=False, **state):
+    def load_test(
+            self,
+            test: str,
+            tstart: float = None,
+            tstop: float = None,
+            pmin: PMinArg = None,
+            parc: str = None,
+            mask: str = None,
+            samples: int = 10000,
+            data: str = 'source',
+            baseline: BaselineArg = True,
+            src_baseline: BaselineArg = None,
+            return_data: bool = False,
+            make: bool = False,
+            **state,
+    ):
         """Create and load spatio-temporal cluster test results
 
         Parameters
         ----------
-        test : None | str
-            Test for which to create a report (entry in MneExperiment.tests;
-            None to use the test that was specified most recently).
-        tstart : scalar
+        test
+            Test for which to create a report (entry in MneExperiment.tests.
+        tstart
             Beginning of the time window for the test in seconds
             (default is the beginning of the epoch).
-        tstop : scalar
+        tstop
             End of the time window for the test in seconds
             (default is the end of the epoch).
-        pmin : float | 'tfce' | None
+        pmin
             Kind of test.
-        parc : None | str
-            Parcellation for which to collect distribution.
-        mask : None | str
-            Mask whole brain.
-        samples : int
+        parc
+            Run the test separately in each label of parc.
+            *Warning: for spatio-temporal tests, this does not properly correct
+            for multiple comparisons*.
+        mask
+            Parcellation to use as anatomical mask in which to perform the test.
+        samples
             Number of random permutations of the data used to determine cluster
             *p*-values (default 10'000). If the test is already cached with a
             number ≥ ``samples`` the cached version is returned, otherwise the
             test is recomputed.
-        data : str
+        data
             Data to test, for example:
 
             - ``'sensor'`` spatio-temporal test in sensor space.
@@ -3819,14 +3836,14 @@ class MneExperiment(FileTree):
             - ``'source.mean'`` ROI mean time course.
             - ``'sensor.rms'`` RMS across sensors.
 
-        baseline : bool | tuple
+        baseline
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
-        src_baseline : bool | tuple
+        src_baseline
             Apply baseline correction using this period in source space.
             True to use the epoch's baseline specification. The default is to
             not apply baseline correction.
-        return_data : bool
+        return_data
             Return the data along with the test result (see below).
 
             .. Warning::
@@ -3834,7 +3851,7 @@ class MneExperiment(FileTree):
                 memory and it might not be possible to load all data at once.
                 Instead, loop through subjects and collect summary statistics.
 
-        make : bool
+        make
             If the target file does not exist, create it (could take a long
             time depending on the test; if False, raise an IOError).
         ...
@@ -3855,8 +3872,21 @@ class MneExperiment(FileTree):
         self._set_analysis_options(data, baseline, src_baseline, pmin, tstart, tstop, parc, mask)
         return self._load_test(test, tstart, tstop, pmin, parc, mask, samples, data, baseline, src_baseline, return_data, make)
 
-    def _load_test(self, test, tstart, tstop, pmin, parc, mask, samples, data,
-                   baseline, src_baseline, return_data, make):
+    def _load_test(
+            self,
+            test: str,
+            tstart: Optional[float],
+            tstop: Optional[float],
+            pmin: PMinArg,
+            parc: Optional[str],
+            mask: Optional[str],
+            samples: int,
+            data: TestDims,
+            baseline: BaselineArg,
+            src_baseline: BaselineArg,
+            return_data: bool,
+            make: bool,
+    ):
         "Load a cached test after _set_analysis_options() has been called"
         test_obj = self._tests[test]
 
@@ -3878,19 +3908,14 @@ class MneExperiment(FileTree):
                     if not return_data:
                         return res
                 elif not make:
-                    raise IOError("The requested test %s is cached with "
-                                  "samples=%i, but you request samples=%i; Set "
-                                  "make=True to perform the test." %
-                                  (desc, res.samples, samples))
+                    raise IOError(f"The requested test {desc} is cached with samples={res.samples}, but you request samples={samples}; Set make=True to perform the test.")
                 else:
                     res = None
         elif not make and exists(dst):
-            raise IOError("The requested test is outdated: %s. Set make=True "
-                          "to perform the test." % desc)
+            raise IOError(f"The requested test is outdated: {desc}. Set make=True to perform the test.")
 
         if res is None and not make:
-            raise IOError("The requested test is not cached: %s. Set make=True "
-                          "to perform the test." % desc)
+            raise IOError(f"The requested test is not cached: {desc}. Set make=True to perform the test.")
 
         #  parc/mask
         parc_dim = None
@@ -4309,7 +4334,7 @@ class MneExperiment(FileTree):
             if epoch.samplingrate:
                 default_decim = samplingrate == epoch.samplingrate
             else:
-                raise NotImplementedError(f"load_evoked with samplingrate={samplingrate} for epoch with decim")
+                raise NotImplementedError(f"load_evoked with {samplingrate=} for epoch with decim")
         elif decim:
             if epoch.decim:
                 default_decim = decim == epoch.decim
@@ -5032,42 +5057,55 @@ class MneExperiment(FileTree):
                 self._log.debug("Report created prior to Eelbrain 0.25, can not check number of samples. Delete manually to recompute: %s", desc)
                 return True
 
-    def make_report(self, test, parc=None, mask=None, pmin=None, tstart=None,
-                    tstop=None, samples=10000, baseline=True,
-                    src_baseline=None, include=0.2, redo=False, **state):
+    def make_report(
+            self,
+            test: str,
+            parc: str = None,
+            mask: str = None,
+            pmin: str = None,
+            tstart: float = None,
+            tstop: float = None,
+            samples: int = 10000,
+            baseline: BaselineArg = True,
+            src_baseline: BaselineArg = None,
+            include: float = 0.2,
+            redo: bool = False,
+            **state,
+    ):
         """Create an HTML report on spatio-temporal clusters
 
         Parameters
         ----------
-        test : str
+        test
             Test for which to create a report (entry in MneExperiment.tests).
-        parc : None | str
-            Find clusters in each label of parc (as opposed to the whole
-            brain).
-        mask : None | str
-            Parcellation to apply as mask. Can only be specified if parc==None.
-        pmin : None | scalar, 1 > pmin > 0 | 'tfce'
+        parc
+            Run the test separately in each label of parc.
+            *Warning: for spatio-temporal tests, this does not properly correct
+            for multiple comparisons*.
+        mask
+            Parcellation to use as anatomical mask in which to perform the test.
+        pmin
             Equivalent p-value for cluster threshold, or 'tfce' for
             threshold-free cluster enhancement.
-        tstart : scalar
+        tstart
             Beginning of the time window for the test in seconds
             (default is the beginning of the epoch).
-        tstop : scalar
+        tstop
             End of the time window for the test in seconds
             (default is the end of the epoch).
-        samples : int > 0
+        samples
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 10,000).
-        baseline : bool | tuple
+        baseline
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
-        src_baseline : bool | tuple
+        src_baseline
             Apply baseline correction using this period in source space.
             True to use the epoch's baseline specification. The default is to
             not apply baseline correction.
         include : 0 < scalar <= 1
             Create plots for all clusters with p-values smaller or equal this value.
-        redo : bool
+        redo
             If the target file already exists, delete and recreate it. This
             only applies to the HTML result file, not to the test.
         ...
@@ -5122,8 +5160,7 @@ class MneExperiment(FileTree):
             self._report_parc_image(section, caption)
 
         colors = plot.colors_for_categorial(ds.eval(res._plot_model()))
-        report.append(_report.source_time_results(res, ds, colors, include,
-                                                  surfer_kwargs, parc=parc))
+        report.append(_report.source_time_results(res, ds, colors, include, surfer_kwargs, parc=parc))
 
     def _two_stage_report(self, report, data, test, baseline, src_baseline, pmin, samples, tstart, tstop, parc, mask, include):
         test_obj = self._tests[test]
@@ -5155,8 +5192,7 @@ class MneExperiment(FileTree):
         for term in rlm.column_names:
             res = rlm.tests[term]
             ds = rlm.coefficients_dataset(term, long=True)
-            report.append(
-                _report.source_time_results(res, ds, None, include, surfer_kwargs, term, y='coeff'))
+            report.append(_report.source_time_results(res, ds, None, include, surfer_kwargs, term, y='coeff'))
 
         self._report_test_info(info_section, group_ds or ds, test_obj, res, data)
 

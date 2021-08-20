@@ -8,7 +8,7 @@ variables = {
 }
 
 """
-from typing import Any, Dict, Sequence, Union
+from typing import Any, Dict, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -112,7 +112,7 @@ class LabelVar(VarDef):
     def __init__(
             self,
             source: str,
-            codes: Dict[Union[str, float], Union[str, float]],
+            codes: Dict[Union[str, float, Tuple[str, ...], Tuple[float, ...]], Union[str, float]],
             default: Union[bool, str, float] = True,
             session: str = None,
     ):

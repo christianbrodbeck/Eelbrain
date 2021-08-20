@@ -12,38 +12,46 @@ from . import fmtxt
 from ._celltable import Celltable
 from ._exceptions import KeysMissing
 from ._data_obj import (
-    CategorialArg, IndexArg, VarArg,
+    CategorialArg, CellArg, IndexArg, VarArg,
     Categorial, Dataset, Factor, Interaction, NDVar, Scalar, UTS,
     Var, ascategorial, as_legal_dataset_key, asndvar, asvar, assub, asuv,
     cellname, combine, isuv)
 
 
-def difference(y, x, c1, c0, match, sub=None, ds=None):
+def difference(
+        y: Union[NDVar, VarArg],
+        x: CategorialArg,
+        c1: CellArg,
+        c0: CellArg,
+        match: CategorialArg,
+        sub: IndexArg = None,
+        ds: Dataset = None,
+) -> Dataset:
     """Subtract data in one cell from another
 
     Parameters
     ----------
-    y : Var | NDVar
+    y
         Dependent variable.
-    x : categorial
+    x
         Model for subtraction, providing categories to compute ``c1 - c0``.
-    c1 : str | tuple
+    c1
         Name of the cell in ``x`` that forms the minuend.
-    c0 : str | tuple
+    c0
         Name of the cell in ``x`` that is to be subtracted from ``c1``.
-    match : categorial
+    match
         Units over which measurements were repeated. ``c1 - c0`` will be
         calculated separately for each level of ``match`` (e.g. ``"subject"``,
         or ``"subject % condition"``).
-    sub : None | index
+    sub
         Only include a subset of the data.
-    ds : Dataset
+    ds
         If a Dataset is specified other arguments can be str instead of
         data-objects and will be retrieved from ``ds``.
 
     Returns
     -------
-    diff : Dataset
+    diff
         Dataset with the difference between ``c1`` and ``c0`` on ``y``.
 
     Examples

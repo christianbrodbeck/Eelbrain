@@ -118,7 +118,7 @@ If this does not solve the issue, delete the item and repeat.
         self._password = password
 
     def __enter__(self):
-        print("Notification enabled for %s..." % self.name)
+        print(f"Notification enabled for {self.name}...")
         user_activity.__enter__()
         return self
 
@@ -127,14 +127,12 @@ If this does not solve the issue, delete the item and repeat.
         user_activity.__exit__(type_, value, traceback_)
         if isinstance(value, Exception):
             error = type_.__name__
-            temp = '{host} encountered {error}: {value} in {task}'
-            event = temp.format(host=host, error=error, value=value,
-                                task=self.name)
+            event = f'{host} encountered {error}: {value} in {self.name}'
             info = []
 
             # traceback
             tb_items = traceback.format_tb(traceback_)
-            error_message = "%s: %s\n" % (error, value)
+            error_message = f"{error}: {value}\n"
             tb_items.append(error_message)
             tb_str = '\n'.join(tb_items)
             info.append(tb_str)
@@ -155,8 +153,7 @@ If this does not solve the issue, delete the item and repeat.
                     import pdb
                 pdb.post_mortem(traceback_)
         else:
-            event = '{host} finished {task}'.format(host=host, task=self.name)
-            self.send(event)
+            self.send(f'{host} finished {self.name}')
 
     def send(self, subject, info=()):
         """Send an email message

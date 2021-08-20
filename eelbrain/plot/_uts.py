@@ -126,6 +126,21 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
      - ``↓``: scroll down
      - ``r``: y-axis zoom in (reduce y-axis range)
      - ``c``: y-axis zoom out (increase y-axis range)
+
+    Examples
+    --------
+    Single :class:`NDVar` from a Dataset::
+
+        plot.UTSStat('uts', 'A', 'B', match='rm', ds=ds)
+
+    Multiple :class:`NDVar` in different axes
+
+        plot.UTSStat(['uts1', 'uts2'], 'A', match='rm', ds=ds)
+
+    Multiple :class:`NDVar` in a single axes::
+
+        plot.UTSStat([['uts1', 'uts2']], match=True, ds=ds)
+
     """
     def __init__(
             self,
@@ -775,7 +790,7 @@ class _plt_uts_stat:
         elif error == 'all':
             self.main = y_main = None
         else:
-            raise TypeError(f"main={main!r}")
+            raise TypeError(f"{main=}")
 
         # plot error
         if error == 'all':

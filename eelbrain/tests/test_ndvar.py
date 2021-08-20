@@ -201,7 +201,7 @@ def test_mask():
     assert_array_equal(y_masked.x.mask[:, :, :70], False)
     # mask that is smaller than array
     mask = mask_ndvar.sub(time=(0.100, None))
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         y.mask(mask)
     y_masked = y.mask(mask, missing=True)
     assert_array_equal(y_masked.x.mask[:, :, 70:], True)

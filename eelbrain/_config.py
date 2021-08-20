@@ -4,7 +4,7 @@ import logging
 import multiprocessing
 import os
 import sys
-from typing import Any, Union
+from typing import Any, Literal, Union
 
 from matplotlib.colors import to_rgb
 
@@ -41,7 +41,7 @@ def configure(
         show: bool = None,
         format: str = None,
         figure_background: Any = None,
-        prompt_toolkit: Union[bool, str] = None,
+        prompt_toolkit: Literal[False, 'eelbrain', 'wx'] = None,
         animate: bool = None,
         nice: int = None,
         tqdm: bool = None,
@@ -80,8 +80,11 @@ def configure(
         In IPython 5, prompt_toolkit allows running the GUI main loop in
         parallel to the Terminal, meaning that the IPython terminal and GUI
         windows can be used without explicitly switching between Terminal and
-        GUI. This feature is enabled by default, but can be disabled by setting
-        ``prompt_toolkit=False``.
+        GUI. Set to
+        ``'eelbrain'`` to use the Eelbrain-specific GUI loop (default);
+        ``'wx'`` to use iPython's GUI loop;
+        ``False`` to block the terminal instead (can be more stable when using
+        GUIs).
     animate
         Animate plot navigation (default True).
     nice : int [-20, 19]
@@ -89,6 +92,8 @@ def configure(
         other processes; negative numbers require root privileges).
     tqdm
         Enable or disable :mod:`tqdm` progress bars.
+    log
+        Enable logging (for debugging Eelbrain).
     """
     # don't change values before raising an error
     new = {}

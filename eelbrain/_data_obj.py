@@ -110,7 +110,7 @@ import operator
 import os
 import re
 import string
-from typing import Any, Callable, Collection, Dict, Iterable, Iterator, Optional, Type, Union, Sequence, Tuple, List
+from typing import Any, Callable, Collection, Dict, Iterable, Iterator, Literal, Optional, Type, Union, Sequence, Tuple
 from warnings import warn
 
 import numpy
@@ -1091,15 +1091,15 @@ def combine(
     np.array_equal(x, y)``) for all items.
     """
     if not isinstance(incomplete, str):
-        raise TypeError("incomplete=%s, need str" % repr(incomplete))
+        raise TypeError(f"{incomplete=}, need str")
     elif incomplete not in ('raise', 'drop', 'fill in'):
-        raise ValueError("incomplete=%s" % repr(incomplete))
+        raise ValueError(f"{incomplete=}")
 
     # check input
     if not isinstance(items, Sequence):
         items = list(items)
     if len(items) == 0:
-        raise ValueError(f"combine() called with empty sequence {items!r}")
+        raise ValueError(f"{items=}: combine() called with empty sequence")
 
     # find type
     first_item = items[0]
@@ -3845,20 +3845,29 @@ class NDVar(Named):
         """
         return NDVar(self.x.astype(dtype), self.dims, self.name, self.info)
 
-    def bin(self, step=None, start=None, stop=None, func=None, dim=None,
-            name=None, nbins=None, label='center'):
+    def bin(
+            self,
+            step: float = None,
+            start: float = None,
+            stop: float = None,
+            func: Union[Callable, str] = None,
+            dim: str = None,
+            name: str = None,
+            nbins: int = None,
+            label: Literal['start', 'center'] = 'center',
+    ) -> NDVar:
         """Bin the data along a given dimension (default ``'time'``)
 
         Parameters
         ----------
-        step : scalar
+        step
             Time step between bins.
-        start : None | scalar
+        start
             Earliest time point (default is from the beginning).
-        stop : None | scalar
+        stop
             End of the data to use (the default is to use as many whole
             ``tstep`` intervals as fit in the data).
-        func : callable | str
+        func
             How to summarize data in each time bin. Can be the name of a numpy
             function that takes an axis parameter (e.g., 'sum', 'mean', 'max') or
             'extrema' which selects the value with the maximum absolute value.
@@ -3867,36 +3876,36 @@ class NDVar(Named):
             'f': maximum;
             't', 'r': extrema;
             otherwise: mean.
-        dim : str
+        dim
             Dimension over which to bin. If the NDVar has more than one
             dimension, the default is ``'time'``.
-        name : str
+        name
             Name of the output NDVar (default is the current name).
-        nbins : int
+        nbins
             Instead of specifying ``step``, ``nbins`` can be specified to divide
             ``dim`` into an even number of bins.
-        label : 'start' | 'center'
+        label
             How to assign labels to the new bins. For example, with
             ``dim='time'``, the new time axis can assign to each bin either the
             center or the start time of the bin on the original time axis.
 
         Returns
         -------
-        binned_ndvar : NDVar
+        binned_ndvar
             NDVar with data binned along the time axis (i.e., each time point
             reflects one time bin).
         """
         if nbins is not None:
             if step is not None:
-                raise TypeError("can only specify one of step and nbins")
+                raise TypeError(f"{step=}, {nbins=}: can only specify one of step and nbins")
             elif not isinstance(nbins, int):
-                raise TypeError(f"nbins={nbins!r}: need int")
+                raise TypeError(f"{nbins=}: need int")
             elif nbins < 1:
-                raise ValueError(f"nbins={nbins}: needs to be >= 1")
+                raise ValueError(f"{nbins=}: needs to be >= 1")
         elif step is None and nbins is None:
             raise TypeError("need to specify one of step and nbins")
         elif label not in ('start', 'center'):
-            raise ValueError(f"label={label!r}")
+            raise ValueError(f"{label=}")
 
         if dim is None:
             if len(self.dims) == 1 + self.has_case:
@@ -3919,10 +3928,10 @@ class NDVar(Named):
                 func = np.mean
         elif isinstance(func, str):
             if func not in EVAL_CONTEXT:
-                raise ValueError(f"func={func!r}: unknown summary function")
+                raise ValueError(f"{func=}: unknown summary function")
             func = EVAL_CONTEXT[func]
         elif not callable(func):
-            raise TypeError(f"func={func!r}")
+            raise TypeError(f"{func=}")
 
         axis = self.get_axis(dim)
         dim = self.get_dim(dim)
@@ -4473,8 +4482,9 @@ class NDVar(Named):
         name : str
             Name of the output NDVar (default is the current name).
         missing : bool
-            Whether to mask values missing in ``mask``; the default is to
-            raise a ``TypeError`` if ``mask`` is missing values.
+            Whether to mask values that are outside of ``mask`` (i.e., when
+            ``mask``'s dimensions only cover part of the NDVar).
+            The default is to raise a ``ValueError`` if ``mask`` is missing values.
 
         See Also
         --------
@@ -4504,7 +4514,7 @@ class NDVar(Named):
                 elif n_mask == 1:
                     x_mask = np.repeat(x_mask, n_self, ax)
                 elif missing is None:
-                    raise TypeError("Unable to broadcast mask to NDVar; use missing parameter to fill in missing values")
+                    raise ValueError("Unable to broadcast mask to NDVar; use missing parameter to fill in missing values")
                 else:
                     dim = self.dims[ax]
                     mask_dim = mask.get_dim(dim.name)
@@ -6234,6 +6244,8 @@ class Dataset(dict):
             names = list(names)
         if isinstance(cases, Iterator):
             cases = list(cases)
+        if len(cases) == 0:
+            raise ValueError(f"{cases=}: no data")
         if isinstance(random, str):
             random = [random]
         elif isinstance(random, Iterator):
@@ -8835,7 +8847,7 @@ class Sensor(Dimension):
 
     def __init__(
             self,
-            locs: numpy.ndarray,
+            locs: Sequence,
             names: Sequence[str] = None,
             sysname: str = None,
             proj2d: str = 'z root',

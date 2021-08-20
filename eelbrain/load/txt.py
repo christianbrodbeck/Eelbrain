@@ -134,6 +134,8 @@ def tsv(
     with open_(path, 'rt', encoding=encoding, newline='') as fid:
         reader = csv.reader(fid, delimiter=delimiter, **fmtparams)
         lines = list(reader)
+    if lines[0][0].startswith('\ufeff'):
+        raise IOError(f"First word invalid: {lines[0][0]!r}; file might be encoded with byte order mark, try opening with encoding='utf-8-sig' (see https://stackoverflow.com/a/17912811/166700)")
 
     # find start position
     if start_tag:

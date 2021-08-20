@@ -438,18 +438,14 @@ class _BalancedFixedNDANOVA(_BalancedNDANOVA):
     "For balanced but not fully specified models"
     def __init__(self, x):
         if x.df_error <= 0:
-            raise ValueError("Model %s is overspecified with df_error=%s. "
-                             "Alle effects are fixed, should one be random?" %
-                             (x.name, x.df_error))
+            raise ValueError(f"Model {x.name} is overspecified with df_error={x.df_error}; all effects are fixed, should one be random?")
         effects = x.effects
         dfs_denom = (x.df_error,) * len(effects)
         _BalancedNDANOVA.__init__(self, x, effects, dfs_denom)
-
         self.df_error = x.df_error
 
     def _map_balanced(self, y, flat_f_map, x_full, xsinv):
-        anova_fmaps(y, x_full, xsinv, flat_f_map, self._effect_to_beta,
-                    self.df_error)
+        anova_fmaps(y, x_full, xsinv, flat_f_map, self._effect_to_beta, self.df_error)
 
 
 class _BalancedMixedNDANOVA(_BalancedNDANOVA):
