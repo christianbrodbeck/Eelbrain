@@ -3352,7 +3352,9 @@ class MneExperiment(FileTree):
             subjects: SubjectArg = None,
             epoch: str = None,
             add_bads: bool = True,
-            **state):
+            return_data: bool = False,
+            **state,
+    ) -> Union[NDVar, Dataset, Tuple[NDVar, NDVar]]:
         """Load sensor neighbor correlation
 
         Parameters
@@ -3366,16 +3368,24 @@ class MneExperiment(FileTree):
             Epoch to use for computing neighbor-correlation (by default, the
             whole session is used).
         add_bads
-            Reject bad channels first (default ``True``).
+            Reject bad channels first.
+        return_data
+            Return the data from which the correlation is calculated. Only
+            possible when loading neighbor-correlation for a single subject.
 
         Returns
         -------
+        data : NDVar
+            Data from which the correlation is calculated (only retuned with
+            ``return_data=True``).
         nc : NDVar | Dataset
             Sensor neighbor-correlation as :class:`NDVar` for a single subject
             or as :class:`Dataset` for multiple subjects.
         """
         subject, group = self._process_subject_arg(subjects, state)
         if group is not None:
+            if return_data:
+                raise ValueError(f"{return_data=} when loading data for group")
             if state:
                 self.set(**state)
             lines = [(subject, self.load_neighbor_correlation(1, epoch, add_bads)) for subject in self]
@@ -3385,12 +3395,16 @@ class MneExperiment(FileTree):
                 epoch = self.get('epoch')
             epoch_params = self._epochs[epoch]
             if len(epoch_params.sessions) != 1:
-                raise ValueError(f"epoch={epoch!r}: epoch has multiple session")
+                raise ValueError(f"{epoch=}: epoch has multiple session")
             ds = self.load_epochs(add_bads=add_bads, epoch=epoch, reject=False, decim=1, **state)
             data = concatenate(ds['meg'])
         else:
             data = self.load_raw(ndvar=True, add_bads=add_bads, **state)
-        return neighbor_correlation(data)
+        n_corr = neighbor_correlation(data)
+        if return_data:
+            return data, n_corr
+        else:
+            return n_corr
 
     def load_raw(
             self,
@@ -4190,32 +4204,74 @@ class MneExperiment(FileTree):
         pipe = self._raw['raw']
         pipe.make_bad_channels_auto(self.get('subject'), self.get('recording'), flat, redo)
 
-    def make_bad_channels_neighbor_correlation(self, r, epoch=None, **state):
-        """Exclude bad channels based on low average neighbor-correlation
+    def make_bad_channels_neighbor_correlation(
+            self,
+            r: float,
+            epoch: str = None,
+            add_bads: bool = True,
+            save: bool = True,
+            **state,
+    ) -> (NDVar, List[str]):
+        """Iteratively exclude bad channels based on low average neighbor-correlation
 
         Parameters
         ----------
-        r : scalar
+        r
             Minimum admissible neighbor correlation. Any channel whose average
             correlation with its neighbors is below this value is added to the
             list of bad channels (e.g., 0.3).
-        epoch : str
+        epoch
             Epoch to use for computing neighbor-correlation (by default, the
             whole session is used).
+        add_bads
+            Reject bad channels first.
+        save
+            Save the bad channels to the bad channel specification file. Set
+            ``save=False`` to examine the result without actually changing the
+             bad channels.
         ...
             State parameters.
 
+        Returns
+        -------
+        neighbor_correlation
+            Head-map with the neighbor correlation for each sensor.
+        bad_channels
+            Channels that are excluded based on criteria.
+
         Notes
         -----
-        Data is loaded for the currently specified ``raw`` setting, but bad
-        channels apply to all ``raw`` settings equally. Hence, when using this
-        method with multiple subjects, it is important to set ``raw`` to the
-        same value.
+        Algorithm:
+
+        1. Load the corresponding data
+        2. Calculate the pairwise correlation between each neighboring sensor pair
+        3. Assign to each sensor the average correlation with its neighbors
+        4. If the sensor with the lowest correlation is < ``r``, exclude it and
+           go back to 2.
+
+        .. warning::
+            Data is loaded for the currently specified ``raw`` setting, but bad
+            channels apply to all ``raw`` settings equally. Hence, when using this
+            method with multiple subjects, it is important to set ``raw`` to the
+            same value.
         """
-        nc = self.load_neighbor_correlation(1, epoch, **state)
-        bad_chs = nc.sensor.names[nc < r]
-        if bad_chs:
+        data, full_nc = self.load_neighbor_correlation(1, epoch, add_bads, return_data=True, **state)
+        bad_chs = []
+        nc = full_nc
+        while nc.min() < r:
+            sensor = nc.argmin()
+            bad_chs.append(sensor)
+            # Recalculate correlations without the bad channel
+            new_index = nc.sensor.index(exclude=sensor)
+            data = data.sub(sensor=new_index)
+            nc = neighbor_correlation(data)
+            # Update full head map
+            full_index = full_nc.sensor.index(exclude=bad_chs)
+            full_nc[full_index] = nc
+
+        if save and bad_chs:
             self.make_bad_channels(bad_chs)
+        return full_nc, bad_chs
 
     def make_copy(
             self,
