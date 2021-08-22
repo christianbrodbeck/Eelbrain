@@ -13,7 +13,7 @@ from pathlib import Path
 import re
 import shutil
 import time
-from typing import Any, Dict, Literal, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, Union
 import warnings
 
 import numpy as np
@@ -40,7 +40,6 @@ from ..mne_fixes import write_labels_to_annot, _interpolate_bads_eeg, _interpola
 from ..mne_fixes._trans import hsp_equal, mrk_equal
 from ..mne_fixes._source_space import merge_volume_source_space, prune_volume_source_space, restrict_volume_source_space
 from .._ndvar import concatenate, cwt_morlet, neighbor_correlation
-from ..fmtxt import List, Report, Image, read_meta
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import enumeration, n_of, plural
@@ -5001,7 +5000,7 @@ class MneExperiment(FileTree):
         elif not self._result_file_mtime(dst, data):
             self._log.debug("Report outdated: %s", desc)
         else:
-            meta = read_meta(dst)
+            meta = fmtxt.read_meta(dst)
             if 'samples' in meta:
                 if int(meta['samples']) >= samples:
                     self._log.debug("Report up to date: %s", desc)
@@ -5085,7 +5084,7 @@ class MneExperiment(FileTree):
 
         # start report
         title = self.format('{recording} {test_desc}')
-        report = Report(title)
+        report = fmtxt.Report(title)
         report.add_paragraph(self._report_methods_brief(dst))
 
         if isinstance(self._tests[test], TwoStageTest):
@@ -5225,7 +5224,7 @@ class MneExperiment(FileTree):
 
         # start report
         title = self.format('{recording} {test_desc}')
-        report = Report(title)
+        report = fmtxt.Report(title)
 
         # method intro (compose it later when data is available)
         ds0 = res_data[label]
@@ -5299,7 +5298,7 @@ class MneExperiment(FileTree):
 
         # start report
         title = self.format('{recording} {test_desc}')
-        report = Report(title)
+        report = fmtxt.Report(title)
 
         # info
         info_section = report.add_section("Test Info")
@@ -5369,7 +5368,7 @@ class MneExperiment(FileTree):
 
         # start report
         title = self.format('{recording} {test_desc}')
-        report = Report(title)
+        report = fmtxt.Report(title)
 
         # info
         info_section = report.add_section("Test Info")
@@ -5397,7 +5396,7 @@ class MneExperiment(FileTree):
     def _report_methods_brief(path):
         path = Path(path)
         items = [*path.parts[:-1], path.stem]
-        return List('Methods brief', items[-3:])
+        return fmtxt.List('Methods brief', items[-3:])
 
     def _report_subject_info(self, ds, model):
         """Table with subject information
@@ -5434,7 +5433,7 @@ class MneExperiment(FileTree):
         test_obj = self._tests[test] if isinstance(test, str) else test
 
         # List of preprocessing parameters
-        info = List("Analysis:")
+        info = fmtxt.List("Analysis:")
         # epoch
         epoch = self.format('epoch = {epoch}')
         evoked_kind = self.get('evoked_kind')
@@ -5517,7 +5516,7 @@ class MneExperiment(FileTree):
             title = self.format('{recording} {test_desc}')
             surfer_kwargs = self._surfer_plot_kwargs()
 
-        report = Report(title)
+        report = fmtxt.Report(title)
         report.append(_report.source_time_lm(lm, pmin, surfer_kwargs))
 
         # report signature
@@ -5546,7 +5545,7 @@ class MneExperiment(FileTree):
             title += ' ' + mri
         if file_name is None:
             file_name = join(self.get('methods-dir', mkdir=True), title + '.html')
-        report = Report(title)
+        report = fmtxt.Report(title)
         for subject in self:
             mrisubject = self.get('mrisubject')
             fig = self.plot_coreg()
@@ -5556,11 +5555,11 @@ class MneExperiment(FileTree):
 
             # front
             mlab.view(90, 90, 1, figure=fig)
-            im_front = Image.from_array(mlab.screenshot(figure=fig), 'front')
+            im_front = fmtxt.Image.from_array(mlab.screenshot(figure=fig), 'front')
 
             # left
             mlab.view(0, 270, 1, roll=90, figure=fig)
-            im_left = Image.from_array(mlab.screenshot(figure=fig), 'left')
+            im_left = fmtxt.Image.from_array(mlab.screenshot(figure=fig), 'left')
 
             mlab.close(fig)
 
