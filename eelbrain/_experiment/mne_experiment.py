@@ -308,6 +308,7 @@ class MneExperiment(FileTree):
         'reg': EpochCovariance('cov', 'diagonal_fixed'),
         'noreg': EpochCovariance('cov', 'empirical'),
         'emptyroom': RawCovariance('emptyroom'),
+        'ad_hoc': RawCovariance(method='ad_hoc'),
     }
 
     # MRI subject names: {subject: mrisubject} mappings
@@ -589,6 +590,8 @@ class MneExperiment(FileTree):
         # noise covariance
         for key, cov in self._covs.items():
             cov.key = key
+            if isinstance(cov, RawCovariance) and cov.session is None:
+                cov.session = self._sessions[0]
 
         ########################################################################
         # parcellations
@@ -2076,7 +2079,10 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        return mne.read_cov(self.get('cov-file', make=True, **kwargs))
+        cov = mne.read_cov(self.get('cov-file', make=True, **kwargs))
+        if cov.data.dtype != 'float64':  # ad_hoc covariance loads as >f8, which causes mne errors
+            cov['data'] = cov['data'].astype(float)
+        return cov
 
     def load_edf(self, **kwargs):
         """Load the edf file ("edf-file" template)

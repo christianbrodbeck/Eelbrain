@@ -9,7 +9,7 @@ import numpy
 
 @dataclass
 class RawCovariance:
-    session: str
+    session: str = None
     method: str = 'empirical'
     key: str = field(init=False, default=None)
 
@@ -17,6 +17,8 @@ class RawCovariance:
             self,
             raw: mne.io.BaseRaw,
     ) -> mne.Covariance:
+        if self.method == 'ad_hoc':
+            return mne.cov.make_ad_hoc_cov(raw.info)
         return mne.compute_raw_covariance(raw, method=self.method)
 
 
