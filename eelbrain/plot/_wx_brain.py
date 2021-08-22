@@ -14,6 +14,7 @@ from traitsui.api import View, Item, HGroup, VGroup
 from tvtk.api import tvtk
 from tvtk.pyface.toolkit import toolkit_object
 
+from .._utils import IS_OSX
 from .._wxgui import wx, ID, Icon
 from .._wxgui.app import get_app
 from .._wxgui.frame import EelbrainFrame
@@ -35,26 +36,22 @@ class MayaviView(HasTraits):
 
         n_scenes = n_rows * n_columns
         if n_scenes < 1:
-            raise ValueError("n_rows=%r, n_columns=%r" % (n_rows, n_columns))
+            raise ValueError(f"{n_rows=}, {n_columns=}")
 
-        self.scenes = tuple(MlabSceneModel() for _ in range(n_scenes))
+        self.scenes = [MlabSceneModel() for _ in range(n_scenes)]
         for i, scene in enumerate(self.scenes):
             self.add_trait(SCENE_NAME % i, scene)
 
         if n_rows == n_columns == 1:
-            self.view = View(Item(SCENE_NAME % 0,
-                                  editor=SceneEditor(scene_class=Scene),
-                                  resizable=True, show_label=False),
-                             width=width, height=height, resizable=True)
+            item = Item(SCENE_NAME % 0, editor=SceneEditor(scene_class=Scene), resizable=True, show_label=False)
+            self.view = View(item, width=width, height=height, resizable=True)
         else:
             rows = []
             for row in range(n_rows):
                 columns = []
                 for column in range(n_columns):
                     i = row * n_columns + column
-                    item = Item(SCENE_NAME % i,
-                                editor=SceneEditor(scene_class=Scene),
-                                resizable=True, show_label=False)
+                    item = Item(SCENE_NAME % i, editor=SceneEditor(scene_class=Scene), resizable=True, show_label=False)
                     columns.append(item)
                 rows.append(HGroup(*columns))
             self.view = View(VGroup(*rows))
@@ -65,10 +62,9 @@ class MayaviView(HasTraits):
 class BrainFrame(EelbrainFrame):
     _allow_user_set_title = True
 
-    def __init__(self, parent, brain, title, width, height, n_rows, n_columns,
-                 surf, pos):
-        EelbrainFrame.__init__(self, parent, wx.ID_ANY, "Brain: %s" % title,
-                               wx.DefaultPosition if pos is None else pos)
+    def __init__(self, parent, brain, title, width, height, n_rows, n_columns, surf, pos):
+        pos_ = wx.DefaultPosition if pos is None else pos
+        EelbrainFrame.__init__(self, parent, wx.ID_ANY, f"Brain: {title}", pos_)
 
         # toolbar
         tb = self.CreateToolBar(wx.TB_HORIZONTAL)
@@ -80,9 +76,7 @@ class BrainFrame(EelbrainFrame):
         tb.AddTool(ID.PLOT_COLORBAR, "Plot Colorbar", Icon("plot/colorbar"))
         tb.Bind(wx.EVT_TOOL, self.OnPlotColorBar, id=ID.PLOT_COLORBAR)
         # surface
-        self._surf_selector = wx.Choice(
-            tb, choices=[name.capitalize() for name in SURFACES],
-            name='Surface')
+        self._surf_selector = wx.Choice(tb, choices=[name.capitalize() for name in SURFACES], name='Surface')
         if surf in SURFACES:
             self._surf_selector.SetSelection(SURFACES.index(surf))
         tb.AddControl(self._surf_selector, "Surface")
@@ -106,13 +100,15 @@ class BrainFrame(EelbrainFrame):
         self._n_columns = n_columns
         # Use traits to create a panel, and use it as the content of this
         # wx frame.
-        self.ui = self.mayavi_view.edit_traits(parent=self,
-                                               view=self.mayavi_view.view,
-                                               kind='subpanel')
+        self.ui = self.mayavi_view.edit_traits(parent=self, view=self.mayavi_view.view, kind='subpanel')
         self.panel = self.ui.control
         # Hide the toolbar (the edit_traits command assigns scene_editor)
         for scene in self.mayavi_view.scenes:
             scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
+        if IS_OSX:
+            # Bug in Mayavi/VTK: the render_window has twice the size of its panel, so it's only partially visible; this moves the relevant part into the center; see also Brain.set_parallel_view()
+            figure = self.mayavi_view.figures[0]
+            figure.scene.camera.window_center = [0.5, 0.5]
 
         self.SetImageSize(width, height)
 

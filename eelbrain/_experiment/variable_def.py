@@ -8,6 +8,8 @@ variables = {
 }
 
 """
+from typing import Any, Dict, Sequence, Union
+
 import numpy as np
 
 from .._data_obj import Factor, Var, assert_is_legal_dataset_key
@@ -54,9 +56,9 @@ class EvalVar(VarDef):
 
     Parameters
     ----------
-    code : str
+    code
         Statement to evaluate.
-    session : str
+    session
         Only apply the variable to events from this session.
 
     See Also
@@ -65,7 +67,7 @@ class EvalVar(VarDef):
     """
     _pickle_args = ('session', 'code')
 
-    def __init__(self, code, session=None):
+    def __init__(self, code: str, session: str = None):
         super(EvalVar, self).__init__(session)
         assert isinstance(code, str)
         self.code = code
@@ -88,17 +90,17 @@ class LabelVar(VarDef):
 
     Parameters
     ----------
-    source : str
+    source
         Variable supplying the values (e.g., ``"trigger"``).
-    codes : dict
+    codes
         Mapping values in ``source`` to values in the new variable. The type
         of the values determines whether the output is a :class:`Factor`
         (:class:`str` values) or a :class:`Var` (numerical values).
-    default : bool | str | scalar
+    default
         Label for values not in ``codes``. By default, this is ``''`` for
         categorial and 0 for numerical output. Set to ``False`` to pass through
         unlabeled input values.
-    session : str
+    session
         Only apply the variable to events from this session.
 
     See Also
@@ -107,7 +109,13 @@ class LabelVar(VarDef):
     """
     _pickle_args = ('session', 'source', 'codes', 'labels', 'is_factor', 'default')
 
-    def __init__(self, source, codes, default=True, session=None):
+    def __init__(
+            self,
+            source: str,
+            codes: Dict[Union[str, float], Union[str, float]],
+            default: Union[bool, str, float] = True,
+            session: str = None,
+    ):
         super(LabelVar, self).__init__(session)
         self.source = source
         self.codes = codes
@@ -155,12 +163,12 @@ class GroupVar(VarDef):
 
     Parameters
     ----------
-    groups : sequence of str | dict
+    groups
         Groups to label. A sequence of group names to label each subject with
         the group it belongs to (subjects can't be members of more than one
         group). Alternatively, a ``{group: label}`` dictionary can be used to
         assign a different label based on group membership.
-    session : str
+    session
         Only apply the variable to events from this session.
 
     See Also
@@ -177,7 +185,11 @@ class GroupVar(VarDef):
     """
     _pickle_args = ('session', 'groups')
 
-    def __init__(self, groups, session=None):
+    def __init__(
+            self,
+            groups: Union[Sequence[str], Dict[str, str]],
+            session: str = None,
+    ):
         super(GroupVar, self).__init__(session)
         self.groups = groups
 

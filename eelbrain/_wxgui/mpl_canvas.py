@@ -360,7 +360,7 @@ class LimitsValidator(wx.Validator):
                     old_lower, old_upper = getattr(self.parent, self.attr)
                     upper = lower + old_upper - old_lower
                 else:
-                    raise RuntimeError(f'single={self.single!r}')
+                    raise RuntimeError(f'{self.single=}')
             elif len(values) == 2:
                 lower, upper = map(float, values)
             else:
@@ -404,8 +404,7 @@ class AxisLimitsDialog(EelbrainDialog):
     """
 
     def __init__(self, vlim, ylim, xlim, parent, *args, **kwargs):
-        EelbrainDialog.__init__(self, parent, wx.ID_ANY, "Set Axis Limits",
-                                *args, **kwargs)
+        EelbrainDialog.__init__(self, parent, wx.ID_ANY, "Set Axis Limits", *args, **kwargs)
         self.vlim = vlim
         self.ylim = ylim
         self.xlim = xlim

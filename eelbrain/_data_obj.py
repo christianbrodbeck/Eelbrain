@@ -135,8 +135,7 @@ from ._exceptions import DimensionMismatchError, EvalError, IncompleteModel
 from ._data_opt import gaussian_smoother
 from ._text import enumeration
 from ._types import PathArg
-from ._utils import (
-    intervals, ui, LazyProperty, n_decimals, natsorted)
+from ._utils import mne_utils, intervals, ui, LazyProperty, n_decimals, natsorted
 from ._utils.numpy_utils import (
     INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
     aslice, apply_numpy_index, deep_array, digitize_index, digitize_slice_endpoint,
@@ -3827,10 +3826,10 @@ class NDVar(Named):
             axis = self._dim_2_ax[axis]
             x = func(self.get_data(mask=mask), axis=axis)
             dims = [self.dims[i] for i in range(self.ndim) if i != axis]
-        elif not axis:
+        elif axis is None:
             return func(self.get_data(mask=mask))
         else:
-            axes = tuple(self._dim_2_ax[dim_name] for dim_name in axis)
+            axes = tuple([self._dim_2_ax[dim_name] for dim_name in axis])
             x = func(self.get_data(mask=mask), axes)
             dims = [self.dims[i] for i in range(self.ndim) if i not in axes]
 
@@ -9404,31 +9403,26 @@ class Sensor(Dimension):
                 raise DimensionMismatchError("Sensor locations don't match between dimension objects")
         return self[index]
 
-    def neighbors(self, connect_dist):
+    def neighbors(self, connect_dist: float) -> Dict[int, np.ndarray]:
         """Find neighboring sensors.
 
         Parameters
         ----------
-        connect_dist : scalar
+        connect_dist
             For each sensor, neighbors are defined as those sensors within
             ``connect_dist`` times the distance of the closest neighbor.
 
         Returns
         -------
-        neighbors : dict
+        neighbors
             Dictionaries whose keys are sensor indices, and whose values are
             lists of neighbors represented as sensor indices.
         """
         nb = {}
-        pd = pdist(self.locs)
-        pd = squareform(pd)
-        n = len(self)
-        for i in range(n):
-            d = pd[i, np.arange(n)]
-            d[i] = d.max()
-            idx = np.nonzero(d < d.min() * connect_dist)[0]
-            nb[i] = idx
-
+        pairwise_distances = squareform(pdist(self.locs))
+        np.fill_diagonal(pairwise_distances, pairwise_distances.max() * 99)
+        for i, distances in enumerate(pairwise_distances):
+            nb[i] = np.flatnonzero(distances < (distances.min() * connect_dist))
         return nb
 
     def set_connectivity(self, neighbors=None, connect_dist=None):
@@ -10427,7 +10421,7 @@ class VolumeSourceSpace(SourceSpaceBase):
         x, y, z = voxel_coords.T
         data = mgz.get_data()
         x = data[x, y, z]
-        labels = {item[0]: item[1] for item in mne.source_space._get_lut()}
+        labels = mne_utils.get_volume_source_space_labels()
         return Factor(x, labels=labels, name=parc)
 
     def _init_secondary(self):
