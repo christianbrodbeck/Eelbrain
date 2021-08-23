@@ -91,8 +91,11 @@ class Test(Definition):
     def make(self, y, ds, force_permutation, kwargs):
         raise NotImplementedError(f"For {self.__class__.__name__}")
 
+    def make_vec(self, y, ds, force_permutation, kwargs):
+        raise NotImplementedError(f"Vector test for {self.__class__.__name__}")
+
     def make_uv(self, y, ds):
-        raise NotImplementedError(f"For {self.__class__.__name__}")
+        raise NotImplementedError(f"UV sets for {self.__class__.__name__}")
 
 
 class TTestOneSample(Test):
@@ -113,12 +116,17 @@ class TTestOneSample(Test):
 
     def __init__(self, tail: int = 0):
         tail = tail_arg(tail)
-        desc = "%s 0" % TAIL_REPR[tail]
+        desc = f"{TAIL_REPR[tail]} 0"
         Test.__init__(self, desc, '')
         self.tail = tail
 
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.TTestOneSample(y, match='subject', ds=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
+
+    def make_vec(self, y, ds, force_permutation, kwargs):
+        if self.tail:
+            raise ValueError("Vector-tests cannot be tailed")
+        return testnd.Vector(y, match='subject', ds=ds, **kwargs)
 
     def make_uv(self, y, ds):
         return test.TTestOneSample(y, match='subject', ds=ds, tail=self.tail)
@@ -228,7 +236,7 @@ class TTestRelated(Test):
 
     def __init__(self, model: str, c1: CellArg, c0: CellArg, tail: int = 0):
         tail = tail_arg(tail)
-        desc = '%s %s %s' % (c1, TAIL_REPR[tail], c0)
+        desc = f'{c1} {TAIL_REPR[tail]} {c0}'
         Test.__init__(self, desc, model, cat=(c1, c0))
         self.c1 = c1
         self.c0 = c0
@@ -236,6 +244,11 @@ class TTestRelated(Test):
 
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.TTestRelated(y, self.model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
+
+    def make_vec(self, y, ds, force_permutation, kwargs):
+        if self.tail:
+            raise ValueError("Vector-tests cannot be tailed")
+        return testnd.VectorDifferenceRelated(y, self.model, self.c1, self.c0, 'subject', ds=ds, force_permutation=force_permutation, **kwargs)
 
     def make_uv(self, y, ds):
         return test.TTestRelated(y, self.model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail)

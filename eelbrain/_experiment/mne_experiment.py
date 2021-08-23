@@ -5744,9 +5744,9 @@ class MneExperiment(FileTree):
     ):
         "Compute test results"
         test_obj = test if isinstance(test, Test) else self._tests[test]
+        if isinstance(y, str):
+            y = ds.eval(y)
         if to_uv:
-            if isinstance(y, str):
-                y = ds.eval(y)
             if isinstance(y, NDVar):
                 dim = 'sensor' if y.has_dim('sensor') else 'source'
                 y = getattr(y, to_uv)(dim)
@@ -5754,6 +5754,8 @@ class MneExperiment(FileTree):
                 dim = 'sensor' if y[0].has_dim('sensor') else 'source'
                 y = combine([getattr(yi, to_uv)(dim) for yi in y])
             return test_obj.make_uv(y, ds)
+        elif y.has_dim('space'):
+            return test_obj.make_vec(y, ds, force_permutation, kwargs)
         return test_obj.make(y, ds, force_permutation, kwargs)
 
     def merge_bad_channels(self):
