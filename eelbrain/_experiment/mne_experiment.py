@@ -6584,12 +6584,16 @@ class MneExperiment(FileTree):
             out[key] = code.next()
         return out
 
-    def show_bad_channels(self, sessions=None, **state):
+    def show_bad_channels(
+            self,
+            sessions: Union[bool, str, Sequence[str]] = None,
+            **state,
+    ):
         """List bad channels
 
         Parameters
         ----------
-        sessions : True | sequence of str
+        sessions
             By default, bad channels for the current session are shown. Set
             ``sessions`` to ``True`` to show bad channels for all sessions, or
             a list of session names to show bad channeles for these sessions.
@@ -6607,16 +6611,15 @@ class MneExperiment(FileTree):
         if sessions is True:
             use_sessions = self._sessions
         elif sessions:
-            use_sessions = sessions
+            use_sessions = [sessions] if isinstance(sessions, str) else sessions
         else:
             use_sessions = None
 
         if use_sessions is None:
-            bad_by_s = {k: self.load_bad_channels() for k in self}
+            bad_channels = {subject: self.load_bad_channels() for subject in self}
             list_sessions = False
         else:
-            bad_channels = {k: self.load_bad_channels() for k in
-                            self.iter(('subject', 'session'), values={'session': use_sessions})}
+            bad_channels = {key: self.load_bad_channels() for key in self.iter(('subject', 'session'), values={'session': use_sessions})}
             # whether they are equal between sessions
             bad_by_s = {}
             for (subject, session), bads in bad_channels.items():
@@ -6627,27 +6630,29 @@ class MneExperiment(FileTree):
                 else:
                     bad_by_s[subject] = bads
             else:
+                bad_channels = bad_by_s
                 list_sessions = False
 
         # table
         session_desc = ', '.join(use_sessions) if use_sessions else self.get('session')
         caption = f"Bad channels in {session_desc}"
         if list_sessions:
+            subjects = sorted({subject for subject, _ in bad_channels})
             t = fmtxt.Table('l' * (1 + len(use_sessions)), caption=caption)
             t.cells('Subject', *use_sessions)
             t.midrule()
-            for subject in sorted(bad_by_s):
+            for subject in subjects:
                 t.cell(subject)
                 for session in use_sessions:
                     t.cell(', '.join(bad_channels[subject, session]))
         else:
-            if use_sessions is not None:
+            if use_sessions:
                 caption += " (all sessions equal)"
             t = fmtxt.Table('ll', caption=caption)
             t.cells('Subject', 'Bad channels')
             t.midrule()
-            for subject in sorted(bad_by_s):
-                t.cells(subject, ', '.join(bad_by_s[subject]))
+            for subject in sorted(bad_channels):
+                t.cells(subject, ', '.join(bad_channels[subject]))
         return t
 
     def show_file_status(self, temp, col=None, row='subject', *args, **kwargs):
