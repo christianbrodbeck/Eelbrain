@@ -309,7 +309,7 @@ def _nd_anova(x):
             raise x._incomplete_error("Mixed effects ANOVA")
         elif isbalanced(x):
             return _BalancedMixedNDANOVA(x)
-    elif isbalanced(x):
+    elif iscategorial(x) and isbalanced(x):
         return _BalancedFixedNDANOVA(x)
     return _IncrementalNDANOVA(x)
 
