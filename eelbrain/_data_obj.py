@@ -7747,26 +7747,27 @@ class Dimension:
     _axis_unit = None
     _default_connectivity = 'none'  # for loading old pickles
 
-    def __init__(self, name, connectivity):
+    def __init__(
+            self,
+            name: str,
+            connectivity: Union[str, Sequence],
+    ):
         # requires __len__ to work
         self.name = name
-        if isinstance(connectivity, str):
-            self._connectivity = None
-        else:
-            self._connectivity = self._coerce_connectivity(connectivity)
-            connectivity = 'custom'
+        self._connectivity_type, self._connectivity = self._connectivity_arg(connectivity)
 
-        if not isinstance(connectivity, str):
-            raise TypeError(f"{connectivity=}")
-        elif connectivity not in self._CONNECTIVITY_TYPES:
-            raise ValueError(f"{connectivity=}")
-        self._connectivity_type = connectivity
-
-    def _coerce_connectivity(self, connectivity):
-        if isinstance(connectivity, np.ndarray) and connectivity.dtype == np.uint32:
+    def _connectivity_arg(self, connectivity: Union[str, Sequence]):
+        if isinstance(connectivity, str) or len(connectivity) == 0:
+            if connectivity not in self._CONNECTIVITY_TYPES and connectivity != 'custom':
+                raise ValueError(f"{connectivity=}")
+            return connectivity, None
+        elif isinstance(connectivity, np.ndarray) and connectivity.dtype == np.uint32:
             # assume that connectivity is inherited, skip checks
-            return connectivity
+            return 'custom', connectivity
+        else:
+            return 'custom', self._coerce_connectivity(connectivity)
 
+    def _coerce_connectivity(self, connectivity: Sequence) -> np.ndarray:
         connectivity = np.asarray(connectivity)
         if connectivity.dtype.kind != 'i':
             raise TypeError(f"connectivity array needs to be integer type, got {connectivity.dtype}")
@@ -8870,7 +8871,7 @@ class Sensor(Dimension):
         self._init_secondary()
 
     def _coerce_connectivity(self, connectivity):
-        if len(connectivity) and isinstance(connectivity[0][0], str):
+        if isinstance(connectivity[0][0], str):
             return connectivity_from_name_pairs(connectivity, self.names, allow_missing=True)
         else:
             return Dimension._coerce_connectivity(self, connectivity)

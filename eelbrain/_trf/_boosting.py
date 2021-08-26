@@ -37,7 +37,7 @@ import numpy as np
 from .._config import CONFIG, mpc
 from .._data_obj import Case, Dataset, Dimension, SourceSpaceBase, NDVar, CategorialArg, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
-from .._ndvar import _concatenate_values, convolve_jit, parallel_convolve
+from .._ndvar import _concatenate_values, convolve_jit, parallel_convolve, set_connectivity, set_parc
 from .._utils import LazyProperty, PickleableDataClass, user_activity
 from .._utils.notebooks import tqdm
 from ._boosting_opt import l1, l2, generate_options, update_error
@@ -419,7 +419,11 @@ class BoostingResult(PickleableDataClass):
 
         def func(obj: NDVar):
             return morph_source_space(obj, to_subject)
+        self._apply_ndvar_transform(func)
 
+    def _set_connectivity(self, dim, connectivity):
+        def func(obj: NDVar):
+            return set_connectivity(obj, dim, connectivity)
         self._apply_ndvar_transform(func)
 
     def _set_parc(self, parc: str):
@@ -429,11 +433,8 @@ class BoostingResult(PickleableDataClass):
         -----
         No warning for missing sources!
         """
-        from .._ndvar import set_parc
-
         def func(obj: NDVar):
             return set_parc(obj, parc, mask=True)
-
         self._apply_ndvar_transform(func)
 
     @classmethod

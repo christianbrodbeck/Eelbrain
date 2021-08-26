@@ -1293,6 +1293,53 @@ def segment(continuous, times, tstart, tstop, decim=1):
                  continuous.info.copy(), continuous.name)
 
 
+def set_connectivity(
+        data: Union[NDVar, Dimension],
+        dim: str = None,
+        connectivity: Union[str, Sequence] = 'none',
+        name: str = None,
+):
+    """Change the connectivity of an NDVar or a Dimension
+
+    Parameters
+    ----------
+    data
+        NDVar for which to change the connectivity.
+    dim
+        Dimension for which to set the connectivity.
+    connectivity
+        Connectivity between elements. Set to ``"none"`` for no connections or
+        ``"grid"`` to use adjacency in the sequence of elements as connection.
+        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
+        should be of shape (n_edges, 2), and each row should specify one
+        connection [i, j] with i < j, with rows sorted in ascending order. If
+        the array's dtype is uint32, property checks are disabled to improve
+        efficiency.
+    name
+        Name for the new NDVar (default is ``data.name``).
+
+    Returns
+    -------
+    data_with_connectivity
+        Shallow copy of ``data`` with the new connectivity.
+    """
+    if isinstance(data, NDVar):
+        dimension = data.get_dim(dim)
+    elif isinstance(data, Dimension):
+        data, dimension = None, data
+    else:
+        raise TypeError(f"{data=}")
+    new = copy(dimension)
+    new._connectivity_type, new._connectivity = dimension._connectivity_arg(connectivity)
+    if data is None:
+        return new
+    if name is None:
+        name = data.name
+    axis = data.get_axis(dim)
+    dims = (*data.dims[:axis], new, *data.dims[axis + 1:])
+    return NDVar(data.x, dims, name, data.info)
+
+
 def set_parc(
         data: Union[NDVar, SourceSpace],
         parc: Union[str, Factor],
