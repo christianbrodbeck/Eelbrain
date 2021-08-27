@@ -10958,3 +10958,6 @@ CellArg = Union[str, Tuple[str, ...]]
 IndexArg = Union[Var, np.ndarray, str]
 ModelArg = Union[Model, Var, CategorialArg]
 UVArg = Union[VarArg, CategorialArg]
+
+# Types that can be coerced to NDVar with asndvar(); lists of those can be too
+NDVarTypes = (NDVar, str, MNE_RAW, MNE_EPOCHS, MNE_EVOKED)

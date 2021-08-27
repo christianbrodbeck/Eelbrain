@@ -103,14 +103,13 @@ import numpy as np
 from .._celltable import Celltable
 from .._colorspaces import LocatedColormap, symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
 from .._config import CONFIG
-from .._data_obj import Dimension, Dataset, Factor, Interaction, NDVar, Var, Case, UTS, NDVarArg, CategorialArg, IndexArg, CellArg, ascategorial, asndvar, assub, isnumeric, isdataobject, combine_cells, cellname
+from .._data_obj import Dimension, Dataset, Factor, Interaction, NDVar, Var, Case, UTS, NDVarArg, CategorialArg, IndexArg, CellArg, NDVarTypes, ascategorial, asndvar, assub, isnumeric, isdataobject, combine_cells, cellname
 from .._utils.notebooks import use_inline_backend
-from .._stats import test, testnd
+from .._stats import testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._ndvar import erode, resample
 from .._text import enumeration, ms
 from ..fmtxt import FMTextArg, Image, asfmtext, asfmtext_or_none
-from ..mne_fixes import MNE_EPOCHS
 from ..table import melt_ndvar
 from ._decorations import mark_difference
 from ._styles import Style, find_cell_styles
@@ -1131,13 +1130,10 @@ class PlotData:
         sub = assub(sub, ds)
         if hasattr(y, '_default_plot_obj'):
             ys = getattr(y, '_default_plot_obj')()
-        elif isinstance(y, MNE_EPOCHS):
-            # Epochs are Iterators over arrays
-            ys = (asndvar(y, sub, ds),)
         else:
             ys = y
 
-        if not isinstance(ys, (tuple, list, Iterator)):
+        if isinstance(ys, NDVarTypes):
             ys = (ys,)
 
         ax_names = None
@@ -1147,18 +1143,18 @@ class PlotData:
             for ax in ys:
                 if ax is None:
                     axes.append(None)
-                elif isinstance(ax, (tuple, list, Iterator)):
+                elif isinstance(ax, NDVarTypes):
+                    ax = asndvar(ax, sub, ds)
+                    agg, dims = find_data_dims(ax, dims)
+                    layer = aggregate(ax, agg)
+                    axes.append([layer])
+                else:
                     layers = []
                     for layer in ax:
                         layer = asndvar(layer, sub, ds)
                         agg, dims = find_data_dims(layer, dims)
                         layers.append(aggregate(layer, agg))
                     axes.append(layers)
-                else:
-                    ax = asndvar(ax, sub, ds)
-                    agg, dims = find_data_dims(ax, dims)
-                    layer = aggregate(ax, agg)
-                    axes.append([layer])
             x_name = None
             # determine y names
             y_names = []
@@ -1168,9 +1164,7 @@ class PlotData:
                 for layer in layers:
                     if layer.name and layer.name not in y_names:
                         y_names.append(layer.name)
-        elif any(isinstance(ax, (tuple, list, Iterator)) for ax in ys):
-            raise TypeError(f"y={y!r}, xax={xax!r}: y can't be nested list if xax is specified, use single list")
-        else:
+        elif all(ax is None or isinstance(ax, NDVarTypes) for ax in ys):
             ys = [asndvar(layer, sub, ds) for layer in ys]
             y_names = [layer.name for layer in ys]
             layers = []
@@ -1209,6 +1203,9 @@ class PlotData:
                 x_name = xax.name
                 ax_names = [cellname(cell) for cell in xax.cells]
             axes = list(zip(*layers))
+        else:
+            raise TypeError(f"{y=}, {xax=}: y can't be nested list if xax is specified, use single list")
+
         if len(y_names) == 0:
             y_name = None
         elif len(y_names) == 1:
