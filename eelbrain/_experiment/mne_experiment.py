@@ -3813,6 +3813,7 @@ class MneExperiment(FileTree):
             samples: int = 10000,
             data: str = 'source',
             baseline: BaselineArg = True,
+            smooth: float = None,
             src_baseline: BaselineArg = None,
             return_data: bool = False,
             make: bool = False,
@@ -3854,6 +3855,8 @@ class MneExperiment(FileTree):
         baseline
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
+        smooth
+            Smooth data in space before test (value in [m] STD of Gaussian).
         src_baseline
             Apply baseline correction using this period in source space.
             True to use the epoch's baseline specification. The default is to
@@ -3884,8 +3887,8 @@ class MneExperiment(FileTree):
         """
         self.set(test=test, **state)
         data = TestDims.coerce(data, morph=True)
-        self._set_analysis_options(data, baseline, src_baseline, pmin, tstart, tstop, parc, mask)
-        return self._load_test(test, tstart, tstop, pmin, parc, mask, samples, data, baseline, src_baseline, return_data, make)
+        self._set_analysis_options(data, baseline, src_baseline, pmin, tstart, tstop, parc, mask, smooth=smooth)
+        return self._load_test(test, tstart, tstop, pmin, parc, mask, samples, data, baseline, src_baseline, return_data, make, smooth)
 
     def _load_test(
             self,
@@ -3901,6 +3904,7 @@ class MneExperiment(FileTree):
             src_baseline: BaselineArg,
             return_data: bool,
             make: bool,
+            smooth: float = None,
     ):
         "Load a cached test after _set_analysis_options() has been called"
         test_obj = self._tests[test]
@@ -3958,6 +3962,8 @@ class MneExperiment(FileTree):
             test_kwargs = None
 
         if isinstance(test_obj, TwoStageTest):
+            if smooth:
+                raise NotImplementedError(f"{smooth=}: smoothing for two-stage tests")
             if isinstance(data.source, str):
                 res_data, res = self._make_test_rois_2stage(baseline, src_baseline, test_obj, samples, test_kwargs, res, data, return_data)
             elif data.source is True:
@@ -3965,12 +3971,16 @@ class MneExperiment(FileTree):
             else:
                 raise NotImplementedError(f"Two-stage test with data={data.string!r}")
         elif isinstance(data.source, str):
+            if smooth:
+                raise TypeError(f"{smooth=} for ROI tests")
             res_data, res = self._make_test_rois(baseline, src_baseline, test_obj, samples, pmin, test_kwargs, res, data)
         else:
             if data.sensor:
                 res_data = self.load_evoked(True, baseline, True, test_obj.cat, data=data, vardef=test_obj.vars)
             elif data.source:
                 res_data = self.load_evoked_stc(True, baseline, src_baseline, morph=True, cat=test_obj.cat, mask=mask, vardef=test_obj.vars)
+                if smooth:
+                    res_data[data.y_name] = res_data[data.y_name].smooth('source', smooth, 'gaussian')
             else:
                 raise ValueError(f"data={data.string!r}")
 
@@ -5126,10 +5136,9 @@ class MneExperiment(FileTree):
         load_test : load corresponding data and tests
         """
         if samples < 1:
-            raise ValueError("samples needs to be > 0")
+            raise ValueError(f"{samples=}: needs to be > 0")
         elif include <= 0 or include > 1:
-            raise ValueError("include needs to be 0 < include <= 1, got %s"
-                             % repr(include))
+            raise ValueError(f"{include=}: needs to be 0 < include <= 1")
 
         self.set(**state)
         data = TestDims('source', morph=True)
@@ -5349,8 +5358,7 @@ class MneExperiment(FileTree):
             return
 
         # load data
-        ds, res = self.load_test(test, tstart, tstop, pmin, None, None, samples,
-                                 'sensor', baseline, None, True, True)
+        ds, res = self.load_test(test, tstart, tstop, pmin, samples=samples, data='sensor', baseline=baseline, return_data=True, make=True)
 
         # start report
         title = self.format('{recording} {test_desc}')
@@ -6545,7 +6553,7 @@ class MneExperiment(FileTree):
             if test_obj.model is not None:
                 self.set(model=test_obj.model)
 
-    def _set_analysis_options(self, data, baseline, src_baseline, pmin, tstart, tstop, parc=None, mask=None, samplingrate=None, test_options=(), folder_options=()):
+    def _set_analysis_options(self, data, baseline, src_baseline, pmin, tstart, tstop, parc=None, mask=None, samplingrate=None, test_options=(), folder_options=(), smooth=None):
         """Set templates for paths with test parameters
 
         analysis:  preprocessing up to source estimate epochs (not parcellation)
@@ -6647,6 +6655,17 @@ class MneExperiment(FileTree):
                 pass
             else:
                 items.append(f'bl={_time_window_str(baseline)}')
+
+        # smoothing
+        if smooth:
+            if data.sensor:
+                raise TypeError(f"{smooth=} for sensor space data (data={data.string!r})")
+            mm = smooth * 1000.
+            if int(mm) != mm:
+                raise ValueError(f"{smooth=}: needs to be an even number of mm")
+            elif mm > 50.:
+                raise ValueError(f"{smooth=}: value seems too big ({mm:.0f} mm)")
+            items.append(f"s{int(mm)}mm")
 
         # pmin
         if pmin is not None:
