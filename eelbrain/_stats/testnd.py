@@ -396,7 +396,7 @@ class NDTest:
 
         if return_time:
             if mask is not None:
-                stat_map = stat_map.mask(~mask)
+                stat_map = stat_map.mask(~mask, missing=True)
             if dims := [dim for dim in stat_map.dimnames if dim != 'time']:
                 if max_stat > 0:
                     stat_map = stat_map.max(dims)
