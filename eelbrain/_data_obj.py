@@ -3939,12 +3939,15 @@ class NDVar(Named):
 
         out_shape = list(self.shape)
         out_shape[axis] = len(edges) - 1
-        x = np.empty(out_shape)
+        if isinstance(self.x, np.ma.masked_array):
+            x = np.ma.empty(out_shape)
+        else:
+            x = np.empty(out_shape)
         bins = []
         idx_prefix = FULL_AXIS_SLICE * axis
         for i, bin_ in enumerate(intervals(edges)):
-            src_idx = idx_prefix + (dim._array_index(bin_),)
-            dst_idx = idx_prefix + (i,)
+            src_idx = (*idx_prefix, dim._array_index(bin_))
+            dst_idx = (*idx_prefix, i)
             x[dst_idx] = func(self.x[src_idx], axis=axis)
             bins.append(bin_)
 
@@ -5400,7 +5403,10 @@ def extrema(x, axis=None):
     min = np.min(x, axis)
     if np.isscalar(max):
         return max if abs(max) > abs(min) else min
-    return np.where(np.abs(max) >= np.abs(min), max, min)
+    if isinstance(x, np.ma.masked_array):
+        return np.ma.where(np.abs(max) >= np.abs(min), max, min)
+    else:
+        return np.where(np.abs(max) >= np.abs(min), max, min)
 
 
 class Datalist(list):
