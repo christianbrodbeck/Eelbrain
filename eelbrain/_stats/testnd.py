@@ -1505,6 +1505,10 @@ class MultiEffectNDTest(NDTest):
         return args
 
     def _asfmtext(self, **_):
+        if len(self.effects) == 1:
+            p = self.p[0].min()
+            max_stat = self._max_statistic(0)
+            return FMText([fmtxt.eq(self._statistic, max_stat, 'max', stars=p), ', ', fmtxt.peq(p)])
         table = fmtxt.Table('llll')
         table.cells('Effect', fmtxt.symbol(self._statistic, 'max'), fmtxt.symbol('p'), 'sig')
         table.midrule()
