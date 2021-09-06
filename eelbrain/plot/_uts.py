@@ -703,7 +703,10 @@ class _plt_uts_clusters:
             self.update()
 
     def set_color(self, color, update=True):
-        self.style = Style._coerce(color)
+        if isinstance(color, dict):
+            self.style = to_styles_dict(color)
+        else:
+            self.style = Style._coerce(color)
         if update:
             self.update()
 
@@ -748,14 +751,15 @@ class _plt_uts_clusters:
             tstop = cluster['tstop']
             effect = cluster.get('effect')
             y = self.y[effect] if isinstance(self.y, dict) else self.y
+            style = self.style[effect] if isinstance(self.style, dict) else self.style
             if y is None:
                 kwargs = {'zorder': -10, **self.kwargs}
-                if self.style:
-                    kwargs = {**self.style.patch_args, **kwargs}
+                if style:
+                    kwargs = {**style.patch_args, **kwargs}
                 h = self.ax.axvspan(tstart, tstop, fill=True, alpha=alpha, **kwargs)
             else:
-                if self.style:
-                    kwargs = {**self.style.patch_args, **self.kwargs}
+                if style:
+                    kwargs = {**style.patch_args, **self.kwargs}
                 else:
                     kwargs = self.kwargs
                 h = matplotlib.patches.Rectangle((tstart, y - dy / 2.), tstop - tstart, dy, linewidth=0, **kwargs)
