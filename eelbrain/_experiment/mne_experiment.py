@@ -6853,7 +6853,10 @@ class MneExperiment(FileTree):
                     ica = self.load_ica()
                     table.cells(ica.n_components_, len(ica.exclude))
                 except FileMissing:
-                    table.cells("No ICA-file", '')
+                    if all(source_pipe.mtime(subject, self.get('recording', session=session), False) for session in pipe.session):
+                        table.cells("No ICA-file", '')
+                    else:
+                        table.cells("No data", '')
             print()
             print(table)
 
