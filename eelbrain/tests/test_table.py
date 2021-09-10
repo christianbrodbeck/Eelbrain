@@ -53,6 +53,10 @@ def test_difference():
     dds = table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm', ds=ds)
     assert repr(dds) == "<Dataset (20 cases) 'rm':F, 'fltvar':V, 'rmf':F>"
 
+    # sub
+    dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm', sub="B == 'b1'", ds=ds)
+    assert repr(dds) == "<Dataset (20 cases) 'rm':F, 'fltvar':V, 'B':F, 'rmf':F>"
+
     # create bigger dataset
     ds2 = ds.copy()
     ds['C', :] = 'c1'

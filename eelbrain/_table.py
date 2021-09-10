@@ -78,12 +78,10 @@ def difference(
         ... 'subject', ds=diff)
 
     """
-    sub = assub(sub, ds)
-    x = ascategorial(x, sub, ds)
-    out = Dataset()
     ct = Celltable(y, x, match, sub, ds=ds)
     if not ct.all_within:
         raise ValueError("Design is not fully balanced")
+    out = Dataset()
     groups = ct.groups[c1]
     if isinstance(groups, Interaction):
         for x in groups.base:
