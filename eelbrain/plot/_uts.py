@@ -20,15 +20,15 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
 
     Parameters
     ----------
-    y : 1d-NDVar
-        Dependent variable (one-dimensional NDVar).
-    x : categorial
+    y
+        One or several dependent variable(s) (one-dimensional NDVar).
+    x
         Model: specification of conditions which should be plotted separately.
-    xax : categorial
+    xax
         Make separate axes for each category in this categorial model.
-    match : categorial
+    match
         Identifier for repeated measures data.
-    sub : index array
+    sub
         Only use a subset of the data provided.
     ds
         If a Dataset is specified, all data-objects can be specified as
@@ -144,7 +144,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     """
     def __init__(
             self,
-            y: NDVarArg,
+            y: Union[NDVarArg, Sequence[NDVarArg]],
             x: CategorialArg = None,
             xax: CategorialArg = None,
             match: CategorialArg = None,
@@ -191,7 +191,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             legend_handles.update(p.legend_handles)
             ymin = p.vmin if ymin is None else min(ymin, p.vmin)
             ymax = p.vmax if ymax is None else max(ymax, p.vmax)
-        self._set_axtitle(axtitle, names=[ax_data.title for ax_data in data.plot_data])
+        self._set_axtitle(axtitle, data)
 
         # axes limits
         if top is not None:

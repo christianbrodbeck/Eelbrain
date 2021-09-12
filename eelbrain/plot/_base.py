@@ -1221,16 +1221,22 @@ class PlotData:
     @classmethod
     def from_stats(
             cls,
-            y: NDVarArg,
-            x: CategorialArg,
-            xax: CategorialArg,
-            match: CategorialArg,
-            sub: IndexArg,
-            ds: Dataset,
-            dims: Tuple[Union[str, None]],
-            colors: dict,
-            mask: Union[NDVar, Dict[CellArg, NDVar]],
+            y: Union[NDVarArg, Sequence[NDVarArg]],
+            x: CategorialArg = None,
+            xax: CategorialArg = None,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            dims: Tuple[Union[str, None]] = None,
+            colors: dict = None,
+            mask: Union[NDVar, Dict[CellArg, NDVar]] = None,
     ):
+        if isinstance(y, (tuple, list)):
+            if xax is not None:
+                raise TypeError(f"{y=}, {xax=}: xax cannot be specified with multiple y")
+            axes_data = [cls.from_stats(yi, x, xax, match, sub, ds, dims, colors, mask) for yi in y]
+            axes = list(chain.from_iterable(ax.plot_data for ax in axes_data))
+            return replace(axes_data[0], plot_data=axes, plot_used=None, plot_names=None)
         x, x_dim = x_arg(x)
         xax, xax_dim = x_arg(xax)
         if x_dim or xax_dim:
@@ -1275,7 +1281,7 @@ class PlotData:
         elif isinstance(mask, dict):
             masks = defaultdict(lambda: None, **mask)
         else:
-            raise TypeError(f"mask={mask!r}")
+            raise TypeError(f"{mask=}")
         # assemble layers
         axes = []
         for ax_cell in ax_cells:
@@ -1643,7 +1649,7 @@ class EelFigure(MatplotlibFigure):
         elif axtitle is True or isinstance(axtitle, str):
             if names is None:
                 if data is None:
-                    raise RuntimeError(f"data=None and names=None with axtitle={axtitle!r}")
+                    raise RuntimeError(f"data=None and names=None with {axtitle=}")
                 names = data.plot_names
 
             if axtitle is True:
