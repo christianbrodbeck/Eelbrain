@@ -2233,12 +2233,12 @@ class MneExperiment(FileTree):
 
         if isinstance(epoch, ContinuousEpoch):
             # find splitting points
-            diff = ds['T'].diff(to_begin=epoch.split+1)
-            onsets = np.flatnonzero(diff >= epoch.split)
+            split_threshold = epoch.split + (epoch.pad_end + epoch.pad_start)
+            diff = ds['T'].diff(to_begin=-split_threshold-1)
+            onsets = np.flatnonzero(diff >= split_threshold)
             # make sure we are not messing up user events
-            illegal = ', '.join(k for k in ('T_relative', 'events', 'tmax') if k in ds)
-            if illegal:
-                raise RuntimeError(f"Events contain variables with reserved names: {illegal}")
+            if illegal := {'T_relative', 'events', 'tmax'}.intersection(ds):
+                raise RuntimeError(f"Events contain variables with reserved names: {', '.join(illegal)}")
             # split events
             events = [ds[i1:i2] for i1, i2 in intervals(chain(onsets, [None]))]
             # update event times
