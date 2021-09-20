@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """PySurfer Brain subclass to embed in Eelbrain"""
 from distutils.version import LooseVersion
-from functools import partial
+from functools import cached_property, partial
 import os
 import sys
 from tempfile import mkdtemp
@@ -17,7 +17,7 @@ import numpy as np
 from .._data_obj import NDVar, SourceSpace, asndvar
 from .._exceptions import KeysMissing
 from .._text import ms
-from .._utils import IS_OSX, LazyProperty
+from .._utils import IS_OSX
 from ..fmtxt import Image
 from ..mne_fixes import reset_logger
 from ._base import CONFIG, TimeSlicer, AxisScale, do_autorun, find_fig_cmaps, find_fig_vlims, fix_vlim_for_cmap, use_inline_backend
@@ -739,11 +739,11 @@ class Brain(TimeSlicer, surfer.Brain):
             func = partial(self._select_nearest_source, hemi=brain.hemi, color=color)
             brain._f.on_mouse_pick(func, button="Right")
             
-    @LazyProperty
+    @cached_property
     def _tris_lh(self):
         return self.__source_space._read_surf('lh')[1]
 
-    @LazyProperty
+    @cached_property
     def _tris_rh(self):
         return self.__source_space._read_surf('rh')[1]
 

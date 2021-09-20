@@ -79,7 +79,7 @@ from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass, replace
 from enum import Enum, auto
-from functools import reduce
+from functools import cached_property, reduce
 from itertools import chain, cycle, repeat
 from logging import getLogger
 import math
@@ -106,7 +106,7 @@ from .._config import CONFIG
 from .._data_obj import Dimension, Dataset, Factor, Interaction, NDVar, Var, Case, UTS, NDVarArg, CategorialArg, IndexArg, CellArg, NDVarTypes, ascategorial, asndvar, assub, isnumeric, isdataobject, combine_cells, cellname
 from .._utils.notebooks import use_inline_backend
 from .._stats import testnd
-from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
+from .._utils import IS_WINDOWS, intervals, ui
 from .._ndvar import erode, resample
 from .._text import enumeration, ms
 from ..fmtxt import FMTextArg, Image, asfmtext, asfmtext_or_none
@@ -1349,13 +1349,13 @@ class PlotData:
             return units.pop()
         return None
 
-    @LazyProperty
+    @cached_property
     def data(self):
         "For backwards compatibility with nested list of NDVar"
         data = self.for_plot(PlotType.LEGACY)
         return [[l.y for l in layers] for layers in data.plot_data]
 
-    @LazyProperty
+    @cached_property
     def time_dim(self):
         "UTS dimension to expose for time slicer"
         time_dims = [l.y.get_dim('time') for ax in self.plot_data for l in ax.layers if l.y.has_dim('time')]

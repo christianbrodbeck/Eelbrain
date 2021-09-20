@@ -1,6 +1,5 @@
-from collections.abc import Iterator
 from dataclasses import dataclass, fields
-from functools import reduce
+from functools import cached_property, reduce
 from itertools import product
 from operator import mul
 from typing import List, Sequence, Union
@@ -11,7 +10,7 @@ from scipy.linalg import norm
 
 from .. import _info
 from .._data_obj import CategorialArg, NDVarArg, Dataset, NDVar, Case, UTS, dataobj_repr, ascategorial, asndvar
-from .._utils import LazyProperty, PickleableDataClass
+from .._utils import PickleableDataClass
 from .._utils.numpy_utils import newaxis
 
 
@@ -42,7 +41,7 @@ class Split(PickleableDataClass, EQMixIn):
     test: np.ndarray = None
     i_test: int = 0  # Index (to group splits with the same test segmet)
 
-    @LazyProperty
+    @cached_property
     def train_and_validate(self):
         return np.vstack([self.train, self.validate])
 
@@ -432,7 +431,7 @@ class DeconvolutionData:
         self.basis = basis
         self.basis_window = basis_window
 
-    @LazyProperty
+    @cached_property
     def x_pads(self):
         return np.zeros(len(self.x))
 

@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from collections import defaultdict
 import difflib
-from functools import reduce
+from functools import cached_property, reduce
 from glob import glob
 from itertools import chain, product
 import operator
@@ -17,7 +17,7 @@ import numpy as np
 from .. import fmtxt
 from .._config import CONFIG
 from .._text import enumeration, n_of, plural
-from .._utils import as_sequence, LazyProperty, ask
+from .._utils import as_sequence, ask
 from .._utils.com import Notifier, NotNotifier
 from .._utils.notebooks import tqdm
 from .definitions import check_names, compound
@@ -845,7 +845,7 @@ class TreeModel:
         self._fields.store_state()
         self._field_values.store_state()
 
-    @LazyProperty
+    @cached_property
     def _temporary_state(self):
         return _TempStateController(self)
 

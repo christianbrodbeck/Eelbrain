@@ -16,7 +16,7 @@ from .._data_obj import (
     combine,
     cellname, dataobj_repr, nice_label,
 )
-from .._utils import LazyProperty
+from functools import cached_property
 from .permutation import resample
 from . import stats
 
@@ -639,7 +639,7 @@ class TTestOneSample(TTest):
         cmp = '=><'[self.tail]
         return f"<{self.__class__.__name__}: {self._y_name} {cmp} {self.popmean}; {self._asfmtext(difference=True)}>"
 
-    @LazyProperty
+    @cached_property
     def full(self):
         return fmtxt.FMText([fmtxt.eq('M', self.mean), ', ', fmtxt.eq('SD', self._y.std()), ', ', self._asfmtext()])
 
@@ -730,7 +730,7 @@ class TTestIndependent(TTest):
             desc = f"{self._y} ~ {self._x}, {self.c1_name} {cmp} {self.c0_name}"
         return f"<{self.__class__.__name__}: {desc}; {self._asfmtext(difference=True)}>"
 
-    @LazyProperty
+    @cached_property
     def full(self):
         return fmtxt.FMText([
             self.c1_name, ': ', fmtxt.eq('M', self._y1.mean()), ', ', fmtxt.eq('SD', self._y1.std()), '; ',
@@ -940,7 +940,7 @@ class TTestRelated(TTest):
             desc = f"{self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
         return f"<{self.__class__.__name__}: {desc}; {self._asfmtext(difference=True)}>"
 
-    @LazyProperty
+    @cached_property
     def full(self):
         return fmtxt.FMText([
             self.c1_name, ': ', fmtxt.eq('M', self.c1_mean), '; ',

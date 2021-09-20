@@ -20,7 +20,7 @@ x2 = ds['x2']
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
-from functools import reduce
+from functools import cached_property, reduce
 import inspect
 from itertools import chain, product, repeat
 from math import ceil
@@ -38,7 +38,7 @@ from .._config import CONFIG, mpc
 from .._data_obj import Case, Dataset, Dimension, SourceSpaceBase, NDVar, CategorialArg, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
 from .._ndvar import _concatenate_values, convolve_jit, parallel_convolve, set_connectivity, set_parc
-from .._utils import LazyProperty, PickleableDataClass, user_activity
+from .._utils import PickleableDataClass, user_activity
 from .._utils.notebooks import tqdm
 from ._boosting_opt import l1, l2, generate_options, update_error
 from .shared import PredictorData, DeconvolutionData, Split, Splits, merge_segments
@@ -230,7 +230,7 @@ class BoostingResult(PickleableDataClass):
                 items.append(f'{name}={value}')
         return f"<{', '.join(items)}>"
 
-    @LazyProperty
+    @cached_property
     def h(self):
         if not self.basis:
             return self._h
@@ -239,7 +239,7 @@ class BoostingResult(PickleableDataClass):
         else:
             return self._h.smooth('time', self.basis, self.basis_window, 'full')
 
-    @LazyProperty
+    @cached_property
     def h_scaled(self):
         if self.y_scale is None:
             return self.h
@@ -255,18 +255,18 @@ class BoostingResult(PickleableDataClass):
                 out.append(h)
             return tuple(out)
 
-    @LazyProperty
+    @cached_property
     def h_source(self):
         return self._h
 
-    @LazyProperty
+    @cached_property
     def h_time(self):
         if isinstance(self.h, NDVar):
             return self.h.time
         else:
             return self.h[0].time
 
-    @LazyProperty
+    @cached_property
     def _variability(self):
         # variability in the data
         if self.y_scale is None:
@@ -388,7 +388,7 @@ class BoostingResult(PickleableDataClass):
             xs = [f'x_{i}' if x is None else x for i, x in enumerate(self.x)]
         return Dataset.from_caselist(['i_test', 'r', 'det', *xs], rows)
 
-    @LazyProperty
+    @cached_property
     def proportion_explained(self):
         return 1 - (self.residual / self._variability)
 

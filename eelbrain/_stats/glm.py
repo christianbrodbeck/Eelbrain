@@ -14,7 +14,7 @@ from scipy.linalg import lstsq
 import scipy.stats
 
 from .. import fmtxt
-from .._utils import LazyProperty
+from functools import cached_property
 from .._data_obj import (
     ModelArg, IndexArg, VarArg,
     Dataset, Model, asmodel, assub, asvar, assert_has_no_empty_cells, find_factors,
@@ -249,15 +249,15 @@ class LM:
 
         return table
 
-    @LazyProperty
+    @cached_property
     def F(self):
         return self.MS_model / self.MS_res
 
-    @LazyProperty
+    @cached_property
     def p(self):
         return scipy.stats.distributions.f.sf(self.F, self.df_model, self.df_res)
 
-    @LazyProperty
+    @cached_property
     def regression_table(self):
         """
         Not fully implemented!
@@ -293,7 +293,7 @@ class LM:
                 table.empty_row()
         return table
 
-    @LazyProperty
+    @cached_property
     def residuals(self):
         return self.y.x - np.dot(self._p.x, self.beta)
 

@@ -17,7 +17,7 @@ from matplotlib.colors import LinearSegmentedColormap, to_rgb, to_rgba
 from .._colorspaces import LocatedListedColormap, lch_to_rgb, rgb_to_lch, oneway_colors, twoway_colors, symmetric_cmaps
 from .._data_obj import Factor, Interaction, CellArg
 from .._exceptions import KeysMissing
-from .._utils import LazyProperty
+from functools import cached_property
 
 
 # masked keys that act as modifier rather than replacement
@@ -42,15 +42,15 @@ class Style:
     zorder: float = 0  # z-order shift (relative to plot element default)
     masked: Union[Any, Dict[str, Any]] = None  # Any should be Style, but autodoc does not support foward reference under decorator yet https://github.com/agronholm/sphinx-autodoc-typehints/issues/76
 
-    @LazyProperty
+    @cached_property
     def line_args(self):
         return {'color': self.color, 'linestyle': self.linestyle, 'linewidth': self.linewidth, 'marker': self.marker, 'markerfacecolor': self.color, 'zorder': 2 + self.zorder}
 
-    @LazyProperty
+    @cached_property
     def patch_args(self):
         return {'facecolor': self.color, 'hatch': self.hatch, 'zorder': 1 + self.zorder}
 
-    @LazyProperty
+    @cached_property
     def masked_style(self):  # -> 'Style'
         if self.masked is None:
             return replace(self, color=(0.7, 0.7, 0.7, 0.4))

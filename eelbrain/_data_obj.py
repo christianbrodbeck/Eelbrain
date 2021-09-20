@@ -99,7 +99,7 @@ from __future__ import annotations
 
 from copy import copy, deepcopy
 import fnmatch
-from functools import partial
+from functools import cached_property, partial
 from itertools import chain, combinations, product, repeat, zip_longest
 from keyword import iskeyword
 from math import ceil, floor, log
@@ -135,7 +135,7 @@ from ._exceptions import DimensionMismatchError, EvalError, IncompleteModel
 from ._data_opt import gaussian_smoother
 from ._text import enumeration
 from ._types import PathArg
-from ._utils import mne_utils, intervals, ui, LazyProperty, n_decimals, natsorted
+from ._utils import mne_utils, intervals, ui, n_decimals, natsorted
 from ._utils.numpy_utils import (
     INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
     aslice, apply_numpy_index, deep_array, digitize_index, digitize_slice_endpoint,
@@ -7067,11 +7067,11 @@ class Interaction(_Effect):
         else:
             return "Interaction({n})".format(n=', '.join(names))
 
-    @LazyProperty
+    @cached_property
     def _value_set(self):
         return set(self)
 
-    @LazyProperty
+    @cached_property
     def cells(self):
         return tuple(cell for cell in self._all_cells if cell in self._value_set)
 
@@ -7079,11 +7079,11 @@ class Interaction(_Effect):
         all_cells = product(*(f._sorted_cells() for f in self._factors))
         return [cell for cell in all_cells if cell in self._value_set]
 
-    @LazyProperty
+    @cached_property
     def _all_cells(self):
         return [*product(*(f.cells for f in self._factors))]
 
-    @LazyProperty
+    @cached_property
     def _empty_cells(self):
         if len(self._all_cells) != len(self.cells):
             return [cell for cell in self._all_cells if cell not in self._value_set]
@@ -7159,12 +7159,12 @@ class Interaction(_Effect):
         """All values as a list of tuples."""
         return [case for case in self]
 
-    @LazyProperty
+    @cached_property
     def as_dummy(self):
         codelist = [f.as_dummy for f in self.base]
         return reduce(_effect_interaction, codelist)
 
-    @LazyProperty
+    @cached_property
     def as_effects(self):  # Effect coding
         codelist = [f.as_effects for f in self.base]
         return reduce(_effect_interaction, codelist)
@@ -7490,7 +7490,7 @@ class Model:
         return self.name
 
     # coding ---
-    @LazyProperty
+    @cached_property
     def _effect_to_beta(self):
         """An array indicating for each effect which beta weights it occupies
 
@@ -9102,15 +9102,15 @@ class Sensor(Dimension):
         else:
             return proj
 
-    @LazyProperty
+    @cached_property
     def right(self):
         return NDVar(self.x, self)
 
-    @LazyProperty
+    @cached_property
     def anterior(self):
         return NDVar(self.y, self)
 
-    @LazyProperty
+    @cached_property
     def superior(self):
         return NDVar(self.z, self)
 
@@ -9165,7 +9165,7 @@ class Sensor(Dimension):
                 return locs2d[visible]
         return locs2d
 
-    @LazyProperty
+    @cached_property
     def _sphere_fit(self):
         """Fit the 3d sensor locations to a sphere
 
@@ -9683,7 +9683,7 @@ class SourceSpaceBase(Dimension):
             vertices, _ = label_src_vertno_sel(label, source_spaces)
         return cls(vertices, subject, src, subjects_dir, parc, **kwargs)
 
-    @LazyProperty
+    @cached_property
     def subjects_dir(self):
         try:
             return mne.utils.get_subjects_dir(self._subjects_dir, True)
@@ -9894,13 +9894,13 @@ class SourceSpaceBase(Dimension):
         info = {'seeds': seeds, 'extent': extent}
         return NDVar(x, dims, name, info)
 
-    @LazyProperty
+    @cached_property
     def coordinates(self):
         sss = self.get_source_space()
         coords = [ss['rr'][v] for ss, v in zip(sss, self.vertices)]
         return np.vstack(coords)
 
-    @LazyProperty
+    @cached_property
     def normals(self):
         sss = self.get_source_space()
         normals = [ss['nn'][v] for ss, v in zip(sss, self.vertices)]
@@ -10086,7 +10086,7 @@ class SourceSpace(SourceSpaceBase):
         self.lh_n = len(self.lh_vertices)
         self.rh_n = len(self.rh_vertices)
 
-    @LazyProperty
+    @cached_property
     def hemi(self):
         return Factor(['lh', 'rh'], repeat=[self.lh_n, self.rh_n])
 
@@ -10450,15 +10450,15 @@ class VolumeSourceSpace(SourceSpaceBase):
         if len(self.vertices) != 1:
             raise ValueError("A VolumeSourceSpace needs exactly one vertices array")
 
-    @LazyProperty
+    @cached_property
     def hemi(self):
         return Factor(np.sign(self.coordinates[:, 0]), labels={-1: 'lh', 0: 'midline', 1: 'rh'})
 
-    @LazyProperty
+    @cached_property
     def lh_n(self):
         return np.sum(self.hemi == 'lh')
 
-    @LazyProperty
+    @cached_property
     def rh_n(self):
         return np.sum(self.hemi == 'rh')
 
@@ -10561,7 +10561,7 @@ class UTS(Dimension):
         self.tstop = self.tmin + self.tstep * self.nsamples
         self._n_decimals = max(n_decimals(self.tmin), n_decimals(self.tstep))
 
-    @LazyProperty
+    @cached_property
     def times(self):
         return self.tmin + np.arange(self.nsamples) * self.tstep
 

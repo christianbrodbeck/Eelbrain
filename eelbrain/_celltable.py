@@ -11,7 +11,7 @@ from ._data_obj import (
     cellname, dataobj_repr,
 )
 from ._stats.stats import SEM, DispersionSpec, variability
-from ._utils import LazyProperty
+from functools import cached_property
 from ._utils.numpy_utils import FULL_SLICE
 
 
@@ -360,7 +360,7 @@ class Celltable:
     def _get_func(self, cell, func):
         return self.data[cell].aggregate(func=func).x
 
-    @LazyProperty
+    @cached_property
     def _pooled_sem(self):
         return SEM(self.y.x, self.x, self.match)
 

@@ -208,25 +208,6 @@ def intervals(seq):
         last = item
 
 
-class LazyProperty:
-    """Decorator for attribute with lazy evaluation
-
-    Notes
-    -----
-    Based on: http://blog.pythonisito.com/2008/08/lazy-descriptors.html
-    Similar concept: https://github.com/jackmaney/lazy-property
-    """
-    def __init__(self, func):
-        self._func = func
-        functools.update_wrapper(self, func)
-
-    def __get__(self, instance, owner=None):
-        if instance is None:
-            return self
-        result = instance.__dict__[self.__name__] = self._func(instance)
-        return result
-
-
 @dataclass
 class PickleableDataClass:
 

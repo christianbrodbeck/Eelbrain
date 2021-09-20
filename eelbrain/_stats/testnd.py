@@ -21,7 +21,7 @@ n_samples : None | int
     number of permutations that constitute the complete set.
 '''
 from datetime import datetime, timedelta
-from functools import reduce, partial
+from functools import cached_property, reduce, partial
 from itertools import chain, repeat
 from math import ceil
 from multiprocessing.sharedctypes import RawArray
@@ -48,7 +48,7 @@ from .._data_obj import (
     ascategorial, asmodel, asndvar, asvar, assub,
     cellname, combine, dataobj_repr, longname)
 from .._exceptions import OldVersionError, WrongDimension, ZeroVariance
-from .._utils import LazyProperty, user_activity, restore_main_spec
+from .._utils import user_activity, restore_main_spec
 from .._utils.numpy_utils import FULL_AXIS_SLICE
 from .._utils.notebooks import trange
 from . import opt, stats, vector
@@ -264,7 +264,7 @@ class NDTest:
         self._assert_has_cdist()
         return self._cdist.cluster(cluster_id)
 
-    @LazyProperty
+    @cached_property
     def clusters(self):
         if self._cdist is None:
             return None
@@ -3666,14 +3666,14 @@ class NDPermutationDistribution:
             mask = probability_map > pmin
         return param_map.mask(mask, name)
 
-    @LazyProperty
+    @cached_property
     def probability_map(self):
         if self.samples:
             return self.compute_probability_map()
         else:
             return None
 
-    @LazyProperty
+    @cached_property
     def _default_plot_obj(self):
         if self.samples:
             return [[self.parameter_map, self.probability_map]]
