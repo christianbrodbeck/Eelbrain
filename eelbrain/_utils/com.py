@@ -5,6 +5,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import keyring
 from keyring.errors import KeyringError
+from pathlib import Path
 import smtplib
 import socket
 import sys
@@ -87,10 +88,14 @@ class Notifier:
     """
     def __init__(self, to, name='job', crash_info_func=None, debug=True):
         # get the password
-        try:
-            password = keyring.get_password(NOOB_DOMAIN, NOOB_ADDRESS)
-        except KeyringError as error:
-            raise KeychainError(f"""{error}
+        path = Path.home() / '.eelbrain_notifier_key'
+        if path.exists():
+            password = path.read_text().strip()
+        else:
+            try:
+                password = keyring.get_password(NOOB_DOMAIN, NOOB_ADDRESS)
+            except KeyringError as error:
+                raise KeychainError(f"""{error}
 
 Notifier password could not be retrieved from Keychain. Try the following:
 
