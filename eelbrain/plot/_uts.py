@@ -807,8 +807,6 @@ class _plt_uts_stat:
                 dev_data = layer.get_dispersion(error, pool_error)
             lower = y_main - dev_data
             upper = y_main + dev_data
-            r, g, b, a = to_rgba(layer.style.color)
-            a *= error_alpha
-            self.error = ax.fill_between(x, lower, upper, color=(r, g, b, a), linewidth=0, zorder=1.99, clip_on=clip)
+            self.error = ax.fill_between(x, lower, upper, linewidth=0, clip_on=clip, **layer.style.fill_args(error_alpha))
         else:
             self.error = None

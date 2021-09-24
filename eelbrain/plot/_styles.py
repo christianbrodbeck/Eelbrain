@@ -46,6 +46,11 @@ class Style:
     def line_args(self):
         return {'color': self.color, 'linestyle': self.linestyle, 'linewidth': self.linewidth, 'marker': self.marker, 'markerfacecolor': self.color, 'zorder': 2 + self.zorder}
 
+    def fill_args(self, alpha: float):
+        r, g, b, a = to_rgba(self.color)
+        a *= alpha
+        return {'color': (r, g, b, a), 'zorder': 1.5 + self.zorder}
+
     @cached_property
     def patch_args(self):
         return {'facecolor': self.color, 'hatch': self.hatch, 'zorder': 1 + self.zorder}
