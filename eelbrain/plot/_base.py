@@ -2980,8 +2980,13 @@ class LegendMixin:
             initial_loc = False
         self.__handles = handles
         self.legend = None
-        self.__labels = copy(labels)
-        self.plot_legend(initial_loc, labels)
+        self.__labels = None
+        self.__set_labels(labels)
+        self.plot_legend(initial_loc)
+
+    def __set_labels(self, labels: Dict[CellArg, str] = None):
+        if labels is not None:
+            self.__labels = {key: asfmtext(label) for key, label in labels.items()}
 
     def _fill_toolbar(self, tb):
         from .._wxgui import wx
@@ -2998,7 +3003,7 @@ class LegendMixin:
             self,
             loc: LegendArg = 'fig',
             labels=None,
-            *args, **kwargs):
+            **kwargs):
         """Plot the legend (or remove it from the figure).
 
         Parameters
@@ -3054,7 +3059,7 @@ class LegendMixin:
             self.__ctrl.SetSelection(choice)
 
         if arg is not False:
-            return self.__plot(loc, labels, *args, **kwargs)
+            return self.__plot(loc, labels, **kwargs)
 
     def save_legend(self, *args, **kwargs):
         """Save the legend as image file
@@ -3068,24 +3073,20 @@ class LegendMixin:
         p.save(*args, **kwargs)
         p.close()
 
-    def __plot(self, loc: LegendArg, labels: Dict[CellArg, str] = None, *args, **kwargs):
+    def __plot(self, loc: LegendArg, labels: Dict[CellArg, str] = None, **kwargs):
+        self.__set_labels(labels)
         if loc and self.__handles:
-            if labels is None:
-                labels = self.__labels
-            else:
-                self.__labels = copy(labels)
-
-            if labels is None:
+            if self.__labels is None:
                 cells = list(self.__handles)
                 labels = [cellname(cell) for cell in cells]
-            elif isinstance(labels, dict):
-                cells = list(labels.keys())
-                labels = list(labels.values())
+            elif isinstance(self.__labels, dict):
+                cells = list(self.__labels.keys())
+                labels = list(self.__labels.values())
             else:
-                raise TypeError(f"labels={labels!r}; needs to be dict")
+                raise TypeError(f"{labels=}; needs to be dict")
             handles = [self.__handles[cell] for cell in cells]
             if loc == 'fig':
-                return Legend(handles, labels, *args, **kwargs)
+                return Legend(handles, labels, **kwargs)
             else:
                 # take care of old legend
                 if self.legend is not None and loc == 'draggable':
