@@ -760,8 +760,7 @@ class Frame(SharedToolsMenu, FileFrame):
         event.Enable(False)
 
     def PlotCompFFT(self, i_comp):
-        plot.UTS(self.doc.sources.sub(component=i_comp).fft().mean('case'),
-                 w=8, title="# %i Frequency Spectrum" % i_comp, legend=False)
+        plot.UTSStat(self.doc.sources.sub(component=i_comp).fft(), error=np.std, w=8, title=f"# {i_comp} Spectrum (±1 STD)", legend=False)
 
     def PlotCompSourceArray(self, i_comp):
         x = self.doc.sources.sub(component=i_comp)

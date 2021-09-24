@@ -151,7 +151,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             sub: IndexArg = None,
             ds: Dataset = None,
             main: Callable = np.mean,
-            error: str = 'sem',
+            error: Union[str, Callable] = 'sem',
             pool_error: bool = None,
             legend: LegendArg = None,
             labels: Dict[CellArg, str] = None,
