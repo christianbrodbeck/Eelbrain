@@ -78,7 +78,7 @@ def difference(
         ... 'subject', ds=diff)
 
     """
-    ct = Celltable(y, x, match, sub, ds=ds)
+    ct = Celltable(y, x, match, sub, (c1, c0), ds=ds)
     if not ct.all_within:
         raise ValueError("Design is not fully balanced")
     out = Dataset()
