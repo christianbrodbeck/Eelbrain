@@ -27,7 +27,7 @@ from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot, fmtxt
 from .._colorspaces import UNAMBIGUOUS_COLORS
-from .._data_obj import Dataset, Factor, NDVar, asndvar, Categorial, Scalar
+from .._data_obj import Dataset, Factor, NDVar, Categorial, Scalar, asndvar, combine
 from .._io.fiff import _picks
 from .._types import PathArg
 from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN
@@ -221,6 +221,9 @@ class SharedToolsMenu:  # Frame mixin
         button = wx.Button(tb, label="Noisy Epochs")
         button.Bind(wx.EVT_BUTTON, self.OnFindNoisyEpochs)
         tb.AddControl(button)
+        button = wx.Button(tb, label="PSD")
+        button.Bind(wx.EVT_BUTTON, self.OnPlotPSD)
+        tb.AddControl(button)
 
     def MakeToolsMenu(self, menu):
         app = wx.GetApp()
@@ -401,6 +404,9 @@ class SharedToolsMenu:  # Frame mixin
     def OnPlotGrandAverage(self, event):
         self.PlotEpochButterfly()
 
+    def OnPlotPSD(self, event):
+        self.PlotPSD()
+
     def OnSetButterflyBaseline(self, event):
         self.butterfly_baseline = event.GetId()
 
@@ -472,6 +478,15 @@ class SharedToolsMenu:  # Frame mixin
                 plot.TopoButterfly(data, vmax=vmax, title=title_, axtitle=("Original", "Cleaned"))
         else:
             plot.TopoButterfly([original, clean], title=title, axtitle=("Original", "Cleaned"))
+
+    def PlotPSD(self):
+        ds_original = Dataset({'psd': asndvar(self.doc.epochs).fft().mean('sensor')})
+        ds_original[:, 'data'] = 'Source'
+        ds_clean = Dataset({'psd': asndvar(self.doc.apply(self.doc.epochs)).fft().mean('sensor')})
+        ds_clean[:, 'data'] = 'Cleaned'
+        ds = combine((ds_original, ds_clean))
+        colors = {'Source': 'red', 'Cleaned': 'blue'}
+        plot.UTSStat('psd', 'data', ds=ds, error=np.std, w=8, title="Spectrum (±1 STD)", colors=colors)
 
 
 class Frame(SharedToolsMenu, FileFrame):
