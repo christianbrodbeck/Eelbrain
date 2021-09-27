@@ -141,9 +141,11 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
             ylabels = cell_labels
 
         # colors
+        alt_sort = None
         if colors is None:
             color_iter = repeat('k', ny)
         elif isinstance(colors, dict):
+            alt_sort = colors
             color_iter = (colors[cell] for cell in cells)
         elif len(colors) < ny:
             color_iter = cycle(colors)
@@ -180,5 +182,5 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         if ylabel:
             ax.set_ylabel(ylabel)
         XAxisMixin._init_with_data(self, epochs, xdim, xlim)
-        LegendMixin.__init__(self, legend, dict(zip(cell_labels, handles)), labels)
+        LegendMixin.__init__(self, legend, dict(zip(cell_labels, handles)), labels, alt_sort=alt_sort)
         self._show()

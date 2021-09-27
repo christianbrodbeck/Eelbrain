@@ -2958,6 +2958,7 @@ class LegendMixin:
             loc: LegendArg,
             handles: Dict[CellArg, Any],
             labels: Dict[CellArg, str] = None,
+            alt_sort: Iterable[CellArg] = None,
     ):
         """Legend toolbar menu mixin
 
@@ -2970,7 +2971,13 @@ class LegendMixin:
             {cell: handle} dictionary.
         labels : dict
             Dictionary with labels for cells.
+        alt_sort
+            Alternative legend order (if labels is not specified).
         """
+        # sort legend handles based on colors dict
+        if alt_sort and all(key in alt_sort for key in handles):
+            keys = [key for key in alt_sort if key in handles]
+            handles = {key: handles[key] for key in keys}
         # whether to plot default legend
         if loc is not None:
             initial_loc = loc

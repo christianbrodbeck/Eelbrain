@@ -207,7 +207,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         self._configure_axis_dim('x', data.ct.y.get_dim(xdim), xlabel, xticklabels)
         XAxisMixin._init_with_data(self, ((data.ct.y,),), xdim, xlim)
         YLimMixin.__init__(self, self._plots)
-        LegendMixin.__init__(self, legend, legend_handles, labels)
+        LegendMixin.__init__(self, legend, legend_handles, labels, alt_sort=colors)
         self._update_ui_cluster_button()
         self._show()
 
