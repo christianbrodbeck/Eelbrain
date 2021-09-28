@@ -3545,7 +3545,7 @@ class CategorialAxisMixin:
         else:
             x2 = cell_2
         location = {'x': 'top', 'y': 'right'}[self.__axis]
-        mark_difference(x1, x2, y, dy, mark, color, nudge, location, self.__ax, **text_args)
+        mark_difference(x1, x2, y, mark, dy, color, nudge, location, self.__ax, **text_args)
 
 
 class XAxisMixin:

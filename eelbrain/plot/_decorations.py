@@ -110,10 +110,11 @@ def mark_difference(
         xs, ys = ys, xs
         x_text, y_text = y_text, x_text
 
-    line_args_ = {'color': color, 'clip_on': False}
-    if line_args:
-        line_args_.update(line_args)
-    ax.plot(xs, ys, **line_args_)
+    if x1 != x2:
+        line_args_ = {'color': color, 'clip_on': False}
+        if line_args:
+            line_args_.update(line_args)
+        ax.plot(xs, ys, **line_args_)
     if label:
         rotation = {'top': 0, 'left': 90, 'bottom': 180, 'right': 270}[location]
         args = {'ha': 'center', 'va': 'center', 'rotation': rotation, 'clip_on': False, **text_args}
