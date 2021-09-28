@@ -2800,7 +2800,7 @@ class MneExperiment(FileTree):
         # apply morlet transformation
         freq_params = self.freqs[self.get('freq')]
         freq_range = freq_params['frequencies']
-        ds['stf'] = cwt_morlet(ds[name], freq_range, use_fft=True, n_cycles=freq_params['n_cycles'], zero_mean=False, out='magnitude')
+        ds['stf'] = cwt_morlet(ds[name], freq_range, use_fft=True, n_cycles=freq_params['n_cycles'], output='complex')
 
         if not keep_stc:
             del ds[name]

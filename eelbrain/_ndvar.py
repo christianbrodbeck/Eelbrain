@@ -410,36 +410,46 @@ def cross_correlation(in1, in2, name=None):
     return NDVar(x_corr, (time,), *op_name(in1, '*', in2, merge_info((in1, in2)), name))
 
 
-def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
-               out='magnitude', decim=1):
+def cwt_morlet(
+        y: NDVar,
+        frequencies: Union[Sequence[float], float],
+        use_fft: bool = True,
+        n_cycles: Union[float, Sequence[float]] = 3.0,
+        zero_mean: bool = True,
+        output: Literal['complex', 'power', 'phase', 'magnitude'] = 'magnitude',
+        decim: int = 1,
+) -> NDVar:
     """Time frequency decomposition with Morlet wavelets (mne-python)
 
     Parameters
     ----------
-    y : NDVar with time dimension
-        Signal.
-    freqs : scalar | array
-        Frequency/ies of interest. For a scalar, the output will not contain a
+    y
+        Input signal.
+    frequencies
+        Frequencies of interest. For a scalar, the output will not contain a
         frequency dimension.
-    use_fft : bool
+    use_fft
         Compute convolution with FFT or temporal convolution.
-    n_cycles: float | array of float
+    n_cycles
         Number of cycles. Fixed number or one per frequency.
-    zero_mean : bool
+    zero_mean
         Make sure the wavelets are zero mean.
-    out : 'complex' | 'magnitude'
-        Format of the data in the returned NDVar.
+    output
+        Format of the data in the returned NDVar. Default is the complex wavelet
+        transform.
+    decim
+        Decimate the time axis by this factor.
 
     Returns
     -------
-    tfr : NDVar
+    tfr
         Time frequency decompositions.
     """
-    if out == 'magnitude':
+    if output == 'magnitude':
         magnitude_out = True
-        out = 'power'
-    elif out not in ('complex', 'phase', 'power'):
-        raise ValueError("out=%r" % (out,))
+        output = 'complex'
+    elif output not in ('complex', 'phase', 'power'):
+        raise ValueError(f"{output=}")
     else:
         magnitude_out = False
     dimnames = y.get_dimnames(last='time')
@@ -449,15 +459,14 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
     data_flat = data.reshape((1, shape_outer, data.shape[-1]))
     time_dim = dims[-1]
     sfreq = 1. / time_dim.tstep
-    if np.isscalar(freqs):
-        freqs = [freqs]
+    if np.isscalar(frequencies):
+        frequencies = [frequencies]
         fdim = None
     else:
-        fdim = Scalar("frequency", freqs, 'Hz')
-        freqs = fdim.values
+        fdim = Scalar("frequency", frequencies, 'Hz')
+        frequencies = fdim.values
 
-    x_flat = mne.time_frequency.tfr_array_morlet(
-        data_flat, sfreq, freqs, n_cycles, zero_mean, use_fft, decim, out)
+    x_flat: np.ndarray = mne.time_frequency.tfr_array_morlet(data_flat, sfreq, frequencies, n_cycles, zero_mean, use_fft, decim, output)
 
     out_shape = list(data.shape)
     out_dims = list(dims)
@@ -470,7 +479,7 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
         out_dims[-1] = UTS(time_dim.tmin, time_dim.tstep * decim, n_times)
     x = x_flat.reshape(out_shape)
     if magnitude_out:
-        x **= 0.5
+        x = abs(x)
     info = _info.default_info('A', y.info)
     return NDVar(x, out_dims, y.name, info)
 

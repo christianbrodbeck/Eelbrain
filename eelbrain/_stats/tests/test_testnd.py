@@ -726,7 +726,7 @@ def test_vector():
 def test_cwt():
     "Test tests with wavelet transform"
     ds = datasets.get_uts(True)
-    ds['cwt'] = cwt_morlet(ds['utsnd'], np.arange(10, 20))
+    ds['cwt'] = cwt_morlet(ds['utsnd'], np.arange(10, 20)).abs()
     res = testnd.TTestRelated('cwt', 'A', match='rm', ds=ds, pmin=0.05, samples=10)
     cluster = res.clusters.sub("p == 0")
     assert_array_equal(cluster['frequency_min'], 10)
