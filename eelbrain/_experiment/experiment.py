@@ -555,9 +555,18 @@ class TreeModel:
                 v_lists.append(self.get_field_values(field, exclude_))
 
         if len(v_lists):
+            # setup progress bar
             n = reduce(operator.mul, map(len, v_lists))
+            if CONFIG['tqdm'] and progress_bar:
+                disable = False
+                if progress_bar is True:
+                    progress_bar = ' '.join(iter_fields)
+                elif not isinstance(progress_bar, str):
+                    raise TypeError(f"{progress_bar=}")
+            else:
+                disable = True
+            # iteration
             with self._temporary_state:
-                disable = progress_bar is None or CONFIG['tqdm']
                 for v_list in tqdm(product(*v_lists), progress_bar, n, disable=disable, leave=False):
                     self._restore_state(discard_tip=False)
                     self.set(**dict(zip(iter_fields, v_list)))
