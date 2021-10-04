@@ -1450,6 +1450,17 @@ class SequencePlotter:
                 out.append(str(label))
         return out
 
+    @property
+    def _bins(self):
+        if self._frame_order:
+            return self._frame_dim._array_index(self._frame_order)
+        elif self._frame_dim:
+            return list(range(len(self._frame_dim)))
+        elif self._bin_kind == SPLayer.ITEM:
+            return list(range(self._n_items()))
+        else:
+            return [None]
+
     def plot_table(
             self,
             hemi: Literal['lh', 'rh', 'both'] = None,
@@ -1531,7 +1542,7 @@ class SequencePlotter:
         elif hemi in ('lh', 'rh'):
             hemis = (hemi,)
         else:
-            raise ValueError(f"hemi={hemi!r}")
+            raise ValueError(f"{hemi=}")
         # views
         if isinstance(view, str):
             views = (view,)
@@ -1539,16 +1550,6 @@ class SequencePlotter:
             views = (view,)
         else:
             views = view
-
-        n_views = len(hemis) * len(views)
-        if self._frame_order:
-            bins = self._frame_dim._array_index(self._frame_order)
-        elif self._frame_dim:
-            bins = list(range(len(self._frame_dim)))
-        elif self._bin_kind == SPLayer.ITEM:
-            bins = list(range(self._n_items()))
-        else:
-            bins = [None]
 
         # determine im-table layout
         if orientation:
@@ -1558,7 +1559,7 @@ class SequencePlotter:
                 rows, columns = ('view',), ('bin', 'hemi')
             else:
                 raise ValueError(f"{orientation=}")
-        axis_sequences = {'bin': bins, 'hemi': hemis, 'view': views}
+        axis_sequences = {'bin': self._bins, 'hemi': hemis, 'view': views}
         ns = {key: len(values) for key, values in axis_sequences.items()}
         specified = set(columns).union(rows)
         if specified != set(ns) or len(columns) + len(rows) != 3:
@@ -1579,39 +1580,8 @@ class SequencePlotter:
         figure = ImageTable(n_rows, n_columns, row_labels, column_labels, **kwargs)
         hemi_shift = int(round(figure._layout.dpi * hemi_magnet))
 
-        ims = {}
-        cmap_params = None
-        cmap_data = None
-        for hemi in hemis:
-            # plot brain
-            b = brain(self._source, hemi=hemi, views='lateral', w=figure._res_w, h=figure._res_h, time_label='', **self._brain_args)
-
-            if self._bin_kind == SPLayer.SEQUENCE:
-                for l in self._data:
-                    l.plot(b)
-                    if cmap_params is None and l.kind == SPLayer.SEQUENCE:
-                        cmap_params = b._get_cmap_params()
-                        cmap_data = l.data
-
-                # capture images
-                for i in bins:
-                    if i is not None:
-                        b.set_data_time_index(i)
-                        self._capture(b, views, mode, antialiased, ims, hemi, i, hemi_shift)
-            elif self._bin_kind in (SPLayer.ITEM, SPLayer.UNDEFINED):  # UNDEFINED: has overlays only
-                for i in bins:
-                    for l in self._data:
-                        if l.kind == SPLayer.OVERLAY or l.index == i:
-                            l.plot(b)
-                            if cmap_params is None and l.plot_type == SPPlotType.DATA and l.kind == SPLayer.ITEM:
-                                cmap_params = b._get_cmap_params()
-                                cmap_data = l.data
-                    self._capture(b, views, mode, antialiased, ims, hemi, i, hemi_shift)
-                    b.remove_data()
-                    b.remove_labels()
-            else:
-                raise NotImplementedError(f"{self._bin_kind}")
-            b.close()
+        ims = self._generate_ims(figure._res_w, figure._res_h, views, mode, antialiased, hemi_shift, hemis)
+        cmap_params, cmap_data = ims.pop('cmap')
 
         # reshape im-order
         row_pattern = list(product(*[axis_sequences[key] for key in rows]))
@@ -1625,6 +1595,48 @@ class SequencePlotter:
                 im_array[i_row, i_col] = ims[key]
         figure._add_ims(im_array, cmap_params, cmap_data)
         return figure
+
+    def _generate_ims(
+            self,
+            w: int,
+            h: int,
+            views: Sequence[str],
+            mode: str = 'rgba',
+            antialiased: bool = True,
+            hemi_shift: int = 0,
+            hemis: Sequence[str] = ('lh', 'rh'),
+    ) -> dict:
+        bins = self._bins
+        ims = {}
+        for hemi in hemis:
+            # plot brain
+            b = brain(self._source, hemi=hemi, views='lateral', w=w, h=h, time_label='', **self._brain_args)
+
+            if self._bin_kind == SPLayer.SEQUENCE:
+                for l in self._data:
+                    l.plot(b)
+                    if 'cmap' not in ims and l.kind == SPLayer.SEQUENCE:
+                        ims['cmap'] = b._get_cmap_params(), l.data
+
+                # capture images
+                for i in bins:
+                    if i is not None:
+                        b.set_data_time_index(i)
+                        self._capture(b, views, mode, antialiased, ims, hemi, i, hemi_shift)
+            elif self._bin_kind in (SPLayer.ITEM, SPLayer.UNDEFINED):  # UNDEFINED: has overlays only
+                for i in bins:
+                    for l in self._data:
+                        if l.kind == SPLayer.OVERLAY or l.index == i:
+                            l.plot(b)
+                            if 'cmap' not in ims and l.plot_type == SPPlotType.DATA and l.kind == SPLayer.ITEM:
+                                ims['cmap'] = b._get_cmap_params(), l.data
+                    self._capture(b, views, mode, antialiased, ims, hemi, i, hemi_shift)
+                    b.remove_data()
+                    b.remove_labels()
+            else:
+                raise NotImplementedError(f"{self._bin_kind}")
+            b.close()
+        return ims
 
     def _capture(self, b, views, mode, antialiased, ims, hemi, i, shift):
         for view in views:
