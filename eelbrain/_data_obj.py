@@ -1092,6 +1092,7 @@ def combine(
     -----
     The info dict inherits only entries that are equal (``x is y or
     np.array_equal(x, y)``) for all items.
+    If ``len(items)`` is 1, ``items[0]`` is returned directly.
     """
     if not isinstance(incomplete, str):
         raise TypeError(f"{incomplete=}, need str")
@@ -1103,6 +1104,8 @@ def combine(
         items = list(items)
     if len(items) == 0:
         raise ValueError(f"{items=}: combine() called with empty sequence")
+    elif len(items) == 1:
+        return items[0]
 
     # find type
     first_item = items[0]
