@@ -1,9 +1,11 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from typing import Tuple, Union
+
 import numpy as np
 
-from .. import fmtxt
-from .. import plot
+from .. import fmtxt, plot
 from .._data_obj import cellname
+from .._stats.testnd import TTestIndependent, TTestRelated
 from .._text import ms
 from ..fmtxt import Section
 from ._source import cluster_timecourse
@@ -20,6 +22,32 @@ def sensor_results(res, ds, color):
     else:
         raise NotImplementedError("Result kind %r" % res._kind)
     return report
+
+
+def sensor_time_frequency_results(
+        res: Union[TTestIndependent, TTestRelated],
+        p: float = 0.05,
+        xlim: Tuple[float, float] = None,
+        vmax: float = None,
+) -> fmtxt.FMText:
+    if res.p.min() > p:
+        return fmtxt.asfmtext(res)
+    clusters = res.find_clusters(p, True)
+    table_ = fmtxt.Table('lll')
+    table_.cells('ID', 'Sensors', 'Difference in cluster')
+    for cid, cluster_map, frequency_min, frequency_max, t_start, t_stop in clusters.zip('id', 'cluster', 'frequency_min', 'frequency_max', 'tstart', 'tstop'):
+        table_.cell(cid)
+        chs = cluster_map.sensor.names[cluster_map.any(('frequency', 'time'))]
+        frequency_window = (frequency_min, frequency_max + 0.001)
+        topo = res.difference.mean(frequency=frequency_window, time=(t_start, t_stop))
+        frequency_desc = f'{frequency_min:.1f} - {frequency_max:.1f} Hz'
+        plot_ = plot.Topomap(topo, mark=chs, mcolor='yellow', clip='circle', title=frequency_desc, vmax=vmax, h=2)
+        table_.cell(plot_.image(close=True))
+        diff = res.difference.mean(sensor=chs).mask(res.p.min(sensor=chs) > p, missing=True)
+        ys = [res.c1_mean.mean(sensor=chs), res.c0_mean.mean(sensor=chs), diff]
+        plot_ = plot.Array(ys, ncol=3, xlim=xlim, vmax=vmax, h=2)
+        table_.cell(plot_.image(close=True))
+    return table_
 
 
 def sensor_time_results(res, ds, colors, include=1):
