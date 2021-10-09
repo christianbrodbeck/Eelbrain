@@ -457,6 +457,8 @@ class ContinuousEpoch(EpochBase):
             split: float = 10,
             samplingrate: float = 200,
             vars: dict = None,
+            partitions: int = 1,
+            jitter: float = 0,
     ):
         EpochBase.__init__(self)
         self.session = typed_arg(session, str)
@@ -466,6 +468,13 @@ class ContinuousEpoch(EpochBase):
         self.split = typed_arg(split, float)
         self.samplingrate = typed_arg(samplingrate, float, int)
         self.vars = vars
+        self.partitions = partitions
+        self.jitter = jitter
+        if partitions != 1:
+            assert partitions > 1
+            self.DICT_ATTRS = *self.DICT_ATTRS, 'partitions'
+        if jitter:
+            self.DICT_ATTRS = *self.DICT_ATTRS, 'jitter'
 
 
 def decim_param(samplingrate: int, decim: int, epoch: Optional[Epoch], raw_samplingrate: float):

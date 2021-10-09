@@ -2259,10 +2259,19 @@ class MneExperiment(FileTree):
             # make sure we are not messing up user events
             if illegal := {'T_relative', 'events', 'tmax'}.intersection(ds):
                 raise RuntimeError(f"Events contain variables with reserved names: {', '.join(illegal)}")
+            raw_samplingrate = ds.info['raw'].info['sfreq']
+            if epoch.partitions:
+                assert len(onsets) == 0
+                t_start = ds[0, 'T'] - epoch.pad_start
+                t_stop = ds[-1, 'T'] + epoch.pad_end
+                t_splits = np.linspace(t_start, t_stop, epoch.partitions, endpoint=False)
+                onsets = np.searchsorted(ds['T'].x, t_splits)
+                segment_length = (t_stop - t_start) / epoch.partitions
+            else:
+                segment_length = None
             # split events
             events = [ds[i1:i2] for i1, i2 in intervals(chain(onsets, [None]))]
             # update event times
-            raw_samplingrate = ds.info['raw'].info['sfreq']
             for events_i in events:
                 sample_i = events_i['i_start'] - events_i[0, 'i_start']
                 events_i['T_relative'] = sample_i / raw_samplingrate
@@ -2270,9 +2279,19 @@ class MneExperiment(FileTree):
             ds = ds[onsets]
             ds.info['nested_events'] = 'events'
             ds['events'] = events
-            tmin = -epoch.pad_start
-            ds['tmax'] = Var([e[-1, 'T'] - e[0, 'T'] + epoch.pad_end for e in events])
+            if segment_length is None:
+                ds['tmax'] = Var([e[-1, 'T'] - e[0, 'T'] + epoch.pad_end for e in events])
+            else:
+                ds[:, 'tmax'] = segment_length
             tmax = 'tmax'
+            if epoch.jitter:
+                random = np.random.RandomState(0)
+                steps = round(epoch.jitter * samplingrate)
+                jitter = random.randint(-steps, steps, ds.n_cases) / samplingrate
+                tmin = -epoch.pad_start + jitter
+                ds['tmax'] += jitter
+            else:
+                tmin = -epoch.pad_start
 
         # load sensor space data
         if tmin is None:
