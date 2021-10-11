@@ -100,23 +100,26 @@ def save_wav(ndvar, filename=None, toint=False):
     """
     from scipy.io import wavfile
 
-    data = ndvar.get_data('time')
+    if ndvar.has_dim('channel'):
+        data = ndvar.get_data(('time', 'channel'))
+    else:
+        data = ndvar.get_data('time')
+
     if toint and data.dtype != np.int16:
         above = data >= 2**15
         below = data < -2**15
         if np.any(above) or np.any(below):
             n = np.sum(above) + np.sum(below)
-            print("WARNING: clipping %i samples" % n)
+            print(f"WARNING: clipping {n} samples")
             data[above] = 2**15 - 1
             data[below] = -2**15
 
         data = data.astype(np.int16)
     elif data.dtype.kind != 'i' and (data.max() > 1. or data.min() < -1.):
-        raise ValueError("Floating point data should be in range [-1, 1]. Set "
-                         "toint=True to save as 16 bit integer data.")
+        raise ValueError("Floating point data should be in range [-1, 1]. Set toint=True to save as 16 bit integer data.")
 
     if filename is None:
-        msg = "Save %s..." % ndvar.name
+        msg = f"Save {ndvar.name}..."
         filename = ui.ask_saveas(msg, msg, FILETYPES)
     srate = int(round(1. / ndvar.time.tstep))
     wavfile.write(filename, srate, data)
