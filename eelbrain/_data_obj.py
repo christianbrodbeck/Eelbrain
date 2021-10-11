@@ -5391,14 +5391,21 @@ class NDVar(Named):
     @classmethod
     def zeros(
             cls,
-            dims: Union[Dimension, Sequence[Dimension]],
+            dims: Union[NDVar, Dimension, Sequence[Dimension]],
             name: str = None,
             info: dict = None,
-            dtype: DTypeLike = float,
+            dtype: DTypeLike = None,
     ):
         """A new :class:`NDVar` initialized with 0"""
-        if isinstance(dims, Dimension):
-            dims = (dims,)
+        if isinstance(dims, NDVar):
+            if dtype is None:
+                dtype = dims.x.dtype
+            dims = dims.dims
+        else:
+            if isinstance(dims, Dimension):
+                dims = (dims,)
+            if dtype is None:
+                dtype = float
         shape = [len(dim) for dim in dims]
         return cls(np.zeros(shape, dtype), dims, name, info)
 
