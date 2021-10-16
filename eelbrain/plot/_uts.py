@@ -9,6 +9,7 @@ import numpy as np
 
 from .._colorspaces import oneway_colors, to_rgba
 from .._data_obj import NDVarArg, CategorialArg, CellArg, IndexArg, Dataset, NDVar, cellname, longname
+from .._stats.testnd import NDTest
 from . import _base
 from ._base import AxisData, EelFigure, Layout, LegendArg, LegendMixin, PlotType, PlotData, StatLayer, TimeSlicerEF, XAxisMixin, YLimMixin
 from ._styles import Style, colors_for_oneway, to_styles_dict
@@ -378,7 +379,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     """
     def __init__(
             self,
-            y: Union[NDVarArg, Sequence],
+            y: Union[NDVarArg, Sequence, NDTest],
             xax: CategorialArg = None,
             axtitle: Union[bool, Sequence[str]] = True,
             ds: Dataset = None,

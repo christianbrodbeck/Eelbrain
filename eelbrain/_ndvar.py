@@ -651,7 +651,7 @@ def find_peaks(ndvar):
         NDVar that is ``True`` at local maxima.
     """
     for custom_ax, dim in enumerate(ndvar.dims):
-        if getattr(dim, '_connectivity_type', None) == 'custom':
+        if dim._connectivity_type == 'custom':
             break
     else:
         custom_ax = 0

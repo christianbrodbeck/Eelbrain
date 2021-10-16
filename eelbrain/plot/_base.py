@@ -1958,7 +1958,16 @@ class EelFigure(MatplotlibFigure):
         self.figure.add_artist(artist)
 
     def save(self, *args, **kwargs):
-        "Short-cut for Matplotlib's :meth:`~matplotlib.figure.Figure.savefig()`"
+        """Short-cut for Matplotlib's :meth:`~matplotlib.figure.Figure.savefig()`
+
+        Notes
+        -----
+        Important parameters (for details see :meth:`~matplotlib.figure.Figure.savefig()`):
+
+         - ``transparent=True`` to save the figure with transparent background.
+         - ``bbox_inches='tight'`` to ignore the figure boundaries and instead save
+           an area including all plotted elements.
+        """
         self.figure.savefig(*args, **kwargs)
 
     def add_hline(self, y, axes=None, *args, **kwargs):

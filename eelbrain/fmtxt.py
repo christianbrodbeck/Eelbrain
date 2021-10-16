@@ -397,27 +397,33 @@ def html(text: FMTextLike, env: dict = ENV):
         return str(text)
 
 
-def make_html_doc(body, root=None, resource_dir=None, title=None, meta=None):
+def make_html_doc(
+        body: FMTextLike,
+        root: str = None,
+        resource_dir: str = None,
+        title: FMTextLike = None,
+        meta: dict = None,
+) -> str:
     """Generate HTML document
 
     Parameters
     ----------
-    body : FMText
+    body
         FMTXT object which should be formatted into an HTML document.
-    root : str
+    root
         Path to the directory in which the HTML file is going to be located.
-    resource_dir : None | str
+    resource_dir
         Name for the directory containing resources like images, relative to
         root. If None, images are embedded.
-    title : None | FMText
+    title
         Document title. The default is to try to infer the title from the body
         or use "Untitled".
-    meta : dict
+    meta
         Meta-information for document head.
 
     Returns
     -------
-    html : str
+    html
         HTML document.
     """
     if title is None:

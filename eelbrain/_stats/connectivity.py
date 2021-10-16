@@ -73,11 +73,9 @@ def find_peaks(x, connectivity, out=None):
     if out is None:
         out = np.empty(x.shape, np.bool8)
     elif out.dtype.kind != 'b':
-        raise TypeError("out needs to be array of boolean type, got type %s" %
-                        out.dtype)
+        raise TypeError(f"{out.dtype=}, needs to be array of boolean type")
     elif out.shape != x.shape:
-        raise ValueError("out needs to have same shape as x, got x.shape = %s"
-                         "but out.shape = %s" % (x.shape, out.shape))
+        raise ValueError(f"{out.shape=}, needs to be same as {x.shape=}")
     out.fill(True)
 
     # move through each axis in both directions and discard descending

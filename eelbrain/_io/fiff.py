@@ -125,17 +125,26 @@ def mne_raw(path=None, proj=False, **kwargs):
     return raw
 
 
-def events(raw=None, merge=None, proj=False, name=None, bads=None,
-           stim_channel=None, events=None, annotations=None, **kwargs):
+def events(
+        raw: Union[PathArg, mne.io.BaseRaw] = None,
+        merge: int = None,
+        proj: Union[bool, str] = False,
+        name: str = None,
+        bads: List = None,
+        stim_channel: Union[str, Sequence[str]] = None,
+        events: str = None,
+        annotations: bool = None,
+        **kwargs,
+) -> Dataset:
     """
     Load events from a raw fiff file.
 
     Parameters
     ----------
-    raw : str(path) | None | mne Raw
+    raw
         The raw fiff file from which to extract events (if raw and events are
         both ``None``, a file dialog will be displayed to select a raw file).
-    merge : int
+    merge
         Merge stimulus channel steps occurring in neighboring samples.
         The integer value indicates across how many samples events should
         be merged, and the sign indicates in which direction they should be
@@ -147,28 +156,28 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
         event onsets can be blurred (what should be ``0, 0, 0, 1, 1, 1, ...``,
         can look like ``0, 0, 0, 0.5, 1, 1, ...``; ``merge=-1`` would
         turn the latter into the former).
-    proj : bool | str
+    proj
         Path to the projections file that will be loaded with the raw file.
         ``'{raw}'`` will be expanded to the raw file's path minus extension.
         With ``proj=True``, ``'{raw}_*proj.fif'`` will be used,
         looking for any projection file starting with the raw file's name.
         If multiple files match the pattern, a ValueError will be raised.
-    name : str | None
+    name
         A name for the Dataset. If ``None``, the raw filename will be used.
-    bads : None | list
+    bads
         Specify additional bad channels in the raw data file (these are added
         to the ones that are already defined in the raw file).
-    stim_channel : None | string | list of string
+    stim_channel
         Name of the stim channel or all the stim channels
         affected by the trigger. If None, the config variables
         'MNE_STIM_CHANNEL', 'MNE_STIM_CHANNEL_1', 'MNE_STIM_CHANNEL_2',
         etc. are read. If these are not found, it will default to
         'STI 014'.
-    events : None | str
+    events
         If events are stored in a fiff file separate from the Raw object, the
         path to the events file can be supplied here. The events in the Dataset
         will reflect the event sin the events file rather than the raw file.
-    annotations : bool
+    annotations
         Generate events from annotations instead of the stim channel (by
         default, annotations are used when present).
     **
@@ -177,7 +186,7 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
 
     Returns
     -------
-    events : Dataset
+    events
         A Dataset with the following variables:
          - *i_start*: the index of the event in the raw file.
          - *trigger*: the event value/id.
@@ -189,7 +198,7 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
     if (raw is None and events is None) or isinstance(raw, (str, Path)):
         raw = mne_raw(raw, proj=proj, **kwargs)
 
-    if bads is not None and raw is not None :
+    if bads is not None and raw is not None:
         raw.info['bads'].extend(bads)
 
     if name is None and raw is not None:

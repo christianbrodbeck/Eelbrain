@@ -103,7 +103,7 @@ class Celltable:
 
         if x is None:
             if cat is not None:
-                raise TypeError(f"cat={cat!r}: cat is only a valid argument if x is provided")
+                raise TypeError(f"{cat=}: cat is only a valid argument if x is provided")
             y, n_cases = coercion(y, sub, ds, n_cases, return_n=True)
         else:
             x, n_cases = ascategorial(x, sub, ds, n_cases, return_n=True)
@@ -118,16 +118,11 @@ class Celltable:
                             cells = [c for c in x.cells if c not in cat]
                             cat = tuple(cells.pop(0) if c is None else c for c in cat)
                     else:
-                        raise ValueError(
-                            f"cat={cat!r}: categories can only be specified as "
-                            f"None if all cells in x are used, but there are more "
-                            f"than {len(cat)} cells: {x.cells}")
+                        raise ValueError(f"{cat=}: categories can only be specified as None if all cells in x are used, but there are more than {len(cat)} cells: {x.cells}")
 
                 # make sure all categories are in data
                 if not all(c in x.cells for c in cat):
-                    raise ValueError(
-                        f"cat={cat!r} contains categories that are not in the "
-                        f"data: {', '.join(str(c) for c in cat if c not in x.cells)}")
+                    raise ValueError(f"{cat=} contains categories that are not in the data: {', '.join(str(c) for c in cat if c not in x.cells)}")
 
                 # apply cat
                 sort_idx = x.sort_index(order=cat)

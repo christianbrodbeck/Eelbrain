@@ -1,11 +1,12 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot multidimensional uniform time series."""
-from typing import Union, Sequence
+from typing import Any, Union, Sequence, Tuple
 
 import matplotlib.axes
 import numpy as np
 
-from .._data_obj import Datalist, Dataset
+from .._data_obj import NDVarArg, CategorialArg, IndexArg, Datalist, Dataset, NDVar
+from .._stats.testnd import NDTest
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
 from ._base import (
@@ -462,15 +463,26 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
     _OPEN_PLOTS = []
 
     def __init__(
-            self, y, xax=None, sensors=None, axtitle=True,
+            self,
+            y: Union[NDVarArg, Sequence, NDTest],
+            xax: CategorialArg = None,
+            sensors: Sequence = None,
+            axtitle: Union[bool, Sequence[str]] = True,
             xlabel: Union[bool, str] = True,
             ylabel: Union[bool, str] = True,
             xticklabels: Union[str, int, Sequence[int]] = 'bottom',
             yticklabels: Union[str, int, Sequence[int]] = 'left',
-            color=None,
-            linewidth=None,
-            ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
-            clip=None, **kwargs):
+            color: Any = None,
+            linewidth: float = None,
+            ds: Dataset = None,
+            sub: IndexArg = None,
+            x: str = 'time',
+            vmax: float = None,
+            vmin: float = None,
+            xlim: Union[float, Tuple[float, float]] = None,
+            clip: bool = None,
+            **kwargs,
+    ):
         data = PlotData.from_args(y, (x, None), xax, ds, sub).for_plot(PlotType.LINE)
         xdim, linedim = data.dims
         layout = Layout(data.plot_used, 2, 4, **kwargs)
