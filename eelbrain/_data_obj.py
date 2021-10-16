@@ -2357,8 +2357,10 @@ class Factor(_Effect):
         if isinstance(x, Factor):
             # translate label keys to x codes
             labels = {x._codes[s]: d for s, d in labels.items() if s in x._codes}
-            # fill in missing keys from x
-            labels.update({code: label for code, label in x._labels.items() if code not in labels})
+            if default is None:  # fill in missing labels from x
+                labels.update({code: label for code, label in x._labels.items() if code not in labels})
+            else:  # use default
+                labels.update({code: default for code in x._labels if code not in labels})
             x = x.x
         ordered_cells = list(labels.values())
 

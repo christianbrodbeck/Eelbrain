@@ -722,6 +722,8 @@ def test_factor():
     f = Factor('aabbcc')
     assert_array_equal(Factor(f), f)
     assert_array_equal(Factor(f, labels={'a': 'b'}), Factor('bbbbcc'))
+    f2 = Factor(f, labels={'a': '1'}, default='2')
+    assert_array_equal(f2, Factor('112222'))
 
     # removing a cell
     f = Factor('aabbcc')
