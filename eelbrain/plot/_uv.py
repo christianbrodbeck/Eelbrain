@@ -1097,7 +1097,9 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
                 label = cellname(cell)
                 idx = (cat == cell)
                 size_i = size[idx] if isinstance(size, np.ndarray) else size
-                legend_handles[label] = ax.scatter(x.x[idx], y.x[idx], size_i, color=styles[cell].color, marker=markers, alpha=alpha, label=label)
+                args = dict(styles[cell].scatter_args)
+                args.setdefault('marker', markers)
+                legend_handles[label] = ax.scatter(x.x[idx], y.x[idx], size_i, **args, alpha=alpha, label=label)
 
         LegendMixin.__init__(self, legend, legend_handles, labels)
         ColorBarMixin.__init__(self, data=color_obj, mappable=mappable)

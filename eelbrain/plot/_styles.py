@@ -26,9 +26,33 @@ modifer_keys = {'alpha', 'saturation'}
 
 @dataclass
 class Style:
-    """Control color/pattern by category.
+    """Plotting style for :class:`~matplotlib.lines.Line2D`, :class:`~matplotlib.patches.Patch` and :fun:`matplotlib.pyplot.scatter` plot types.
 
-    For options, see :class:`~matplotlib.lines.Line2D` and :class:`~matplotlib.patches.Patch`.
+    Parameters
+    ----------
+    color
+        Line color or face-color for patches and markers.
+    marker
+        Maker shape (see :mod:`matplotlib.markers`). Use ``line_marker`` to
+        control whether markers are used for lines.
+    hatch
+        For patches (see :meth:`~matplotlib.patches.Patch.set_hatch`).
+    linestyle
+        For lines, see :meth:`matplotlib.lines.Line2D.set_linestyle`).
+    linewidth
+        For lines.
+    zorder
+        Z-order for plot elements, relative to object-specific default (use
+        positive values to bring this category to the front).
+    masked
+        Alternate style for masked elements (e.g., when plotting permutation
+        test results, lines that are not significant).
+    edgecolor
+        For patches and markers.
+    edgewidth
+        Line-width for the edges of patches and markers.
+    linemarker
+        Plot markers in line plots.
 
     Examples
     --------
@@ -41,15 +65,30 @@ class Style:
     linewidth: float = None
     zorder: float = 0  # z-order shift (relative to plot element default)
     masked: Union[Any, Dict[str, Any]] = None  # Any should be Style, but autodoc does not support foward reference under decorator yet https://github.com/agronholm/sphinx-autodoc-typehints/issues/76
+    edgecolor: Any = None
+    edgewidth: float = 0,
+    linemarker: Union[bool, str] = False
 
     @cached_property
     def line_args(self):
-        return {'color': self.color, 'linestyle': self.linestyle, 'linewidth': self.linewidth, 'marker': self.marker, 'markerfacecolor': self.color, 'zorder': 2 + self.zorder}
+        args = {'color': self.color, 'linestyle': self.linestyle, 'linewidth': self.linewidth, 'markerfacecolor': self.color, 'zorder': 2 + self.zorder}
+        if self.linemarker is True:
+            args['marker'] = self.marker
+        elif self.linemarker:
+            args['marker'] = self.linemarker
+        return args
 
     def fill_args(self, alpha: float):
         r, g, b, a = to_rgba(self.color)
         a *= alpha
         return {'color': (r, g, b, a), 'zorder': 1.5 + self.zorder}
+
+    @cached_property
+    def scatter_args(self):
+        args = {'color': self.color, 'edgecolor': self.edgecolor, 'linewidth': self.edgewidth, 'facecolor': self.color, 'zorder': 2 + self.zorder}
+        if self.marker:
+            args['marker'] = self.marker
+        return args
 
     @cached_property
     def patch_args(self):

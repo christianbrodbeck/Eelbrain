@@ -235,11 +235,12 @@ class ColorList(EelFigure):
     size
         Size (width and height) of the color squares (the default is to
         scale them to fit the font size).
-    h : 'auto' | float
-        Height of the figure in inches. If 'auto' (default), the height is
-        chosen to fit all labels.
-    shape : 'box' | 'line'
+    h
+        Height of the figure in inches (default is chosen to fit all labels).
+    shape
         Shape for color samples (default 'box').
+    markersize
+        Size of markers in points.
     ...
         Also accepts :ref:`general-layout-parameters`.
 
@@ -254,8 +255,9 @@ class ColorList(EelFigure):
             cells: Sequence[CellArg] = None,
             labels: Dict[CellArg, str] = None,
             size: float = None,
-            h: Union[str, float] = 'auto',
-            shape: str = 'box',
+            h: float = None,
+            shape: Literal['box', 'line', 'marker'] = 'box',
+            markersize: float = None,
             **kwargs):
         if cells is None:
             cells = colors.keys()
@@ -263,7 +265,7 @@ class ColorList(EelFigure):
             cells = tuple(cells)
         styles = find_cell_styles(cells, colors)
 
-        if h == 'auto':
+        if h is None:
             if size is None:
                 size = matplotlib.rcParams['font.size'] * LEGEND_SIZE * POINT_SIZE
             h = len(cells) * size
@@ -292,9 +294,11 @@ class ColorList(EelFigure):
                 patch = matplotlib.patches.Rectangle((0, bottom), 1, 1, ec='none', **styles[cell].patch_args)
                 ax.add_patch(patch)
             elif shape == 'line':
-                ax.plot([0, 1], [y, y], **styles[cell].line_args)
+                ax.plot([0, 1], [y, y], **styles[cell].line_args, markersize=markersize)
+            elif shape == 'marker':
+                ax.scatter(0.5, y, markersize, **styles[cell].scatter_args)
             else:
-                raise ValueError(f"shape={shape!r}")
+                raise ValueError(f"{shape=}")
             h = ax.text(1.1, y, labels.get(cell, cell), va='center', ha='left', zorder=2)
             self.labels.append(h)
 
