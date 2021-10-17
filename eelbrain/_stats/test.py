@@ -550,12 +550,15 @@ def ttest(y, x=None, against=0, match=None, sub=None, corr='Hochberg',
 class TTest:
     _statistic = 't'
 
-    def __init__(self, difference, t, df, tail):
+    def __init__(self, difference, t, df, tail, std=None):
         self._difference = difference
         self.t = t
         self.df = df
         self.p = stats.ttest_p(self.t, self.df, tail)
         self.tail = tail
+        # effect-size
+        if std is not None:
+            self.d = difference / std
 
     @property
     def stars(self):
@@ -608,6 +611,8 @@ class TTestOneSample(TTest):
         Tailedness of the p value.
     df : int
         Degrees of freedom.
+    d : float
+        Cohen's *d*.
     full : FMText
         Full description of the test result.
     """
@@ -633,7 +638,7 @@ class TTestOneSample(TTest):
         if popmean:
             v = v - popmean
         t = stats.t_1samp(v)[0]
-        TTest.__init__(self, v.mean(), t, n - 1, tail)
+        TTest.__init__(self, v.mean(), t, n - 1, tail, ct.y.std(ddof=1))
 
     def __repr__(self):
         cmp = '=><'[self.tail]
@@ -898,6 +903,8 @@ class TTestRelated(TTest):
         Mean of condition ``c1``.
     c0_mean : float
         Mean of condition ``c0``.
+    d : float
+        Cohen's *d*.
     full : FMText
         Full description of the test result.
 
@@ -929,7 +936,7 @@ class TTestRelated(TTest):
         self.c0_mean = y0.mean()
         self.difference = y1 - y0
         t = stats.t_1samp(self.difference.x[:, None])[0]
-        TTest.__init__(self, self.difference.x.mean(), t, n - 1, tail)
+        TTest.__init__(self, self.difference.x.mean(), t, n - 1, tail, self.difference.std(ddof=1))
         self._match = dataobj_repr(match, True)
 
     def __repr__(self):
