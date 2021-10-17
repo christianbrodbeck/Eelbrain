@@ -1743,11 +1743,13 @@ class Table(FMTextElement):
         -----
         Most style options are not implemented.
         """
-        from docx import Document
+        try:
+            from docx import Document
+        except ImportError:
+            raise ImportError("The python-docx package needs to be installed for this function")
 
         if path is None:
-            path = ui.ask_saveas(
-                "Save Text File", filetypes=[("Word Document (*.docx)", "*.docx")])
+            path = ui.ask_saveas("Save Text File", filetypes=[("Word Document (*.docx)", "*.docx")])
         if not path:
             return
         document = Document()
@@ -1760,10 +1762,13 @@ class Table(FMTextElement):
         for row in self.rows:
             if isinstance(row, str):
                 continue
-            d_row = table.add_row()
+            doc_row = table.add_row()
             i = 0
             for cell in row:
-                d_row.cells[i].text = str(cell)
+                doc_cell = doc_row.cells[i]
+                for j in range(i + 1, i + cell.width):
+                    doc_cell.merge(doc_row.cells[j])
+                doc_cell.text = str(cell)
                 i += cell.width
 
         document.save(path)
