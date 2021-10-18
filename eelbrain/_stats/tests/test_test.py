@@ -1,6 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from numpy.testing import assert_array_equal
 import numpy as np
+import pingouin
 import pytest
 import scipy.stats
 
@@ -95,14 +96,17 @@ def test_ttest():
     a2_in_b1_index = np.logical_and(a2_index, b1_index)
 
     # TTest1Samp
+    standard = pingouin.ttest(ds['fltvar'], 0)
     res = test.TTestOneSample('fltvar', ds=ds)
     t, p = scipy.stats.ttest_1samp(ds['fltvar'], 0)
     assert res.t == pytest.approx(t, 10)
     assert res.p == pytest.approx(p, 10)
+    assert res.d == pytest.approx(standard['cohen-d'][0], 10)
     assert str(res.full) == 'M = 0.40, SD = 1.20, t(79) = 2.96, p = .004'
     res = test.TTestOneSample('fltvar', ds=ds, tail=1)
     assert res.t == pytest.approx(t, 10)
     assert res.p == pytest.approx(p / 2., 10)
+    assert res.d == pytest.approx(standard['cohen-d'][0], 10)
     assert str(res.full) == 'M = 0.40, SD = 1.20, t(79) = 2.96, p = .002'
 
     # TTestIndependent
@@ -116,6 +120,7 @@ def test_ttest():
     res = test.TTestRelated('fltvar', 'A', 'a1', 'a2', 'rm', "B=='b1'", ds)
     a1 = ds[a1_in_b1_index, 'fltvar'].x
     a2 = ds[a2_in_b1_index, 'fltvar'].x
+    standard = pingouin.ttest(a1, a2)
     difference = a1 - a2
     t, p = scipy.stats.ttest_rel(a1, a2)
     assert_array_equal(res.difference.x, difference)
@@ -123,6 +128,7 @@ def test_ttest():
     assert res.tail == 0
     assert res.t == pytest.approx(t)
     assert res.p == pytest.approx(p)
+    assert res.d == pytest.approx(standard['cohen-d'][0], 10)
     print(res)
     print(asfmtext(res))
     assert str(res.full) == 'a1: M = 0.90; a2: M = -0.06; difference: M = 0.96, SD = 1.65, t(19) = 2.53, p = .021'
