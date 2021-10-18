@@ -2055,9 +2055,9 @@ class Var(Named):
             name = self.name
         return Factor(x, name)
 
-    def std(self):
+    def std(self, ddof: float = 0):
         "The standard deviation"
-        return self.x.std()
+        return self.x.std(ddof=ddof)
 
     def sort_index(self, descending=False):
         """Create an index that could be used to sort the Var.
@@ -2093,6 +2093,10 @@ class Var(Named):
     @property
     def values(self):
         return np.unique(self.x)
+
+    def var(self, ddof: float = 0):
+        "The variance"
+        return self.x.var(ddof=ddof)
 
 
 class _Effect:
@@ -5083,7 +5087,12 @@ class NDVar(Named):
                     raise ValueError("mode=%r" % (mode,))
         return NDVar(x, dims, name or self.name, self.info)
 
-    def std(self, axis: AxisArg = None, **regions) -> Union[NDVar, Var, float]:
+    def std(
+            self,
+            axis: AxisArg = None,
+            ddof: float = 0,
+            **regions,
+    ) -> Union[NDVar, Var, float]:
         """Compute the standard deviation over given dimensions
 
         Parameters
@@ -5096,6 +5105,8 @@ class NDVar(Named):
             to compute the standard deviation in specific elements (if the data
             has a case dimension, the standard deviation is computed for each
             case).
+        ddof
+            Means Delta Degrees of Freedom (see :func:`numpy.std`).
         **regions
             Regions over which to aggregate. For example, to get the STD
             between time=0.1 and time=0.2, use ``ndvar.std(time=(0.1, 0.2))``.
@@ -5109,7 +5120,7 @@ class NDVar(Named):
             only the case dimension remains, and a float if the function
             collapses over all data.
         """
-        return self._aggregate_over_dims(axis, regions, np.std)
+        return self._aggregate_over_dims(axis, regions, partial(np.std, ddof=ddof))
 
     def summary(self, *dims, **regions):
         r"""Aggregate specified dimensions.
@@ -5354,7 +5365,12 @@ class NDVar(Named):
             raise ValueError("Invalid value tail=%r; need -1, 0 or 1" % (tail,))
         return NDVar(np.where(idx, self.x, 0), self.dims, name or self.name, self.info)
 
-    def var(self, axis: AxisArg = None, ddof: int = 0, **regions) -> Union[NDVar, Var, float]:
+    def var(
+            self,
+            axis: AxisArg = None,
+            ddof: float = 0,
+            **regions,
+    ) -> Union[NDVar, Var, float]:
         """Compute the variance over given dimensions
 
         Parameters
