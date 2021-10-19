@@ -2,6 +2,7 @@
 """Covariance matrix computation"""
 from dataclasses import dataclass, field
 from pathlib import Path
+import re
 
 import mne
 import numpy
@@ -19,6 +20,13 @@ class RawCovariance:
     ) -> mne.Covariance:
         if self.method == 'ad_hoc':
             return mne.cov.make_ad_hoc_cov(raw.info)
+        elif match := re.match(r'diagonal(?:-(\d+))?', self.method):
+            scale = int(match.group(1))
+            cov = mne.compute_raw_covariance(raw, method='empirical')
+            cov.as_diag()
+            if scale:
+                cov['data'] = cov['data'] / scale
+            return cov
         return mne.compute_raw_covariance(raw, method=self.method)
 
 
