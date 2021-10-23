@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import chain
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence, Type
 
 from .._exceptions import DefinitionError
 from .._text import enumeration, plural
@@ -261,8 +261,10 @@ def typed_arg(arg, type_, secondary_type=None):
         return type_(arg)
 
 
-def tuple_arg(arg, item_type=str):
-    if isinstance(arg, item_type):
+def tuple_arg(arg: Sequence, item_type: Type = str, allow_none: bool = True):
+    if arg is None and allow_none:
+        return None
+    elif isinstance(arg, item_type):
         return arg,
     elif isinstance(arg, list):
         out = tuple(arg)

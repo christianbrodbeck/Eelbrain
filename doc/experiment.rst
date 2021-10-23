@@ -391,6 +391,10 @@ Subjects are identified on initialization by looking for folders in the data dir
 Reading files
 -------------
 
+.. py:attribute:: MneExperiment.stim_channel : str | Sequence of str
+
+By default, events are loaded from all stim channels; use this parameter to restrict events to one or several stim channels.
+
 .. py:attribute:: MneExperiment.merge_triggers : int
 
 Use a non-default ``merge`` parameter for :func:`load.fiff.events`.

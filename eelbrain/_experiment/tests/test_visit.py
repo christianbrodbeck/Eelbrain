@@ -12,6 +12,7 @@ from eelbrain.testing import TempDir, path, requires_mne_sample_data
 class Experiment(MneExperiment):
 
     meg_system = 'neuromag306mag'
+    stim_channel = 'STI 014'
 
     sessions = 'sample'
 

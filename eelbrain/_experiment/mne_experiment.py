@@ -47,7 +47,7 @@ from .._utils import IS_WINDOWS, ask, intervals, subp, keydefaultdict, log_level
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .._utils.notebooks import tqdm
 from .covariance import EpochCovariance, RawCovariance
-from .definitions import FieldCode, find_dependent_epochs, find_epochs_vars, log_dict_change, log_list_change
+from .definitions import FieldCode, find_dependent_epochs, find_epochs_vars, log_dict_change, log_list_change, tuple_arg
 from .epochs import ContinuousEpoch, PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochBase, EpochCollection, assemble_epochs, decim_param
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
@@ -65,7 +65,7 @@ from .variable_def import GroupVar, Variables
 
 
 # current cache state version
-CACHE_STATE_VERSION = 15
+CACHE_STATE_VERSION = 16
 # History:
 #  10:  input_state: share forward-solutions between sessions
 #  11:  add samplingrate to epochs
@@ -73,6 +73,7 @@ CACHE_STATE_VERSION = 15
 #  13:  store cell in evoked files
 #  14:  avoid directories ending in spaces and double spaces in names
 #  15:  merge_triggers attribute, store in input_state
+#  16:  stim_channel attribute, store in input_state
 
 # paths
 LOG_FILE = join('{root}', 'eelbrain {name}.log')
@@ -240,6 +241,8 @@ class MneExperiment(FileTree):
     # Raw preprocessing pipeline
     raw: Dict[str, RawPipe] = {}
 
+    # Load events from a subset of available stim channels
+    stim_channel: Union[str, Sequence[str]] = None
     # merge adjacent events in the stimulus channel
     merge_triggers: int = None
     # add this value to all trigger times (in seconds); global shift, or {subject: shift} dictionary
@@ -297,7 +300,7 @@ class MneExperiment(FileTree):
 
     # Pattern for subject names when searching the data directory.
     subject_re = r'(R|S|A|Y|AD|QP)(\d{3,})$'
-    # MEG-system (legacy variable).
+    # MEG-system (used as ``sysname`` to infer connectivity; for usage search `get_sysname`).
     meg_system = None
 
     # kwargs for regularization of the covariance matrix (see .make_cov())
@@ -753,6 +756,7 @@ class MneExperiment(FileTree):
         raw_missing = []  # [(subject, recording), ...]
         subjects_with_raw_changes = set()  # {subject, ...}
         events = {}  # {(subject, recording): event_dataset}
+        self._stim_channel = tuple_arg(self.stim_channel, allow_none=True)
 
         # saved mtimes
         input_state_file = join(cache_dir, 'input-state.pickle')
@@ -760,10 +764,13 @@ class MneExperiment(FileTree):
             input_state = load.unpickle(input_state_file)
             if input_state['version'] < 10:
                 input_state = None
-            elif input_state['version'] < 15:
-                input_state['merge_triggers'] = None
             elif input_state['version'] > CACHE_STATE_VERSION:
                 raise RuntimeError("You are trying to initialize an experiment with an older version of Eelbrain than that which wrote the cache. If you really need this, delete the eelbrain-cache folder and try again.")
+            else:
+                if input_state['version'] < 15:
+                    input_state['merge_triggers'] = None
+                if input_state['version'] < 16:
+                    input_state['stim_channel'] = None
         else:
             input_state = None
 
@@ -772,11 +779,19 @@ class MneExperiment(FileTree):
                 'version': CACHE_STATE_VERSION,
                 'raw-mtimes': {},
                 'fwd-sessions': {s: {} for s in subjects},
+                'stim_channel': self._stim_channel,
                 'merge_triggers': self.merge_triggers,
             }
-        elif input_state['merge_triggers'] != self.merge_triggers:
-            self._log.warning(f"  merge_triggers changed: %s -> %s, reloading events", input_state['merge_triggers'], self.merge_triggers)
-            self.rm('event-file', inclusive=True, confirm=True)
+        else:
+            events_changed = False
+            if input_state['merge_triggers'] != self.merge_triggers:
+                self._log.warning(f"  merge_triggers changed: %s -> %s, reloading events", input_state['merge_triggers'], self.merge_triggers)
+                events_changed = True
+            if input_state['stim_channel'] != self._stim_channel:
+                self._log.warning(f"  stim_channel changed: %s -> %s, reloading events", input_state['stim_channel'], self._stim_channel)
+                events_changed = True
+            if events_changed:
+                self.rm('event-file', inclusive=True, confirm=True)
 
         # collect raw input info
         raw_mtimes = input_state['raw-mtimes']
@@ -886,6 +901,7 @@ class MneExperiment(FileTree):
         # =====================================
         save_state = new_state = {
             'version': CACHE_STATE_VERSION,
+            'stim_channel': self._stim_channel,
             'merge_triggers': self.merge_triggers,
             'raw': {k: v.as_dict() for k, v in self._raw.items()},
             'groups': self._groups,
@@ -2582,7 +2598,7 @@ class MneExperiment(FileTree):
         if ds is None:
             self._log.debug("Extracting events for %s %s %s", self.get('raw'), subject, self.get('recording'))
             raw = self.load_raw(add_bads)
-            ds = load.fiff.events(raw, self.merge_triggers)
+            ds = load.fiff.events(raw, self.merge_triggers, stim_channel=self._stim_channel)
             del ds.info['raw']
             ds.info['sfreq'] = raw.info['sfreq']
             ds.info['raw-mtime'] = self._raw_mtime(bad_chs=False, subject=subject)

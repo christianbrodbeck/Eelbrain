@@ -23,6 +23,7 @@ class SampleExperiment(MneExperiment):
     owner = "me@nyu.edu"
 
     meg_system = 'neuromag306'
+    stim_channel = 'STI 014'
     merge_triggers = -1  # ignore events of duration 1
 
     sessions = 'sample'

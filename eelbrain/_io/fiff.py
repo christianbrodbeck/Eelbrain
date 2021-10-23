@@ -134,6 +134,7 @@ def events(
         stim_channel: Union[str, Sequence[str]] = None,
         events: str = None,
         annotations: bool = None,
+        feature: Literal['onset', 'offset', 'step'] = 'onset',
         **kwargs,
 ) -> Dataset:
     """
@@ -217,26 +218,43 @@ def events(
                 annotations = raw.annotations[index]
 
         if annotations:
-            evts, event_ids = mne.events_from_annotations(raw)
+            events, event_ids = mne.events_from_annotations(raw)
         else:
-            raw.load_data()
             if merge is None:
                 if raw.info.get('kit_system_id') is None:
                     merge = 0
                 else:
                     merge = -1
-            evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
-            evts = evts[np.flatnonzero(evts[:, 2])]
+            # Use mne.find_stim_steps() becaue mne.find_events() merges forward (i.e. coerces merge to be ≥ 0); loop through channels because find_stim_steps() only uses the first channel
+            if stim_channel is None:
+                stim_channels = [raw.ch_names[i] for i in mne.pick_types(raw.info, stim=True)]
+            elif isinstance(stim_channel, str):
+                stim_channels = [stim_channel]
+            else:
+                stim_channels = stim_channel
+
+            event_list = []
+            for channel_i in stim_channels:
+                events = mne.find_stim_steps(raw, merge=merge, stim_channel=channel_i)
+                if feature == 'onset':
+                    events = events[np.flatnonzero(events[:, 2])]
+                elif feature == 'offset':
+                    events = events[~np.flatnonzero(events[:, 2])]
+                elif feature != 'step':
+                    raise ValueError(f"{feature=}")
+                event_list.append(events)
+            events = np.concatenate(event_list, axis=0)
+            events = events[np.argsort(events[:, 0])]
             event_ids = getattr(raw, 'event_id', None)
 
         if event_ids:
             labels = {event_id: label for label, event_id in event_ids.items()}
     else:
-        evts = mne.read_events(events)
+        events = mne.read_events(events)
 
     ds = Dataset({
-        'i_start': Var(evts[:, 0]),
-        'trigger': Var(evts[:, 2]),
+        'i_start': Var(events[:, 0]),
+        'trigger': Var(events[:, 2]),
     }, name, info={'raw': raw})
     if labels is not None:
         ds['event'] = Factor(ds['trigger'], labels=labels)

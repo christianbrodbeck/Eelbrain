@@ -24,6 +24,7 @@ class SampleExperiment(MneExperiment):
     owner = "me@nyu.edu"
 
     meg_system = 'neuromag306mag'
+    stim_channel = 'STI 014'
 
     sessions = ('sample1', 'sample2')
 

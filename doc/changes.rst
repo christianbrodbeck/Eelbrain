@@ -7,9 +7,11 @@ New in 0.37
 -----------
 
 * ICA-GUI (:func:`gui.select_components`): Sort noisy epochs by dominant components - makes it easier to find components that capture specific artifacts
+* API: :func:`load.fiff.events` now loads events from all stim-channels. To use a subset, use the ``stim_channel`` parameter.
 * :class:`MneExperiment`:
 
    - :meth:`MneExperiment.plot_evoked`:  plot sensor data with corresponding source estimates
+   - API: By default, events are now loaded from all stim-channels. To only use a subset of stim-channels, use the new :attr:`MneExperiment.stim_channel` attribute.
 
 
 New in 0.36

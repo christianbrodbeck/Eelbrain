@@ -70,7 +70,7 @@ def test_load_fiff_from_raw():
     evt_path = os.path.join(meg_path, 'sample_audvis_filt-0-40_raw-eve.fif')
 
     # load events
-    ds = load.fiff.events(raw_path, merge=-1)
+    ds = load.fiff.events(raw_path, merge=-1, stim_channel='STI 014')
     assert ds['i_start'].x.dtype.kind == 'i'
     # compare with mne
     ds_evt = load.fiff.events(events=evt_path)
