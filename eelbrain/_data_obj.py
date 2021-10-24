@@ -5945,7 +5945,14 @@ class Dataset(dict):
             # coerce to data-object
             if isdataobject(item) or isinstance(object, Datalist):
                 item.name = index
-                n = 0 if (isinstance(item, NDVar) and not item.has_case) else len(item)
+                if isinstance(item, NDVar) and not item.has_case:
+                    if self.n_cases == 1:  # coerce case-less NDVar
+                        item = item[None]
+                        n = 1
+                    else:
+                        n = 0
+                else:
+                    n = len(item)
             else:
                 if isinstance(item, np.ndarray):
                     if item.ndim == 1:
