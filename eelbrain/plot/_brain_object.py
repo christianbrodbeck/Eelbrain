@@ -5,7 +5,7 @@ from functools import cached_property, partial
 import os
 import sys
 from tempfile import mkdtemp
-from typing import Sequence
+from typing import Any, Literal, Sequence
 from time import time, sleep
 from warnings import warn
 
@@ -13,10 +13,12 @@ from matplotlib.colors import ListedColormap, Colormap, to_rgb, to_rgba
 from matplotlib.image import imsave
 from mne.io.constants import FIFF
 import numpy as np
+import scipy.ndimage
 
 from .._data_obj import NDVar, SourceSpace, asndvar
 from .._exceptions import KeysMissing
 from .._text import ms
+from .._types import PathArg
 from .._utils import IS_OSX
 from ..fmtxt import Image
 from ..mne_fixes import reset_logger
@@ -956,7 +958,13 @@ class Brain(TimeSlicer, surfer.Brain):
         for label in labels:
             del self.__labels[label]
 
-    def save_image(self, filename, mode='rgb', antialiased=False):
+    def save_image(
+            self,
+            filename: PathArg,
+            mode: Literal['rgb', 'rgba'] = 'rgb',
+            antialiased: bool = False,
+            fake_transparency: Any = None,
+    ):
         """Save view from all panels to disk
 
         Parameters
@@ -974,6 +982,14 @@ class Brain(TimeSlicer, surfer.Brain):
                Antialiasing can interfere with ``rgba`` mode, leading to opaque
                background.
 
+        fake_transparency
+            Use this color as background color and make it transparent.
+            Workaround if ``mode='rgba'`` is broken.
+
+        See also
+        --------
+        .screenshot : grab current image as array
+
         Notes
         -----
         Due to limitations in TraitsUI, if multiple views or hemi='split'
@@ -983,7 +999,23 @@ class Brain(TimeSlicer, surfer.Brain):
         a Mayavi figure to plot instead of TraitsUI) if you intend to
         script plotting commands.
         """
-        im = self.screenshot(mode, antialiased)
+        if fake_transparency is not None:
+            bg_color = to_rgb(fake_transparency)
+            for figures in self._figures:
+                for figure in figures:
+                    figure.scene.background = bg_color
+        else:
+            bg_color = None
+        im: np.ndarray = self.screenshot(mode, antialiased)
+        if bg_color is not None:
+            seed = np.zeros(im.shape[:2], bool)
+            seed[0, 0] = True
+            seed[0, -1] = True
+            seed[-1, 0] = True
+            seed[-1, -1] = True
+            mask = np.all(im[:, :, :3] == [[bg_color]], 2)
+            transparent = scipy.ndimage.binary_propagation(seed, mask=mask)
+            im[:, :, 3] = ~transparent
         imsave(filename, im)
 
     def set_parallel_view(self, forward=None, up=None, scale=None):
