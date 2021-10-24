@@ -1597,6 +1597,8 @@ class EelFigure(MatplotlibFigure):
         self._crosshair_axes = None
 
         # add callbacks
+        if use_inline_backend():
+            return
         self.canvas.mpl_connect('motion_notify_event', self._on_motion)
         self.canvas.mpl_connect('axes_leave_event', self._on_leave_axes)
         self.canvas.mpl_connect('resize_event', self._on_resize)
