@@ -142,7 +142,7 @@ from ._utils import mne_utils, intervals, ui, n_decimals, natsorted
 from ._utils.numpy_utils import (
     INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
     aslice, apply_numpy_index, deep_array, digitize_index, digitize_slice_endpoint,
-    index_length, index_to_bool_array, index_to_int_array, newaxis, slice_to_arange)
+    index_length, index_to_bool_array, index_to_int_array, newaxis, optimize_index, slice_to_arange)
 from .mne_fixes import MNE_EPOCHS, MNE_EVOKED, MNE_RAW, MNE_LABEL
 from functools import reduce
 
@@ -508,24 +508,32 @@ def hasrandom(x):
     return False
 
 
-def as_case_identifier(x, ds=None):
+def as_case_identifier(
+        x: Union[str, Var, Factor, Interaction],
+        ds: Dataset = None,
+        allow_nonunique: bool = False,
+):
     "Coerce input to a variable that can identify each of its cases"
     if isinstance(x, str):
         if ds is None:
             raise TypeError(f"{x!r}: Parameter was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
-    if isinstance(x, Var):
-        n = len(x.values)
-    elif isinstance(x, Factor):
-        n = x.n_cells
-    elif isinstance(x, Interaction):
-        n = len(set(x))
-    else:
+    if not isinstance(x, (Var, Factor, Interaction)):
         raise TypeError(f"Need a Var, Factor or Interaction to identify cases, got {x!r}")
 
-    if n < len(x):
-        raise ValueError(f"Variable can not serve as a case identifier because it has at least one non-unique value: {x!r}")
+    if not allow_nonunique:
+        if isinstance(x, Var):
+            n = len(x.values)
+        elif isinstance(x, Factor):
+            n = x.n_cells
+        elif isinstance(x, Interaction):
+            n = len(set(x))
+        else:
+            raise RuntimeError
+
+        if n < len(x):
+            raise ValueError(f"Variable can not serve as a case identifier because it has at least one non-unique value: {x!r}")
 
     return x
 
@@ -890,7 +898,7 @@ def align(d1, d2, i1='index', i2=None, out='data'):
     """
     if i2 is None and isinstance(i1, str):
         i2 = i1
-    i1 = as_case_identifier(i1, ds=d1)
+    i1 = as_case_identifier(i1, ds=d1, allow_nonunique=True)
     i2 = as_case_identifier(i2, ds=d2)
     if type(i1) is not type(i2):
         raise TypeError(f"i1 and i2 need to be of the same type, got:\n{i1=}\n{i2=}")
@@ -902,19 +910,14 @@ def align(d1, d2, i1='index', i2=None, out='data'):
             idx1.append(i)
             idx2.append(i2.index(case_id)[0])
 
-    # simplify
-    idxs = [idx1, idx2]
-    for i in range(2):
-        if all(j == v for j, v in enumerate(idxs[i])):
-            idxs[i] = slice(idxs[i][0], idxs[i][-1] + 1)
-    idx1, idx2 = idxs
-
+    idx1 = optimize_index(idx1)
+    idx2 = optimize_index(idx2)
     if out == 'data':
         return d1[idx1], d2[idx2]
     elif out == 'index':
         return idx1, idx2
     else:
-        raise ValueError("Invalid value for out parameter: %r" % out)
+        raise ValueError(f"{out=}")
 
 
 def align1(d, to, by='index', out='data'):

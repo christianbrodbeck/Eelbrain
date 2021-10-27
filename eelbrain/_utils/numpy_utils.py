@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from math import floor
+from typing import Sequence
 
 import numpy as np
 from numpy import newaxis
@@ -123,6 +124,18 @@ def apply_numpy_index(data, index):
         assert len(array) == len(data), "Index must have same length as data"
         return (d for d, i in zip(data, array) if i)
     raise TypeError("Invalid numpy-like index: %r" % (index,))
+
+
+def optimize_index(indexes: Sequence[int]):
+    "If possible, turn integer-array index into slice"
+    unique = np.unique(np.diff(indexes))
+    if len(unique) == 1:
+        step = unique[0]
+        end = indexes[-1] + step
+        if end < 0:
+            end = None
+        return slice(indexes[0], end, step)
+    return indexes
 
 
 def slice_to_arange(s, length):
