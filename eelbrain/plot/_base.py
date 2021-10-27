@@ -1234,9 +1234,10 @@ class PlotData:
         if isinstance(y, (tuple, list)):
             if xax is not None:
                 raise TypeError(f"{y=}, {xax=}: xax cannot be specified with multiple y")
-            axes_data = [cls.from_stats(yi, x, xax, match, sub, ds, dims, colors, mask) for yi in y]
+            plot_used = [yi is not None for yi in y]
+            axes_data = [cls.from_stats(yi, x, xax, match, sub, ds, dims, colors, mask) for yi in y if yi is not None]
             axes = list(chain.from_iterable(ax.plot_data for ax in axes_data))
-            return replace(axes_data[0], plot_data=axes, plot_used=None, plot_names=None)
+            return replace(axes_data[0], plot_data=axes, plot_used=plot_used, plot_names=None)
         x, x_dim = x_arg(x)
         xax, xax_dim = x_arg(xax)
         if x_dim or xax_dim:
