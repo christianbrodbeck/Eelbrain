@@ -7,12 +7,12 @@ import matplotlib.colors
 import matplotlib.patches
 import numpy as np
 
-from .._colorspaces import oneway_colors, to_rgba
+from .._colorspaces import oneway_colors
 from .._data_obj import NDVarArg, CategorialArg, CellArg, IndexArg, Dataset, NDVar, cellname, longname
 from .._stats.testnd import NDTest
 from . import _base
-from ._base import AxisData, EelFigure, Layout, LegendArg, LegendMixin, PlotType, PlotData, StatLayer, TimeSlicerEF, XAxisMixin, YLimMixin
-from ._styles import Style, colors_for_oneway, to_styles_dict
+from ._base import AxisData, EelFigure, Layout, LegendArg, LegendMixin, PlotType, PlotData, StatLayer, DataLayer, TimeSlicerEF, XAxisMixin, YLimMixin
+from ._styles import Style, to_styles_dict
 
 
 class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
@@ -227,6 +227,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
 
         if len(self._plots) == 1:
             clusters = self._plots[0].cluster_plt.clusters
+            all_clusters = None
             all_plots_same = True
         else:
             all_clusters = [p.cluster_plt.clusters is None for p in self._plots]
@@ -398,7 +399,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
             color: Any = None,
             stem: bool = False,
             **kwargs):
-        data = PlotData.from_args(y, (None,), xax, ds, sub)
+        data = PlotData.from_args(y, (None,), xax, ds, sub).for_plot(PlotType.LINE)
         xdim = data.dims[0]
         layout = Layout(data.plot_used, 2, 4, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
@@ -423,7 +424,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         else:
             styles = (Style._coerce(colors),) * n_colors
 
-        for ax, layers in zip(self.axes, data.data):
+        for ax, layers in zip(self.axes, data):
             h = _ax_uts(ax, layers, xdim, vlims, styles, stem, clip)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
@@ -483,119 +484,27 @@ class _ax_uts_stat:
         self.vmin, self.vmax = self.ax.get_ylim()
 
 
-class UTSClusters(EelFigure):
-    """Plot permutation cluster test results
-
-    Parameters
-    ----------
-    res : testnd.ANOVA
-        ANOVA with permutation cluster test result object.
-    pmax : scalar
-        Maximum p-value of clusters to plot as solid.
-    ptrend : scalar
-        Maximum p-value of clusters to plot as trend.
-    axtitle : bool | sequence of str
-        Title for the individual axes. The default is to show the names of the
-        epochs, but only if multiple axes are plotted.
-    cm : str
-        Colormap to use for coloring different effects.
-    overlay : bool
-        Plot epochs (time course for different effects) on top of each
-        other (as opposed to on separate axes).
-    xticklabels
-        Specify which axes should be annotated with x-axis tick labels.
-        Use ``int`` for a single axis, a sequence of ``int`` for multiple
-        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
-    yticklabels
-        Specify which axes should be annotated with y-axis tick labels.
-        Use ``int`` for a single axis, a sequence of ``int`` for multiple
-        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
-    tight : bool
-        Use matplotlib's tight_layout to expand all axes to fill the figure
-        (default True)
-    ...
-        Also accepts :ref:`general-layout-parameters`.
-    """
-    def __init__(
-            self, res, pmax=0.05, ptrend=0.1, axtitle=True, cm=None,
-            overlay=False,
-            xticklabels: Union[str, int, Sequence[int]] = 'bottom',
-            yticklabels: Union[str, int, Sequence[int]] = 'left',
-            **kwargs):
-        clusters_ = res.clusters
-
-        data = PlotData.from_args(res, (None,))
-        xdim = data.dims[0]
-        # create figure
-        layout = Layout(1 if overlay else data.plot_used, 2, 4, **kwargs)
-        EelFigure.__init__(self, data.frame_title, layout)
-        self._set_axtitle(axtitle, data)
-
-        colors = colors_for_oneway(range(data.n_plots), cmap=cm)
-        self._caxes = []
-
-        for i, layers in enumerate(data.data):
-            ax = self.axes[0] if overlay else self.axes[i]
-            stat = layers[0]
-
-            # ax clusters
-            if clusters_:
-                if 'effect' in clusters_:
-                    cs = clusters_.sub('effect == %r' % stat.name)
-                else:
-                    cs = clusters_
-            else:
-                cs = None
-
-            cax = _ax_uts_clusters(ax, stat, cs, colors[i], pmax, ptrend, xdim)
-            self._caxes.append(cax)
-
-        self._configure_axis_data('y', data, True, yticklabels)
-        self._configure_axis_dim('x', xdim, True, xticklabels, data=data.data)
-        self.clusters = clusters_
-        self._show()
-
-    def _fill_toolbar(self, tb):
-        from .._wxgui import wx
-
-        btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")
-        tb.AddControl(btn)
-        btn.Bind(wx.EVT_BUTTON, self._OnShowClusterInfo)
-
-    def _OnShowClusterInfo(self, event):
-        from .._wxgui import show_text_dialog
-
-        info = str(self.clusters)
-        show_text_dialog(self._frame, info, "Clusters")
-
-    def set_pmax(self, pmax=0.05, ptrend=0.1):
-        "Set the threshold p-value for clusters to be displayed"
-        for cax in self._caxes:
-            cax.set_pmax(pmax, ptrend)
-        self.draw()
-
-
 class _ax_uts:
 
     def __init__(
             self,
             ax,
-            layers,
-            xdim,
+            axis_data: AxisData,
+            xdim: str,
             vlims,
             styles: Union[Sequence, Dict],
             stem: bool,
             clip: bool = True,
     ):
-        vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
+        vmin, vmax = _base.find_uts_ax_vlim(axis_data.ndvars, vlims)
         if isinstance(styles, dict):
-            styles = [styles[l.name] for l in layers]
+            styles = [styles[layer.y.name] for layer in axis_data]
 
         self.legend_handles = {}
-        for l, style in zip(layers, styles):
-            p = _plt_uts(ax, l, xdim, style, stem, clip)
-            self.legend_handles[longname(l)] = p.plot_handle
-            contours = l.info.get('contours', None)
+        for layer, style in zip(axis_data, styles):
+            p = _plt_uts(ax, layer, xdim, style, stem, clip)
+            self.legend_handles[longname(layer.y)] = p.plot_handle
+            contours = layer.y.info.get('contours', None)
             if contours:
                 for v, c in contours.items():
                     if v in contours:
@@ -615,15 +524,15 @@ class _plt_uts:
     def __init__(
             self,
             ax: matplotlib.axes.Axes,
-            ndvar: NDVar,
+            layer: DataLayer,
             xdim: str,
             style: Style,
             stem: bool = False,
             clip: bool = True,
     ):
-        y = ndvar.get_data((xdim,))
-        x = ndvar.get_dim(xdim)._axis_data()
-        label = longname(ndvar)
+        y = layer.y.get_data((xdim,))
+        x = layer.y.get_dim(xdim)._axis_data()
+        label = longname(layer.y)
         if stem:
             nonzero = y != 0
             nonzero[0] = True
@@ -631,50 +540,11 @@ class _plt_uts:
             color = matplotlib.colors.to_hex(style.color)
             self.plot_handle = ax.stem(x[nonzero], y[nonzero], bottom=0, linefmt=color, markerfmt=' ', basefmt=f'#808080', use_line_collection=True, label=label)
         else:
-            self.plot_handle = ax.plot(x, y, label=label, clip_on=clip, **style.line_args)[0]
+            kwargs = layer.plot_args(style.line_args)
+            self.plot_handle = ax.plot(x, y, label=label, clip_on=clip, **kwargs)[0]
 
-        for y, kwa in _base.find_uts_hlines(ndvar):
+        for y, kwa in _base.find_uts_hlines(layer.y):
             ax.axhline(y, **kwa)
-
-
-class _ax_uts_clusters:
-
-    def __init__(
-            self,
-            ax: matplotlib.axes.Axes,
-            y: NDVar,
-            clusters,
-            color: Any = None,
-            pmax: float = 0.05,
-            ptrend: float = 0.1,
-            xdim: str = 'time',
-    ):
-        self._bottom, self._top = _base.find_vlim_args(y)
-        if color is None:
-            color = y.info.get('color')
-        style = Style._coerce(color)
-
-        _plt_uts(ax, y, xdim, style)
-
-        if np.any(y.x < 0) and np.any(y.x > 0):
-            ax.axhline(0, color='k')
-
-        # pmap
-        self.cluster_plt = _plt_uts_clusters(ax, clusters, pmax, ptrend, style)
-
-        # save ax attr
-        self.ax = ax
-        x = y.get_dim(xdim)._axis_data()
-        self.xlim = (x[0], x[-1])
-
-        ax.set_xlim(*self.xlim)
-        ax.set_ylim(bottom=self._bottom, top=self._top)
-
-    def set_clusters(self, clusters):
-        self.cluster_plt.set_clusters(clusters)
-
-    def set_pmax(self, pmax=0.05, ptrend=0.1):
-        self.cluster_plt.set_pmax(pmax, ptrend)
 
 
 class _plt_uts_clusters:

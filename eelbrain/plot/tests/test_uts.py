@@ -123,13 +123,13 @@ def test_clusters():
 
     # fixed effects model
     res = testnd.ANOVA(Y, A * B)
-    p = plot.UTSClusters(res, title="Fixed Effects Model")
+    p = plot.UTS(res, title="Fixed Effects Model")
     p.close()
 
     # random effects model:
     subject = Factor(range(15), tile=4, random=True, name='subject')
     res = testnd.ANOVA(Y, A * B * subject, match=subject, samples=2)
-    p = plot.UTSClusters(res, title="Random Effects Model")
+    p = plot.UTS(res, title="Random Effects Model")
     p.close()
 
     # plot UTSStat

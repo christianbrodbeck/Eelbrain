@@ -11,7 +11,7 @@ from .._names import INTERPOLATE_CHANNELS
 from . import _base
 from ._base import (
     PlotType,
-    EelFigure, PlotData, DataLayer, Layout,
+    EelFigure, PlotData, AxisData, DataLayer, Layout,
     ColorMapMixin, LegendMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMixin,
     pop_if_dict, set_dict_arg)
 
@@ -282,19 +282,16 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
 
 
 class _plt_utsnd:
-    """
-    UTS-plot for a single epoch
 
-    Parameters
-    ----------
-    ax : matplotlib axes
-        Target axes.
-    layer : DataLayer
-        Epoch to plot.
-    sensors : None | True | numpy index
-        The sensors to plot (None or True -> all sensors).
-    """
-    def __init__(self, ax, layer, xdim, line_dim, sensors=None, **kwargs):
+    def __init__(
+            self,
+            ax: matplotlib.axes.Axes,
+            layer: DataLayer,
+            xdim: str,
+            line_dim: str,
+            sensors: Union[Sequence, bool] = None,
+            **kwargs,
+    ):
         epoch = layer.y
         if sensors is not None and sensors is not True:
             epoch = epoch.sub(sensor=sensors)
@@ -342,30 +339,32 @@ class _plt_utsnd:
 
 
 class _ax_butterfly:
-    """Axis with butterfly plot
-
-    Parameters
-    ----------
-    vmin, vmax: None | scalar
-        Y axis limits.
-    layers : list of DataLayer
-        Data layers to plot.
-    """
-    def __init__(self, ax, layers, xdim, linedim, sensors, color, linewidth, vlims, clip=True):
+    def __init__(
+            self,
+            ax: matplotlib.axes.Axes,
+            axis_data: AxisData,
+            xdim: str,
+            linedim: str,
+            sensors,
+            color,
+            linewidth,
+            vlims,
+            clip: bool = True,
+    ):
         self.ax = ax
-        self.data = [l.y for l in layers]
+        self.data = axis_data.ndvars
         self.layers = []
         self.legend_handles = {}
         self._meas = None
 
-        vmin, vmax = _base.find_uts_ax_vlim(self.data, vlims)
+        vmin, vmax = _base.find_uts_ax_vlim(axis_data.ndvars, vlims)
 
         name = ''
-        for l in layers:
-            h = _plt_utsnd(ax, l, xdim, linedim, sensors, clip_on=clip, color=color, linewidth=linewidth)
+        for layer in axis_data:
+            h = _plt_utsnd(ax, layer, xdim, linedim, sensors, clip_on=clip, color=color, linewidth=linewidth)
             self.layers.append(h)
-            if not name and l.y.name:
-                name = l.y.name
+            if not name and layer.y.name:
+                name = layer.y.name
 
             self.legend_handles.update(h.legend_handles)
 

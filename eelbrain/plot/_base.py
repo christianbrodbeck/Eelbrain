@@ -983,6 +983,10 @@ class AxisData:
             return layer.y
         raise IndexError("No data")
 
+    @cached_property
+    def ndvars(self):
+        return [layer.y for layer in self.layers]
+
     def for_plot(self, plot_type: PlotType) -> 'AxisData':
         return replace(self, layers=[l for layer in self.layers for l in layer.for_plot(plot_type)])
 
