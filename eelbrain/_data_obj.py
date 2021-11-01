@@ -2120,18 +2120,23 @@ class _Effect:
             return Model((self % e for e in other.effects))
         return Interaction((self, other))
 
-    def as_var(self, labels, default=None, name=None):
+    def as_var(
+            self,
+            labels: Dict[CellArg, float],
+            default: float = None,
+            name: str = None,
+    ) -> Var:
         """Convert into a Var
 
         Parameters
         ----------
-        labels : dict
+        labels
             A ``{old_value: new_value}`` mapping.
-        default : None | scalar
+        default
             Default value for old values not mentioned in ``labels``. If not
             specified, old values missing from ``labels`` will raise a
             ``KeyError``.
-        name : str
+        name
             Name of the output Var (default is current name).
         """
         if default is None:
@@ -2590,6 +2595,33 @@ class Factor(_Effect):
     def as_labels(self):
         "Convert the Factor to a list of str"
         return [self._labels[v] for v in self.x]
+
+    def as_var(
+            self,
+            labels: Dict[str, float] = None,
+            default: float = None,
+            name: str = None,
+    ) -> Var:
+        """Convert into a Var
+
+        Parameters
+        ----------
+        labels
+            A ``{old_value: new_value}`` mapping; defaults to coercing the
+            cell values to numbers.
+        default
+            Default value for old values not mentioned in ``labels``. If not
+            specified, old values missing from ``labels`` will raise a
+            ``KeyError``.
+        name
+            Name of the output Var (default is current name).
+        """
+        if labels is None:
+            if all(v.isdigit() for v in self.cells):
+                labels = {cell: int(cell) for cell in self.cells}
+            else:
+                labels = {cell: float(cell) for cell in self.cells}
+        return _Effect.as_var(self, labels, default, name)
 
     @property
     def beta_labels(self):

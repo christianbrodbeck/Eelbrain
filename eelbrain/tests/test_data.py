@@ -786,6 +786,8 @@ def test_factor():
     assert_array_equal(f.as_var({'a': 1}, 2), [1, 1, 2, 2, 2, 2])
     with pytest.raises(KeyError):
         f.as_var({'a': 1})
+    numeric = Factor(['1', '10', '6', '1'])
+    assert_array_equal(numeric.as_var(), [1, 10, 6, 1])
 
     # Factor.floodfill()
     f = Factor([' ', ' ', '1', '2', ' ', ' ', '3', ' ', ' ', '2', ' ', ' ', '1'])
