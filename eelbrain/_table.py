@@ -524,7 +524,8 @@ def stats(
         ds: Dataset = None,
         title: fmtxt.FMTextArg = None,
         caption: fmtxt.FMTextArg = None,
-):
+        format: bool = True,
+) -> Union[Dataset, fmtxt.Table]:
     """Make a table with statistics
 
     Parameters
@@ -551,13 +552,15 @@ def stats(
         specifying members.
     title
         Table title.
-    caption : str | FMText
+    caption
         Table caption.
+    format
+        Return a formatted table (instead of a :class:`Dataset`)
 
 
     Returns
     -------
-    table : fmtxt.Table
+    table
         Table with statistics.
 
     Examples
@@ -590,6 +593,19 @@ def stats(
 
     if col is None:
         ct = Celltable(y, row, match=match)
+        if not format:
+            out = Dataset()
+            if isinstance(ct.x, Factor):
+                out[ct.x.name or 'cell'] = Factor(ct.x.cells)
+            elif isinstance(ct.x, Interaction):
+                for i, base in enumerate(ct.x.base):
+                    out[base.name or f'cell_{i}'] = Factor([cell[i] for cell in ct.x.cells])
+            else:
+                raise RuntimeError(f"{ct.x=}")
+
+            for func in funcs:
+                out[func.__name__] = ct.get_statistic(func)
+            return out
 
         # table header
         n_disp = len(funcs)
@@ -610,6 +626,9 @@ def stats(
         ct = Celltable(y, row % col, match=match)
 
         N = len(col.cells)
+        if not format:
+            raise NotImplementedError(f"{format=} with col specified")
+
         table = fmtxt.Table('l' * (N + 1), title=title, caption=caption)
 
         # table header
