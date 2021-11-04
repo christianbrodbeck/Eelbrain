@@ -43,8 +43,9 @@ def tsv(
         random: Union[str, Sequence[str]] = None,
         strip: bool = False,
         encoding: str = None,
+        comment: str = '^#',
         **fmtparams,
-):
+) -> _data.Dataset:
     r"""Load a :class:`Dataset` from a text file.
 
     Parameters
@@ -97,6 +98,9 @@ def tsv(
         Strip white-space from all categorial variables.
     encoding
         Text file encoding (see :func:`open`).
+    comment
+        Regular expression for lines to skip (default is lines starting with
+        ``#``).
     **fmtparams
         Further formatting parameters for :func:`csv.reader`. For example, a
         fixed-width column file can be loaded with ``skipinitialspace=True``
@@ -131,8 +135,12 @@ def tsv(
         else:
             delimiter = '\t'
 
-    with open_(path, 'rt', encoding=encoding, newline='') as fid:
-        reader = csv.reader(fid, delimiter=delimiter, **fmtparams)
+    comment_pattern = re.compile(comment) if comment else None
+
+    with open_(path, 'rt', encoding=encoding, newline='') as lines:
+        if comment_pattern is not None:
+            lines = (line for line in lines if not comment_pattern.match(line))
+        reader = csv.reader(lines, delimiter=delimiter, **fmtparams)
         lines = list(reader)
     if lines[0][0].startswith('\ufeff'):
         raise IOError(f"First word invalid: {lines[0][0]!r}; file might be encoded with byte order mark, try opening with encoding='utf-8-sig' (see https://stackoverflow.com/a/17912811/166700)")
