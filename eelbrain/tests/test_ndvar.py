@@ -151,6 +151,7 @@ def test_find_peaks():
         if s:
             v.x[i, 5 - s: 5 + s] += np.hamming(2 * s)
 
+    v = round(v, 5)  # numpy hamming window is not exactly symmetric
     peaks = find_peaks(v)
     assert_array_equal(np.where(peaks.x), ([4, 4], [4, 5]))
 
