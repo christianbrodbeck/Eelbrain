@@ -8,7 +8,7 @@ import re
 import mne
 import pytest
 
-from eelbrain import configure
+from eelbrain import configure, conftest
 from eelbrain.testing import hide_plots, working_directory
 
 
@@ -36,6 +36,8 @@ def test_example(tmp_path, path: Path):
             importlib.import_module(module)
         except ImportError:
             pytest.skip(f"required module {module} not available")
+    if conftest.SKIP_MAYAVI and 'mayavi' in required_modules:
+        pytest.skip("requires mayavi")
     # check for required datasets
     required_datasets = re.findall(r"^# dataset: (\w+)$", text, re.MULTILINE)
     for dataset in required_datasets:

@@ -10,6 +10,7 @@ from eelbrain.testing import hide_plots, requires_mne_testing_data
 
 @hide_plots
 @requires_mne_testing_data
+@pytest.mark.mayavi
 def test_plot_brain():
     """Test plot.brain plots"""
     if sys.platform.startswith('win'):
@@ -75,6 +76,7 @@ def test_plot_brain():
 
 @hide_plots
 @requires_mne_testing_data
+@pytest.mark.mayavi
 def test_sequence_plotter():
     if sys.platform.startswith('win'):
         pytest.xfail("Hangs on Appveyor")
