@@ -10,6 +10,7 @@ nilearn
 numpy >=1.11
 numba
 pillow
+pooch  # for mne dataset downloading
 sphinx_rtd_theme
 sphinx >=3
 sphinx-autodoc-typehints
