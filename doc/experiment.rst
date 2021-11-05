@@ -371,48 +371,43 @@ When using this option, set :attr:`MneExperiment.screen_log_level` to
 Determines the amount of information displayed on the screen while using
 an :class:`MneExperiment` (see :mod:`logging`).
 
-.. py:attribute:: MneExperiment.meg_system
-
-Starting with :mod:`mne` 0.13, fiff files converted from KIT files store
-information about the system they were collected with. For files converted
-earlier, the :attr:`MneExperiment.meg_system` attribute needs to specify the
-system the data were collected with. For data from NYU New York, the
-correct value is ``meg_system="KIT-157"``.
-
-.. py:attribute:: MneExperiment.merge_triggers
-
-Use a non-default ``merge`` parameter for :func:`load.fiff.events`.
-
-.. py:attribute:: MneExperiment.trigger_shift
-
-Set this attribute to shift all trigger times by a constant (in seconds). For
-example, with ``trigger_shift = 0.03`` a trigger that originally occurred
-35.10 seconds into the recording will be shifted to 35.13. If the trigger delay
-differs between subjects, this attribute can also be a dictionary mapping
-subject names to shift values, e.g.
-``trigger_shift = {'R0001': 0.02, 'R0002': 0.05, ...}``.
-
 
 Finding files
 -------------
 
-.. py:attribute:: MneExperiemnt.sessions
+.. py:attribute:: MneExperiemnt.sessions : str | Sequence[str]
 
 The name, or a list of names of the raw data files (see :ref:`MneExperiment-filestructure`).
 
-.. py:attribute:: MneExperiemnt.data_dir
+.. py:attribute:: MneExperiemnt.data_dir : str
 
 Folder name for the raw data directory. By default, this is ``meg``, i.e., the experiment will look for raw files at ``root/meg/{subject}/{subject}_{session}-raw.fif``. After setting ``data_dir = 'eeg'``, the experiment will look at ``root/eeg/{subject}/{subject}_{session}-raw.fif``.
 
-.. py:attribute:: MneExperiment.subject_re
+.. py:attribute:: MneExperiment.subject_re : str
 
 Subjects are identified on initialization by looking for folders in the data directory (``meg`` by default) whose name matches the :attr:`MneExperiment.subject_re` regular expression. By default, this is ``'(R|A|Y|AD|QP)(\d{3,})$'``, which matches R-numbers like ``R1234``, but also numbers prefixed by ``A``, ``Y``, ``AD`` or ``QP`` (for information about how to define a different regular expression, see :mod:`re`).
+
+
+Reading files
+-------------
+
+.. py:attribute:: MneExperiment.merge_triggers : int
+
+Use a non-default ``merge`` parameter for :func:`load.fiff.events`.
+
+.. py:attribute:: MneExperiment.trigger_shift : float | Dict[str, float]
+
+Set this attribute to shift all trigger times by a constant (in seconds). For example, with ``trigger_shift = 0.03`` a trigger that originally occurred 35.10 seconds into the recording will be shifted to 35.13. If the trigger delay differs between subjects, this attribute can also be a dictionary mapping subject names to shift values, e.g. ``trigger_shift = {'R0001': 0.02, 'R0002': 0.05, ...}``.
+
+.. py:attribute:: MneExperiment.meg_system : str
+
+Specify the MEG system used to acquire the data so that the right sensor neighborhood graph can be loaded. This is usually automatic, but is needed for KIT files convert with with :mod:`mne` < 0.13. Equivalent to the ``sysname`` parameter in :func:`load.fiff.epochs_ndvar` etc. For example, for data from NYU New York, the correct value is ``meg_system="KIT-157"``.
 
 
 Defaults
 --------
 
-.. py:attribute:: MneExperiment.defaults
+.. py:attribute:: MneExperiment.defaults : Dict[str, str]
 
 The defaults dictionary can contain default settings for
 experiment analysis parameters (see :ref:`state-parameters`), e.g.::
