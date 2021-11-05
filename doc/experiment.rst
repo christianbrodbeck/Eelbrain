@@ -359,7 +359,7 @@ to delete them automatically without interrupting initialization.
 
 :class:`MneExperiment` caches various intermediate results. By default, if a
 change in the experiment definition would make cache files invalid, the outdated
-files are automatically deleted. Set :attr:`auto_delete_cache` to ``'ask'`` to
+files are automatically deleted. Set :attr:`.auto_delete_cache` to ``'ask'`` to
 ask for confirmation before deleting files. This can be useful to prevent
 accidentally deleting files that take long to compute when editing the pipeline
 definition.
@@ -370,6 +370,15 @@ When using this option, set :attr:`MneExperiment.screen_log_level` to
 
 Determines the amount of information displayed on the screen while using
 an :class:`MneExperiment` (see :mod:`logging`).
+
+.. py:attribute:: MneExperiment.defaults : Dict[str, str]
+
+The defaults dictionary can contain default settings for
+experiment analysis parameters (see :ref:`state-parameters`), e.g.::
+
+    defaults = {'epoch': 'my_epoch',
+                'cov': 'noreg',
+                'raw': '1-40'}
 
 
 Finding files
@@ -385,11 +394,14 @@ Folder name for the raw data directory. By default, this is ``meg``, i.e., the e
 
 .. py:attribute:: MneExperiment.subject_re : str
 
-Subjects are identified on initialization by looking for folders in the data directory (``meg`` by default) whose name matches the :attr:`MneExperiment.subject_re` regular expression. By default, this is ``'(R|A|Y|AD|QP)(\d{3,})$'``, which matches R-numbers like ``R1234``, but also numbers prefixed by ``A``, ``Y``, ``AD`` or ``QP`` (for information about how to define a different regular expression, see :mod:`re`).
+Subjects are identified on initialization by looking for folders in the data directory (``meg`` by default) whose name matches the :attr:`.MneExperiment.subject_re` regular expression. By default, this is ``'(R|A|Y|AD|QP)(\d{3,})$'``, which matches R-numbers like ``R1234``, but also numbers prefixed by ``A``, ``Y``, ``AD`` or ``QP`` (for information about how to define a different regular expression, see :mod:`re`).
 
 
 Reading files
 -------------
+
+.. note::
+    Gain more control over reading files through adding a :class:`RawPipe` to :attr:`MneExperiment.raw`.
 
 .. py:attribute:: MneExperiment.stim_channel : str | Sequence of str
 
@@ -397,7 +409,7 @@ By default, events are loaded from all stim channels; use this parameter to rest
 
 .. py:attribute:: MneExperiment.merge_triggers : int
 
-Use a non-default ``merge`` parameter for :func:`load.fiff.events`.
+Use a non-default ``merge`` parameter for :func:`.load.fiff.events`.
 
 .. py:attribute:: MneExperiment.trigger_shift : float | Dict[str, float]
 
@@ -405,20 +417,7 @@ Set this attribute to shift all trigger times by a constant (in seconds). For ex
 
 .. py:attribute:: MneExperiment.meg_system : str
 
-Specify the MEG system used to acquire the data so that the right sensor neighborhood graph can be loaded. This is usually automatic, but is needed for KIT files convert with with :mod:`mne` < 0.13. Equivalent to the ``sysname`` parameter in :func:`load.fiff.epochs_ndvar` etc. For example, for data from NYU New York, the correct value is ``meg_system="KIT-157"``.
-
-
-Defaults
---------
-
-.. py:attribute:: MneExperiment.defaults : Dict[str, str]
-
-The defaults dictionary can contain default settings for
-experiment analysis parameters (see :ref:`state-parameters`), e.g.::
-
-    defaults = {'epoch': 'my_epoch',
-                'cov': 'noreg',
-                'raw': '1-40'}
+Specify the MEG system used to acquire the data so that the right sensor neighborhood graph can be loaded. This is usually automatic, but is needed for KIT files convert with with :mod:`mne` < 0.13. Equivalent to the ``sysname`` parameter in :func:`.load.fiff.epochs_ndvar` etc. For example, for data from NYU New York, the correct value is ``meg_system="KIT-157"``.
 
 
 Pre-processing (raw)
@@ -469,8 +468,11 @@ To use ``raw --> TSSS --> 1-40 Hz band-pass --> ICA``, select ``e.set(raw="ica")
         >>> e.rm('cached-raw-file', True, raw='1-40')
 
 
-Event variables
----------------
+Events
+------
+
+.. note::
+    Gain more control over events through overriding :meth:`MneExperiment.fix_events` and :meth:`MneExperiment.label_events`.
 
 .. py:attribute:: MneExperiment.variables
 
@@ -741,7 +743,7 @@ the targets, you would use
 -------------------------
 
 By default, the analysis uses all epochs marked as good during rejection.
-Set ``equalize_evoked_count='eq'`` to discard trials to make sure the same number of epochs goes into each cell of the model (see ``equal_count`` parameter to :meth:`Dataset.aggregate`).
+Set ``equalize_evoked_count='eq'`` to discard trials to make sure the same number of epochs goes into each cell of the model (see ``equal_count`` parameter to :meth:`.Dataset.aggregate`).
 
 '' (default)
     Use all epochs.
@@ -765,7 +767,11 @@ The method for correcting the sensor covariance.
 'reg'
     Use the default regularization parameter (0.1).
 'auto'
-    Use automatic selection of the optimal regularization method.
+    Use automatic selection of the optimal regularization method, as described in :func:`mne.compute_covariance`.
+`empty_room`
+    Empty room covariance; for required setup, see `Empty room covariance <https://github.com/christianbrodbeck/Eelbrain/wiki/MneExperiment-analysis-options#empty-room-covariance>`_.
+'ad_hoc'
+    Use diagonal covariance based on :func:`mne.cov.make_ad_hoc_cov`.
 
 
 .. _state-src:
