@@ -10623,6 +10623,7 @@ class UTS(Dimension):
     """
     _default_connectivity = 'grid'
     _tol = 0.000001  # tolerance for deciding if time values are equal
+    plot_s_as_ms: float = 3  # plot s as ms when the absolute times in s are smaller than this
 
     def __init__(self, tmin: float, tstep: float, nsamples: int, unit: str = 's', name: str = 'time'):
         Dimension.__init__(self, name, 'grid')
@@ -10707,7 +10708,9 @@ class UTS(Dimension):
             label: Union[bool, str],
     ):
         # display s -> ms
-        s_to_ms = self.unit == 's' and -10 < self.tmax < 10 and -10 < self.tmin < 10 and not self.tstep % 0.001
+        s_to_ms = False
+        if self.unit == 's' and (v := self.plot_s_as_ms):
+            s_to_ms = -v < self.tmax < v and -v < self.tmin < v
 
         if label is True:
             if s_to_ms:
