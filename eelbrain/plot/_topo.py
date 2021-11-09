@@ -558,18 +558,6 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMix
 
 
 class _plt_topomap(_plt_im):
-    """Topomap plot
-
-    Parameters
-    ----------
-    ...
-    im_frame : scalar
-        Empty space beyond outmost sensors in the im plot.
-    vmax : scalar
-        Override the colorspace vmax.
-    interpolation
-        Method for interpolating topo-map between sensors.
-    """
     _aspect = 'equal'
 
     def __init__(

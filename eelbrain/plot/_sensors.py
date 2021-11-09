@@ -69,13 +69,13 @@ def _head_outlines(
 
 
 class _plt_connectivity:
-    def __init__(self, ax, locs, connectivity, linestyle={}):
+    def __init__(self, ax, locs, connectivity, **linestyle):
         self.ax = ax
         self.locs = locs
         self._h = []
-        self.show(connectivity, linestyle)
+        self.show(connectivity, **linestyle)
 
-    def show(self, connectivity, linestyle={}):
+    def show(self, connectivity, **linestyle):
         while self._h:
             self._h.pop().remove()
 
@@ -147,15 +147,7 @@ def sensor_labels(
 
 
 class _plt_map2d:
-    """Sensor-map plot
-
-    Parameters
-    ----------
-    ax
-        Axes.
-    sensors
-        Sensor dimension.
-    """
+    "Sensor-map plot"
     _labels_arg = 'none'  # currently shown label text
 
     def __init__(

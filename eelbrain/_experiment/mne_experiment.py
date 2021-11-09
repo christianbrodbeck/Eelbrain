@@ -7067,8 +7067,7 @@ class MneExperiment(FileTree):
         """
         return self.show_tree(fields=['raw-file', 'trans-file', 'mri-dir'])
 
-    def _surfer_plot_kwargs(self, surf=None, views=None, foreground=None,
-                            background=None, smoothing_steps=None, hemi=None):
+    def _surfer_plot_kwargs(self, surf=None, views=None, foreground=None, background=None, smoothing_steps=None, hemi=None):
         out = self._brain_plot_defaults.copy()
         out.update(self.brain_plot_defaults)
         if views:
