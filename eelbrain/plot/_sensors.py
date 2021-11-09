@@ -7,6 +7,7 @@ from typing import Any, Literal, Optional, Sequence, Union
 import numpy as np
 import matplotlib as mpl
 import matplotlib.axes
+import matplotlib.markers
 from matplotlib.lines import Line2D
 
 from .._data_obj import Datalist, Sensor, as_sensor
@@ -109,7 +110,7 @@ class _ax_map2d:
     ):
         self.ax = ax
 
-        self.sensors = _plt_map2d(ax, sensors, proj, extent, marker, size, color, mark, None, 'o', labels, True, head_radius, head_pos, head_linewidth)
+        self.sensors = _plt_map2d(ax, sensors, proj, extent, marker, size, color, mark, labels=labels, invisible=True, head_radius=head_radius, head_pos=head_pos, head_linewidth=head_linewidth)
 
         locs = sensors.get_locs_2d(proj, extent, SENSORMAP_FRAME)
         self.connectivity = _plt_connectivity(ax, locs, None)
@@ -160,8 +161,9 @@ class _plt_map2d:
             size: float,
             color: ColorArg,
             mark: Union[Sequence[str], str, Sequence[int], int],
-            mcolor: ColorArg,
-            mmarker: str = 'o',
+            mcolor: Union[ColorArg, Sequence[ColorArg]] = None,
+            msize: Union[float, Sequence[float]] = 20,
+            mmarker: Union[str, matplotlib.markers.MarkerStyle] = 'o',
             labels: Literal['', 'none', 'index', 'name', 'fullname'] = 'none',
             invisible: bool = False,
             head_radius: Union[float, Sequence[float]] = None,
@@ -197,7 +199,7 @@ class _plt_map2d:
             self.show_labels(labels)
 
         if mark is not None:
-            self.mark_sensors(mark, size=20, color=mcolor, marker=mmarker)
+            self.mark_sensors(mark, size=msize, color=mcolor, marker=mmarker)
 
     def mark_sensors(self, sensors, **kwargs):
         """Mark specific sensors

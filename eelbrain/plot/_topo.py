@@ -9,6 +9,7 @@ from typing import Any, Dict, Literal, Sequence, Tuple, Union
 
 import matplotlib as mpl
 import matplotlib.axes
+import matplotlib.markers
 import numpy as np
 from scipy import interpolate, linalg
 from scipy.spatial import ConvexHull
@@ -84,8 +85,12 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         is removed; with 'fullname', the full name is shown.
     mark
         Sensors which to mark.
-    mcolor : matplotlib color
-        Color for marked sensors.
+    mcolor
+        Color for marked sensors (see :func:`matplotlib.pyplot.scatter`).
+    msize
+        Size of the markers (see :func:`matplotlib.pyplot.scatter`).
+    marker
+        Marker shape (see :func:`matplotlib.pyplot.scatter`).
     axtitle
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
@@ -126,7 +131,9 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
             # sensor-map args
             sensorlabels: SensorLabelsArg = None,
             mark: IndexArg = None,
-            mcolor: ColorArg = None,
+            mcolor: Union[ColorArg, Sequence[ColorArg]] = None,
+            msize: Union[float, Sequence[float]] = 20,
+            marker: Union[str, matplotlib.markers.MarkerStyle] = 'o',
             # layout
             axtitle: Union[bool, Sequence[str]] = True,
             xlabel: Union[bool, str] = None,
@@ -150,7 +157,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         # plots
         axes_data = data.for_plot(PlotType.IMAGE)
         for ax, layers, proj_ in zip(self.axes, axes_data, proj):
-            h = _ax_topomap(ax, layers, clip, clip_distance, sensorlabels, mark, mcolor, None, proj_, res, im_interpolation, xlabel, self._vlims, self._cmaps, self._contours, interpolation, head_radius, head_pos)
+            h = _ax_topomap(ax, layers, clip, clip_distance, sensorlabels, mark, mcolor, msize, marker, proj_, res, im_interpolation, xlabel, self._vlims, self._cmaps, self._contours, interpolation, head_radius, head_pos)
             self.plots.append(h)
 
         TopoMapKey.__init__(self, self._topo_data)
@@ -228,8 +235,12 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         is removed; with 'fullname', the full name is shown.
     mark : Sensor index
         Sensors which to mark.
-    mcolor : matplotlib color
-        Color for marked sensors.
+    mcolor
+        Color for marked sensors (see :func:`matplotlib.pyplot.scatter`).
+    msize
+        Size of the markers (see :func:`matplotlib.pyplot.scatter`).
+    marker
+        Marker shape (see :func:`matplotlib.pyplot.scatter`).
     ...
         Also accepts :ref:`general-layout-parameters`.
 
@@ -265,7 +276,9 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
             # sensor-map args
             sensorlabels: SensorLabelsArg = None,
             mark: IndexArg = None,
-            mcolor: ColorArg = None,
+            mcolor: Union[ColorArg, Sequence[ColorArg]] = None,
+            msize: Union[float, Sequence[float]] = 20,
+            marker: Union[str, matplotlib.markers.MarkerStyle] = 'o',
             **kwargs,
     ):
         data = PlotData.from_args(y, ('sensor', 'time'), xax, ds, sub)
@@ -287,7 +300,7 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
             for row, layers in enumerate(t_data):
                 i = row * n_bins + column
                 ax = self.axes[i]
-                self._plots[i] = _ax_topomap(ax, layers, clip, clip_distance, sensorlabels, mark, mcolor, None, proj, res, im_interpolation, None, self._vlims, self._cmaps, self._contours, interpolation, head_radius, head_pos)
+                self._plots[i] = _ax_topomap(ax, layers, clip, clip_distance, sensorlabels, mark, mcolor, msize, marker, proj, res, im_interpolation, None, self._vlims, self._cmaps, self._contours, interpolation, head_radius, head_pos)
 
         self._set_axtitle((str(t) for t in time), axes=self.axes[:len(time)])
         TopoMapKey.__init__(self, self._topo_data)
@@ -570,7 +583,7 @@ class _plt_topomap(_plt_im):
             vlims,
             cmaps,
             contours,
-            interpolation: InterpolationArg,
+            interpolation: InterpolationArg,  # Method for interpolating topo-map between sensors
             clip: str,
             clip_distance: float,
     ):
@@ -689,8 +702,9 @@ class _ax_topomap(_ax_im_array):
             clip_distance: float=0.05,  # distance from outermost sensor for clip=='even'
             sensorlabels: SensorLabelsArg = None,
             mark: IndexArg = None,
-            mcolor: ColorArg = None,
-            mmarker=None,
+            mcolor: Union[ColorArg, Sequence[ColorArg]] = None,
+            msize: Union[float, Sequence[float]] = 20,
+            mmarker: Union[str, matplotlib.markers.MarkerStyle] = 'o',
             proj: str = 'default',  # topomap projection method
             res: int = None,  # topomap image resolution
             im_interpolation: str = None,  # matplotlib imshow interpolation method
@@ -723,7 +737,7 @@ class _ax_topomap(_ax_im_array):
             head_radius = self.plots[0]._default_head_radius
 
         # plot sensors
-        self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, '.', 1, 'k', mark, mcolor, mmarker, sensorlabels, False, head_radius, head_pos, head_linewidth)
+        self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, '.', 1, 'k', mark, mcolor, msize, mmarker, sensorlabels, False, head_radius, head_pos, head_linewidth)
 
         ax.set_aspect('equal')
         ax.set_xlim(0, 1)
