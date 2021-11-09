@@ -193,9 +193,11 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         old_display = os.environ.get('DISPLAY')
         if old_display is None:
             os.environ['DISPLAY'] = 'duh'
-        from nilearn.image import index_img
-        from nilearn.plotting.displays import get_projector
-        from nilearn.plotting.img_plotting import _get_colorbar_and_data_ranges
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', 'Trying to register the cmap', UserWarning)
+            from nilearn.image import index_img
+            from nilearn.plotting.displays import get_projector
+            from nilearn.plotting.img_plotting import _get_colorbar_and_data_ranges
         if old_display is None:
             del os.environ['DISPLAY']
 
