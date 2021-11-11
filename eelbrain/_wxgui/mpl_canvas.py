@@ -382,13 +382,13 @@ class LimitsValidator(wx.Validator):
         if self.single == 'symmetric':
             use_single = -vmin == vmax
         elif self.single == 'offset':
-            use_single = vmin == 0
+            use_single = False
         else:
             raise RuntimeError(f'{self.single=}')
         if use_single:
-            ctrl.SetValue(f'{vmax}')
+            ctrl.SetValue(f'{vmax:g}')
         else:
-            ctrl.SetValue(f'{vmin} {vmax}')
+            ctrl.SetValue(f'{vmin:g} {vmax:g}')
         ctrl.SelectAll()
         return True
 
