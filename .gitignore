@@ -40,3 +40,4 @@ coverage/
 doc/auto_examples
 *.ipynb
 .ipynb_checkpoints
+.eggs

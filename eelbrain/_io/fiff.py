@@ -25,6 +25,7 @@ from .._info import BAD_CHANNELS
 from .._text import n_of
 from .._utils import ui, as_list
 from ..mne_fixes import MNE_EVOKED, MNE_RAW, MNE_VOLUME_STC
+from ..mne_fixes._channels import _adjacency_id
 
 
 try:  # mne >= 0.19
@@ -783,30 +784,37 @@ def sensor_dim(
 
     ch_type = None
     if connectivity == 'auto':
-        ch_types = find_mne_channel_types({'chs': chs})
-        if len(ch_types) == 1:
-            ch_type = ch_types[0]
-            if ch_type == 'eog':
-                connectivity = 'none'
+        if sysname and sysname.startswith('KIT-'):
+            connectivity = sysname
         else:
-            # TODO: connectivity for vector data
-            connectivity = 'none'
+            ch_types = find_mne_channel_types({'chs': chs})
+            if len(ch_types) == 1:
+                ch_type = ch_types[0]
+                if ch_type == 'eog':
+                    connectivity = 'none'
+            else:
+                # TODO: connectivity for vector data
+                connectivity = 'none'
 
     if connectivity in ('grid', 'none'):
         pass
     elif isinstance(connectivity, str):
         if connectivity == 'auto':
+            connectivity = _adjacency_id(info, ch_type)
+        if connectivity is None:
             c_matrix, names = mne.channels.find_ch_adjacency(info, ch_type)
-            fix_ch_names = any(ch not in names for ch in ch_names)
+            if any(ch not in names for ch in ch_names):
+                raise NotImplementedError("Connectivity fot this data type")
         else:
             c_matrix, names = mne.channels.read_ch_adjacency(connectivity)
-            fix_ch_names = connectivity.startswith('neuromag')
-
-        if fix_ch_names:
-            vec_ids = {name[-1] for name in ch_names}
-            if len(vec_ids) > 1:
-                raise NotImplementedError("Connectivity for Neuromag vector data")
-            names = [f'{n[:3]} {n[3:]}' for n in names]
+            # fix channel names
+            if connectivity.startswith('neuromag'):
+                vec_ids = {name[-1] for name in ch_names}
+                if len(vec_ids) > 1:
+                    raise NotImplementedError("Connectivity for Neuromag vector data")
+                names = [f'{n[:3]} {n[3:]}' for n in names]
+            elif connectivity == 'ctf275':
+                ch_names = [name[:5] for name in ch_names]
 
         # fix channel order
         if names != ch_names:

@@ -7,7 +7,7 @@ from itertools import chain
 import logging
 from os import makedirs, remove
 from os.path import basename, dirname, exists, getmtime, join, splitext
-from typing import Dict, Sequence, Union
+from typing import Callable, Dict, List, Sequence, Tuple, Union
 
 import mne
 from scipy import signal
@@ -182,7 +182,16 @@ class RawSource(RawPipe):
     _dig_sessions: dict = None  # {subject: {for_recording: use_recording}}
     bads_path: str = None  # set on linking
 
-    def __init__(self, filename='{subject}_{recording}-raw.fif', reader=mne.io.read_raw_fif, sysname=None, rename_channels=None, montage=None, connectivity=None, **kwargs):
+    def __init__(
+            self,
+            filename: str = '{subject}_{recording}-raw.fif',
+            reader: Callable = mne.io.read_raw_fif,
+            sysname: str = None,
+            rename_channels: dict = None,
+            montage: str = None,
+            connectivity: Union[str, List[Tuple[str, str]]] = None,
+            **kwargs,
+    ):
         RawPipe.__init__(self)
         self.filename = typed_arg(filename, str)
         self.reader = reader
@@ -311,7 +320,8 @@ class RawSource(RawPipe):
             if find_mne_channel_types(raw.info) != ['eeg']:
                 flat = 1e-14
         if flat:
-            raw = load.fiff.raw_ndvar(raw)
+            sysname = self.get_sysname(raw.info, subject, None)
+            raw = load.fiff.raw_ndvar(raw, sysname=sysname, connectivity=self.connectivity)
             bad_chs.extend(raw.sensor.names[raw.std('time') < flat])
         self.make_bad_channels(subject, recording, bad_chs, redo)
 

@@ -1876,7 +1876,8 @@ class MneExperiment(FileTree):
         Returns
         -------
         ds : Dataset
-            Should return the modified events dataset.
+            Should return the modified events dataset. Needs to contain at least
+            the ``i_start`` and ``trigger`` columns.
 
 
         See Also
