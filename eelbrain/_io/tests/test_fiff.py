@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import os
+from pathlib import Path
 from warnings import catch_warnings, filterwarnings
 
 import mne
@@ -8,10 +9,19 @@ import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 from eelbrain import load
-from eelbrain.testing import assert_dataobj_equal, requires_mne_sample_data, file_path
+from eelbrain.testing import assert_dataobj_equal, requires_mne_sample_data, requires_mne_testing_data, file_path
 
 
 FILTER_WARNING = 'The measurement information indicates a low-pass frequency of 40 Hz.'
+
+
+@requires_mne_testing_data
+def test_load_fiff_ctf():
+    path = Path(mne.datasets.testing.data_path())
+    raw_path = path / 'CTF' / 'testdata_ctf.ds'
+    raw = mne.io.read_raw_ctf(raw_path)
+    y = load.fiff.raw_ndvar(raw)
+    assert_array_equal(y.sensor.connectivity()[:3], [[0, 1], [0, 16], [0, 44]])
 
 
 @requires_mne_sample_data
