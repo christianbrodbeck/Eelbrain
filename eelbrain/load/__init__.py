@@ -15,12 +15,12 @@ txt:
 
 """
 
+from .._io import txt
 from . import besa
 from . import eyelink
 from . import fiff
-from . import txt
 
-from .txt import tsv
+from .._io.txt import tsv
 from .._io.cnd import read_cnd as cnd
 from .._io.feather import load_feather as feather
 from .._io.pickle import unpickle, update_subjects_dir, convert_pickle_protocol
