@@ -311,7 +311,8 @@ class RawSource(RawPipe):
             if find_mne_channel_types(raw.info) != ['eeg']:
                 flat = 1e-14
         if flat:
-            raw = load.fiff.raw_ndvar(raw)
+            sysname = self.get_sysname(raw.info, subject, None)
+            raw = load.fiff.raw_ndvar(raw, sysname=sysname, connectivity=self.connectivity)
             bad_chs.extend(raw.sensor.names[raw.std('time') < flat])
         self.make_bad_channels(subject, recording, bad_chs, redo)
 
