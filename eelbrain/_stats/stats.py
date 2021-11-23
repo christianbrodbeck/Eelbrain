@@ -25,7 +25,7 @@ class DispersionSpec:
     def from_string(cls, string: Union[str, 'DispersionSpec']):
         if isinstance(string, cls):
             return string
-        m = re.match(r"^([.\d]*)(\%?)(CI|SEM)$", string.upper())
+        m = re.match(r"^([.\d]*)(%?)(CI|SEM)$", string.upper())
         if m is None:
             raise ValueError(f"{string!r}: invalid dispersion specification")
         multiplier, perc, measure = m.groups()
@@ -33,7 +33,7 @@ class DispersionSpec:
             multiplier = float(multiplier)
             if perc:
                 multiplier /= 100
-        elif measure == 'ci':
+        elif measure == 'CI':
             multiplier = .95
         else:
             multiplier = 1
