@@ -15,7 +15,7 @@ from mne.io.constants import FIFF
 import numpy as np
 import scipy.ndimage
 
-from .._data_obj import NDVar, SourceSpace, asndvar
+from .._data_obj import NDVar, SourceSpace, UTS, asndvar
 from .._exceptions import KeysMissing
 from .._text import ms
 from .._types import PathArg
@@ -403,7 +403,7 @@ class Brain(TimeSlicer, surfer.Brain):
             self.remove_data()
 
         # make sure time axis is compatible with existing data
-        if time_dim is not None:
+        if isinstance(time_dim, UTS):
             self._init_time_dim(time_dim)
 
         # find colormap parameters
