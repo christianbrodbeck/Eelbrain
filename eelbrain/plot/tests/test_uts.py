@@ -20,6 +20,8 @@ def test_uts_stat():
     p.close()
     p = plot.UTSStat('uts', 'A', 'B', match='rm', ds=ds)
     assert [len(pl.stat_plots) for pl in p._plots] == [2, 2]
+    assert p.figure.axes[0].get_title() == 'b0'
+    assert p.figure.axes[1].get_title() == 'b1'
     p.close()
     p = plot.UTSStat('uts', 'A', 'B', match='rm', ds=ds, pool_error=False)
     assert [len(pl.stat_plots) for pl in p._plots] == [2, 2]

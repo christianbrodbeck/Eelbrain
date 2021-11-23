@@ -1066,13 +1066,17 @@ class PlotData:
             assert sum(self.plot_used) == self.n_plots
         if self.plot_names is None:
             self.plot_names = []
-            for layers in self.plot_data:
-                for layer in layers:
-                    if layer.y.name:
-                        self.plot_names.append(layer.y.name)
-                        break
+            for axis_data in self.plot_data:
+                if axis_data.title:
+                    axis_title = axis_data.title
                 else:
-                    self.plot_names.append(None)
+                    for layer in axis_data:
+                        if layer.y.name:
+                            axis_title = layer.y.name
+                            break
+                    else:
+                        axis_title = None
+                self.plot_names.append(axis_title)
 
     def __repr__(self):
         desc = [f'{self.n_plots} plots']
