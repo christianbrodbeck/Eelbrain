@@ -194,8 +194,7 @@ class NDTest:
         return f"{_text.ms(tstart)} - {_text.ms(tstop)} ms"
 
     def _asfmtext(self, **_):
-        p = self.p.min()
-        max_stat = self._max_statistic()
+        max_stat, p = self._max_statistic(return_p=True)
         return FMText([fmtxt.eq(self._statistic, max_stat, 'max', stars=p), ', ', fmtxt.peq(p)])
 
     def _default_plot_obj(self):
@@ -367,25 +366,32 @@ class NDTest:
             self,
             mask: NDVar = None,
             return_time: bool = False,
+            return_p: bool = False,
+            sub: dict = None,
     ):
         tail = getattr(self, 'tail', self._statistic_tail)
-        if mask is None:
-            mask = self.p
-        return self._max_statistic_from_map(self._statistic_map, mask, tail, return_time)
+        return self._max_statistic_from_map(self._statistic_map, self.p, tail, mask, return_time, return_p, sub)
 
     @staticmethod
     def _max_statistic_from_map(
             stat_map: NDVar,
             p_map: NDVar,
             tail: int,
+            mask: NDVar = None,
             return_time: bool = False,
+            return_p: bool = False,
+            sub: dict = None,
     ):
-        if p_map is None:
-            mask = None
-        elif p_map.x.dtype.kind == 'b':
-            mask = p_map
-        else:
-            mask = p_map <= .05 if p_map.min() <= .05 else None
+        if sub:
+            stat_map = stat_map.sub(**sub)
+            if stat_map.x.size == 0:
+                return (None,) * (1 + return_p + return_time)
+            p_map = p_map.sub(**sub)
+            if mask is not None:
+                mask = mask.sub(**sub)
+
+        if mask is None and p_map.min() <= .05:
+            mask = p_map <= .05
 
         if tail == 0:
             max_stat = stat_map.extrema(mask)
@@ -394,6 +400,9 @@ class NDTest:
         else:
             max_stat = stat_map.min(mask)
 
+        out = [max_stat]
+        if return_p:
+            out.append(p_map.min())
         if return_time:
             if mask is not None:
                 stat_map = stat_map.mask(~mask, missing=True)
@@ -406,9 +415,8 @@ class NDTest:
                 time = stat_map.argmax('time')
             else:
                 time = stat_map.argmin('time')
-            return max_stat, time
-        else:
-            return max_stat
+            out.append(time)
+        return out
 
     @property
     def n_samples(self):
@@ -1506,18 +1514,17 @@ class MultiEffectNDTest(NDTest):
 
     def _asfmtext(self, **_):
         if len(self.effects) == 1:
-            p = self.p[0].min()
-            max_stat = self._max_statistic(0)
+            max_stat, p = self._max_statistic(0, return_p=True)
             return FMText([fmtxt.eq(self._statistic, max_stat, 'max', stars=p), ', ', fmtxt.peq(p)])
         table = fmtxt.Table('llll')
         table.cells('Effect', fmtxt.symbol(self._statistic, 'max'), fmtxt.symbol('p'), 'sig')
         table.midrule()
         for i, effect in enumerate(self.effects):
+            max_stat, p = self._max_statistic(i, return_p=True)
             table.cell(effect)
-            table.cell(fmtxt.stat(self._max_statistic(i)))
-            pmin = self.p[i].min()
-            table.cell(fmtxt.p(pmin))
-            table.cell(star(pmin))
+            table.cell(fmtxt.stat(max_stat))
+            table.cell(fmtxt.p(p))
+            table.cell(star(p))
         return table
 
     def _expand_state(self):
@@ -1554,13 +1561,14 @@ class MultiEffectNDTest(NDTest):
             effect: Union[str, int],
             mask: NDVar = None,
             return_time: bool = False,
+            return_p: bool = False,
+            sub: dict = None,
     ):
         i = self._effect_index(effect)
         stat_map = self._statistic_map[i]
+        p_map = self.p[i]
         tail = getattr(self, 'tail', self._statistic_tail)
-        if mask is None:
-            mask = self.p[i]
-        return self._max_statistic_from_map(stat_map, mask, tail, return_time)
+        return self._max_statistic_from_map(stat_map, p_map, tail, mask, return_time, return_p, sub)
 
     def cluster(self, cluster_id, effect=0):
         """Retrieve a specific cluster as NDVar
