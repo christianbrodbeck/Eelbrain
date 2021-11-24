@@ -1057,6 +1057,7 @@ class PlotData:
     ct: Celltable = None
     x: Union[Factor, Interaction] = None
     xax: Union[Factor, Interaction] = None
+    styles: Dict[CellArg, Style] = None
 
     def __post_init__(self):
         self.n_plots = len(self.plot_data)
@@ -1272,16 +1273,21 @@ class PlotData:
         if agg:
             raise NotImplementedError
         # reconstruct x/xax
+        if x is not None:
+            x = ct._align(x, ds=ds, coerce=ascategorial)
         if xax is None:
+            default_color_cells = None
             ax_cells = [None]
         else:
             xax = ct._align(xax, ds=ds, coerce=ascategorial)
             ax_cells = xax.cells
-        if x is not None:
-            x = ct._align(x, ds=ds, coerce=ascategorial)
+            if x is None:
+                default_color_cells = None
+            else:
+                default_color_cells = x.cells
         title = frame_title(y, x, xax)
         # find styles
-        styles = find_cell_styles(ct.cells, colors)
+        styles = find_cell_styles(ct.cells, colors, default_cells=default_color_cells)
         # find masks
         if mask is None:
             masks = defaultdict(lambda: None)
@@ -1304,7 +1310,7 @@ class PlotData:
                 cells = [cell for cell in cells if cell in ct.data]
             layers = [StatLayer(ct.data[cell], style=styles[cell], ct=ct, cell=cell, mask=masks[cell]) for cell in cells]
             axes.append(AxisData(layers, cellname(ax_cell)))
-        return cls(axes, dims, title, ct=ct, x=x, xax=xax)
+        return cls(axes, dims, title, ct=ct, x=x, xax=xax, styles=styles)
 
     @classmethod
     def empty(cls, plots: Union[int, List[bool]], dims: Sequence[str], title: str):

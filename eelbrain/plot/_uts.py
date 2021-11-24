@@ -194,6 +194,11 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             ymax = p.vmax if ymax is None else max(ymax, p.vmax)
         self._set_axtitle(axtitle, data)
 
+        # The legend should only display cells with distinct styles: remap legend handles to source cells
+        alias_cells = {cell: style.alias for cell, style in data.styles.items() if style.alias}
+        if alias_cells:
+            legend_handles = {alias_cells[cell]: handle for cell, handle in legend_handles.items()}
+
         # axes limits
         if top is not None:
             ymax = top

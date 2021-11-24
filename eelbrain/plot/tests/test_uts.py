@@ -22,8 +22,9 @@ def test_uts_stat():
     assert [len(pl.stat_plots) for pl in p._plots] == [2, 2]
     assert p.figure.axes[0].get_title() == 'b0'
     assert p.figure.axes[1].get_title() == 'b1'
+    assert set(p._LegendMixin__handles) == {'a0', 'a1'}
     p.close()
-    p = plot.UTSStat('uts', 'A', 'B', match='rm', ds=ds, pool_error=False)
+    p = plot.UTSStat('uts', 'A', 'B', match='rm', ds=ds, pool_error=False, colors={'a0': 'red', 'a1': 'k'})
     assert [len(pl.stat_plots) for pl in p._plots] == [2, 2]
     p.close()
 
