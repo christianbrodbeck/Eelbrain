@@ -13,6 +13,7 @@ from nibabel.freesurfer import read_annot
 import numpy as np
 
 from .._data_obj import NDVar, SourceSpace
+from .._types import PathArg
 from .._stats.testnd import NDTest, NDDifferenceTest, MultiEffectNDTest
 from .._utils import deprecated
 from ..fmtxt import im_table
@@ -1172,9 +1173,14 @@ class SequencePlotter:
     """
     max_n_bins = 25
 
-    def __init__(self):
+    def __init__(
+            self,
+            subject: str = None,
+            subjects_dir: PathArg = None,
+    ):
         self._data = []
-        self._source = None
+        self._subject = subject
+        self._subjects_dir = subjects_dir
         self._frame_dim = None
         self._bin_kind: SPLayer = SPLayer.UNDEFINED
         self._frame_order = None
@@ -1201,12 +1207,13 @@ class SequencePlotter:
         """
         if not isinstance(source, SourceSpace):
             raise TypeError(f"{source!r}")
-        elif self._source is None:
-            self._source = source
-        elif source.subject != self._source.subject:
-            raise ValueError(f"NDVar has different subject ({source.subject}) than previously added data ({self._source.subject})")
-        elif source.subjects_dir != self._source.subjects_dir:
-            raise ValueError(f"NDVar has different subjects_dir ({source.subjects_dir}) than previously added data ({self._source.subjects_dir})")
+        elif self._subject is None:
+            self._subject = source.subject
+            self._subjects_dir = source.subjects_dir
+        elif source.subject != self._subject:
+            raise ValueError(f"NDVar has different subject ({source.subject}) than previously added data ({self._subject})")
+        elif source.subjects_dir != self._subjects_dir:
+            raise ValueError(f"NDVar has different subjects_dir ({source.subjects_dir}) than previously added data ({self._subjects_dir})")
 
     def _n_items(self):
         if self._bin_kind == SPLayer.SEQUENCE:
@@ -1260,6 +1267,7 @@ class SequencePlotter:
             label: str = None,
             **kwargs,
     ):
+        """"""
         if overlay:
             kind = SPLayer.OVERLAY
         else:
@@ -1523,9 +1531,11 @@ class SequencePlotter:
                 'wspace': 0.1,  # width of the space between images
             }
         """
-        if self._source is None:
-            raise RuntimeError("No brain model specified for plotting; use .set_brain()")
-        if not self._data:
+        if self._subject is None:
+            raise RuntimeError("subject not set; specify when initializing SequencePlotter")
+        elif self._subjects_dir is None:
+            raise RuntimeError("subjects_dir not set; specify when initializing SequencePlotter")
+        elif not self._data:
             raise RuntimeError("No data")
         labels = self._get_frame_labels(labels)
         # determine hemisphere(s) to plot
@@ -1610,7 +1620,7 @@ class SequencePlotter:
         ims = {}
         for hemi in hemis:
             # plot brain
-            b = brain(self._source, hemi=hemi, views='lateral', w=w, h=h, time_label='', **self._brain_args)
+            b = brain(self._subject, hemi=hemi, views='lateral', w=w, h=h, time_label='', subjects_dir=self._subjects_dir, **self._brain_args)
 
             if self._bin_kind == SPLayer.SEQUENCE:
                 for l in self._data:
