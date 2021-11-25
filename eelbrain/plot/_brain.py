@@ -1179,6 +1179,7 @@ class SequencePlotter:
             subjects_dir: PathArg = None,
     ):
         self._data = []
+        self._source = None  # for mask
         self._subject = subject
         self._subjects_dir = subjects_dir
         self._frame_dim = None
@@ -1193,7 +1194,12 @@ class SequencePlotter:
         elif self._frame_dim is False:
             raise RuntimeError("Only applies to SequencePlotters with 2d NDVars")
 
-    def set_brain(self, source):
+    def set_brain(
+            self,
+            source: SourceSpace = None,
+            subject: str = None,
+            subjects_dir: PathArg = None,
+    ):
         """Set the brain model on which to plot
 
         This is usually handled automatically, and only needs to be invoked
@@ -1202,18 +1208,32 @@ class SequencePlotter:
 
         Parameters
         ----------
-        source : SourceSpace
-            Brain model on which to plot.
+        source
+            Brain model on which to plot. The coverage if the source space is
+            also used for the mask (the first source space that is added takes
+            precedence).
+        subject
+            Specify subject directly.
+        subjects_dir
+            Specify the subjects directory directly.
         """
-        if not isinstance(source, SourceSpace):
+        if isinstance(source, SourceSpace):
+            subject = source.subject
+            subjects_dir = source.subjects_dir
+        elif source is not None:
             raise TypeError(f"{source!r}")
-        elif self._subject is None:
-            self._subject = source.subject
-            self._subjects_dir = source.subjects_dir
-        elif source.subject != self._subject:
-            raise ValueError(f"NDVar has different subject ({source.subject}) than previously added data ({self._subject})")
-        elif source.subjects_dir != self._subjects_dir:
-            raise ValueError(f"NDVar has different subjects_dir ({source.subjects_dir}) than previously added data ({self._subjects_dir})")
+
+        if self._subject is None:
+            self._subject = subject
+        elif subject and subject != self._subject:
+            raise ValueError(f"Different subject ({subject}) than previously added ({self._subject})")
+        if self._subjects_dir is None:
+            self._subjects_dir = subjects_dir
+        elif subjects_dir and subjects_dir != self._subjects_dir:
+            raise ValueError(f"different subjects_dir ({subjects_dir}) than previously added ({self._subjects_dir})")
+
+        if self._source is None and isinstance(source, SourceSpace):
+            self._source = source
 
     def _n_items(self):
         if self._bin_kind == SPLayer.SEQUENCE:
@@ -1268,6 +1288,7 @@ class SequencePlotter:
             **kwargs,
     ):
         """"""
+        self.set_brain(subject=mne_label.subject)
         if overlay:
             kind = SPLayer.OVERLAY
         else:
@@ -1619,9 +1640,10 @@ class SequencePlotter:
     ) -> dict:
         bins = self._bins
         ims = {}
+        source_space = self._source or self._subject
         for hemi in hemis:
             # plot brain
-            b = brain(self._subject, hemi=hemi, views='lateral', w=w, h=h, time_label='', subjects_dir=self._subjects_dir, **self._brain_args)
+            b = brain(source_space, hemi=hemi, views='lateral', w=w, h=h, time_label='', subjects_dir=self._subjects_dir, **self._brain_args)
 
             if self._bin_kind == SPLayer.SEQUENCE:
                 for l in self._data:
