@@ -1546,7 +1546,8 @@ class SequencePlotter:
                 hemis.append('lh')
             if any(ss.rh_n for ss in sss):
                 hemis.append('rh')
-            assert hemis, "Data in neither hemisphere"
+            if not hemis:
+                hemis = ('lh', 'rh')
         elif hemi == 'both':
             hemis = ('lh', 'rh')
         elif hemi in ('lh', 'rh'):
@@ -1591,7 +1592,7 @@ class SequencePlotter:
         hemi_shift = int(round(figure._layout.dpi * hemi_magnet))
 
         ims = self._generate_ims(figure._res_w, figure._res_h, views, mode, antialiased, hemi_shift, hemis)
-        cmap_params, cmap_data = ims.pop('cmap')
+        cmap_params, cmap_data = ims.pop('cmap', (None, None))
 
         # reshape im-order
         row_pattern = list(product(*[axis_sequences[key] for key in rows]))
