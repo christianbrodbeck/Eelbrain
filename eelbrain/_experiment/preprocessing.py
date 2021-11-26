@@ -573,7 +573,15 @@ class RawICA(CachedRawPipe):
     """
     ica_path: str = None  # set on linking
 
-    def __init__(self, source, session, method='extended-infomax', random_state=0, cache=False, **kwargs):
+    def __init__(
+            self,
+            source: str,
+            session: Union[str, Sequence[str]],
+            method: str = 'extended-infomax',
+            random_state: int = 0,
+            cache: bool = False,
+            **kwargs,
+    ):
         CachedRawPipe.__init__(self, source, cache)
         if isinstance(session, str):
             session = (session,)

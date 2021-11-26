@@ -2013,7 +2013,7 @@ class MneExperiment(FileTree):
         """
         if not isinstance(groups, dict):
             groups = {g: g for g in groups}
-        labels = {s: [l for g, l in groups.items() if s in self._groups[g]] for s in subject.cells}
+        labels = {s: [label for group, label in groups.items() if s in self._groups[group]] for s in subject.cells}
         problems = [s for s, g in labels.items() if len(g) != 1]
         if problems:
             desc = (', '.join(labels[s]) if labels[s] else 'no group' for s in problems)

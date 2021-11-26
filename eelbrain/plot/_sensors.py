@@ -320,18 +320,14 @@ class _plt_map2d:
 
 
 class SensorMapMixin:
-    # expects self._sensor_plots to be list of _plt_map2d
     __label_options = ['None', 'Index', 'Name', 'Full Name']
     __label_option_args = ['none', 'index', 'name', 'fullname']
 
-    def __init__(self, sensor_plots):
-        """Call after EelFigure init (toolbar fill)
-
-        Parameters
-        ----------
-        sensor_plots : list of _plt_map2d
-            Sensor-map objects.
-        """
+    def __init__(
+            self,
+            sensor_plots: Sequence[_plt_map2d],
+    ):
+        "Call after EelFigure init (toolbar fill)"
         self.__label_color = 'k'
         self.__sensor_plots = sensor_plots
         if not self._has_frame:

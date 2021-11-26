@@ -7,9 +7,10 @@ from itertools import repeat
 from math import floor, sqrt
 from typing import Any, Dict, Literal, Sequence, Tuple, Union
 
-import matplotlib as mpl
+import matplotlib
 import matplotlib.axes
 import matplotlib.markers
+import matplotlib.patches
 import numpy as np
 from scipy import interpolate, linalg
 from scipy.spatial import ConvexHull
@@ -481,8 +482,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMix
         self.topo_plots = []
         self.t_markers = []  # vertical lines on butterfly plots
 
-        ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, contours,
-                               self.topo_plots)
+        ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, contours, self.topo_plots)
 
         self._topo_kwargs = {
             'clip': clip,
@@ -575,7 +575,7 @@ class _plt_topomap(_plt_im):
 
     def __init__(
             self,
-            ax: mpl.axes.Axes,
+            ax: matplotlib.axes.Axes,
             layer: DataLayer,
             proj: str,
             res: int,
@@ -610,10 +610,10 @@ class _plt_topomap(_plt_im):
                 verticals *= clip_distance
                 # apply offset
                 points += verticals
-                mask = mpl.patches.Polygon(points, transform=ax.transData)
+                mask = matplotlib.patches.Polygon(points, transform=ax.transData)
             elif clip == 'circle':
                 clip_radius = sqrt(np.max(np.sum((locs - [0.5, 0.5]) ** 2, 1)))
-                mask = mpl.patches.Circle((0.5, 0.5), clip_radius, transform=ax.transData)
+                mask = matplotlib.patches.Circle((0.5, 0.5), clip_radius, transform=ax.transData)
                 default_head_radius = clip_radius
             else:
                 raise ValueError('clip=%r' % (clip,))
@@ -699,7 +699,7 @@ class _ax_topomap(_ax_im_array):
             ax: matplotlib.axes.Axes,
             layers: AxisData,
             clip: str = 'even',  # even or circle (only applies if interpolation is None)
-            clip_distance: float=0.05,  # distance from outermost sensor for clip=='even'
+            clip_distance: float = 0.05,  # distance from outermost sensor for clip=='even'
             sensorlabels: SensorLabelsArg = None,
             mark: IndexArg = None,
             mcolor: Union[ColorArg, Sequence[ColorArg]] = None,

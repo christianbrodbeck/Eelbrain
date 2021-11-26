@@ -268,9 +268,7 @@ class Brain(TimeSlicer, surfer.Brain):
         "Make sure SourceSpace is compatible"
         source = get_source_dim(source)
         if source.subject != self.subject_id:
-            raise ValueError(
-                "Trying to plot NDVar from subject %s on Brain from subject "
-                "%s" % (source.subject, self.subject_id))
+            raise ValueError(f"Trying to plot NDVar with {source.subject=} on Brain with subject={self.subject_id!r}")
         elif self._hemi == 'lh' and source.lh_n == 0:
             raise ValueError("Trying to add NDVar without lh data to plot of lh")
         elif self._hemi == 'rh' and source.rh_n == 0:

@@ -2738,7 +2738,7 @@ def subplots(
         hspace: float = None,
         height_ratios: Sequence[float] = None,
         **kwargs,
-):
+) -> (matplotlib.figure.Figure, Union[matplotlib.axes.Axes, np.ndarray]):
     """Specify :func:`matplotlib.pyplot.subplots` parameters in inches
 
     Parameters
