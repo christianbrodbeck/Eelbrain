@@ -1113,11 +1113,7 @@ class SequencePlotterLayer:
             assert self.index is None
 
     def plot(self, brain):
-        if self.plot_type == SPPlotType.DATA:
-            brain.add_ndvar(self.data, *self.args, time_label='', **self.kwargs)
-        elif self.plot_type == SPPlotType.LABEL:
-            brain.add_ndvar_label(self.data, *self.args, **self.kwargs)
-        elif self.plot_type == SPPlotType.MNE_LABEL:
+        if self.plot_type == SPPlotType.MNE_LABEL:
             if isinstance(self.data, mne.BiHemiLabel):
                 label = getattr(self.data, brain.hemi)
             elif self.data.hemi == brain.hemi:
@@ -1128,6 +1124,14 @@ class SequencePlotterLayer:
         elif self.plot_type == SPPlotType.FUNC:
             func = self.args[0]
             func(brain)
+        elif len(self.data.source.vertices[brain.hemi == 'rh']) == 0:
+            return
+        elif self.plot_type == SPPlotType.DATA:
+            brain.add_ndvar(self.data, *self.args, time_label='', **self.kwargs)
+        elif self.plot_type == SPPlotType.LABEL:
+            brain.add_ndvar_label(self.data, *self.args, **self.kwargs)
+        else:
+            raise RuntimeError(f"{self.plot_type=}")
 
 
 class SequencePlotter:
