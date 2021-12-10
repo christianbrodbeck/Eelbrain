@@ -154,10 +154,17 @@ def find_cell_styles(
         Alternative cells to use if ``colors`` is ``None`` or a :class:`dict`.
         For example, when plots use the ``xax`` parameter, cells will contain a
         ``xax`` component, but colors should be consistent across axes.
+    raise_for_missing
+        Raise an error for missig cells.
     """
-    if cells in (None, (None,)):
+    if cells is None:
+        cells = (None,)
+    if cells == (None,):
         if isinstance(colors, dict):
-            out = colors
+            if None in colors:
+                out = colors
+            else:
+                raise KeysMissing((None,), 'colors', colors)
         else:
             if colors is None:
                 colors = 'k'
