@@ -245,8 +245,8 @@ class MneExperiment(FileTree):
     stim_channel: Union[str, Sequence[str]] = None
     # merge adjacent events in the stimulus channel
     merge_triggers: int = None
-    # add this value to all trigger times (in seconds); global shift, or {subject: shift} dictionary
-    trigger_shift: Union[float, Dict[str, float]] = 0
+    # add this value to all trigger times (in seconds); global shift, or {subject: shift, (subject, visit): shift} dictionary
+    trigger_shift: Union[float, Dict[Union[str, Tuple], float]] = 0
 
     # variables for automatic labeling {name: {trigger: label, triggers: label}}
     variables: Dict[str, Any] = {}
@@ -2586,6 +2586,7 @@ class MneExperiment(FileTree):
         """
         evt_file = self.get('event-file', mkdir=True, subject=subject, **kwargs)
         subject = self.get('subject')
+        visit = self.get('visit')
 
         # search for and check cached version
         ds = None
@@ -2619,11 +2620,14 @@ class MneExperiment(FileTree):
         ds.info['subject'] = subject
         ds.info['session'] = self.get('session')
         if len(self._visits) > 1:
-            ds.info['visit'] = self.get('visit')
+            ds.info['visit'] = visit
 
         if self.trigger_shift:
             if isinstance(self.trigger_shift, dict):
-                trigger_shift = self.trigger_shift[subject]
+                if (subject, visit) in self.trigger_shift:
+                    trigger_shift = self.trigger_shift[subject, visit]
+                else:
+                    trigger_shift = self.trigger_shift[subject]
             else:
                 trigger_shift = self.trigger_shift
 
