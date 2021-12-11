@@ -4503,6 +4503,11 @@ class MneExperiment(FileTree):
                 raise TypeError(f"{session=} with {epoch=}")
             else:
                 ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, samplingrate=samplingrate, decim=decim, add_bads=bads)
+                if isinstance(ds['epochs'], Datalist):  # variable-length epoch
+                    data = np.concatenate([epoch.get_data()[0] for epoch in ds['epochs']], axis=1)  # n_epochs, n_channels, n_times
+                    raw = mne.io.RawArray(data, ds[0, 'epochs'].info)
+                    events = mne.make_fixed_length_events(raw)
+                    ds = Dataset({'epochs': mne.Epochs(raw, events, 1, 0, 1, baseline=None, proj=False, preload=True)})
         info = ds['epochs'].info
         data = TestDims('sensor')
         data_kind = data.data_to_ndvar(info)[0]
