@@ -655,7 +655,7 @@ class Frame(SharedToolsMenu, FileFrame):
         y = source - source.mean()
         y **= 2
         ss = y.sum('time')  # ndvar has epoch as index
-        self.GoToComponentEpoch(epoch=ss.argmax())
+        self.GoToComponentEpoch(i_comp, ss.argmax())
 
     def GoToComponentEpoch(self, component: int = None, epoch: int = None):
         if not self.source_frame:
