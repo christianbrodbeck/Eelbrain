@@ -13,6 +13,7 @@ from nibabel.freesurfer import read_annot
 import numpy as np
 
 from .._data_obj import NDVar, SourceSpace
+from .._types import PathArg
 from .._stats.testnd import NDTest, NDDifferenceTest, MultiEffectNDTest
 from .._utils import deprecated
 from ..fmtxt import im_table
@@ -1112,11 +1113,7 @@ class SequencePlotterLayer:
             assert self.index is None
 
     def plot(self, brain):
-        if self.plot_type == SPPlotType.DATA:
-            brain.add_ndvar(self.data, *self.args, time_label='', **self.kwargs)
-        elif self.plot_type == SPPlotType.LABEL:
-            brain.add_ndvar_label(self.data, *self.args, **self.kwargs)
-        elif self.plot_type == SPPlotType.MNE_LABEL:
+        if self.plot_type == SPPlotType.MNE_LABEL:
             if isinstance(self.data, mne.BiHemiLabel):
                 label = getattr(self.data, brain.hemi)
             elif self.data.hemi == brain.hemi:
@@ -1127,6 +1124,14 @@ class SequencePlotterLayer:
         elif self.plot_type == SPPlotType.FUNC:
             func = self.args[0]
             func(brain)
+        elif len(self.data.source.vertices[brain.hemi == 'rh']) == 0:
+            return
+        elif self.plot_type == SPPlotType.DATA:
+            brain.add_ndvar(self.data, *self.args, time_label='', **self.kwargs)
+        elif self.plot_type == SPPlotType.LABEL:
+            brain.add_ndvar_label(self.data, *self.args, **self.kwargs)
+        else:
+            raise RuntimeError(f"{self.plot_type=}")
 
 
 class SequencePlotter:
@@ -1172,9 +1177,15 @@ class SequencePlotter:
     """
     max_n_bins = 25
 
-    def __init__(self):
+    def __init__(
+            self,
+            subject: str = None,
+            subjects_dir: PathArg = None,
+    ):
         self._data = []
-        self._source = None
+        self._source = None  # for mask
+        self._subject = subject
+        self._subjects_dir = subjects_dir
         self._frame_dim = None
         self._bin_kind: SPLayer = SPLayer.UNDEFINED
         self._frame_order = None
@@ -1187,7 +1198,12 @@ class SequencePlotter:
         elif self._frame_dim is False:
             raise RuntimeError("Only applies to SequencePlotters with 2d NDVars")
 
-    def set_brain(self, source):
+    def set_brain(
+            self,
+            source: SourceSpace = None,
+            subject: str = None,
+            subjects_dir: PathArg = None,
+    ):
         """Set the brain model on which to plot
 
         This is usually handled automatically, and only needs to be invoked
@@ -1196,17 +1212,32 @@ class SequencePlotter:
 
         Parameters
         ----------
-        source : SourceSpace
-            Brain model on which to plot.
+        source
+            Brain model on which to plot. The coverage if the source space is
+            also used for the mask (the first source space that is added takes
+            precedence).
+        subject
+            Specify subject directly.
+        subjects_dir
+            Specify the subjects directory directly.
         """
-        if not isinstance(source, SourceSpace):
+        if isinstance(source, SourceSpace):
+            subject = source.subject
+            subjects_dir = source.subjects_dir
+        elif source is not None:
             raise TypeError(f"{source!r}")
-        elif self._source is None:
+
+        if self._subject is None:
+            self._subject = subject
+        elif subject and subject != self._subject:
+            raise ValueError(f"Different subject ({subject}) than previously added ({self._subject})")
+        if self._subjects_dir is None:
+            self._subjects_dir = subjects_dir
+        elif subjects_dir and subjects_dir != self._subjects_dir:
+            raise ValueError(f"different subjects_dir ({subjects_dir}) than previously added ({self._subjects_dir})")
+
+        if self._source is None and isinstance(source, SourceSpace):
             self._source = source
-        elif source.subject != self._source.subject:
-            raise ValueError(f"NDVar has different subject ({source.subject}) than previously added data ({self._source.subject})")
-        elif source.subjects_dir != self._source.subjects_dir:
-            raise ValueError(f"NDVar has different subjects_dir ({source.subjects_dir}) than previously added data ({self._source.subjects_dir})")
 
     def _n_items(self):
         if self._bin_kind == SPLayer.SEQUENCE:
@@ -1260,6 +1291,8 @@ class SequencePlotter:
             label: str = None,
             **kwargs,
     ):
+        """"""
+        self.set_brain(subject=mne_label.subject)
         if overlay:
             kind = SPLayer.OVERLAY
         else:
@@ -1523,9 +1556,11 @@ class SequencePlotter:
                 'wspace': 0.1,  # width of the space between images
             }
         """
-        if self._source is None:
-            raise RuntimeError("No brain model specified for plotting; use .set_brain()")
-        if not self._data:
+        if self._subject is None:
+            raise RuntimeError("subject not set; specify when initializing SequencePlotter")
+        elif self._subjects_dir is None:
+            raise RuntimeError("subjects_dir not set; specify when initializing SequencePlotter")
+        elif not self._data:
             raise RuntimeError("No data")
         labels = self._get_frame_labels(labels)
         # determine hemisphere(s) to plot
@@ -1536,7 +1571,8 @@ class SequencePlotter:
                 hemis.append('lh')
             if any(ss.rh_n for ss in sss):
                 hemis.append('rh')
-            assert hemis, "Data in neither hemisphere"
+            if not hemis:
+                hemis = ('lh', 'rh')
         elif hemi == 'both':
             hemis = ('lh', 'rh')
         elif hemi in ('lh', 'rh'):
@@ -1581,7 +1617,7 @@ class SequencePlotter:
         hemi_shift = int(round(figure._layout.dpi * hemi_magnet))
 
         ims = self._generate_ims(figure._res_w, figure._res_h, views, mode, antialiased, hemi_shift, hemis)
-        cmap_params, cmap_data = ims.pop('cmap')
+        cmap_params, cmap_data = ims.pop('cmap', (None, None))
 
         # reshape im-order
         row_pattern = list(product(*[axis_sequences[key] for key in rows]))
@@ -1608,9 +1644,10 @@ class SequencePlotter:
     ) -> dict:
         bins = self._bins
         ims = {}
+        source_space = self._source or self._subject
         for hemi in hemis:
             # plot brain
-            b = brain(self._source, hemi=hemi, views='lateral', w=w, h=h, time_label='', **self._brain_args)
+            b = brain(source_space, hemi=hemi, views='lateral', w=w, h=h, time_label='', subjects_dir=self._subjects_dir, **self._brain_args)
 
             if self._bin_kind == SPLayer.SEQUENCE:
                 for l in self._data:

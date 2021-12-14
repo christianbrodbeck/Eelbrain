@@ -15,7 +15,7 @@ from mne.io.constants import FIFF
 import numpy as np
 import scipy.ndimage
 
-from .._data_obj import NDVar, SourceSpace, asndvar
+from .._data_obj import NDVar, SourceSpace, UTS, asndvar
 from .._exceptions import KeysMissing
 from .._text import ms
 from .._types import PathArg
@@ -268,9 +268,7 @@ class Brain(TimeSlicer, surfer.Brain):
         "Make sure SourceSpace is compatible"
         source = get_source_dim(source)
         if source.subject != self.subject_id:
-            raise ValueError(
-                "Trying to plot NDVar from subject %s on Brain from subject "
-                "%s" % (source.subject, self.subject_id))
+            raise ValueError(f"Trying to plot NDVar with {source.subject=} on Brain with subject={self.subject_id!r}")
         elif self._hemi == 'lh' and source.lh_n == 0:
             raise ValueError("Trying to add NDVar without lh data to plot of lh")
         elif self._hemi == 'rh' and source.rh_n == 0:
@@ -405,7 +403,7 @@ class Brain(TimeSlicer, surfer.Brain):
             self.remove_data()
 
         # make sure time axis is compatible with existing data
-        if time_dim is not None:
+        if isinstance(time_dim, UTS):
             self._init_time_dim(time_dim)
 
         # find colormap parameters

@@ -32,6 +32,7 @@ from .._io.fiff import _picks
 from .._types import PathArg
 from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN
 from .._utils.system import IS_OSX
+from ..mne_fixes._version import MNE_VERSION, V0_24
 from ..plot._base import DISPLAY_UNIT, UNIT_FORMAT, AxisData, DataLayer, PlotType
 from ..plot._topo import _ax_topomap
 from .frame import EelbrainDialog
@@ -174,7 +175,10 @@ class Document(FileDocument):
         self.callbacks.callback('case_change', index)
 
     def save(self):
-        self.ica.save(self.path)
+        if MNE_VERSION >= V0_24:
+            self.ica.save(self.path, overwrite=True)
+        else:
+            self.ica.save(self.path)
 
 
 class Model(FileModel):
@@ -651,7 +655,7 @@ class Frame(SharedToolsMenu, FileFrame):
         y = source - source.mean()
         y **= 2
         ss = y.sum('time')  # ndvar has epoch as index
-        self.GoToComponentEpoch(epoch=ss.argmax())
+        self.GoToComponentEpoch(i_comp, ss.argmax())
 
     def GoToComponentEpoch(self, component: int = None, epoch: int = None):
         if not self.source_frame:

@@ -16,11 +16,11 @@ from .. import load
 from .._data_obj import NDVar, Sensor
 from .._exceptions import DefinitionError
 from .._io.fiff import KIT_NEIGHBORS, find_mne_channel_types
-from ..mne_fixes._version import MNE_VERSION, V0_19
 from .._ndvar import filter_data
 from .._text import enumeration
 from .._utils import as_sequence, ask, user_activity
 from ..mne_fixes import CaptureLog
+from ..mne_fixes._version import MNE_VERSION, V0_19, V0_24
 from .definitions import compound, log_dict_change, typed_arg
 from .exceptions import FileMissing
 
@@ -573,7 +573,15 @@ class RawICA(CachedRawPipe):
     """
     ica_path: str = None  # set on linking
 
-    def __init__(self, source, session, method='extended-infomax', random_state=0, cache=False, **kwargs):
+    def __init__(
+            self,
+            source: str,
+            session: Union[str, Sequence[str]],
+            method: str = 'extended-infomax',
+            random_state: int = 0,
+            cache: bool = False,
+            **kwargs,
+    ):
         CachedRawPipe.__init__(self, source, cache)
         if isinstance(session, str):
             session = (session,)
@@ -685,7 +693,10 @@ class RawICA(CachedRawPipe):
         # reject presets from meeg-preprocessing
         with user_activity:
             ica.fit(raw, reject={'mag': 5e-12, 'grad': 5000e-13, 'eeg': 300e-6})
-        ica.save(path)
+        if MNE_VERSION >= V0_24:
+            ica.save(path, overwrite=True)
+        else:
+            ica.save(path)
         return path
 
     def _make(self, subject, recording):

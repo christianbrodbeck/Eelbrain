@@ -68,6 +68,7 @@ class Style:
     edgecolor: Any = None
     edgewidth: float = 0,
     linemarker: Union[bool, str] = False
+    alias: CellArg = None  # This style should not appear in legends
 
     @cached_property
     def line_args(self):
@@ -131,6 +132,7 @@ def find_cell_styles(
         cells: Sequence[CellArg] = None,
         colors: ColorsArg = None,
         fallback: bool = True,
+        default_cells: Sequence[CellArg] = None,
 ) -> StylesDict:
     """Process the colors arg from plotting functions
 
@@ -148,20 +150,31 @@ def find_cell_styles(
         <http://matplotlib.org/api/colors_api.html>`_.
     fallback
         If a cell is missing, fall back on partial cells (on by default).
+    default_cells
+        Alternative cells to use if ``colors`` is ``None`` or a :class:`dict`.
+        For example, when plots use the ``xax`` parameter, cells will contain a
+        ``xax`` component, but colors should be consistent across axes.
+    raise_for_missing
+        Raise an error for missig cells.
     """
-    if cells in (None, (None,)):
+    if cells is None:
+        cells = (None,)
+    if cells == (None,):
         if isinstance(colors, dict):
-            out = colors
+            if None in colors:
+                out = colors
+            else:
+                raise KeysMissing((None,), 'colors', colors)
         else:
             if colors is None:
                 colors = 'k'
             out = {None: colors}
     elif isinstance(colors, (list, tuple)):
         if len(colors) < len(cells):
-            raise ValueError(f"colors={colors!r}: only {len(colors)} colors for {len(cells)} cells.")
+            raise ValueError(f"{colors=}: only {len(colors)} colors for {len(cells)} cells.")
         out = dict(zip(cells, colors))
     elif isinstance(colors, dict):
-        out = colors.copy()
+        out = to_styles_dict(colors)
         missing = [cell for cell in cells if cell not in out]
         if missing:
             if fallback:
@@ -171,13 +184,17 @@ def find_cell_styles(
                     super_cells = chain((cell[:-i] for i in range(1, len(cell))), (cell[0],))
                     for super_cell in super_cells:
                         if super_cell in out:
-                            out[cell] = out[super_cell]
+                            out[cell] = replace(out[super_cell], alias=super_cell)
                             missing.remove(cell)
                             break
             if missing:
                 raise KeysMissing(missing, 'colors', colors)
+        return out
     elif colors is None or isinstance(colors, str):
-        if all(isinstance(cell, str) for cell in cells):
+        if default_cells is not None:
+            default_colors = find_cell_styles(default_cells, colors)
+            return find_cell_styles(cells, default_colors)
+        elif all(isinstance(cell, str) for cell in cells):
             out = colors_for_oneway(cells, cmap=colors)
         elif all(isinstance(cell, tuple) for cell in cells):
             ns = {len(cell) for cell in cells}
@@ -188,7 +205,7 @@ def find_cell_styles(
         else:
             raise NotImplementedError(f"{cells=}: unequal cell size")
     else:
-        raise TypeError(f"colors={colors!r}")
+        raise TypeError(f"{colors=}")
     return to_styles_dict(out)
 
 
@@ -460,4 +477,4 @@ def soft_threshold_colormap(
 
 ColorArg = Union[str, Sequence[float]]
 ColorsArg = Union[ColorArg, Dict[CellArg, ColorArg], Sequence[ColorArg]]
-StylesDict = Dict[CellArg, Style]
+StylesDict = Dict[Optional[CellArg], Style]

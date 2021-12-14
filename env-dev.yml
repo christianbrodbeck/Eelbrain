@@ -47,7 +47,7 @@ dependencies:
 - pytest
 - pytest-cov
 - pytest-faulthandler
-- penguoin
+- pingouin
 #- pytest-sugar  # errors on Linux
 # testing of R integration
 - rpy2
