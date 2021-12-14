@@ -81,6 +81,9 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         :meth:`~matplotlib.axes.Axes.imshow`). Matplotlib 1.5.3's SVG output
         can't handle uneven aspect with ``interpolation='none'``, use
         ``interpolation='nearest'`` instead.
+    sensors
+        How to mark sensor locations in the topomap (empty string ``''`` to
+        omit marks).
     sensorlabels
         Show sensor labels. For 'name', any prefix common to all names
         is removed; with 'fullname', the full name is shown.
@@ -130,6 +133,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
             head_pos: Union[float, Sequence[float]] = 0,
             im_interpolation: str = None,
             # sensor-map args
+            sensors: Union[str, matplotlib.markers.MarkerStyle] = '.',
             sensorlabels: SensorLabelsArg = None,
             mark: IndexArg = None,
             mcolor: Union[ColorArg, Sequence[ColorArg]] = None,
@@ -158,7 +162,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         # plots
         axes_data = data.for_plot(PlotType.IMAGE)
         for ax, layers, proj_ in zip(self.axes, axes_data, proj):
-            h = _ax_topomap(ax, layers, clip, clip_distance, sensorlabels, mark, mcolor, msize, marker, proj_, res, im_interpolation, xlabel, self._vlims, self._cmaps, self._contours, interpolation, head_radius, head_pos)
+            h = _ax_topomap(ax, layers, clip, clip_distance, sensors, sensorlabels, mark, mcolor, msize, marker, proj_, res, im_interpolation, xlabel, self._vlims, self._cmaps, self._contours, interpolation, head_radius, head_pos)
             self.plots.append(h)
 
         TopoMapKey.__init__(self, self._topo_data)
@@ -231,6 +235,9 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         :meth:`~matplotlib.axes.Axes.imshow`). Matplotlib 1.5.3's SVG output
         can't handle uneven aspect with ``interpolation='none'``, use
         ``interpolation='nearest'`` instead.
+    sensors
+        How to mark sensor locations in the topomap (empty string ``''`` to
+        omit marks).
     sensorlabels
         Show sensor labels. For 'name', any prefix common to all names
         is removed; with 'fullname', the full name is shown.
@@ -275,6 +282,7 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
             head_pos: Union[float, Sequence[float]] = 0,
             im_interpolation: str = None,
             # sensor-map args
+            sensors: Union[str, matplotlib.markers.MarkerStyle] = '.',
             sensorlabels: SensorLabelsArg = None,
             mark: IndexArg = None,
             mcolor: Union[ColorArg, Sequence[ColorArg]] = None,
@@ -301,7 +309,7 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
             for row, layers in enumerate(t_data):
                 i = row * n_bins + column
                 ax = self.axes[i]
-                self._plots[i] = _ax_topomap(ax, layers, clip, clip_distance, sensorlabels, mark, mcolor, msize, marker, proj, res, im_interpolation, None, self._vlims, self._cmaps, self._contours, interpolation, head_radius, head_pos)
+                self._plots[i] = _ax_topomap(ax, layers, clip, clip_distance, sensors, sensorlabels, mark, mcolor, msize, marker, proj, res, im_interpolation, None, self._vlims, self._cmaps, self._contours, interpolation, head_radius, head_pos)
 
         self._set_axtitle((str(t) for t in time), axes=self.axes[:len(time)])
         TopoMapKey.__init__(self, self._topo_data)
@@ -374,6 +382,9 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMix
         :meth:`~matplotlib.axes.Axes.imshow`). Matplotlib 1.5.3's SVG output
         can't handle uneven aspect with ``interpolation='none'``, use
         ``interpolation='nearest'`` instead.
+    sensors
+        How to mark sensor locations in the topomap (empty string ``''`` to
+        omit marks).
     sensorlabels
         Show sensor labels. For 'name', any prefix common to all names
         is removed; with 'fullname', the full name is shown.
@@ -453,6 +464,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMix
             head_pos: Union[float, Sequence[float]] = 0,
             im_interpolation: str = None,
             # sensor-map args
+            sensors: Union[str, matplotlib.markers.MarkerStyle] = '.',
             sensorlabels: SensorLabelsArg = None,
             mark: IndexArg = None,
             mcolor: ColorArg = None,
@@ -494,6 +506,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMix
             'res': res,
             'interpolation': interpolation,
             'im_interpolation': im_interpolation,
+            'sensors': sensors,
             'sensorlabels': sensorlabels,
             'mark': mark,
             'mcolor': mcolor,
@@ -700,6 +713,7 @@ class _ax_topomap(_ax_im_array):
             layers: AxisData,
             clip: str = 'even',  # even or circle (only applies if interpolation is None)
             clip_distance: float = 0.05,  # distance from outermost sensor for clip=='even'
+            sensors: Union[str, matplotlib.markers.MarkerStyle] = '.',
             sensorlabels: SensorLabelsArg = None,
             mark: IndexArg = None,
             mcolor: Union[ColorArg, Sequence[ColorArg]] = None,
@@ -737,7 +751,7 @@ class _ax_topomap(_ax_im_array):
             head_radius = self.plots[0]._default_head_radius
 
         # plot sensors
-        self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, '.', 1, 'k', mark, mcolor, msize, mmarker, sensorlabels, False, head_radius, head_pos, head_linewidth)
+        self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, sensors, 1, 'k', mark, mcolor, msize, mmarker, sensorlabels, False, head_radius, head_pos, head_linewidth)
 
         ax.set_aspect('equal')
         ax.set_xlim(0, 1)

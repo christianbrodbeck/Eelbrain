@@ -157,7 +157,7 @@ class _plt_map2d:
             sensors: Sensor,
             proj: str,
             extent: float,
-            marker: str,
+            marker: Union[str, matplotlib.markers.MarkerStyle],
             size: float,
             color: ColorArg,
             mark: Union[Sequence[str], str, Sequence[int], int],
@@ -190,10 +190,11 @@ class _plt_map2d:
                 ax.plot(x, y, color='k', linewidth=head_linewidth, solid_capstyle='butt', clip_on=False)
 
         # sensors
-        if labels == '':
-            return
-        index = slice(None) if self._index is None else self._index
-        self._sensor_h = ax.scatter(self.locs[index, 0], self.locs[index, 1], size, color, marker)
+        if marker:
+            index = slice(None) if self._index is None else self._index
+            self._sensor_h = ax.scatter(self.locs[index, 0], self.locs[index, 1], size, color, marker)
+        else:
+            self._sensor_h = None
 
         if labels:
             self.show_labels(labels)
@@ -230,7 +231,8 @@ class _plt_map2d:
 
     def remove(self):
         "Remove from axes"
-        self._sensor_h.remove()
+        if self._sensor_h:
+            self._sensor_h.remove()
         while self._mark_handles:
             self._mark_handles.pop().remove()
 
