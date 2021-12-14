@@ -200,7 +200,7 @@ def test_sample():
     ds1 = e.load_evoked(raw='ica1-40')
     ica = e.load_ica(raw='ica')
     ica.exclude = [0, 1, 2]
-    ica.save(ica_path)
+    ica.save(ica_path, overwrite=True)
     ds2 = e.load_evoked(raw='ica1-40')
     assert not np.allclose(ds1['meg'].x, ds2['meg'].x, atol=1e-20), "ICA change ignored"
     # apply-ICA
