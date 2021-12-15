@@ -9729,7 +9729,7 @@ class SourceSpaceBase(Dimension):
             parc: str = None,
             label: mne.Label = None,
     ):
-        """SourceSpace dimension from :cls:`mne.SourceSpaces` object
+        """SourceSpace dimension from :class:`mne.SourceSpaces` object
 
         Notes
         -----

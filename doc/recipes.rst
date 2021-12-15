@@ -12,6 +12,9 @@ Recipes
 Plots for Publication
 ^^^^^^^^^^^^^^^^^^^^^
 
+Style
+-----
+
 .. seealso::
 
    * Example on :ref:`exa-customizing-plots`
@@ -35,12 +38,18 @@ some :mod:`matplotlib` options globally One way this can be done is by updating
     mpl.rcParams['savefig.dpi'] = 300
 
 
-Matplotlib's :func:`~matplotlib.pyplot.tight_layout` functionality provides an
-easy way for plots to use the available space, and most Eelbrain plots use it
-by default. However, when trying to produce multiple plots with identical
-scaling it can lead to unwanted discrepancies. Subplot placement can be
-specified in absolute scale through the ``margins`` parameter (see
-:ref:`general-layout-parameters`).
+Plot sizes
+----------
+
+Matplotlib's :func:`~matplotlib.pyplot.tight_layout` functionality provides an easy way for plots to fill the available space, and most Eelbrain plots use it by default.
+However, when trying to generate multiple figures with identical scaling it can lead to unwanted differences between figures.
+
+For a consistent layout, set the font size through ``rcParams``, and then control the size of plots and figures using the corresponding parameters (``w, h, axw, axh``).
+Subplot placement can also be specified in absolute scale through the ``margins`` parameter (see :ref:`general-layout-parameters`).
+
+
+Various
+-------
 
 If a script produces several plots and there is no need to show them on the
 screen, they can be kept hidden through the ``show=False`` argument::

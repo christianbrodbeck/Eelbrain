@@ -532,13 +532,13 @@ class TreeModel:
         if values:
             bad = set(values).difference(iter_fields)
             if bad:
-                raise ValueError(f"values={values!r}: keys that are not iterated over ({', '.join(bad)})")
+                raise ValueError(f"{values=}: keys that are not iterated over ({', '.join(bad)})")
         else:
             values = {}
         if exclude:
             bad = set(exclude).difference(iter_fields)
             if bad:
-                raise ValueError(f"exclude={exclude!r}: keys that are not iterated over ({', '.join(bad)})")
+                raise ValueError(f"{exclude=}: keys that are not iterated over ({', '.join(bad)})")
         else:
             exclude = {}
 
@@ -573,7 +573,7 @@ class TreeModel:
                     if yield_str:
                         yield self.get(fields[0])
                     else:
-                        yield tuple(self.get(f) for f in fields)
+                        yield tuple([self.get(f) for f in fields])
         else:
             yield ()
 
@@ -1035,6 +1035,8 @@ class FileTree(TreeModel):
             if 'root' not in state:
                 raise TypeError("Need to specify at least one of root and dst_root")
             dst_root = self.get('root')
+        if not os.path.exists(dst_root):
+            raise IOError(f'Destination does not exist: {dst_root}')
         src_filenames = self.glob(temp, inclusive, **state)
         n = len(src_filenames)
         if n == 0:
@@ -1051,10 +1053,10 @@ class FileTree(TreeModel):
             exist = [src for src, dst in dst_filenames.items() if os.path.exists(dst)]
             if exist:
                 if overwrite is None:
-                    raise ValueError(f"{len(exist)} of {n} files already exist")
+                    raise ValueError(f"{len(exist)} of {n} files already exist; use overwrite parameter")
                 elif overwrite is False:
                     if len(exist) == n:
-                        print(f"All {n} files already exist.")
+                        print(f"All {n} files already exist; use overwrite=True to replace them")
                         return None, None
                     n -= len(exist)
                     for src in exist:
@@ -1142,7 +1144,7 @@ class FileTree(TreeModel):
         State parameters can include an asterisk ('*') to match multiple files.
         """
         if overwrite is False:
-            raise ValueError(f"overwrite={overwrite!r}")
+            raise ValueError(f"{overwrite=}")
         src_filenames, dst_filenames = self._find_files_with_target('Move', temp, dst_root, inclusive, overwrite, confirm, state)
         if not src_filenames:
             return

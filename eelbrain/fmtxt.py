@@ -73,9 +73,8 @@ FMTextLike = Union['FMTextElement', str, ListType['FMTextLike'], Tuple['FMTextLi
 
 ENV = MappingProxyType({})
 preferences = dict(
-                   keep_recent=3,  # number of recent tables to keep in memory
-                   html_tables_in_fig=True,
-                   )
+    html_tables_in_fig=True,
+)
 
 # Tags
 # ----
