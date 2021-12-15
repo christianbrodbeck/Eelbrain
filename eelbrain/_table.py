@@ -176,7 +176,10 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
         else:
             raise RuntimeError("y=%r" % (y,))
         n = np.fromiter((np.sum(y == cell) for cell in cells), int, len(cells))
-        out['n'] = Var(n)
+        n_underline = 0
+        while (key := 'n' + '_'*n_underline) in out:
+            n_underline += 1
+        out[key] = Var(n)
         return out
 
     # header

@@ -4,7 +4,7 @@ from numpy.testing import assert_array_equal
 import pytest
 
 from eelbrain.testing import assert_dataobj_equal
-from eelbrain import Categorial, Factor, NDVar, Scalar, UTS, Var, datasets, table, combine
+from eelbrain import Categorial, Dataset, Factor, NDVar, Scalar, UTS, Var, datasets, table, combine
 
 
 def test_cast_to_ndvar():
@@ -72,15 +72,15 @@ def test_frequencies():
     "Test table.frequencies"
     ds = datasets.get_uts()
     freq = table.frequencies('YCat', 'A', ds=ds)
-    assert_array_equal(freq['A'], ['a0', 'a1'])
-    assert all(c in freq for c in ds['YCat'].cells)
-    print(freq)
+    assert str(freq) == 'A    c1   c2   c3\n-----------------\na0   10   10   10\na1   7    14   9 '
     freq = table.frequencies('YCat', 'A % B', ds=ds)
-    assert_array_equal(freq['A'], ['a0', 'a0', 'a1', 'a1'])
-    assert_array_equal(freq['B'], ['b0', 'b1', 'b0', 'b1'])
-    print(freq)
+    assert str(freq) == 'A    B    c1   c2   c3\n----------------------\na0   b0   5    6    4 \na0   b1   5    4    6 \na1   b0   5    6    4 \na1   b1   2    8    5 '
     freq = table.frequencies('YCat % A', 'B', ds=ds)
-    print(freq)
+    assert str(freq) == 'B    c1_a0   c1_a1   c2_a0   c2_a1   c3_a0   c3_a1\n--------------------------------------------------\nb0   5       5       6       6       4       4    \nb1   5       2       4       8       6       5    '
+    ds = Dataset()
+    ds['n'] = Factor('xxxyyy')
+    freq = table.frequencies('n', ds=ds)
+    assert str(freq) == 'n   n_\n------\nx   3 \ny   3 '
 
 
 def test_melt_ndvar():
