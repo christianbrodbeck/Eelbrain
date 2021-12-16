@@ -416,7 +416,7 @@ class NDTest:
             else:
                 time = stat_map.argmin('time')
             out.append(time)
-        return out
+        return out if len(out) > 1 else out[0]
 
     @property
     def n_samples(self):
