@@ -5776,10 +5776,12 @@ class MneExperiment(FileTree):
         test_obj = test if isinstance(test, Test) else self._tests[test]
         if isinstance(y, str):
             y = ds.eval(y)
-        if to_uv:
+        if to_uv or isinstance(y, Var):
             if isinstance(y, NDVar):
                 dim = 'sensor' if y.has_dim('sensor') else 'source'
                 y = getattr(y, to_uv)(dim)
+            elif isinstance(y, Var):
+                pass
             else:  # List
                 dim = 'sensor' if y[0].has_dim('sensor') else 'source'
                 y = combine([getattr(yi, to_uv)(dim) for yi in y])
