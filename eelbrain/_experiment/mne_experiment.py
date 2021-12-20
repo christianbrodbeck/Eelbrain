@@ -2595,6 +2595,7 @@ class MneExperiment(FileTree):
             ds = load.unpickle(evt_file)
             if self.check_raw_mtime and ds.info['raw-mtime'] != raw_mtime:
                 self._log.debug("Raw file  %s %s %s modification time changed %s -> %s", self.get('raw'), subject, self.get('recording'), ds.info['raw-mtime'], raw_mtime)
+                ds = None
 
         # refresh cache
         if ds is None:
