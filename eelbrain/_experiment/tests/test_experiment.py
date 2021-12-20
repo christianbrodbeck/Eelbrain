@@ -44,6 +44,12 @@ def test_tree():
         assert tree.get('afield') == 'a2'
     assert tree.get('afield') == 'a1'
 
+    # iterate
+    assert list(tree.iter('afield')) == ['a1', 'a2', 'a3']
+    assert list(tree.iter(('afield', 'field2'))) == [('a1', ''), ('a1', 'value'), ('a2', ''), ('a2', 'value'), ('a3', ''), ('a3', 'value')]
+    assert list(tree.iter('cmp')) == ['a1', 'a1 value', 'a2', 'a2 value', 'a3', 'a3 value']
+    assert list(tree.iter(('afield', 'cmp'))) == [('a1', 'a1'), ('a1', 'a1 value'), ('a2', 'a2'), ('a2', 'a2 value'), ('a3', 'a3'), ('a3', 'a3 value')]
+
 
 class SlaveTree(TreeModel):
     _templates = {'path': '{a}_{b}_{sb_comp}_{slave}'}

@@ -524,9 +524,10 @@ class TreeModel:
         # find actual fields to iterate over:
         iter_fields = []
         for field in fields:
-            if field in constants:
-                continue
-            iter_fields.extend(f for f in self.find_keys(field) if f not in constants)
+            for terminal_field in self.find_keys(field):
+                if terminal_field in constants or terminal_field in iter_fields:
+                    continue
+                iter_fields.append(terminal_field)
 
         # check values and exclude
         if values:
