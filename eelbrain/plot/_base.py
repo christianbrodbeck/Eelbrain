@@ -516,16 +516,17 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
             vmin = vmin if vmin_ is None else min(vmin, vmin_)
             vmax = vmax if vmax_ is None else max(vmax, vmax_)
 
+        vlims[meas] = (vmin, vmax)
+
+    # fix vlims
+    for meas in vlims.keys():
+        vmin, vmax = vlims[meas]
+        if cmaps is not None:
+            vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmaps[meas])
         if vmin == vmax:
             vmin -= 1
             vmax += 1
-        vlims[meas] = (vmin, vmax)
-
-    # fix vlims based on cmaps
-    if cmaps is not None:
-        for meas in vlims.keys():
-            vmin, vmax = vlims[meas]
-            vlims[meas] = fix_vlim_for_cmap(vmin, vmax, cmaps[meas])
+        vlims[meas] = vmin, vmax
 
     return vlims
 
