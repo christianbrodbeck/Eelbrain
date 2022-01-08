@@ -753,7 +753,7 @@ class MneExperiment(FileTree):
 
         # collect input file information
         # ==============================
-        raw_missing = []  # [(subject, recording), ...]
+        raw_missing = set()  # [(subject, recording), ...]
         subjects_with_raw_changes = set()  # {subject, ...}
         events = {}  # {(subject, recording): event_dataset}
         self._stim_channel = tuple_arg(self.stim_channel, allow_none=True)
@@ -795,13 +795,14 @@ class MneExperiment(FileTree):
 
         # collect raw input info
         raw_mtimes = input_state['raw-mtimes']
+        raw_previously_missing = input_state.get('raw_missing', ())
         pipe = self._raw['raw']
         self._raw_samplingrate = {}  # {(subject, recording): samplingrate}
         with self._temporary_state:
             for subject, visit, recording in self.iter(('subject', 'visit', 'recording'), group='all', raw='raw'):
                 key = subject, recording
                 if not pipe.exists(subject, recording):
-                    raw_missing.append(key)
+                    raw_missing.add(key)
                     continue
                 # events
                 events[key] = events_in = self.load_events(add_bads=False, data_raw=False)
@@ -813,7 +814,8 @@ class MneExperiment(FileTree):
             if raw_missing and self.check_raw_mtime:
                 log.debug("Raw files missing:")
                 missing = defaultdict(list)
-                for subject, recording in raw_missing:
+                log_as_missing = raw_missing.difference(raw_previously_missing)
+                for subject, recording in sorted(log_as_missing):
                     missing[subject].append(recording)
                 for subject, recordings in missing.items():
                     log.debug(f"  {subject}: {', '.join(recordings)}")
@@ -829,7 +831,7 @@ class MneExperiment(FileTree):
         #  - SuperEpochs currently need to have a single forward solution,
         #    hence marker positions need to be the same between sub-epochs
             if subjects_with_raw_changes:
-                log.info("Raw input files changed, checking digitizer data")
+                log.info("Raw input files new or changed, checking digitizer data")
                 super_epochs = [epoch for epoch in self._epochs.values() if isinstance(epoch, SuperEpoch)]
             for subject, visit in subjects_with_raw_changes:
                 # find unique digitizer datasets
@@ -894,6 +896,7 @@ class MneExperiment(FileTree):
         # save input-state
         if not cache_dir_existed:
             os.makedirs(cache_dir, exist_ok=True)
+        input_state['raw_missing'] = raw_missing
         save.pickle(input_state, input_state_file)
         self._dig_sessions = pipe._dig_sessions = input_state['fwd-sessions']  # {subject: {for_recording: use_recording}}
 
