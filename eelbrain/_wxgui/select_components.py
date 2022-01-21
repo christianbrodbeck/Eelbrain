@@ -30,6 +30,7 @@ from .._colorspaces import UNAMBIGUOUS_COLORS
 from .._data_obj import Dataset, Factor, NDVar, Categorial, Scalar, asndvar, combine
 from .._io.fiff import _picks
 from .._types import PathArg
+from .._utils.numpy_utils import INT_TYPES
 from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN
 from .._utils.system import IS_OSX
 from ..mne_fixes._version import MNE_VERSION, V0_24
@@ -614,7 +615,7 @@ class Frame(SharedToolsMenu, FileFrame):
 
     def CaseChanged(self, index):
         "Update the state of the segments on the current page"
-        if isinstance(index, int):
+        if isinstance(index, INT_TYPES):
             index = [index]
         elif isinstance(index, slice):
             start = index.start or 0
