@@ -8,7 +8,7 @@ clean-py:
 	find . -type f -name *.pyo -delete
 
 doc:
-	pythonw setup.py build_sphinx
+	sphinx-build -b html doc doc-build
 
 style-check:
 	pydocstyle eelbrain

@@ -67,7 +67,7 @@ matplotlib.style.use('default')
 # Modifying components
 # ^^^^^^^^^^^^^^^^^^^^
 # Matplotlib can be used to fully customize a plot's appearance by accessing
-# the underlying :cls:`matplotlib.figure.Figure` object through the plot's
+# the underlying :class:`matplotlib.figure.Figure` object through the plot's
 # :attr:`.figure` aatribute.
 
 p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, w=2)

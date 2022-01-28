@@ -245,8 +245,8 @@ class MneExperiment(FileTree):
     stim_channel: Union[str, Sequence[str]] = None
     # merge adjacent events in the stimulus channel
     merge_triggers: int = None
-    # add this value to all trigger times (in seconds); global shift, or {subject: shift} dictionary
-    trigger_shift: Union[float, Dict[str, float]] = 0
+    # add this value to all trigger times (in seconds); global shift, or {subject: shift, (subject, visit): shift} dictionary
+    trigger_shift: Union[float, Dict[Union[str, Tuple], float]] = 0
 
     # variables for automatic labeling {name: {trigger: label, triggers: label}}
     variables: Dict[str, Any] = {}
@@ -753,7 +753,7 @@ class MneExperiment(FileTree):
 
         # collect input file information
         # ==============================
-        raw_missing = []  # [(subject, recording), ...]
+        raw_missing = set()  # [(subject, recording), ...]
         subjects_with_raw_changes = set()  # {subject, ...}
         events = {}  # {(subject, recording): event_dataset}
         self._stim_channel = tuple_arg(self.stim_channel, allow_none=True)
@@ -795,13 +795,14 @@ class MneExperiment(FileTree):
 
         # collect raw input info
         raw_mtimes = input_state['raw-mtimes']
+        raw_previously_missing = input_state.get('raw_missing', ())
         pipe = self._raw['raw']
         self._raw_samplingrate = {}  # {(subject, recording): samplingrate}
         with self._temporary_state:
             for subject, visit, recording in self.iter(('subject', 'visit', 'recording'), group='all', raw='raw'):
                 key = subject, recording
                 if not pipe.exists(subject, recording):
-                    raw_missing.append(key)
+                    raw_missing.add(key)
                     continue
                 # events
                 events[key] = events_in = self.load_events(add_bads=False, data_raw=False)
@@ -813,7 +814,8 @@ class MneExperiment(FileTree):
             if raw_missing and self.check_raw_mtime:
                 log.debug("Raw files missing:")
                 missing = defaultdict(list)
-                for subject, recording in raw_missing:
+                log_as_missing = raw_missing.difference(raw_previously_missing)
+                for subject, recording in sorted(log_as_missing):
                     missing[subject].append(recording)
                 for subject, recordings in missing.items():
                     log.debug(f"  {subject}: {', '.join(recordings)}")
@@ -829,7 +831,7 @@ class MneExperiment(FileTree):
         #  - SuperEpochs currently need to have a single forward solution,
         #    hence marker positions need to be the same between sub-epochs
             if subjects_with_raw_changes:
-                log.info("Raw input files changed, checking digitizer data")
+                log.info("Raw input files new or changed, checking digitizer data")
                 super_epochs = [epoch for epoch in self._epochs.values() if isinstance(epoch, SuperEpoch)]
             for subject, visit in subjects_with_raw_changes:
                 # find unique digitizer datasets
@@ -894,6 +896,7 @@ class MneExperiment(FileTree):
         # save input-state
         if not cache_dir_existed:
             os.makedirs(cache_dir, exist_ok=True)
+        input_state['raw_missing'] = raw_missing
         save.pickle(input_state, input_state_file)
         self._dig_sessions = pipe._dig_sessions = input_state['fwd-sessions']  # {subject: {for_recording: use_recording}}
 
@@ -2586,6 +2589,7 @@ class MneExperiment(FileTree):
         """
         evt_file = self.get('event-file', mkdir=True, subject=subject, **kwargs)
         subject = self.get('subject')
+        visit = self.get('visit')
 
         # search for and check cached version
         ds = None
@@ -2594,6 +2598,7 @@ class MneExperiment(FileTree):
             ds = load.unpickle(evt_file)
             if self.check_raw_mtime and ds.info['raw-mtime'] != raw_mtime:
                 self._log.debug("Raw file  %s %s %s modification time changed %s -> %s", self.get('raw'), subject, self.get('recording'), ds.info['raw-mtime'], raw_mtime)
+                ds = None
 
         # refresh cache
         if ds is None:
@@ -2619,11 +2624,14 @@ class MneExperiment(FileTree):
         ds.info['subject'] = subject
         ds.info['session'] = self.get('session')
         if len(self._visits) > 1:
-            ds.info['visit'] = self.get('visit')
+            ds.info['visit'] = visit
 
         if self.trigger_shift:
             if isinstance(self.trigger_shift, dict):
-                trigger_shift = self.trigger_shift[subject]
+                if (subject, visit) in self.trigger_shift:
+                    trigger_shift = self.trigger_shift[subject, visit]
+                else:
+                    trigger_shift = self.trigger_shift[subject]
             else:
                 trigger_shift = self.trigger_shift
 
@@ -5743,6 +5751,7 @@ class MneExperiment(FileTree):
                 assert not special
                 spacing = kind + param
                 sss = mne.setup_source_space(subject, spacing=spacing, add_dist=True, subjects_dir=self.get('mri-sdir'))
+            Path(dst).parent.mkdir(exist_ok=True)
             mne.write_source_spaces(dst, sss)
 
     def _test_kwargs(
@@ -5776,10 +5785,12 @@ class MneExperiment(FileTree):
         test_obj = test if isinstance(test, Test) else self._tests[test]
         if isinstance(y, str):
             y = ds.eval(y)
-        if to_uv:
+        if to_uv or isinstance(y, Var):
             if isinstance(y, NDVar):
                 dim = 'sensor' if y.has_dim('sensor') else 'source'
                 y = getattr(y, to_uv)(dim)
+            elif isinstance(y, Var):
+                pass
             else:  # List
                 dim = 'sensor' if y[0].has_dim('sensor') else 'source'
                 y = combine([getattr(yi, to_uv)(dim) for yi in y])

@@ -156,7 +156,7 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
         if x is not None:
             x = x.aggregate(of)
 
-    name = "Frequencies of %s" % (y.name,) if y.name else "Frequencies"
+    name = f"Frequencies of {y.name}" if y.name else "Frequencies"
     if isinstance(y, Var):
         cells = np.unique(y.x)
     else:
@@ -176,12 +176,15 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
         else:
             raise RuntimeError("y=%r" % (y,))
         n = np.fromiter((np.sum(y == cell) for cell in cells), int, len(cells))
-        out['n'] = Var(n)
+        n_underline = 0
+        while (key := 'n' + '_'*n_underline) in out:
+            n_underline += 1
+        out[key] = Var(n)
         return out
 
     # header
     if getattr(x, 'name', None):
-        name += ' by %s' % x.name
+        name += f' by {x.name}'
     out = Dataset(name=name)
 
     if isinstance(x, Interaction):

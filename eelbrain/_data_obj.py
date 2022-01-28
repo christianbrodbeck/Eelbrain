@@ -9435,21 +9435,23 @@ class Sensor(Dimension):
         "Process a user-input list of sensor names"
         valid_chs = set()
         missing_chs = set()
+        int_to_name = None
         for name in names:
-            if isinstance(name, Integral):
-                name = '%03i' % name
-
-            if name.isdigit():
-                if name in self.names:
-                    valid_chs.add(name)
-                    continue
-                else:
-                    name = 'MEG %s' % name
-
             if name in self.names:
                 valid_chs.add(name)
-            else:
-                missing_chs.add(name)
+                continue
+            elif isinstance(name, Integral) or name.isdigit():
+                key = int(name) if isinstance(name, str) else name
+                if int_to_name is None:
+                    int_to_name = {}
+                    for ch_name in self.names:
+                        if match := re.search('\d+', ch_name):
+                            int_to_name[int(match.group())] = ch_name
+
+                if key in int_to_name:
+                    valid_chs.add(int_to_name[key])
+                    continue
+            missing_chs.add(name)
 
         if missing == 'raise':
             if missing_chs:
@@ -9727,7 +9729,7 @@ class SourceSpaceBase(Dimension):
             parc: str = None,
             label: mne.Label = None,
     ):
-        """SourceSpace dimension from :cls:`mne.SourceSpaces` object
+        """SourceSpace dimension from :class:`mne.SourceSpaces` object
 
         Notes
         -----

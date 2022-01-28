@@ -9,8 +9,8 @@
 
 |
 
-Eelbrain
-========
+Eelbrain |version|
+==================
 `Open-source <https://github.com/christianbrodbeck/Eelbrain>`_ `Python <https://www.python.org>`_ toolkit for MEG and EEG data analysis.
 
 

@@ -4,7 +4,7 @@ import logging
 import multiprocessing
 import os
 import sys
-from typing import Any, Literal, Union
+from typing import Any, Dict, Literal, Union
 
 from matplotlib.colors import to_rgb
 
@@ -12,7 +12,7 @@ from ._utils import IS_OSX, ScreenHandler
 
 
 SUPPRESS_WARNINGS = True
-CONFIG = {
+CONFIG: Dict[str, Any] = {
     'n_workers': multiprocessing.cpu_count(),
     'eelbrain': True,
     'autorun': None,
@@ -96,7 +96,7 @@ def configure(
         Enable logging (for debugging Eelbrain).
     """
     # don't change values before raising an error
-    new = {}
+    new: Dict[str, Any] = {}
     if n_workers is not None:
         if n_workers is True:
             new['n_workers'] = multiprocessing.cpu_count()

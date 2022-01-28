@@ -30,6 +30,7 @@ from .._colorspaces import UNAMBIGUOUS_COLORS
 from .._data_obj import Dataset, Factor, NDVar, Categorial, Scalar, asndvar, combine
 from .._io.fiff import _picks
 from .._types import PathArg
+from .._utils.numpy_utils import INT_TYPES
 from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN
 from .._utils.system import IS_OSX
 from ..mne_fixes._version import MNE_VERSION, V0_24
@@ -614,7 +615,7 @@ class Frame(SharedToolsMenu, FileFrame):
 
     def CaseChanged(self, index):
         "Update the state of the segments on the current page"
-        if isinstance(index, int):
+        if isinstance(index, INT_TYPES):
             index = [index]
         elif isinstance(index, slice):
             start = index.start or 0
@@ -708,6 +709,9 @@ class Frame(SharedToolsMenu, FileFrame):
         if n_h >= 2 and n_h != self.n_h:
             self.plot()
 
+    def OnPlotCompFFT(self, event):
+        self.PlotCompFFT(event.EventObject.i_comp)
+
     def OnPlotCompSourceArray(self, event):
         self.PlotCompSourceArray(event.EventObject.i_comp)
 
@@ -754,6 +758,8 @@ class Frame(SharedToolsMenu, FileFrame):
             self.Bind(wx.EVT_MENU, self.OnPlotCompTopomap, item)
             item = menu.Append(wx.ID_ANY, "Plot Source Array")
             self.Bind(wx.EVT_MENU, self.OnPlotCompSourceArray, item)
+            item = menu.Append(wx.ID_ANY, "Plot Source FFT")
+            self.Bind(wx.EVT_MENU, self.OnPlotCompFFT, item)
         if i_comp is not None and i_epoch is not None:
             menu.AppendSeparator()
         if i_epoch is not None:
