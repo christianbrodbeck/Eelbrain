@@ -5751,6 +5751,7 @@ class MneExperiment(FileTree):
                 assert not special
                 spacing = kind + param
                 sss = mne.setup_source_space(subject, spacing=spacing, add_dist=True, subjects_dir=self.get('mri-sdir'))
+            Path(dst).parent.mkdir(exist_ok=True)
             mne.write_source_spaces(dst, sss)
 
     def _test_kwargs(
