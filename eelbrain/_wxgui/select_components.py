@@ -709,6 +709,9 @@ class Frame(SharedToolsMenu, FileFrame):
         if n_h >= 2 and n_h != self.n_h:
             self.plot()
 
+    def OnPlotCompFFT(self, event):
+        self.PlotCompFFT(event.EventObject.i_comp)
+
     def OnPlotCompSourceArray(self, event):
         self.PlotCompSourceArray(event.EventObject.i_comp)
 
@@ -755,6 +758,8 @@ class Frame(SharedToolsMenu, FileFrame):
             self.Bind(wx.EVT_MENU, self.OnPlotCompTopomap, item)
             item = menu.Append(wx.ID_ANY, "Plot Source Array")
             self.Bind(wx.EVT_MENU, self.OnPlotCompSourceArray, item)
+            item = menu.Append(wx.ID_ANY, "Plot Source FFT")
+            self.Bind(wx.EVT_MENU, self.OnPlotCompFFT, item)
         if i_comp is not None and i_epoch is not None:
             menu.AppendSeparator()
         if i_epoch is not None:
