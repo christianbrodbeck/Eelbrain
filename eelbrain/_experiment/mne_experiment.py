@@ -140,7 +140,7 @@ def guess_y(ds, default=None):
             return y
     if default is not None:
         return default
-    raise RuntimeError(r"Could not find data in {ds}")
+    raise RuntimeError(f"Could not find data in {ds}")
 
 
 class DictSet:
@@ -149,7 +149,7 @@ class DictSet:
         self._list = []
 
     def __repr__(self):
-        return "DictSet(%s)" % self._list
+        return f"DictSet({self._list})"
 
     def __iter__(self):
         return self._list.__iter__()
@@ -3338,10 +3338,8 @@ class MneExperiment(FileTree):
         """Load labels from an annotation file."""
         self.make_annot(**kwargs)
         mri_sdir = self.get('mri-sdir')
-        labels = mne.read_labels_from_annot(self.get('mrisubject'),
-                                            self.get('parc'), regexp=regexp,
-                                            subjects_dir=mri_sdir)
-        return {l.name: l for l in labels}
+        labels = mne.read_labels_from_annot(self.get('mrisubject'), self.get('parc'), regexp=regexp, subjects_dir=mri_sdir)
+        return {label.name: label for label in labels}
 
     def load_morph_matrix(self, **state):
         """Load the morph matrix from mrisubject to common_brain
@@ -5682,7 +5680,7 @@ class MneExperiment(FileTree):
         report.sign()
         report.save_html(file_name)
 
-    def make_src(self, **kwargs):
+    def make_src(self, **state):
         """Make the source space
         
         Parameters
@@ -5690,7 +5688,7 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        dst = self.get('src-file', **kwargs)
+        dst = self.get('src-file', **state)
         subject = self.get('mrisubject')
         common_brain = self.get('common_brain')
 

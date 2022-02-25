@@ -69,7 +69,7 @@ from ._utils import ui
 
 
 # types
-FMTextLike = Union['FMTextElement', str, ListType['FMTextLike'], Tuple['FMTextLike']]
+FMTextLike = Union['FMTextElement', str, float, ListType['FMTextLike'], Tuple['FMTextLike']]
 
 ENV = MappingProxyType({})
 preferences = dict(
