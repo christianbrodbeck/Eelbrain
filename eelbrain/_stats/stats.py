@@ -162,6 +162,8 @@ def residual_mean_square(y, x=None):
     out = np.empty(y.shape[1:])
     out_ = out.ravel()
     y_ = y.reshape((n, -1))
+    if y_.dtype != float:
+        y_ = y_.astype(float)
     if x is None:
         opt.ss(y_, out_)
         out_ /= n - 1
