@@ -525,7 +525,7 @@ class MneExperiment(FileTree):
             self._sessions = tuple(self.sessions)
         else:
             raise TypeError(f"MneExperiment.sessions={self.sessions!r}; needs to be a string or a tuple")
-        self._visits = (self._visits,) if isinstance(self.visits, str) else tuple(self.visits)
+        self._visits = (self.visits,) if isinstance(self.visits, str) else tuple(self.visits)
 
         ########################################################################
         # subjects
