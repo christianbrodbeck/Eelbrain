@@ -1430,6 +1430,9 @@ class Var(Named):
     def __abs__(self):
         return self.abs()
 
+    def __invert__(self):
+        return Var(~self.x, *op_name(self, '~'))
+
     def _arg_x(self, other):
         if isnumeric(other):
             return other.x

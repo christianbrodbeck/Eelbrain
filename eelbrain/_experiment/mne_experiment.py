@@ -140,7 +140,7 @@ def guess_y(ds, default=None):
             return y
     if default is not None:
         return default
-    raise RuntimeError(r"Could not find data in {ds}")
+    raise RuntimeError(f"Could not find data in {ds}")
 
 
 class DictSet:
@@ -149,7 +149,7 @@ class DictSet:
         self._list = []
 
     def __repr__(self):
-        return "DictSet(%s)" % self._list
+        return f"DictSet({self._list})"
 
     def __iter__(self):
         return self._list.__iter__()
@@ -161,27 +161,6 @@ class DictSet:
     def update(self, items):
         for item in items:
             self.add(item)
-
-
-class CacheDict(dict):
-
-    def __init__(self, func, key_vars, *args):
-        super(CacheDict, self).__init__()
-        self._func = func
-        self._key_vars = key_vars
-        self._args = args
-
-    def __getitem__(self, key):
-        if key in self:
-            return dict.__getitem__(self, key)
-
-        if isinstance(key, str):
-            out = self._func(*self._args, **{self._key_vars: key})
-        else:
-            out = self._func(*self._args, **dict(zip(self._key_vars, key)))
-
-        self[key] = out
-        return out
 
 
 def cache_valid(mtime, *source_mtimes):
@@ -445,6 +424,8 @@ class MneExperiment(FileTree):
             'head-bem-file': join('{bem-dir}', '{mrisubject}-head.fif'),
             'src-file': join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
             'fiducials-file': join('{bem-dir}', '{mrisubject}-fiducials.fif'),
+            # Morphing
+            'source-morph-file': join('{bem-dir}', '{mrisubject} {common_brain} {src}-morph.h5'),
             # Labels
             'hemi': ('lh', 'rh'),
             'label-dir': join('{mri-dir}', 'label'),
@@ -525,7 +506,7 @@ class MneExperiment(FileTree):
             self._sessions = tuple(self.sessions)
         else:
             raise TypeError(f"MneExperiment.sessions={self.sessions!r}; needs to be a string or a tuple")
-        self._visits = (self._visits,) if isinstance(self.visits, str) else tuple(self.visits)
+        self._visits = (self.visits,) if isinstance(self.visits, str) else tuple(self.visits)
 
         ########################################################################
         # subjects
@@ -2985,11 +2966,14 @@ class MneExperiment(FileTree):
             else:
                 self.make_annot(mrisubject=mri_subjects[meg_subjects[0]])
 
+        # preload morph matrices
+        morph_sources = {subject for subject in from_subjects.values() if subject != common_brain}
+        source_morphs = {subject: self.load_source_morph(subject=subject) for subject in morph_sources}
+
         # convert evoked objects
         method, make_kw, apply_kw = self._inv_params()
         stcs = []
         invs = {}
-        mm_cache = CacheDict(self.load_morph_matrix, 'mrisubject')
         for subject, evoked in tqdm(ds.zip('subject', 'evoked'), "Localize", ds.n_cases, leave=False):
             # get inv
             if subject in invs:
@@ -3009,8 +2993,7 @@ class MneExperiment(FileTree):
                 if subject_from == common_brain:
                     stc.subject = common_brain
                 else:
-                    mm, v_to = mm_cache[subject_from]
-                    stc = mne.morph_data_precomputed(subject_from, common_brain, stc, v_to, mm)
+                    stc = source_morphs[subject_from].apply(stc)
             stcs.append(stc)
 
         # add to Dataset
@@ -3338,39 +3321,32 @@ class MneExperiment(FileTree):
         """Load labels from an annotation file."""
         self.make_annot(**kwargs)
         mri_sdir = self.get('mri-sdir')
-        labels = mne.read_labels_from_annot(self.get('mrisubject'),
-                                            self.get('parc'), regexp=regexp,
-                                            subjects_dir=mri_sdir)
-        return {l.name: l for l in labels}
+        labels = mne.read_labels_from_annot(self.get('mrisubject'), self.get('parc'), regexp=regexp, subjects_dir=mri_sdir)
+        return {label.name: label for label in labels}
 
-    def load_morph_matrix(self, **state):
+    def load_source_morph(self, **state):
         """Load the morph matrix from mrisubject to common_brain
 
         Parameters
         ----------
         ...
             State parameters.
-
-        Returns
-        -------
-        mm : sparse matrix
-            Morph matrix.
-        vertices_to : list of 2 array
-            Vertices of the morphed data.
         """
-        subjects_dir = self.get('mri-sdir', **state)
+        dst = self.get('source-morph-file', **state)
+        if exists(dst):
+            return mne.read_source_morph(dst)
+
+        self._log.debug("Make source-morph-file %s", dst)
+        subjects_dir = self.get('mri-sdir')
         subject_to = self.get('common_brain')
         subject_from = self.get('mrisubject')
 
         src_to = self.load_src(mrisubject=subject_to, match=False)
         src_from = self.load_src(mrisubject=subject_from, match=False)
 
-        vertices_to = [src_to[0]['vertno'], src_to[1]['vertno']]
-        vertices_from = [src_from[0]['vertno'], src_from[1]['vertno']]
-
-        mm = mne.compute_morph_matrix(subject_from, subject_to, vertices_from,
-                                      vertices_to, None, subjects_dir)
-        return mm, vertices_to
+        morph = mne.compute_source_morph(src_from, subject_from, subject_to, subjects_dir, src_to=src_to, precompute=True)
+        morph.save(dst)
+        return morph
 
     def load_neighbor_correlation(
             self,
@@ -5682,7 +5658,7 @@ class MneExperiment(FileTree):
         report.sign()
         report.save_html(file_name)
 
-    def make_src(self, **kwargs):
+    def make_src(self, **state):
         """Make the source space
         
         Parameters
@@ -5690,7 +5666,7 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        dst = self.get('src-file', **kwargs)
+        dst = self.get('src-file', **state)
         subject = self.get('mrisubject')
         common_brain = self.get('common_brain')
 

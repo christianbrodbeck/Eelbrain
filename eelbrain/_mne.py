@@ -6,7 +6,8 @@ from typing import Union, List
 import warnings
 
 import numpy as np
-import scipy as sp
+import scipy
+import scipy.sparse
 from scipy.spatial.distance import cdist
 
 import mne
@@ -387,7 +388,7 @@ def morph_source_space(
         data: Union[NDVar, SourceSpace],
         subject_to: str = None,
         vertices_to: Union[List, str] = None,
-        morph_mat: sp.sparse.spmatrix = None,
+        morph_mat: scipy.sparse.spmatrix = None,
         copy: bool = False,
         parc: Union[bool, str] = True,
         xhemi: bool = False,
@@ -576,7 +577,7 @@ def morph_source_space(
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', r'\d+/\d+ vertices not included in smoothing', module='mne')
             morph_mat = compute_morph_matrix(subject_from, subject_to, source.vertices, source_to.vertices, None, subjects_dir, xhemi=xhemi)
-    elif not sp.sparse.issparse(morph_mat):
+    elif not scipy.sparse.issparse(morph_mat):
         raise ValueError('morph_mat must be a sparse matrix')
     elif not sum(len(v) for v in source_to.vertices) == morph_mat.shape[0]:
         raise ValueError('morph_mat.shape[0] must match number of vertices in vertices_to')

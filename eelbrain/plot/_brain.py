@@ -509,10 +509,12 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
     from ._brain_object import Brain, get_source_dim
 
     if isinstance(src, SourceSpace):
-        if cmap is not None or vmin is not None or vmax is not None:
-            raise TypeError("When plotting SourceSpace, cmap, vmin and vmax "
-                            "can not be specified (got %s)" %
-                            ', '.join((cmap, vmin, vmax)))
+        if cmap is not None:
+            raise TypeError(f"{cmap=} when plotting SourceSpace without data")
+        elif vmin is not None:
+            raise TypeError(f"{vmin=} when plotting SourceSpace without data")
+        elif vmax is not None:
+            raise TypeError(f"{vmax=} when plotting SourceSpace without data")
         ndvar = None
         source = src
         subject = source.subject
@@ -532,10 +534,9 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
         subject = source.subject
         # check that ndvar has the right dimensions
         if ndvar.ndim == 2 and not ndvar.has_dim('time') or ndvar.ndim > 2:
-            raise ValueError("NDVar should have dimesions source and "
-                             "optionally time, got %r" % (ndvar,))
+            raise ValueError(f"{ndvar=}: should have dimesions source and optionally time")
         if title is None and name is None and ndvar.name is not None:
-            title = "%s - %s" % (source.subject, ndvar.name)
+            title = f"{source.subject} - {ndvar.name}"
 
     if hemi is None:
         if source.lh_n and source.rh_n:
@@ -558,11 +559,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
     if subjects_dir is None:
         subjects_dir = source.subjects_dir
 
-    brain = Brain(subject, hemi, surf, title, cortex,
-                  views=views, w=w, h=h, axw=axw, axh=axh,
-                  foreground=foreground, background=background,
-                  subjects_dir=subjects_dir, name=name, pos=pos,
-                  source_space=source)
+    brain = Brain(subject, hemi, surf, title, cortex, views=views, w=w, h=h, axw=axw, axh=axh, foreground=foreground, background=background, subjects_dir=subjects_dir, name=name, pos=pos, source_space=source)
 
     if ndvar is not None:
         if ndvar.x.dtype.kind in 'ui':
