@@ -6846,7 +6846,12 @@ class MneExperiment(FileTree):
         return FileTree.show_file_status(self, temp, row, col, *args, **kwargs)
 
     def show_raw_info(self, **state):
-        "Display the selected pipeline for raw processing"
+        """Display the selected pipeline for raw processing
+
+        See Also
+        --------
+        show_subjects : list presence of raw input file by subject
+        """
         raw = self.get('raw', **state)
         pipe = source_pipe = self._raw[raw]
         pipeline = [pipe]
@@ -6995,20 +7000,30 @@ class MneExperiment(FileTree):
         else:
             print(out)
 
-    def show_subjects(self, mri=True, mrisubject=False, caption=True, asds=False, **state):
+    def show_subjects(
+            self,
+            raw: bool = False,
+            mri: bool = None,
+            mrisubject: bool = False,
+            caption: Union[str, bool] = True,
+            asds: bool = False,
+            **state,
+    ):
         """Create a Dataset with subject information
 
         Parameters
         ----------
-        mri : bool
+        raw
+            Display which raw input files exist.
+        mri
             Add a column specifying whether the subject is using a scaled MRI
             or whether it has its own MRI.
-        mrisubject : bool
+        mrisubject
             Add a column showing the MRI subject corresponding to each subject.
-        caption : bool | str
+        caption
             Caption for the table (For True, use the default "Subject in group
             {group}".
-        asds : bool
+        asds
             Return the table as Dataset instead of an FMTxt Table.
         ...
             State parameters.
@@ -7016,6 +7031,8 @@ class MneExperiment(FileTree):
         if isinstance(mri, str):
             state['mri'] = mri
             mri = True
+        elif mri is None:
+            mri = exists(self.get('mri-sdir'))
         if state:
             self.set(**state)
 
@@ -7026,10 +7043,19 @@ class MneExperiment(FileTree):
         subject_list = []
         mri_list = []
         mrisubject_list = []
+        raw_files = defaultdict(list)
+        raw_pipe = self._raw['raw']
+        recordings = list(self.iter('recording'))
         for subject in self.iter():
             subject_list.append(subject)
             mrisubject_ = self.get('mrisubject')
             mrisubject_list.append(mrisubject_)
+            if raw:
+                for recording in recordings:
+                    if raw_pipe.exists(subject, recording):
+                        raw_files[recording].append('X')
+                    else:
+                        raw_files[recording].append('')
             if mri:
                 mri_dir = self.get('mri-dir')
                 if not exists(mri_dir):
@@ -7049,6 +7075,9 @@ class MneExperiment(FileTree):
             ds['mri'] = Factor(mri_list)
         if mrisubject:
             ds['mrisubject'] = Factor(mrisubject_list)
+        if raw:
+            for recording, data in raw_files.items():
+                ds[recording.replace(' ', '_')] = Factor(data)
 
         if asds:
             return ds
