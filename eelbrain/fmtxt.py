@@ -610,9 +610,8 @@ class FMTextElement:
     def __str__(self):
         return self.get_str()
 
-    def _ipython_display_(self):
-        from IPython.display import display, HTML
-        display(HTML(html(self)))
+    def _repr_html_(self):
+        return html(self)
 
     def __add__(self, other):
         if isinstance(other, str) and other == '':

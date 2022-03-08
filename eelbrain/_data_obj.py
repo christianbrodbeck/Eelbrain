@@ -5973,8 +5973,8 @@ class Dataset(dict):
             raise NotImplementedError
         p.text(self.__repr__())
 
-    def _ipython_display_(self):
-        self._display_table()._ipython_display_()
+    def _repr_html_(self):
+        return self._display_table()._repr_html_()
 
     def __setitem__(self, index, item):
         if isinstance(index, str):
