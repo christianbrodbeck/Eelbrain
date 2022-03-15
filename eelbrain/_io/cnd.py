@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Continuous neural data (CND) format used for mTRF-Toolbox"""
+import logging
 from pathlib import Path
 from typing import Optional, Sequence, Union
 
@@ -89,11 +90,18 @@ def read_cnd(
         for trial_data in data['eeg']['data']:
             uts = UTS(0, tstep, trial_data.shape[0])
             eeg.append(NDVar(trial_data, (uts, sensor), 'eeg'))
+        ds = Dataset({data_type.lower(): combine(eeg, to_list=True)})
         # Trial position
-        ds = Dataset({
-            data_type.lower(): combine(eeg, to_list=True),
-            'origTrialPosition': Var(data['eeg']['origTrialPosition'] - 1),
-        })
+        if 'origTrialPosition' in data['eeg']:
+            orig_trial_position = data['eeg']['origTrialPosition']
+            if len(orig_trial_position) != ds.n_cases:
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Ignoring origTrialPosition because it has the wrong length: {orig_trial_position!r}")
+            else:
+                ds['origTrialPosition'] = Var(orig_trial_position - 1)
+        else:
+            logger = logging.getLogger(__name__)
+            logger.warning(f"origTrialPosition missing")
         # Extra channels
         if 'extChan' in data['eeg']:
             desc = ds.info['extChan'] = data['eeg']['extChan']['description']
