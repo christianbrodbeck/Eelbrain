@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Optional, Sequence, Union
 
 import mne
-from mne.externals.pymatreader import read_mat
 import numpy
+from pymatreader import read_mat
 
 from .._data_obj import Dataset, Factor, NDVar, Scalar, Sensor, UTS, Var, combine, _matrix_graph
 from .._io.fiff import mne_neighbor_files

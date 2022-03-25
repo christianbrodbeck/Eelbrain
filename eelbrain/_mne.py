@@ -190,9 +190,10 @@ def shift_mne_epoch_trigger(epochs, trigger_shift, min_shift=None, max_shift=Non
     events = epochs.events.copy()
     events[:, 0] += shifts
 
+    info = mne.Info(projs={}, **{k: v for k, v in epochs.info.items() if k != 'projs'})
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
-        return mne.EpochsArray(new_data, epochs.info, events, tmin, epochs.event_id)
+        warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor are not chronologically ordered', RuntimeWarning)
+        return mne.EpochsArray(new_data, info, events, tmin, epochs.event_id)
 
 
 def label_from_annot(sss, subject, subjects_dir, parc=None, color=(0, 0, 0)):

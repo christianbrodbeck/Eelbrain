@@ -39,6 +39,7 @@ from .._mne import morph_source_space, shift_mne_epoch_trigger, find_source_subj
 from ..mne_fixes import write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg
 from ..mne_fixes._trans import hsp_equal, mrk_equal
 from ..mne_fixes._source_space import merge_volume_source_space, prune_volume_source_space, restrict_volume_source_space
+from ..mne_fixes._version import MNE_VERSION, V1
 from .._ndvar import concatenate, cwt_morlet, neighbor_correlation
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
@@ -4401,7 +4402,10 @@ class MneExperiment(FileTree):
             e.info['description'] = f"Eelbrain {CACHE_STATE_VERSION}"
             e.comment = ' % '.join(cell)
         if use_cache:
-            mne.write_evokeds(dst, ds_agg['evoked'])
+            if MNE_VERSION >= V1:
+                mne.write_evokeds(dst, ds_agg['evoked'], overwrite=True)
+            else:
+                mne.write_evokeds(dst, ds_agg['evoked'])
             # re-load to reduce precision to cached version
             ds_agg['evoked'] = mne.read_evokeds(dst, proj=False)
 
