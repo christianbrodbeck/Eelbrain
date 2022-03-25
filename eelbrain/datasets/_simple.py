@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import string
+from typing import Literal, Optional, Tuple, Union
 
 import mne
 from mne import minimum_norm as mn
@@ -236,40 +237,54 @@ def _mne_source_space(subject, src_tag, subjects_dir):
     return ss
 
 
-def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
-                   src=None, sub="modality=='A'", ori='free', snr=2,
-                   method='dSPM', rm=False, stc=False, hpf=0):
+def get_mne_sample(
+        tmin: float = -0.1,
+        tmax: float = 0.4,
+        baseline: Optional[Tuple[Optional[float], Optional[float]]] = (None, 0),
+        sns: Union[bool, Literal['eeg', 'mag', 'grad']] = False,
+        src: Literal[False, 'ico', 'vol'] = None,
+        sub: str = "modality=='A'",
+        ori: Literal['free', 'fixed', 'vector'] = 'free',
+        snr: float = 2,
+        method: str = 'dSPM',
+        rm: bool = False,
+        stc: bool = False,
+        hpf: float = 0,
+        proj: bool = True,
+):
     """Load events and epochs from the MNE sample data
 
     Parameters
     ----------
-    tmin : scalar
+    tmin
         Relative time of the first sample of the epoch.
-    tmax : scalar
+    tmax
         Relative time of the last sample of the epoch.
-    baseline : {None, tuple of 2 {scalar, None}}
+    baseline
         Period for baseline correction.
-    sns : bool | str
+    sns
         Add sensor space data as NDVar as ``ds['meg']`` (default ``False``).
         Set to ``'grad'`` to load gradiometer data.
-    src : False | 'ico' | 'vol'
+    src
         Add source space data as NDVar as ``ds['src']`` (default ``False``).
-    sub : str | list | None
+    sub
         Expression for subset of events to load. For a very small dataset use e.g.
         ``[0,1]``.
-    ori : 'free' | 'fixed' | 'vector'
+    ori
         Orientation of sources.
-    snr : scalar
+    snr
         MNE inverse parameter.
-    method : str
+    method
         MNE inverse parameter.
-    rm : bool
+    rm
         Pretend to be a repeated measures dataset (adds 'subject' variable).
-    stc : bool
+    stc
         Add mne SourceEstimate for source space data as ``ds['stc']`` (default
         ``False``).
-    hpf : scalar
+    hpf
         High pass filter cutoff.
+    proj
+        Add projectors.
 
     Returns
     -------
@@ -318,12 +333,9 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     trigger = ds['trigger']
 
     # use trigger to add various labels to the dataset
-    ds['condition'] = Factor(trigger, labels={
-        1: 'LA', 2: 'RA', 3: 'LV', 4: 'RV', 5: 'smiley', 32: 'button'})
-    ds['side'] = Factor(trigger, labels={
-        1: 'L', 2: 'R', 3: 'L', 4: 'R', 5: 'None', 32: 'None'})
-    ds['modality'] = Factor(trigger, labels={
-        1: 'A', 2: 'A', 3: 'V', 4: 'V', 5: 'None', 32: 'None'})
+    ds['condition'] = Factor(trigger, labels={1: 'LA', 2: 'RA', 3: 'LV', 4: 'RV', 5: 'smiley', 32: 'button'})
+    ds['side'] = Factor(trigger, labels={1: 'L', 2: 'R', 3: 'L', 4: 'R', 5: 'None', 32: 'None'})
+    ds['modality'] = Factor(trigger, labels={1: 'A', 2: 'A', 3: 'V', 4: 'V', 5: 'None', 32: 'None'})
 
     if rm:
         ds = ds.sub('trigger < 5')
@@ -336,9 +348,8 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
 
     load.fiff.add_mne_epochs(ds, tmin, tmax, baseline)
     if sns:
-        ds['meg'] = load.fiff.epochs_ndvar(ds['epochs'],
-                                           data='mag' if sns is True else sns,
-                                           sysname='neuromag306')
+        data_arg = 'mag' if sns is True else sns
+        ds['meg'] = load.fiff.epochs_ndvar(ds['epochs'], data=data_arg, sysname='neuromag306', proj=proj)
 
     if not src:
         return ds

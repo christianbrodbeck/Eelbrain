@@ -11,6 +11,7 @@ numpy >=1.11
 numba
 pillow
 pooch  # for mne dataset downloading
+pymatreader
 sphinx_rtd_theme
 sphinx >=3
 sphinx-autodoc-typehints

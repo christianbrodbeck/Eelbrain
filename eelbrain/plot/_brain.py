@@ -1298,7 +1298,15 @@ class SequencePlotter:
         layer = SequencePlotterLayer(kind, mne_label, (), kwargs, label, index, SPPlotType.MNE_LABEL)
         self._data.append(layer)
 
-    def add_ndvar(self, ndvar, *args, static=None, index=None, label=None, **kwargs):
+    def add_ndvar(
+            self,
+            ndvar: NDVar,
+            *args,
+            static: bool = None,
+            index: int = None,
+            label: Union[str, Sequence[str]] = None,
+            **kwargs,
+    ):
         """Add a data layer to the brain plot
 
         Multiple data layers can be added sequentially, but each additional
@@ -1307,20 +1315,20 @@ class SequencePlotter:
 
         Parameters
         ----------
-        ndvar : NDVar
+        ndvar
             Data to add. ``Source`` dimension only for a static layer,
             additional ``time`` or ``case`` dimension for dynamic layers.
         ...
             :meth:`~._brain_object.Brain.add_ndvar` parameters.
-        static : bool
+        static
             When supplying a one dimensional ``ndvar``, whether to consider it
             as a static layer (an overlay appearing on all plots) or as one of
             several plots (default).
-        index : int
+        index
             When adding separate frames (rows/columns), explicitly specify the
             frame index (the default is to add a frame at the end; use -1 to
             add an overlay to the most recent frame).
-        label : str | sequence of str
+        label
             Label when adding multiple separate NDVars. Labels for bins when
             adding ``ndvar`` with multiple bins.
         """
@@ -1332,8 +1340,10 @@ class SequencePlotter:
         elif ndvar.ndim == 2:
             dim_name = ndvar.get_dimnames((None, 'source'))[0]
             frame_dim = ndvar.get_dim(dim_name)
+        elif ndvar.has_case:
+            raise ValueError(f"{ndvar=}: must be one- or two dimensional. If you meant to plot the average of cases, use ndvar.mean('case')")
         else:
-            raise ValueError(f"{ndvar!r}: Need NDVar with 1 or 2 dimensions")
+            raise ValueError(f"{ndvar=}: must be one- or two dimensional")
 
         if frame_dim is None:
             # apply defaults

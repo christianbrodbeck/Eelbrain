@@ -5973,8 +5973,8 @@ class Dataset(dict):
             raise NotImplementedError
         p.text(self.__repr__())
 
-    def _ipython_display_(self):
-        self._display_table()._ipython_display_()
+    def _repr_html_(self):
+        return self._display_table()._repr_html_()
 
     def __setitem__(self, index, item):
         if isinstance(index, str):
@@ -6007,7 +6007,7 @@ class Dataset(dict):
             if self.n_cases is None:
                 self.n_cases = n
             elif self.n_cases != n:
-                raise ValueError(f"Can not assign item to Dataset. The item`s length {n} is different from the number of cases in the Dataset {self.n_cases}.")
+                raise ValueError(f"Can not assign item to Dataset[{index!r}]. The item`s length {n} is different from the number of cases in the Dataset {self.n_cases}.")
 
             super(Dataset, self).__setitem__(index, item)
         elif isinstance(index, tuple):
