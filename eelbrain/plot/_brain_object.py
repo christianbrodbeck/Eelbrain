@@ -5,7 +5,7 @@ from functools import cached_property, partial
 import os
 import sys
 from tempfile import mkdtemp
-from typing import Any, Literal, Sequence
+from typing import Any, Callable, Literal, Sequence, Union
 from time import time, sleep
 from warnings import warn
 
@@ -331,9 +331,20 @@ class Brain(TimeSlicer, surfer.Brain):
                 self.add_label(rh, color[:3], color[3])
                 self.labels_dict['mask-rh'][0].actor.property.lighting = False
 
-    def add_ndvar(self, ndvar, cmap=None, vmin=None, vmax=None,
-                  smoothing_steps=None, colorbar=False, time_label='ms',
-                  lighting=False, contours=None, alpha=1, remove_existing=False):
+    def add_ndvar(
+            self,
+            ndvar: NDVar,
+            cmap: Any = None,
+            vmin: float = None,
+            vmax: float = None,
+            smoothing_steps: int = None,
+            colorbar: bool = False,
+            time_label: Union[str, Callable] = 'ms',
+            lighting: bool = False,
+            contours: Union[bool, Sequence[float]] = None,
+            alpha: float = 1,
+            remove_existing: bool = False,
+    ):
         """Add data layer form an NDVar
 
         Parameters
@@ -347,28 +358,31 @@ class Brain(TimeSlicer, surfer.Brain):
             Colormap. Can be the name of a matplotlib colormap, a list of
             colors, or a custom lookup table (an n x 4 array with RBGA values
             between 0 and 255).
-        vmin, vmax : scalar
-            Endpoints for the colormap. Need to be set explicitly if ``cmap`` is
-            a LUT array.
-        smoothing_steps : None | int
+        vmin
+            Lower endpoint for the colormap. Needs to be set explicitly if
+            ``cmap`` is a LUT array.
+        vmax
+            Upper endpoint for the colormap. Needs to be set explicitly if
+            ``cmap`` is a LUT array.
+        smoothing_steps
             Number of smoothing steps if data is spatially undersampled
             (PySurfer ``Brain.add_data()`` argument).
-        colorbar : bool
+        colorbar
             Add a colorbar to the figure (use ``.plot_colorbar()`` to plot a
             colorbar separately).
-        time_label : str | callable
+        time_label
             Label to show time point. Use ``'ms'`` or ``'s'`` to display time in
             milliseconds or in seconds, or supply a custom formatter for time
             values in seconds (default is ``'ms'``).
-        lighting : bool
+        lighting
             The data overlay is affected by light sources (default ``False``, 
             i.e. data overlays appear luminescent).
-        contours : bool | sequence of scalar
+        contours
             Draw contour lines instead of a solid overlay. Set to a list of
             contour levels or ``True`` for automatic contours.
-        alpha : scalar
+        alpha
             Alpha value for the data layer (0 = tranparent, 1 = opaque).
-        remove_existing : bool
+        remove_existing
             Remove data layers that have been added previously (default False).
         """
         ndvar = asndvar(ndvar)
@@ -381,7 +395,9 @@ class Brain(TimeSlicer, surfer.Brain):
             time_dim = times = None
             data_dims = (source.name,)
         elif ndvar.ndim != 2:
-            raise ValueError(f"{ndvar}: must be one- or two dimensional")
+            if ndvar.has_case:
+                raise ValueError(f"{ndvar=}: must be one- or two dimensional. If you meant to plot the average of cases, use ndvar.mean('case')")
+            raise ValueError(f"{ndvar=}: must be one- or two dimensional")
         elif ndvar.has_dim('time'):
             time_dim = ndvar.time
             times = ndvar.time.times

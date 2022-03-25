@@ -2,7 +2,7 @@ from math import ceil, floor
 import os
 from pathlib import Path
 import re
-from typing import Union, List
+from typing import Union, List, Sequence
 import warnings
 
 import numpy as np
@@ -129,22 +129,25 @@ def _vertices_equal(v1, v0):
     return np.array_equal(v1[0], v0[0]) and np.array_equal(v1[1], v0[1])
 
 
-def shift_mne_epoch_trigger(epochs, trigger_shift, min_shift=None, max_shift=None):
+def shift_mne_epoch_trigger(
+        epochs: mne.BaseEpochs,
+        trigger_shift: Sequence[float],
+        min_shift: float = None,
+        max_shift: float = None,
+):
     """Shift the trigger in an MNE Epochs object
 
     Parameters
     ----------
-    epochs : mne.Epochs
+    epochs
         Epochs object.
-    trigger_shift : scalar sequence
+    trigger_shift
         For each event in ``epochs`` the amount of time by which to shift the
         trigger (in seconds).
-    min_shift : scalar (optional)
-        Minimum time shift, used to crop data (default is
-        ``min(trigger_shift)``).
-    max_shift : scalar (optional)
-        Maximum time shift, used to crop data (default is
-        ``max(trigger_shift)``).
+    min_shift
+        Minimum time shift, used to crop data (default is ``min(trigger_shift)``).
+    max_shift
+        Maximum time shift, used to crop data (default is ``max(trigger_shift)``).
 
     Returns
     -------
@@ -162,20 +165,16 @@ def shift_mne_epoch_trigger(epochs, trigger_shift, min_shift=None, max_shift=Non
     else:
         min_shift = int(floor(min_shift / tstep))
         if any(shift < min_shift for shift in shifts):
-            invalid = (i for i, shift in enumerate(shifts) if shift < min_shift)
-            raise ValueError("The post_baseline_trigger_shift is smaller than "
-                             "min_shift at the following events %s" %
-                             ', '.join(map(str, invalid)))
+            invalid = ', '.join([str(i) for i, shift in enumerate(shifts) if shift < min_shift])
+            raise ValueError(f"The post_baseline_trigger_shift is smaller than min_shift at the following events {invalid}")
 
     if max_shift is None:
         max_shift = max(shifts)
     else:
         max_shift = int(ceil(max_shift / tstep))
         if any(shift > max_shift for shift in shifts):
-            invalid = (i for i, shift in enumerate(shifts) if shift > max_shift)
-            raise ValueError("The post_baseline_trigger_shift is greater than "
-                             "max_shift at the following events %s" %
-                             ', '.join(map(str, invalid)))
+            invalid = ', '.join([str(i) for i, shift in enumerate(shifts) if shift > max_shift])
+            raise ValueError(f"The post_baseline_trigger_shift is greater than max_shift at the following events {invalid}")
 
     x, y, z = data.shape
     start_offset = -min_shift

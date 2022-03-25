@@ -22,20 +22,15 @@ Style
      customizing.html>`_
 
 In order to produce multiple plots with consistent style it is useful to set
-some :mod:`matplotlib` options globally One way this can be done is by updating
+some :mod:`matplotlib` options globally. One way to do this is by updating
 ``rcParams`` inside a script, e.g.::
 
-    import matplotlib as mpl
+    import matplotlib
 
-    mpl.rcParams['font.family'] = 'sans-serif'
-    mpl.rcParams['font.size'] = 8
-    # Change all line-widths
-    for key in mpl.rcParams:
-        if 'linewidth' in key:
-            mpl.rcParams[key] *= 0.5
+    matplotlib.rcParams['font.family'] = 'sans-serif'
+    matplotlib.rcParams['font.size'] = 9
     # The size of saved figures depends on the figure size (w, h) and DPI
-    mpl.rcParams['figure.dpi'] = 300
-    mpl.rcParams['savefig.dpi'] = 300
+    matplotlib.rcParams['savefig.dpi'] = 300
 
 
 Plot sizes

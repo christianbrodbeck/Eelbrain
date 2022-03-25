@@ -142,7 +142,6 @@ def test_dataobjects():
 def test_epoch_trigger_shift():
     "Test the shift_mne_epoch_trigger() function"
     epochs = datasets.get_mne_sample(sns=True, sub="[1,2,3]")['epochs']
-    epochs.info['projs'] = []
     n_lost_start = np.sum(epochs.times < epochs.tmin + 0.05)
     n_lost_end = np.sum(epochs.times > epochs.tmax - 0.05)
     data = epochs.get_data()

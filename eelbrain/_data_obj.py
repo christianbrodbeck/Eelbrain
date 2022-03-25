@@ -6007,7 +6007,7 @@ class Dataset(dict):
             if self.n_cases is None:
                 self.n_cases = n
             elif self.n_cases != n:
-                raise ValueError(f"Can not assign item to Dataset. The item`s length {n} is different from the number of cases in the Dataset {self.n_cases}.")
+                raise ValueError(f"Can not assign item to Dataset[{index!r}]. The item`s length {n} is different from the number of cases in the Dataset {self.n_cases}.")
 
             super(Dataset, self).__setitem__(index, item)
         elif isinstance(index, tuple):
