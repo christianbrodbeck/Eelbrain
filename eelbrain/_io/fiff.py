@@ -1086,6 +1086,7 @@ def epochs_ndvar(
         vmax: float = None,
         sysname: str = None,
         connectivity: Union[str, Sequence] = None,
+        proj: bool = True,
 ):
     """
     Convert an :class:`mne.Epochs` object to an :class:`NDVar`.
@@ -1128,9 +1129,11 @@ def epochs_ndvar(
         - ``"grid"`` to use adjacency in the sensor names
 
         If unspecified, it is inferred from ``sysname`` if possible.
+    proj
+        Add projectors (only applies when ``epochs`` is a path).
     """
     if isinstance(epochs, (str, Path)):
-        epochs = mne.read_epochs(epochs)
+        epochs = mne.read_epochs(epochs, proj=proj)
 
     if data is None:
         data = _guess_ndvar_data_type(epochs.info)

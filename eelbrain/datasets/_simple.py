@@ -250,6 +250,7 @@ def get_mne_sample(
         rm: bool = False,
         stc: bool = False,
         hpf: float = 0,
+        proj: bool = True,
 ):
     """Load events and epochs from the MNE sample data
 
@@ -282,6 +283,8 @@ def get_mne_sample(
         ``False``).
     hpf
         High pass filter cutoff.
+    proj
+        Add projectors.
 
     Returns
     -------
@@ -345,9 +348,8 @@ def get_mne_sample(
 
     load.fiff.add_mne_epochs(ds, tmin, tmax, baseline)
     if sns:
-        ds['meg'] = load.fiff.epochs_ndvar(ds['epochs'],
-                                           data='mag' if sns is True else sns,
-                                           sysname='neuromag306')
+        data_arg = 'mag' if sns is True else sns
+        ds['meg'] = load.fiff.epochs_ndvar(ds['epochs'], data=data_arg, sysname='neuromag306', proj=proj)
 
     if not src:
         return ds
