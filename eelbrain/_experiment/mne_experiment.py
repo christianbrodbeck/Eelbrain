@@ -172,6 +172,11 @@ def cache_valid(mtime, *source_mtimes):
             return mtime >= max(source_mtimes)
 
 
+def mtime_changed(first, second):
+    "Some circumstances cause mtimes to be rounded to whole seconds"
+    return abs(first - second) >= 1
+
+
 class MneExperiment(FileTree):
     """Analyze an MEG or EEG experiment
 
@@ -795,7 +800,7 @@ class MneExperiment(FileTree):
                 # events
                 events[key] = events_in = self.load_events(add_bads=False, data_raw=False)
                 self._raw_samplingrate[key] = events_in.info['sfreq']
-                if key not in raw_mtimes or events_in.info['raw-mtime'] != raw_mtimes[key]:
+                if key not in raw_mtimes or mtime_changed(events_in.info['raw-mtime'], raw_mtimes[key]):
                     subjects_with_raw_changes.add((subject, visit))
                     raw_mtimes[key] = events_in.info['raw-mtime']
             # log missing raw files
@@ -2584,7 +2589,7 @@ class MneExperiment(FileTree):
         if exists(evt_file):
             raw_mtime = self._raw_mtime(bad_chs=False, subject=subject)
             ds = load.unpickle(evt_file)
-            if self.check_raw_mtime and ds.info['raw-mtime'] != raw_mtime:
+            if self.check_raw_mtime and mtime_changed(ds.info['raw-mtime'], raw_mtime):
                 self._log.debug("Raw file  %s %s %s modification time changed %s -> %s", self.get('raw'), subject, self.get('recording'), ds.info['raw-mtime'], raw_mtime)
                 ds = None
 
