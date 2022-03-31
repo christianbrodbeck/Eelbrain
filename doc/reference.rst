@@ -341,7 +341,6 @@ Plot uniform time-series:
 
    plot.LineStack
    plot.UTS
-   plot.UTSClusters
    plot.UTSStat
 
 

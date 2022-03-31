@@ -26,7 +26,7 @@ modifer_keys = {'alpha', 'saturation'}
 
 @dataclass
 class Style:
-    """Plotting style for :class:`~matplotlib.lines.Line2D`, :class:`~matplotlib.patches.Patch` and :fun:`matplotlib.pyplot.scatter` plot types.
+    """Plotting style for :class:`~matplotlib.lines.Line2D`, :class:`~matplotlib.patches.Patch` and :func:`matplotlib.pyplot.scatter` plot types.
 
     Parameters
     ----------

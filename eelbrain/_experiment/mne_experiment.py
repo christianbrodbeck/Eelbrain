@@ -44,6 +44,7 @@ from .._ndvar import concatenate, cwt_morlet, neighbor_correlation
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import enumeration, n_of, plural
+from .._types import PathArg
 from .._utils import IS_WINDOWS, ask, intervals, subp, keydefaultdict, log_level, ScreenHandler
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .._utils.notebooks import tqdm
@@ -362,7 +363,12 @@ class MneExperiment(FileTree):
     _brain_plot_defaults = {'surf': 'inflated'}
     brain_plot_defaults = {}
 
-    def __init__(self, root=None, find_subjects=True, **state):
+    def __init__(
+            self,
+            root: PathArg = None,
+            find_subjects: bool = True,
+            **state,
+    ):
         # checks
         if hasattr(self, 'cluster_criteria'):
             raise AttributeError("MneExperiment subclasses can not have a .cluster_criteria attribute anymore. Please remove the attribute, delete the eelbrain-cache folder and use the select_clusters analysis parameter.")

@@ -864,8 +864,8 @@ def neighbor_correlation(
         Dimension which provides observations over which to compute the
         correlation (default 'time').
     func
-        Numpy function to summarize the neighbors. Default :fun:`numpy.mean`;
-        for example, use :fun:`numpy.max` to test whether any neighbor is
+        Numpy function to summarize the neighbors. Default :func:`numpy.mean`;
+        for example, use :func:`numpy.max` to test whether any neighbor is
         correlated.
     flat
         Value to substitute for flat channels (default 0).
