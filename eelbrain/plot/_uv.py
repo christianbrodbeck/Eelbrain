@@ -1039,6 +1039,8 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
         Labels for x-axis; the default is determined from the data.
     ylabel
         Labels for y-axis; the default is determined from the data.
+    aspect
+        Matplotlib parameter (see :meth:`~matplotlib.axes.Axes.set_aspect`).
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
@@ -1059,6 +1061,7 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
             alpha: float = 1.,
             xlabel: Union[bool, str] = True,
             ylabel: Union[bool, str] = True,
+            aspect: Union[float, Literal['auto', 'equal']] = 'auto',
             **kwargs):
         sub, n = assub(sub, ds, return_n=True)
         y, n = asvar(y, sub, ds, n, return_n=True)
@@ -1087,6 +1090,7 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
         self._configure_axis_data('x', x, xlabel)
 
         ax = self.axes[0]
+        ax.set_aspect(aspect)
         legend_handles = {}
         if cat is None:
             legend = False
