@@ -12,7 +12,7 @@ import gzip
 from pathlib import Path
 import re
 from numbers import Number
-from typing import Sequence, Union
+from typing import Literal, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -307,3 +307,30 @@ def var(path: PathArg = None, name: str = None):
         x = np.loadtxt(path)
 
     return _data.Var(x, name)
+
+
+def write_connectivity(
+        connectivity: Union[Sequence[Tuple[str, str]], Sequence[Tuple[int, int]]],
+        filename: PathArg = None,
+):
+    """Save connectivity graph as text file"""
+    text = '\n'.join([':'.join(map(str, pair)) for pair in connectivity])
+    if filename is None:
+        msg = f"Save connectivity..."
+        filename = ui.ask_saveas(msg, msg, [("Text files", "*.txt")])
+    Path(filename).write_text(text)
+
+
+def read_connectivity(
+        filename: PathArg = None,
+        is_int: bool = False,
+):
+    if filename is None:
+        filename = ui.ask_file("Load Connectivity", "Select text file with connectivity graph", [("Text files", "*.txt")])
+        if filename is None:
+            return
+    text = Path(filename).read_text()
+    pairs = [pair.split(':') for pair in text.splitlines()]
+    if is_int:
+        pairs = [[int(i) for i in pair] for pair in pairs]
+    return [tuple(pair) for pair in pairs]

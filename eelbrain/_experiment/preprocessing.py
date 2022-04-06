@@ -7,6 +7,7 @@ from itertools import chain
 import logging
 from os import makedirs, remove
 from os.path import basename, dirname, exists, getmtime, join, splitext
+from pathlib import Path
 from typing import Callable, Dict, List, Sequence, Tuple, Union
 
 import mne
@@ -16,6 +17,7 @@ from .. import load
 from .._data_obj import NDVar, Sensor
 from .._exceptions import DefinitionError
 from .._io.fiff import KIT_NEIGHBORS, find_mne_channel_types
+from .._io.txt import read_connectivity
 from .._ndvar import filter_data
 from .._text import enumeration
 from .._utils import as_sequence, ask, user_activity
@@ -133,7 +135,7 @@ class RawSource(RawPipe):
         useful to convert idiosyncratic naming conventions to standard montages.
     montage : str
         Name of a montage that is applied to raw data to set sensor positions.
-    connectivity : str | list of (str, str)
+    connectivity
         Connectivity between sensors. Can be specified as:
 
         - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
@@ -141,8 +143,9 @@ class RawSource(RawPipe):
           connections in terms of indices. Each row should specify one
           connection [i, j] with i < j. If the array's dtype is uint32,
           property checks are disabled to improve efficiency.
-        - ``'grid'`` to use adjacency in the sensor names
         - ``'auto'`` to use :func:`mne.channels.find_ch_adjacency`
+        - Path object to load connectivity from a file
+        - ``"none"`` for no connections
 
         If unspecified, it is inferred from ``sysname`` if possible.
     ...
@@ -189,10 +192,12 @@ class RawSource(RawPipe):
             sysname: str = None,
             rename_channels: dict = None,
             montage: str = None,
-            connectivity: Union[str, List[Tuple[str, str]]] = None,
+            connectivity: Union[str, List[Tuple[str, str]], Path] = None,
             **kwargs,
     ):
         RawPipe.__init__(self)
+        if isinstance(connectivity, Path):
+            connectivity = read_connectivity(connectivity)
         self.filename = typed_arg(filename, str)
         self.reader = reader
         self.sysname = sysname
