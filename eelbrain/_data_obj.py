@@ -8519,9 +8519,7 @@ class Categorial(Dimension):
         if isinstance(index, Integral):
             return self.values[index]
         else:
-            return self.__class__(self.name,
-                                  apply_numpy_index(self.values, index),
-                                  self._subgraph(index))
+            return self.__class__(self.name, apply_numpy_index(self.values, index), self._subgraph(index))
 
     def _as_uv(self):
         return Factor(self.values, name=self.name)

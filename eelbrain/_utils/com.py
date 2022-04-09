@@ -52,8 +52,8 @@ def get_smtpserver(password, new_password=False):
             if new_password:
                 keyring.set_password(NOOB_DOMAIN, NOOB_ADDRESS, password)
             return smtpserver
-        except smtplib.SMTPAuthenticationError:
-            password = ui.ask_str("Eelbrain notifier password invalid. Please enter valid password.", "Notifier Password")
+        except smtplib.SMTPAuthenticationError as exception:
+            password = ui.ask_str(f"Eelbrain notifier login error: {exception}. Retry with a different password?", "Notifier Password")
             if password:
                 new_password = True
             else:
