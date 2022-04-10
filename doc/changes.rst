@@ -9,6 +9,7 @@ New in 0.37
 * ICA-GUI (:func:`gui.select_components`): Sort noisy epochs by dominant components - makes it easier to find components that capture specific artifacts.
 * API: :func:`load.fiff.events` now loads events from all stim-channels. To use a subset, use the ``stim_channel`` parameter.
 * New plot: :class:`plot.SensorMap3d`.
+* :func:`plot.styles_for_twoway` to quickly generate different color and line-style combinations.
 * New function :func:`set_connectivity` to set the neighborhood structure of an :class:`NDVar`.
 * :class:`MneExperiment`:
 
