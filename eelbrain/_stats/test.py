@@ -95,19 +95,53 @@ class Correlation:
                 raise ValueError(f"Shape mismatch: y.shape={y.shape}, x.shape={x.shape}")
             x_y = y.ravel()
             x_x = x.ravel()
-        self.r, self.p, self.df = _corr(x_y, x_x)
+        self.r, self.p, self.df = self._corr(x_y, x_x)
         self._y = dataobj_repr(y)
         self._x = dataobj_repr(x)
 
+    def _corr(self, y: np.ndarray, x: np.ndarray):
+        return _corr(y, x)
+
     def __repr__(self):
-        return f"<Correlation: {self._y} ~ {self._x}; {self._asfmtext()}> "
+        return f"<{self.__class__.__name__}: {self._y} ~ {self._x}; {self._asfmtext()}> "
 
     def _asfmtext(self, **_):
-        return fmtxt.FMText([fmtxt.eq('r', self.r, self.df), ', ', fmtxt.peq(self.p)])
+        return fmtxt.FMText([fmtxt.eq(self._statistic, self.r, self.df), ', ', fmtxt.peq(self.p)])
 
     @property
     def stars(self):
         return fmtxt.Stars.from_p(self.p)
+
+
+class RankCorrelation(Correlation):
+    """Spearman rank correlation between y and x
+
+    Parameters
+    ----------
+    y : Var | NDVar
+        First variable.
+    x : Var | NDVar
+        Second variable. Needs to have same type/shape as ``y``.
+    sub : index
+        Use only a subset of the data
+    ds : Dataset
+        If a Dataset is given, all data-objects can be specified as names of
+        Dataset variables.
+
+    Attributes
+    ----------
+    r : float
+        Spearman rank correlation coefficient.
+    p : float
+        Two-tailed p-value.
+    """
+
+    def _corr(self, y: np.ndarray, x: np.ndarray):
+        r, p = scipy.stats.spearmanr(y, x)
+        return r, p, None
+
+    def _asfmtext(self, **_):
+        return fmtxt.FMText([fmtxt.eq(self._statistic, self.r), ', ', fmtxt.peq(self.p)])
 
 
 def lilliefors(data, formatted=False, **kwargs):
@@ -1411,7 +1445,7 @@ def correlations(y, x, cat=None, sub=None, ds=None, asds=False):
     return table
 
 
-def _corr(y, x):
+def _corr(y: np.ndarray, x: np.ndarray):
     n = len(y)
     assert len(x) == n
     df = n - 2

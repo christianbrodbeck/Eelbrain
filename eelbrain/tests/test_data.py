@@ -317,6 +317,7 @@ def test_datalist():
     assert isinstance(x, Datalist)
     assert_array_equal(x, np.arange(3))
     assert_array_equal(dl[np.arange(3)], np.arange(3))
+    assert_array_equal(dl[[True, False] * 5], np.arange(0, 10, 2))
 
     # __add__
     x = dl + list(range(10, 12))

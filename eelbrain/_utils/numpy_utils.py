@@ -115,7 +115,12 @@ def apply_numpy_index(data, index):
     if isinstance(index, (int, slice)):
         return data[index]
     elif isinstance(index, list):
-        return (data[i] for i in index)
+        if len(index) == 0:
+            return ()
+        elif isinstance(index[0], bool):
+            return (item for i, item in zip(index, data) if i)
+        else:
+            return (data[i] for i in index)
     array = np.asarray(index)
     assert array.ndim == 1, "Index must be 1 dimensional, got %r" % (index,)
     if array.dtype.kind == 'i':

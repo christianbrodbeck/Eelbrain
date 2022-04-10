@@ -69,7 +69,7 @@ from ._utils import ui
 
 
 # types
-FMTextLike = Union['FMTextElement', str, float, ListType['FMTextLike'], Tuple['FMTextLike']]
+FMTextLike = Union['FMTextElement', str, float, Sequence]  # should be Tuple or List['FMTextLike'], but that causes https://github.com/tox-dev/sphinx-autodoc-typehints/issues/223
 
 ENV = MappingProxyType({})
 preferences = dict(

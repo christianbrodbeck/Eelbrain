@@ -779,17 +779,17 @@ class ANOVA:
 
     Parameters
     ----------
-    y : Var
+    y
         dependent variable
-    x : Model
+    x
         Model to fit to y
-    sub : index
+    sub
         Only use part of the data.
-    ds : Dataset
+    ds
         Dataset to use data from.
-    title : str | FMText
+    title
         Title for the results table.
-    caption : str | FMText
+    caption
         Caption for the results table.
 
     Attributes

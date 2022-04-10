@@ -44,6 +44,7 @@ from .._ndvar import concatenate, cwt_morlet, neighbor_correlation
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import enumeration, n_of, plural
+from .._types import PathArg
 from .._utils import IS_WINDOWS, ask, intervals, subp, keydefaultdict, log_level, ScreenHandler
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .._utils.notebooks import tqdm
@@ -169,6 +170,11 @@ def cache_valid(mtime, *source_mtimes):
     if mtime is not None:
         if all(t is not None for t in source_mtimes):
             return mtime >= max(source_mtimes)
+
+
+def mtime_changed(first, second):
+    "Some circumstances cause mtimes to be rounded to whole seconds"
+    return abs(first - second) >= 1
 
 
 class MneExperiment(FileTree):
@@ -362,7 +368,12 @@ class MneExperiment(FileTree):
     _brain_plot_defaults = {'surf': 'inflated'}
     brain_plot_defaults = {}
 
-    def __init__(self, root=None, find_subjects=True, **state):
+    def __init__(
+            self,
+            root: PathArg = None,
+            find_subjects: bool = True,
+            **state,
+    ):
         # checks
         if hasattr(self, 'cluster_criteria'):
             raise AttributeError("MneExperiment subclasses can not have a .cluster_criteria attribute anymore. Please remove the attribute, delete the eelbrain-cache folder and use the select_clusters analysis parameter.")
@@ -789,7 +800,7 @@ class MneExperiment(FileTree):
                 # events
                 events[key] = events_in = self.load_events(add_bads=False, data_raw=False)
                 self._raw_samplingrate[key] = events_in.info['sfreq']
-                if key not in raw_mtimes or events_in.info['raw-mtime'] != raw_mtimes[key]:
+                if key not in raw_mtimes or mtime_changed(events_in.info['raw-mtime'], raw_mtimes[key]):
                     subjects_with_raw_changes.add((subject, visit))
                     raw_mtimes[key] = events_in.info['raw-mtime']
             # log missing raw files
@@ -2578,7 +2589,7 @@ class MneExperiment(FileTree):
         if exists(evt_file):
             raw_mtime = self._raw_mtime(bad_chs=False, subject=subject)
             ds = load.unpickle(evt_file)
-            if self.check_raw_mtime and ds.info['raw-mtime'] != raw_mtime:
+            if self.check_raw_mtime and mtime_changed(ds.info['raw-mtime'], raw_mtime):
                 self._log.debug("Raw file  %s %s %s modification time changed %s -> %s", self.get('raw'), subject, self.get('recording'), ds.info['raw-mtime'], raw_mtime)
                 ds = None
 

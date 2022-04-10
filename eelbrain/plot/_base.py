@@ -1911,7 +1911,7 @@ class EelFigure(MatplotlibFigure):
     def _configure_axis_data(
             self,
             axis: str,  # 'x' | 'y'
-            data: NDVar,  # data for default label
+            data: Union[NDVar, Var],  # data for default label
             label: Union[bool, str],  # override label
             ticklabels: Union[str, int, Sequence[int]] = True,  # where to show tick-labels
             axes: List[matplotlib.axes.Axes] = None,  # axes which to format

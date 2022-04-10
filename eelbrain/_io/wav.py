@@ -81,17 +81,21 @@ def load_wav(
         raise NotImplementedError(f"Data with {data.ndim} dimensions")
 
 
-def save_wav(ndvar, filename=None, toint=False):
+def save_wav(
+        ndvar: NDVar,
+        filename: PathArg = None,
+        toint: bool = False,
+):
     """Save an NDVar as wav file
 
     Parameters
     ----------
-    ndvar : NDVar (time,)
+    ndvar
         Sound data. Values should either be floating point numbers between -1
         and +1, or 16 bit integers.
-    filename : path-like
+    filename
         Where to save. If unspecified a file dialog will ask for the location.
-    toint : bool
+    toint
         Convert floating point data to 16 bit integer (default False).
 
     Notes

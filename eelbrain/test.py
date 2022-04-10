@@ -2,7 +2,7 @@
 __test__ = False
 from ._stats.glm import ANOVA
 from ._stats.test import (
-    Correlation,
+    Correlation, RankCorrelation,
     TTestOneSample, TTestIndependent, TTestRelated, MannWhitneyU, WilcoxonSignedRank,
     pairwise, ttest, correlations,
     bootstrap_pairwise, lilliefors,
