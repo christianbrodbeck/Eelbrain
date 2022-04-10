@@ -216,6 +216,7 @@ Univariate statistical tests:
    :toctree: generated
 
    test.Correlation
+   test.RankCorrelation
    test.TTestOneSample
    test.TTestIndependent
    test.TTestRelated
