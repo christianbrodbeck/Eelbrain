@@ -199,8 +199,9 @@ copyright = u'%i, Christian Brodbeck' % datetime.now().year
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
+_version_items = eelbrain.__version__.split('.')
 # The short X.Y version.
-version = eelbrain.__version__.rsplit('.', 1)[0]
+version = '.'.join(_version_items[:2])
 # The full version, including alpha/beta/rc tags.
 release = eelbrain.__version__  # '0.0.3'
 
