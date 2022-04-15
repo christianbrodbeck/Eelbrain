@@ -108,7 +108,7 @@ def unpickle(path: PathArg = None):
     load.convert_pickle_protocol
     """
     if path is None:
-        filetypes = [("Pickles (*.pickle|*.pickled)", '*.pickle*'), ("All files", '*')]
+        filetypes = [("Pickles (*.pickle)", '*.pickle'), ("All files", '.*')]
         path = ui.ask_file("Select File to Unpickle", "Select a file to unpickle", filetypes)
         if path is False:
             raise RuntimeError("User canceled")
