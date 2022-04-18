@@ -9759,13 +9759,16 @@ class SourceSpaceBase(Dimension):
             vertices, _ = label_src_vertno_sel(label, source_spaces)
         return cls(vertices, subject, src, subjects_dir, parc, **kwargs)
 
-    @cached_property
+    @property
     def subjects_dir(self):
-        try:
+        if self._subjects_dir:
+            return self._subjects_dir
+        else:
             return mne.utils.get_subjects_dir(self._subjects_dir, True)
-        except KeyError:
-            raise TypeError("subjects_dir was neither specified on SourceSpace "
-                            "dimension nor as environment variable")
+
+    @subjects_dir.setter
+    def subjects_dir(self, value: Optional[PathArg]):
+        self._subjects_dir = value
 
     def _sss_path(self, subjects_dir=None):
         if subjects_dir is None:
