@@ -902,7 +902,9 @@ class RawReReference(CachedRawPipe):
     def _make(self, subject, recording):
         raw = self.source.load(subject, recording, preload=True)
         if self.add:
-            raw = mne.add_reference_channels(raw, self.add, copy=False)
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', 'The locations of multiple reference channels are ignored', module='mne')
+                raw = mne.add_reference_channels(raw, self.add, copy=False)
             # apply new channel position
             pipe = self.source
             while not isinstance(pipe, RawSource):

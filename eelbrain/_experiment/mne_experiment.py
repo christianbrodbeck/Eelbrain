@@ -6816,25 +6816,34 @@ class MneExperiment(FileTree):
                 t.cells(subject, ', '.join(bad_channels[subject]))
         return t
 
-    def show_file_status(self, temp, col=None, row='subject', *args, **kwargs):
+    def show_file_status(
+            self,
+            temp: str,
+            col: str = None,
+            row: str = 'subject',
+            count: bool = True,
+            present: str = 'time',
+            absent: str = '-',
+            **kwargs,
+    ):
         """Compile a table about the existence of files
 
         Parameters
         ----------
-        temp : str
+        temp
             The name of the path template for the files to examine.
-        col : None | str
+        col
             Field over which to alternate columns (default is a single column).
-        row : str
+        row
             Field over which to alternate rows (default 'subject').
-        count : bool
+        count
             Add a column with a number for each line (default True).
-        present : 'time' | 'date' | str
-            String to display when a given file is present. 'time' to use last
-            modification date and time (default); 'date' for date only.
-        absent : str
-            String to display when a given file is absent (default '-').
-        ... :
+        present
+            String to display when a given file is present. ``'time'`` to use
+            last modification date and time (default); ``'date'`` for date only.
+        absent
+            String to display when a given file is absent (default ``'-'``).
+        ...
             :meth:`MneExperiment.iter` parameters.
 
         Examples
@@ -6854,7 +6863,7 @@ class MneExperiment(FileTree):
         2   A0028     -      07/22/15 13:22:04   -      -
         3   A0048     -      07/22/15 13:25:29   -      -
         """
-        return FileTree.show_file_status(self, temp, row, col, *args, **kwargs)
+        return FileTree.show_file_status(self, temp, row, col, count, present, absent, **kwargs)
 
     def show_raw_info(self, **state):
         """Display the selected pipeline for raw processing
