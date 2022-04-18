@@ -3269,7 +3269,10 @@ class MneExperiment(FileTree):
             method, make_kw, apply_kw = self._inv_params()
             inv = make_inverse_operator(fiff.info, self.load_fwd(), self.load_cov(), use_cps=True, **make_kw)
             if dst:
-                mne.minimum_norm.write_inverse_operator(dst, inv)
+                if MNE_VERSION >= V1:
+                    mne.minimum_norm.write_inverse_operator(dst, inv, overwrite=True)
+                else:
+                    mne.minimum_norm.write_inverse_operator(dst, inv)
                 # re-load to reduce precision to cached version
                 inv = mne.minimum_norm.read_inverse_operator(dst)
 
@@ -4356,7 +4359,10 @@ class MneExperiment(FileTree):
             with self._temporary_state:
                 raw = self.load_raw(session=cov.session)
             covariance = cov.make(raw)
-        covariance.save(dest)
+        if MNE_VERSION >= V1:
+            covariance.save(dest, overwrite=True)
+        else:
+            covariance.save(dest)
 
     def _make_evoked(self, samplingrate, decim, data_raw, vardef):
         """Make files with evoked sensor data"""
