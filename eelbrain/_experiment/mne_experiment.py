@@ -2247,7 +2247,7 @@ class MneExperiment(FileTree):
         if isinstance(epoch, ContinuousEpoch):
             # find splitting points
             split_threshold = epoch.split + (epoch.pad_end + epoch.pad_start)
-            diff = ds['T'].diff(to_begin=-split_threshold-1)
+            diff = ds['T'].diff(to_begin=split_threshold+1)
             onsets = np.flatnonzero(diff >= split_threshold)
             # make sure we are not messing up user events
             if illegal := {'T_relative', 'events', 'tmax'}.intersection(ds):
@@ -3269,7 +3269,10 @@ class MneExperiment(FileTree):
             method, make_kw, apply_kw = self._inv_params()
             inv = make_inverse_operator(fiff.info, self.load_fwd(), self.load_cov(), use_cps=True, **make_kw)
             if dst:
-                mne.minimum_norm.write_inverse_operator(dst, inv)
+                if MNE_VERSION >= V1:
+                    mne.minimum_norm.write_inverse_operator(dst, inv, overwrite=True)
+                else:
+                    mne.minimum_norm.write_inverse_operator(dst, inv)
                 # re-load to reduce precision to cached version
                 inv = mne.minimum_norm.read_inverse_operator(dst)
 
@@ -4356,7 +4359,10 @@ class MneExperiment(FileTree):
             with self._temporary_state:
                 raw = self.load_raw(session=cov.session)
             covariance = cov.make(raw)
-        covariance.save(dest)
+        if MNE_VERSION >= V1:
+            covariance.save(dest, overwrite=True)
+        else:
+            covariance.save(dest)
 
     def _make_evoked(self, samplingrate, decim, data_raw, vardef):
         """Make files with evoked sensor data"""
@@ -6816,25 +6822,34 @@ class MneExperiment(FileTree):
                 t.cells(subject, ', '.join(bad_channels[subject]))
         return t
 
-    def show_file_status(self, temp, col=None, row='subject', *args, **kwargs):
+    def show_file_status(
+            self,
+            temp: str,
+            col: str = None,
+            row: str = 'subject',
+            count: bool = True,
+            present: str = 'time',
+            absent: str = '-',
+            **kwargs,
+    ):
         """Compile a table about the existence of files
 
         Parameters
         ----------
-        temp : str
+        temp
             The name of the path template for the files to examine.
-        col : None | str
+        col
             Field over which to alternate columns (default is a single column).
-        row : str
+        row
             Field over which to alternate rows (default 'subject').
-        count : bool
+        count
             Add a column with a number for each line (default True).
-        present : 'time' | 'date' | str
-            String to display when a given file is present. 'time' to use last
-            modification date and time (default); 'date' for date only.
-        absent : str
-            String to display when a given file is absent (default '-').
-        ... :
+        present
+            String to display when a given file is present. ``'time'`` to use
+            last modification date and time (default); ``'date'`` for date only.
+        absent
+            String to display when a given file is absent (default ``'-'``).
+        ...
             :meth:`MneExperiment.iter` parameters.
 
         Examples
@@ -6854,7 +6869,7 @@ class MneExperiment(FileTree):
         2   A0028     -      07/22/15 13:22:04   -      -
         3   A0048     -      07/22/15 13:25:29   -      -
         """
-        return FileTree.show_file_status(self, temp, row, col, *args, **kwargs)
+        return FileTree.show_file_status(self, temp, row, col, count, present, absent, **kwargs)
 
     def show_raw_info(self, **state):
         """Display the selected pipeline for raw processing

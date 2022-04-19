@@ -553,16 +553,20 @@ class Boosting:
         # find TRF start/stop for each x
         if isinstance(tstart, (tuple, list, np.ndarray)):
             if len(tstart) != len(self.data.x_name):
-                raise ValueError(f'tstart={tstart!r}: len(tstart) ({len(tstart)}) is different from len(x) ({len(self.data.x_name)}')
+                raise ValueError(f'{tstart=}: {len(tstart)=} is different from len(x)={len(self.data.x_name)}')
             elif len(tstart) != len(tstop):
-                raise ValueError(f'tstop={tstop!r}: mismatched len(tstart) = {len(tstart)}, len(tstop) = {len(tstop)}')
+                raise ValueError(f'{tstop=}: {len(tstop)=} does not match {len(tstart)=}')
             self.tstart = tuple(tstart)
             self.tstart_h = min(self.tstart)
             self.tstop = tuple(tstop)
+            if any(start >= stop for start, stop in zip(self.tstart, self.tstop)):
+                raise ValueError(f"Some tstart > tstop: {tstart=} and {tstop=}")
             n_xs = [reduce(mul, map(len, xdims), 1) for _, xdims, _ in self.data._x_meta]
             tstart = [t for t, n in zip(tstart, n_xs) for _ in range(n)]
             tstop = [t for t, n in zip(tstop, n_xs) for _ in range(n)]
         else:
+            if tstart >= tstop:
+                raise ValueError(f"{tstart=} > {tstop=}")
             self.tstart = self.tstart_h = tstart
             self.tstop = tstop
             tstart = [tstart] * n_x

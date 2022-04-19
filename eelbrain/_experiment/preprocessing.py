@@ -252,7 +252,7 @@ class RawSource(RawPipe):
             dig_recording = self._dig_sessions[subject][recording]
             if dig_recording != recording:
                 dig_raw = self._load(subject, dig_recording, False)
-                raw.info['dig'] = dig_raw.info['dig']
+                raw.set_montage(mne.channels.DigMontage(dig=dig_raw.info['dig']))
         return raw
 
     def cache(self, subject, recording):
@@ -902,7 +902,9 @@ class RawReReference(CachedRawPipe):
     def _make(self, subject, recording):
         raw = self.source.load(subject, recording, preload=True)
         if self.add:
-            raw = mne.add_reference_channels(raw, self.add, copy=False)
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', 'The locations of multiple reference channels are ignored', module='mne')
+                raw = mne.add_reference_channels(raw, self.add, copy=False)
             # apply new channel position
             pipe = self.source
             while not isinstance(pipe, RawSource):
