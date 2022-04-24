@@ -442,21 +442,21 @@ class TreeModel:
         # remove duplicates
         return list(dict.fromkeys(keys))
 
-    def format(self, string, vmatch=True, **kwargs):
+    def format(self, string: str, vmatch: bool = True, **kwargs) -> str:
         """Format a string (i.e., replace any '{xxx}' fields with their values)
 
         Parameters
         ----------
-        string : str
+        string
             Template string.
-        vmatch : bool
+        vmatch
             For fields with known names, only allow existing field names.
-        others :
+        ...
             State parameters.
 
         Returns
         -------
-        formatted_string : str
+        str
             The template temp formatted with current state values.
         """
         self.set(match=vmatch, **kwargs)
