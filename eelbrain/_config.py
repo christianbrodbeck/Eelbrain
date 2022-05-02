@@ -96,6 +96,7 @@ def configure(
         Enable logging (for debugging Eelbrain).
     """
     # don't change values before raising an error
+    logger = logging.getLogger('Eelbrain')
     new: Dict[str, Any] = {}
     if n_workers is not None:
         if n_workers is True:
@@ -105,10 +106,12 @@ def configure(
         elif isinstance(n_workers, int):
             cpu_count = multiprocessing.cpu_count()
             if n_workers < 0:
-                if cpu_count - n_workers < 1:
+                if cpu_count + n_workers < 1:
                     raise ValueError(f"{n_workers=}, but only {cpu_count} CPUs are available")
-                new['n_workers'] = cpu_count - n_workers
+                new['n_workers'] = cpu_count + n_workers
             else:
+                if n_workers > cpu_count:
+                    logger.warning(f"Configure {n_workers=} with {cpu_count=}")
                 new['n_workers'] = n_workers
         else:
             raise TypeError(f"{n_workers=}")
@@ -147,7 +150,6 @@ def configure(
 
     # logging
     if log is True and not CONFIG['log']:
-        logger = logging.getLogger('Eelbrain')
         logger.setLevel(logging.DEBUG)
         handler = ScreenHandler()
         handler.setLevel(logging.DEBUG)
