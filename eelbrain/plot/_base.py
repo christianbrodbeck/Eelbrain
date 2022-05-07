@@ -379,8 +379,8 @@ def find_fig_cmaps(
     for k in out.keys():
         if out[k] is None:
             out[k] = DEFAULT_CMAPS.get(meas, 'xpolar')
-        # replace with cmap with alpha
-        if alpha and out[k] in ALPHA_CMAPS:
+        # prefer cmaps with alpha
+        if alpha and isinstance(out[k], str) and out[k] in ALPHA_CMAPS:
             out[k] = ALPHA_CMAPS[out[k]]
 
     return out
