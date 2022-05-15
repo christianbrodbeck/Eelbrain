@@ -1485,9 +1485,10 @@ class InfoFrame(HTMLFrame):
 
 def select_components(
         path: PathArg,
-        ds: Dataset,
+        data: Union[Dataset, mne.io.BaseRaw],
         sysname: str = None,
         connectivity: Union[str, Sequence] = None,
+        decim: int = None,
 ):
     """GUI for selecting ICA-components
 
@@ -1495,16 +1496,21 @@ def select_components(
     ----------
     path
         Path to the ICA file.
-    ds
-        Dataset with epochs to use for source selection in ``ds['epochs']``
-        (as mne-python ``Epochs`` object). Optionally, ``ds['index']`` can be
-        the indexes to display for epochs (the default is ``range(n_epochs)``.
+    data
+        Raw data, or :class:`Dataset` with epochs to use for displying
+        component time course during source selection. If provided as Dataset,
+        ``data['epochs']`` should contain an mne-python ``Epochs`` object).
+        Optionally, ``data['index']`` can provide indexes to display for epochs
+        (the default is ``range(n_epochs)``).
         Further :class:`Factor` can be used to plot condition averages.
     sysname
         Optional, to define sensor connectivity.
     connectivity
         Optional, to define sensor connectivity (see
         :func:`eelbrain.load.fiff.sensor_dim`).
+    decim
+        Decimate the data for display (only applies when data is a ``Raw``
+        object; default is to spproximate 100 Hz samplingrate).
 
     Notes
     -----
@@ -1517,6 +1523,16 @@ def select_components(
         disabling ``prompt_toolkit`` with :func:`configure`:
         ``eelbrain.configure(prompt_toolkit=False)``.
     """
+    if isinstance(data, mne.io.BaseRaw):
+        events = mne.make_fixed_length_events(data)
+        if decim is None:
+            decim = int(round(data.info['sfreq'] / 100))
+        ds = Dataset()
+        ds['epochs'] = mne.Epochs(data, events, 1, 0, 1, baseline=None, proj=False, decim=decim, preload=True)
+    elif isinstance(data, Dataset):
+        ds = data
+    else:
+        raise TypeError(f"{data=}")
     get_app()  # make sure app is created
     doc = Document(path, ds, sysname, connectivity)
     model = Model(doc)
