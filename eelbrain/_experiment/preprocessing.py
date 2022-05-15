@@ -681,8 +681,7 @@ class RawICA(CachedRawPipe):
                 else:
                     raise RuntimeError(f"command={command!r}")
 
-        for session in self.session[1:]:
-            recording = compound((session, visit))
+        for recording in recordings[1:]:
             raw_ = self.source.load(subject, recording, False)
             raw_.info['bads'] = bad_channels
             raw.append(raw_)

@@ -8023,16 +8023,11 @@ class Dimension:
             return self._array_index(arg.x)
         elif isinstance(arg, np.ndarray):
             if arg.dtype.kind != 'b':
-                raise TypeError("array of type %r not supported as index for "
-                                "%s" % (arg.dtype.kind, self._dimname()))
+                raise TypeError(f"array of type {arg.dtype.kind} not supported as index for {self._dimname()}")
             elif arg.ndim != 1:
-                raise IndexError("Boolean index for %s needs to be 1d, got "
-                                 "array of shape %s" %
-                                 (self._dimname(), arg.shape))
+                raise IndexError(f"Boolean index for {self._dimname()} needs to be 1d, got array of shape {arg.shape}")
             elif len(arg) != len(self):
-                raise IndexError(
-                    "Got boolean index of length %i for %s of length %i" %
-                    (len(arg), self._dimname(), len(self)))
+                raise IndexError(f"Got boolean index of length {len(arg)} for {self._dimname()} of length {len(self)}")
             return arg
         elif isinstance(arg, tuple):
             if len(arg) > 3:
@@ -8045,8 +8040,7 @@ class Dimension:
         elif isinstance(arg, slice):
             return self._array_index_for_slice(arg.start, arg.stop, arg.step)
         else:
-            raise TypeError("Unknown index type for %s: %r" %
-                            (self._dimname(), arg))
+            raise TypeError(f"Unknown index type for {self._dimname()}: {arg!r}")
 
     def _array_index_for_ndvar(self, arg):
         if arg.x.dtype.kind != 'b':
@@ -8063,24 +8057,21 @@ class Dimension:
 
     def _array_index_for_slice(self, start, stop=None, step=None):
         if step is not None and not isinstance(step, Integral):
-            raise TypeError("Slice index step for %s must be int, not %r" %
-                            (self._dimname(), step))
+            raise TypeError(f"Slice index step for {self._dimname()} must be int, not {step!r}")
 
         if start is None:
             start_ = None
         else:
             start_ = self._array_index(start)
             if not isinstance(start_, int):
-                raise TypeError("%r is not an unambiguous slice start for %s" %
-                                (start, self._dimname()))
+                raise TypeError(f"{start!r} is not an unambiguous slice start for {self._dimname()}")
 
         if stop is None:
             stop_ = None
         else:
             stop_ = self._array_index(stop)
             if not isinstance(stop_, int):
-                raise TypeError("%r is not an unambiguous slice start for %s" %
-                                (stop, self._dimname()))
+                raise TypeError(f"{stop!r} is not an unambiguous slice start for {self._dimname()}")
 
         return slice(start_, stop_, step)
 
@@ -8098,16 +8089,16 @@ class Dimension:
 
     def _dimname(self):
         if self.name.lower() == self.__class__.__name__.lower():
-            return self.__class__.__name__ + ' dimension'
+            return f'{self.__class__.__name__} dimension'
         else:
-            return '%s dimension (%r)' % (self.__class__.__name__, self.name)
+            return f'{self.__class__.__name__} dimension ({self.name!r})'
 
     def _dim_index(self, arg):
         "Convert an array index to a dimension index"
         if isinstance(arg, slice):
-            return slice(None if arg.start is None else self._dim_index(arg.start),
-                         None if arg.stop is None else self._dim_index(arg.stop),
-                         arg.step)
+            start = None if arg.start is None else self._dim_index(arg.start)
+            stop = None if arg.stop is None else self._dim_index(arg.stop)
+            return slice(start, stop, arg.step)
         elif np.isscalar(arg):
             return arg
         else:
@@ -10466,8 +10457,7 @@ class VolumeSourceSpace(SourceSpaceBase):
     subject : str
         The mri-subject name.
     src : str
-        The kind of source space used (e.g., 'ico-4'; only ``ico`` is currently
-        supported.
+        The description of the source space (e.g. ``vol-7``).
     subjects_dir : str
         The path to the subjects_dir (needed to locate the source space
         file).
