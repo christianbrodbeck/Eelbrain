@@ -1,4 +1,5 @@
 """Eelbrain GUIs"""
+from ._wxgui.select_components import select_components
 
 
 def run(block=False):
@@ -15,50 +16,6 @@ def run(block=False):
     from ._wxgui import run
 
     run(block)
-
-
-def select_components(path, ds, sysname=None, connectivity=None):
-    """GUI for selecting ICA-components
-
-    Parameters
-    ----------
-    path : str
-        Path to the ICA file.
-    ds : Dataset
-        Dataset with epochs to use for source selection in ``ds['epochs']``
-        (as mne-python ``Epochs`` object). Optionally, ``ds['index']`` can be
-        the indexes to display for epochs (the default is ``range(n_epochs)``.
-        Further :class:`Factor` can be used to plot condition averages.
-    sysname : str
-        Optional, to define sensor connectivity.
-    connectivity :
-        Optional, to define sensor connectivity (see
-        :func:`eelbrain.load.fiff.sensor_dim`).
-
-    Notes
-    -----
-    The ICA object does not need to be computed on the same data that is in
-    ``ds``. For example, the ICA can be computed on a raw file but component
-    selection done using the epochs that will be analyzed.
-
-    .. note::
-        If the terminal becomes unresponsive after closing the GUI, try
-        disabling ``prompt_toolkit`` with :func:`configure`:
-        ``eelbrain.configure(prompt_toolkit=False)``.
-    """
-    from ._wxgui.app import get_app
-    from ._wxgui.select_components import TEST_MODE, Document, Frame, Model
-
-    get_app()  # make sure app is created
-    doc = Document(path, ds, sysname, connectivity)
-    model = Model(doc)
-    frame = Frame(None, None, None, model)
-    frame.Show()
-    frame.Raise()
-    if TEST_MODE:
-        return frame
-    else:
-        run()
 
 
 def select_epochs(
