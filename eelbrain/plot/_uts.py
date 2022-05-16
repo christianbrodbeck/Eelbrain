@@ -42,8 +42,9 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         ``sem``: Standard error of the mean;
         ``2sem``: 2 standard error of the mean;
         ``ci``: 95% confidence interval;
-        ``99%ci``: 99% confidence interval.
-        ``all``: Show all traces.
+        ``99%ci``: 99% confidence interval;
+        ``sd``: standard deviation;
+        ``all``: Show all traces;
         ``none``: No variability indication.
     pool_error
         Pool the errors for the estimate of variability (default is True
