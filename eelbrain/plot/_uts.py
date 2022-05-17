@@ -79,7 +79,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     top
         The upper end of the plot's y axis.
     xdim
-        dimension for the x-axis (default is 'time')
+        Dimension to plot along the x-axis (default is ``'time'``)
     xlim
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).

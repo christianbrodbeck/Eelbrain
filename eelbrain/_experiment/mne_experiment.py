@@ -4500,10 +4500,9 @@ class MneExperiment(FileTree):
                 if session is None:
                     session = pipe.session
                 raw = pipe.load_concatenated_source_raw(subject, session, self.get('visit'))
-                events = mne.make_fixed_length_events(raw)
-                ds = Dataset()
                 decim = decim_param(samplingrate, decim, None, raw.info['sfreq']) or int(raw.info['sfreq'] // 100)
-                ds['epochs'] = mne.Epochs(raw, events, 1, 0, 1, baseline=None, proj=False, decim=decim, preload=True)
+                info = raw.info
+                display_data = raw
             elif session is not None:
                 raise TypeError(f"{session=} with {epoch=}")
             else:
@@ -4513,12 +4512,14 @@ class MneExperiment(FileTree):
                     raw = mne.io.RawArray(data, ds[0, 'epochs'].info)
                     events = mne.make_fixed_length_events(raw)
                     ds = Dataset({'epochs': mne.Epochs(raw, events, 1, 0, 1, baseline=None, proj=False, preload=True)})
-        info = ds['epochs'].info
+                info = ds['epochs'].info
+                decim = None
+                display_data = ds
         data = TestDims('sensor')
         data_kind = data.data_to_ndvar(info)[0]
         sysname = pipe.get_sysname(info, subject, data_kind)
         connectivity = pipe.get_connectivity(data_kind)
-        gui.select_components(path, ds, sysname, connectivity)
+        gui.select_components(path, display_data, sysname, connectivity, decim)
 
     def make_ica(self, **state):
         """Compute ICA decomposition for a :class:`pipeline.RawICA` preprocessing step

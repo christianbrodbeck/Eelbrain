@@ -41,7 +41,6 @@ class Evaluator:
             out = [np.concatenate([y[..., i_start:i_stop] for i_start, i_stop in segments], axis=-1) for y in ys]
         return out[0] if len(out) == 1 else out
 
-
     def add_y(
             self,
             i: int,  # y index (row in data.y)
