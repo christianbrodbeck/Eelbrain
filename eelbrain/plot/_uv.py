@@ -836,8 +836,10 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         x = asuv(time, sub, ds, n)
         if categories is None:
             legend = False
+            cells = None
         else:
             categories = ascategorial(categories, sub, ds, n)
+            cells = categories.cells
         if match is not None:
             match = ascategorial(match, sub, ds, n)
 
@@ -860,7 +862,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         if not line_plot:
             legend = False
 
-        styles = find_cell_styles(categories.cells, colors)
+        styles = find_cell_styles(cells, colors)
 
         # get axes
         layout = Layout(1, 1, 5, **kwargs)
