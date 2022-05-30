@@ -205,7 +205,7 @@ class Celltable:
         # determine which comparisons are within subject comparisons
         if match is not None:
             self.within = {}
-            for cell1, cell2 in combinations(x.cells, 2):
+            for cell1, cell2 in combinations(self.cells, 2):
                 group1 = self.groups[cell1]
                 if len(group1) == 0:
                     continue
@@ -217,22 +217,21 @@ class Celltable:
                 else:
                     within = np.all(group1 == group2)
                 self.within[cell1, cell2] = within
-                self.within[cell2, cell1] = within
-            self.any_within = any(self.within.values())
-            self.all_within = all(self.within.values())
         else:
-            self.any_within = False
-            self.all_within = False
+            self.within = {(cell1, cell2): False for cell1, cell2 in combinations(x.cells, 2)}
+        self.any_within = any(self.within.values())
+        self.all_within = all(self.within.values())
+        self.within.update({(cell2, cell1): within for (cell1, cell2), within in self.within.items()})
 
     def __repr__(self):
         args = [dataobj_repr(self.y), dataobj_repr(self.x)]
         if self.match is not None:
-            args.append("match=%s" % dataobj_repr(self.match))
+            args.append(f"match={dataobj_repr(self.match)}")
         if self.sub is not None:
-            args.append("sub=%s" % dataobj_repr(self.sub))
+            args.append(f"sub={dataobj_repr(self.sub)}")
         if self.coercion != 'asdataobject':
-            args.append("coercion=%s" % self.coercion)
-        return "Celltable(%s)" % (', '.join(args))
+            args.append(f"coercion={self.coercion}")
+        return f"Celltable({', '.join(args)})"
 
     def __len__(self):
         return self.n_cells

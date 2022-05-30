@@ -46,7 +46,7 @@ def _mark_plot_pairwise(  # Mark pairwise significance
         pwcolors = PAIRWISE_COLORS[1 - bool(trend):]
     font_size = mpl.rcParams['font.size'] * 1.5
 
-    tests = test._pairwise(ct.get_data(), ct.all_within, parametric, corr, trend, levels)
+    tests = test._pairwise(ct, parametric, corr, trend, levels)
 
     # plan grid layout
     k = len(ct.cells)
@@ -56,15 +56,15 @@ def _mark_plot_pairwise(  # Mark pairwise significance
         for i in range(0, k - distance):
             # i, j are data indexes for the categories being compared
             j = i + distance
-            index = tests['pw_indexes'][(i, j)]
-            stars = tests['stars'][index]
+            key = ct.cells[i], ct.cells[j]
+            stars = tests['stars'][key]
             if not stars:
                 continue
 
             free_levels = np.flatnonzero(reservation[:, i:j].sum(1) == 0)
             level = free_levels.min()
             reservation[level, i:j] = 1
-            connections.append((level, i, j, index, stars))
+            connections.append((level, i, j, key, stars))
 
     # plan spatial distances
     used_levels = np.flatnonzero(reservation.sum(1))
@@ -81,7 +81,7 @@ def _mark_plot_pairwise(  # Mark pairwise significance
         y_unit = (top - bottom) / n_steps
 
     # draw connections
-    for level, i, j, index, stars in connections:
+    for level, i, j, key, stars in connections:
         c = pwcolors[stars - 1]
         y1 = bottom + y_unit * (level * 2 + 1)
         y2 = y1 + y_unit
@@ -89,9 +89,8 @@ def _mark_plot_pairwise(  # Mark pairwise significance
         x2 = pos[j] - .025
         ax.plot([x1, x1, x2, x2], [y1, y2, y2, y1], color=c)
         if markers:
-            symbol = tests['symbols'][index]
-            ax.text((x1 + x2) / 2, y2, symbol, color=c, size=font_size,
-                    ha='center', va='center', clip_on=False)
+            symbol = tests['symbols'][key]
+            ax.text((x1 + x2) / 2, y2, symbol, color=c, size=font_size, ha='center', va='center', clip_on=False)
 
     return top
 
