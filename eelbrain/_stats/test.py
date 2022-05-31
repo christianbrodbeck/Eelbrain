@@ -2,6 +2,7 @@
 """Statistical tests for univariate variables"""
 from functools import partial
 import itertools
+import math
 from typing import Dict, Literal, Sequence, Union
 
 import numpy as np
@@ -584,15 +585,14 @@ def ttest(y, x=None, against=0, match=None, sub=None, corr='Hochberg',
 class TTest:
     _statistic = 't'
 
-    def __init__(self, difference, t, df, tail, std=None):
+    def __init__(self, difference, t, df, tail, std):
         self._difference = difference
         self.t = t
         self.df = df
         self.p = stats.ttest_p(self.t, self.df, tail)
         self.tail = tail
         # effect-size
-        if std is not None:
-            self.d = difference / std
+        self.d = difference / std
 
     @property
     def stars(self):
@@ -606,7 +606,7 @@ class TTest:
     ):
         out = [fmtxt.eq('t', self.t, self.df), ', ', fmtxt.peq(self.p)]
         if difference:
-            out = [fmtxt.eq('d', self._difference), ', '] + out
+            out = [fmtxt.eq('difference', self._difference), ', '] + out
         return fmtxt.FMText(out)
 
 
@@ -744,17 +744,20 @@ class TTestIndependent(TTest):
     ):
         y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub)
 
-        n1 = len(y1)
-        n = len(y)
+        n1, n0 = len(y1), len(y0)
+        n = n1 + n0
         df = n - 2
         groups = np.arange(n) < n1
-        d = y[groups].mean() - y[~groups].mean()
+        c1_data, c0_data = y[groups], y[~groups]
+        c1_mean, c0_mean = c1_data.mean(), c0_data.mean()
+        pooled_variance = ((c1_data - c1_mean).var(ddof=1) * (n1-1) + (c0_data - c0_mean).var(ddof=1) * (n0-1)) / (n-2)
+        difference = c1_mean - c0_mean
         groups.dtype = np.int8
         t = stats.t_ind(y.x[:, None], groups)[0]
 
         self._y = dataobj_repr(y)
         self._x = x_name
-        TTest.__init__(self, d, t, df, tail)
+        TTest.__init__(self, difference, t, df, tail, math.sqrt(pooled_variance))
         self.c1_name = c1_name
         self.c0_name = c0_name
         self._y1 = y1
