@@ -1991,7 +1991,7 @@ class EelFigure(MatplotlibFigure):
         -----
         Important parameters (for details see :meth:`~matplotlib.figure.Figure.savefig()`):
 
-         - ``transparent=True`` to save the figure with transparent background.
+         - ``facecolor="none"`` to save the figure with transparent background.
          - ``bbox_inches='tight'`` to ignore the figure boundaries and instead save
            an area including all plotted elements.
         """

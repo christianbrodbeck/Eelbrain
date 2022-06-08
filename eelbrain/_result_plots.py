@@ -208,13 +208,13 @@ class ClusterPlotter:
 
         with mpl.rc_context(self.rc):
             p = plot.ColorList(colors, cells, self.labels, w=w, show=False)
-            p.save(self._dst.vec % "colorlist %s" % name, transparent=True)
+            p.save(self._dst.vec % "colorlist %s" % name, facecolor="none")
             p.close()
 
     def plot_color_grid(self, name, row_cells, column_cells):
         with mpl.rc_context(self.rc):
             p = plot.ColorGrid(row_cells, column_cells, self.colors, labels=self.labels)
-            p.save(self._dst.vec % "colorgrid %s" % name, transparent=True)
+            p.save(self._dst.vec % "colorgrid %s" % name, facecolor="none")
             p.close()
 
     def plot_clusters_spatial(self, ids, views, w=600, h=480, prefix=''):
@@ -284,14 +284,14 @@ class ClusterPlotter:
                         h_cmap = 0.7 + POINT * mpl.rcParams['font.size']
                         p = brain.plot_colorbar(label, clipmin=clipmin, clipmax=clipmax,
                                                 width=0.1, h=h_cmap, w=1.5, show=False)
-                        p.save(self._dst.vec % cbar_name % 'h', transparent=True)
+                        p.save(self._dst.vec % cbar_name % 'h', facecolor="none")
                         p.close()
 
                         w_cmap = 0.8 + 0.1 * abs(floor(log10(vmax)))
                         p = brain.plot_colorbar(label, clipmin=clipmin, clipmax=clipmax,
                                                 width=0.1, h=1.6, w=w_cmap,
                                                 orientation='vertical', show=False)
-                        p.save(self._dst.vec % cbar_name % 'v', transparent=True)
+                        p.save(self._dst.vec % cbar_name % 'v', facecolor="none")
                         p.close()
 
                         brain_colorbar_done = True
@@ -392,8 +392,7 @@ class ClusterPlotter:
                     yaxis=False, ylabel=False, colors=colors, bottom=ymin,
                     top=ymax, w=w_bar, h=self.h, xlabel=None, xticks=None,
                     tight=False, test_markers=False, show=False)
-                p.save(self._dst.vec % ' '.join((name, modelname, 'barplot')),
-                       dpi=dpi, transparent=True)
+                p.save(self._dst.vec % ' '.join((name, modelname, 'barplot')), dpi=dpi, facecolor="none")
                 p.close()
 
                 # time-course
@@ -408,12 +407,10 @@ class ClusterPlotter:
                 mark_start = cluster.info['tstart'] - dt
                 mark_stop = cluster.info['tstop'] - dt
                 p.add_vspan(mark_start, mark_stop, color='k', alpha=0.1, zorder=-2)
-                p.save(self._dst.vec % ' '.join((name, modelname, 'timecourse')),
-                       dpi=dpi, transparent=True)
+                p.save(self._dst.vec % ' '.join((name, modelname, 'timecourse')), dpi=dpi, facecolor="none")
                 p.close()
 
                 # legend (only once)
                 if legend:
-                    p.save_legend(self._dst.vec % (modelname + ' legend'),
-                                  transparent=True)
+                    p.save_legend(self._dst.vec % (modelname + ' legend'), facecolor="none")
                     legend = False

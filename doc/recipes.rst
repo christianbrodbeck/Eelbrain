@@ -55,5 +55,5 @@ When working on more complex figures, it is often desirable to save the legend
 separately and combine it in a layout application::
 
     p = plot.UTSStat('uts', 'A', ds=ds, w=5, tight=False, show=False, legend=False)
-    p.save('plot.pdf', transparent=True)
-    p.save_legend('legend.pdf', transparent=True)
+    p.save('plot.pdf', facecolor="none")
+    p.save_legend('legend.pdf', facecolor="none")

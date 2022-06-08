@@ -4893,7 +4893,7 @@ class MneExperiment(FileTree):
         brain = self.plot_annot(surf=surf, axw=600)
         brain.save_image(dst, 'rgba', True)
         legend = brain.plot_legend(show=False)
-        legend.save(dst[:-3] + 'pdf', transparent=True)
+        legend.save(dst[:-3] + 'pdf', facecolor="none")
         brain.close()
         legend.close()
 
