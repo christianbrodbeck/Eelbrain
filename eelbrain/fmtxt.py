@@ -507,7 +507,7 @@ def asfmtext(
     tag
         Tag to nest ``content`` in.
     rasterize
-        Prefer rasterized graphics to vector graphics.
+        Prefer rasterized graphics over vector graphics.
     close_figures
         When encountering figures, close them after rendering. The is mainly
         to prevent the figures to show up separately in notebooks, and is
@@ -531,11 +531,16 @@ def asfmtext(
         return Text(content, tag)
 
 
-def asfmtext_or_none(content, tag=None):
+def asfmtext_or_none(
+        content: Any,
+        tag: str = None,
+        rasterize: bool = None,
+):
+    "See :func:`asfmtxt`"
     if content is None:
         return None
     else:
-        return asfmtext(content, tag)
+        return asfmtext(content, tag, rasterize)
 
 
 class FMTextConstant:
@@ -1943,20 +1948,24 @@ class Figure(FMText):
             content: FMTextLike,
             caption: FMTextLike = None,
             options: dict = None,
+            rasterize: bool = None,
     ):
         """Represent a figure
 
         Parameters
         ----------
-        content : FMTextLike
+        content
             Figure content.
-        caption : FMTextLike
+        caption
             Figure caption.
-        options : dict
+        options
             HTML options for ``<figure>`` tag.
+        rasterize
+            Prefer rasterized graphics over vector graphics (applies when
+            processing ``content``).
         """
-        self._caption = asfmtext_or_none(caption)
-        FMText.__init__(self, content, None, options)
+        self._caption = asfmtext_or_none(caption, rasterize=rasterize)
+        FMText.__init__(self, content, None, options, rasterize)
 
     def get_html(self, env: dict = ENV):
         body = FMText.get_html(self, env)
