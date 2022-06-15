@@ -448,29 +448,40 @@ def _related_measures_args(y, x, c1, c0, match, ds, sub, nd_data=False):
     return y1, y0, c1, c0, match, n, x_name, c1_name, c0_name
 
 
-def ttest(y, x=None, against=0, match=None, sub=None, corr='Hochberg',
-          title='{desc}', ds=None):
+def ttest(
+        y: VarArg,
+        x: CategorialArg = None,
+        against: Union[float, CellArg] = 0,
+        match: CategorialArg = None,
+        sub: IndexArg = None,
+        corr: MCCArg = 'Hochberg',
+        title: str = '{desc}',
+        ds: Dataset = None,
+        tail: Literal[-1, 0, 1] = 0,
+):
     """T-tests for one or more samples
 
     parameters
     ----------
-    y : Var
+    y
         Dependent variable
-    x : None | categorial
+    x
         Perform tests separately for all categories in x.
-    against : scalar | str | tuple
+    against
         Baseline against which to test (scalar or category in x).
-    match : None | Factor
+    match
         Repeated measures factor.
-    sub : index
+    sub
         Only use part of the data.
-    corr : None | 'hochberg' | 'bonferroni' | 'holm'
+    corr
         Method for multiple comparison correction (default 'hochberg').
-    title : str
+    title
         Title for the table.
-    ds : Dataset
+    ds
         If a Dataset is given, all data-objects can be specified as names of
         Dataset variables
+    tail
+        Tailedness of the test.
 
     Returns
     -------
@@ -483,63 +494,40 @@ def ttest(y, x=None, against=0, match=None, sub=None, corr='Hochberg',
     if par:
         infl = '' if x is None else 's'
         if ct.y.name is None:
-            title_desc = "T-test%s against %s" % (infl, cellname(against))
+            title_desc = f"T-test{infl} against {cellname(against)}"
         else:
-            title_desc = "T-test%s of %s against %s" % (infl, ct.y.name, cellname(against))
+            title_desc = f"T-test{infl} of {ct.y.name} against {cellname(against)}"
         statistic_name = 't'
     else:
         raise NotImplementedError
 
     names = []
-    diffs = []
-    ts = []
-    dfs = []
-    ps = []
-
+    tests = []
     if isinstance(against, (str, tuple)):
         if against not in ct.cells:
-            x_repr = 'x' if ct.x.name is None else repr(ct.x.name)
-            raise ValueError("agains=%r: %r is not a cell in %s"
-                             % (against, against, x_repr))
-        k = len(ct.cells) - 1
-        baseline = ct.data[against]
-
+            raise ValueError(f"{against=}: not a cell in x ({dataobj_repr(ct.x)})")
         for cell in ct.cells:
             if cell == against:
                 continue
             names.append(cell)
             if match is not None and ct.within[cell, against]:
-                diffs.append(ct.data[cell].mean() - baseline.mean())
-                t, p = scipy.stats.ttest_rel(ct.data[cell], baseline)
-                df = len(baseline) - 1
+                res = TTestRelated(ct.data[cell], ct.data[against], tail=tail)
             else:
-                data = ct.data[cell]
-                diffs.append(data.mean() - baseline.mean())
-                t, p = scipy.stats.ttest_ind(data, baseline)
-                df = len(baseline) + len(data) - 2
-            ts.append(t)
-            dfs.append(df)
-            ps.append(p)
-
+                res = TTestIndependent(ct.data[cell], ct.data[against], tail=tail)
+            tests.append(res)
     elif np.isscalar(against):
-        k = len(ct.cells)
-
         for cell in ct.cells:
-            label = cellname(cell)
-            data = ct.data[cell].x
-            t, p = scipy.stats.ttest_1samp(data, against)
-            df = len(data) - 1
-            names.append(label)
-            diffs.append(data.mean() - against)
-            ts.append(t)
-            dfs.append(df)
-            ps.append(p)
+            names.append(cellname(cell))
+            res = TTestOneSample(ct.data[cell], tail=tail)
+            tests.append(res)
     else:
-        raise TypeError("against=%s" % repr(against))
+        raise TypeError(f"{against=}")
 
-    if k <= 1:
+    if len(tests) <= 1:
         corr = None
 
+    ps = [res.p for res in tests]
+    dfs = [res.df for res in tests]
     if corr:
         ps_adjusted = mcp_adjust(ps, corr)
     else:
@@ -550,10 +538,11 @@ def ttest(y, x=None, against=0, match=None, sub=None, corr='Hochberg',
     else:
         df_in_header = False
 
+    # table
     table = fmtxt.Table('l' + 'r' * (4 - df_in_header + bool(corr)))
     table.title(title.format(desc=title_desc))
     if corr:
-        table.caption(_get_correction_caption(corr, k))
+        table.caption(_get_correction_caption(corr, len(tests)))
 
     # header
     table.cell("Effect")
@@ -569,14 +558,14 @@ def ttest(y, x=None, against=0, match=None, sub=None, corr='Hochberg',
     table.midrule()
 
     # body
-    for name, diff, t, mark, df, p, p_adj in zip(names, diffs, ts, stars, dfs, ps, ps_adjusted):
+    for name, res, p_adj, mark in zip(names, tests, ps_adjusted, stars):
         table.cell(name)
-        table.cell(diff)
-        table.cell(fmtxt.stat(t, stars=mark, of=3))
+        table.cell(res._difference)
+        table.cell(fmtxt.stat(res.t, stars=mark, of=3))
         if not df_in_header:
-            table.cell(df)
+            table.cell(res.df)
 
-        table.cell(fmtxt.p(p))
+        table.cell(fmtxt.p(res.p))
         if corr:
             table.cell(fmtxt.p(p_adj))
     return table
