@@ -1856,7 +1856,7 @@ class EelFigure(MatplotlibFigure):
             if ticklabels == 'bottom':
                 if all(isinstance(ax, matplotlib.axes.SubplotBase) for ax in axes):
                     subplotspecs = [ax.get_subplotspec() for ax in axes]
-                    bottom = min([spec.rowspan.stop for spec in subplotspecs])
+                    bottom = max([spec.rowspan.stop for spec in subplotspecs])
                     show_ticklabels = [spec.rowspan.stop == bottom for spec in subplotspecs]
                 else:
                     first = len(axes) - min(self._layout.ncol, nax)
