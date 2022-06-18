@@ -716,7 +716,7 @@ class Boosting:
             for i_y, y_pred_i in enumerate(y_pred_iter):
                 # for cross-validation, different segments are predicted by different h:
                 for h, segments in hs:
-                    convolve(h[i_y], self.data.x, self.data.x_pads, self._i_start, segments, y_pred_i)
+                    convolve_jit_(h[i_y], self.data.x, self.data.x_pads, self._i_start, segments, y_pred_i)
 
                 if evaluators_s:
                     for e in evaluators_s:
@@ -1171,14 +1171,27 @@ def convolve(
         Buffer for predicted ``y``.
     """
     n_x, n_times = x.shape
-    h_n_times = h.shape[1]
     if segments is None:
         segments = np.array(((0, n_times),), np.int64)
     if out is None:
-        out = np.zeros(n_times)
-    else:
-        for a, b in segments:
-            out[a:b] = 0
+        out = np.empty(n_times)
+    return convolve_jit_(h, x, x_pads, h_i_start, segments, out)
+
+
+@numba.njit(nogil=True, cache=True)
+def convolve_jit_(
+        h: np.ndarray,  # (n_stims, h_n_samples)
+        x: np.ndarray,  # (n_stims, n_samples)
+        x_pads: np.ndarray,  # (n_stims,)
+        h_i_start: int,
+        segments: np.ndarray,  # (n_segments, 2)
+        out: np.ndarray,
+):
+    h_n_times = h.shape[1]
+    segments_start = segments[:, 0]
+    segments_stop = segments[:, 1]
+    for start, stop in zip(segments_start, segments_stop):
+        out[start: stop] = 0
     h_i_stop = h_i_start + h_n_times
 
     # padding
@@ -1196,7 +1209,7 @@ def convolve(
         for i in range(pad_tail_n_times):
             pad_tail[i:] += h_pad[i]
 
-    for start, stop in segments:
+    for start, stop in zip(segments_start, segments_stop):
         if pad_head_n_times:
             out[start: start + pad_head_n_times] += pad_head
         if pad_tail_n_times:
