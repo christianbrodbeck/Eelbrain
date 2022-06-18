@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from eelbrain._trf._boosting_opt import l1, l2
+from eelbrain._trf._fit_metrics import error_for_indexes
 
 
 # numpy-based error functions
@@ -21,5 +21,5 @@ def test_error_functions():
     "Test optimized error functions"
     x = np.random.normal(0., 1., 100)
     index = np.array(((0, 100),), np.int64)
-    assert l1(x, index) == pytest.approx(np_l1(x))
-    assert l2(x, index) == pytest.approx(np_l2(x))
+    assert error_for_indexes(x, index, 1) == pytest.approx(np_l1(x))
+    assert error_for_indexes(x, index, 2) == pytest.approx(np_l2(x))

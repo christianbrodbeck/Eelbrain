@@ -28,7 +28,7 @@ from ._info import merge_info
 from ._mne import complete_source_space
 from ._stats.connectivity import Connectivity
 from ._stats.connectivity import find_peaks as _find_peaks
-from ._trf._boosting_opt import l1
+from ._trf._fit_metrics import error_for_indexes
 from ._utils.numpy_utils import aslice, newaxis
 
 
@@ -805,7 +805,7 @@ def label_operator(labels, operation='mean', exclude=None, weights=None,
         if weights is not None:
             xs *= weights
         if operation == 'mean':
-            xs /= l1(xs, np.array(((0, len(xs)),), np.int64))
+            xs /= error_for_indexes(xs, np.array(((0, len(xs)),), np.int64), 1)
     return NDVar(x, (label_dim, dim), labels.name)
 
 

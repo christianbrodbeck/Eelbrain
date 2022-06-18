@@ -12,14 +12,10 @@ import pytest
 from pytest import approx
 import scipy.io
 import scipy.stats
-from eelbrain import (
-    datasets, configure,
-    boosting, combine, convolve, correlation_coefficient, epoch_impulse_predictor,
-    NDVar, UTS, Scalar,
-)
+from eelbrain import datasets, boosting, combine, convolve, correlation_coefficient, epoch_impulse_predictor, NDVar, UTS, Scalar
 
 from eelbrain.testing import assert_dataobj_equal
-from eelbrain._trf._boosting import Boosting, DeconvolutionData, Split, boost, convolve as boosting_convolve
+from eelbrain._trf._boosting import Boosting, DeconvolutionData, Split, boosting_run, convolve as boosting_convolve
 
 
 def assert_res_equal(res1, res):
@@ -28,11 +24,8 @@ def assert_res_equal(res1, res):
     assert res1.r_rank == res.r_rank
 
 
-@pytest.mark.parametrize('n_workers', [0, True])
-def test_boosting(n_workers):
+def test_boosting():
     "Test boosting NDVars"
-    configure(n_workers=n_workers)
-
     ds = datasets._get_continuous(ynd=True)
     y = ds['y']
     ynd = ds['ynd']
@@ -51,7 +44,7 @@ def test_boosting(n_workers):
     assert res.h_scaled.info['unit'] == 'V'
     assert res.residual == approx(((y[.9:] - res.y_pred[.9:])**2).sum())
     with pytest.raises(NotImplementedError):
-        res.proportion_explained
+        _ = res.proportion_explained
 
     res = boosting(y, x1, 0, 1)
     assert repr(res) == '<boosting y ~ x1, 0 - 1>'
@@ -242,7 +235,8 @@ def test_boosting_func():
     split = Split(all_segments[1:], all_segments[:1])
     tstart = np.array([0], np.int64)
     tstop = np.array([10], np.int64)
-    h, test_sse_history = boost(y, x, x_pads, split, tstart, tstop, 0.005, 0.005, 'l2', return_history=True)
+    h, history = boosting_run(y, x, x_pads, split.train, split.validate, split.train_and_validate, tstart, tstop, 0.005, 0.005, 'l2')
+    test_sse_history = [step.e_test for step in history]
     test_seg_len = int(floor(x.shape[1] / 40))
     y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
     r, rr = evaluate_kernel(y, y_pred, test_seg_len, h.shape[1] - 1)
@@ -260,7 +254,8 @@ def test_boosting_func():
     x_pads = np.zeros(len(x))
     tstart = np.array([0, 0, 0], np.int64)
     tstop = np.array([10, 10, 10], np.int64)
-    h, test_sse_history = boost(y, x, x_pads, split, tstart, tstop, 0.005, 0.005, 'l2', return_history=True)
+    h, history = boosting_run(y, x, x_pads, split.train, split.validate, split.train_and_validate, tstart, tstop, 0.005, 0.005, 'l2')
+    test_sse_history = [step.e_test for step in history]
     test_seg_len = int(floor(x.shape[1] / 40))
     y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
     r, rr = evaluate_kernel(y, y_pred, test_seg_len, h.shape[1] - 1)
@@ -272,9 +267,7 @@ def test_boosting_func():
     assert_allclose(test_sse_history, mat['Str_testE'][0] / 3)
 
 
-@pytest.mark.parametrize('n_workers', [0, True])
-def test_trf_len(n_workers):
-    configure(n_workers=n_workers)
+def test_trf_len():
     # test vanilla boosting
     rng = np.random.RandomState(0)
     x = NDVar(rng.normal(0, 1, 1000), UTS(0, 0.1, 1000), name='x')

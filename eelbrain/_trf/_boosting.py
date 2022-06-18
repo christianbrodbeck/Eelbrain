@@ -6,6 +6,7 @@ Stored in ``algorithm_version`` attribute
 
  -1. Prior to storing version
  0. Normalize ``x`` after applying basis
+ 1. Numba implementation
 
 Profiling
 ---------
@@ -19,38 +20,26 @@ x2 = ds['x2']
 """
 from __future__ import annotations
 
+from collections import namedtuple
 from dataclasses import dataclass, field, fields
 from functools import cached_property, reduce
 import inspect
-from itertools import chain, product, repeat
+from itertools import chain, repeat
 from math import ceil
-from multiprocessing.sharedctypes import RawArray
 from operator import mul
-import os
 import time
-from threading import Event, Thread
 from typing import Any, Callable, List, Literal, Union, Tuple, Sequence
 import warnings
 
+import numba
 import numpy as np
 
-from .._config import CONFIG, mpc
 from .._data_obj import Case, Dataset, Dimension, SourceSpaceBase, NDVar, CategorialArg, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
 from .._ndvar import _concatenate_values, convolve_jit, parallel_convolve, set_connectivity, set_parc
 from .._utils import PickleableDataClass, user_activity
-from .._utils.notebooks import tqdm
-from ._boosting_opt import l1, l2, generate_options, update_error
 from .shared import PredictorData, DeconvolutionData, Split, Splits, merge_segments
-from ._fit_metrics import get_evaluators
-
-
-# process messages
-JOB_TERMINATE = -1
-
-# error functions
-ERROR_FUNC = {'l2': l2, 'l1': l1}
-DELTA_ERROR_FUNC = {'l2': 2, 'l1': 1}
+from ._fit_metrics import error_for_indexes, get_evaluators
 
 
 @dataclass(eq=False)
@@ -471,17 +460,10 @@ class BoostingResult(PickleableDataClass):
 class SplitResult:
     __slots__ = ('split', 'h', 'h_failed')
 
-    def __init__(self, split: Split, n_y: int, n_x: int, n_times_h: int):
+    def __init__(self, split: Split, h: np.ndarray, h_failed: np.ndarray):
         self.split = split
-        self.h = np.empty((n_y, n_x, n_times_h), np.float64)
-        self.h_failed = np.zeros(n_y, bool)
-
-    def add_h(self, i_y: int, h: Union[np.ndarray, None]):
-        if h is None:
-            self.h_failed[i_y] = True
-            self.h[i_y] = 0
-        else:
-            self.h[i_y] = h
+        self.h = h  # (n_y, n_x, n_times_h)
+        self.h_failed = h_failed  # (n_y,)
 
     def h_with_nan(self):
         "Set failed TRFs to NaN"
@@ -542,7 +524,7 @@ class Boosting:
             mindelta: float = None,  # narrow search by reducing delta until reaching mindelta
     ):
         self.data._check_data()
-        assert error in ERROR_FUNC
+        assert error in ('l1', 'l2')
         mindelta_ = delta if mindelta is None else mindelta
         self.selective_stopping = selective_stopping
         self.error = error
@@ -585,35 +567,16 @@ class Boosting:
 
         # progress bar
         n_splits = len(self.data.splits.splits)
-        pbar = tqdm(desc=f"Fitting models", total=n_y * n_splits, disable=CONFIG['tqdm'], leave=False)
+        # pbar = tqdm(desc=f"Fitting models", total=n_y * n_splits, disable=CONFIG['tqdm'], leave=False)
         self.t_fit_start = time.time()
 
         # boosting
-        split_results = [SplitResult(split, n_y, n_x, h_n_times) for split in self.data.splits.splits]
-        if CONFIG['n_workers']:
-            # Make sure cross-validations are added in the same order, otherwise
-            # slight numerical differences can occur
-            job_queue, result_queue = setup_workers(self.data, i_start_by_x, i_stop_by_x, delta, mindelta_, error, selective_stopping)
-            stop_jobs = Event()
-            thread = Thread(target=put_jobs, args=(job_queue, n_y, n_splits, stop_jobs))
-            thread.start()
-            # collect results
-            try:
-                for _ in range(n_y * n_splits):
-                    i_y, i_split, h = result_queue.get()
-                    split_results[i_split].add_h(i_y, h)
-                    pbar.update()
-            except KeyboardInterrupt:
-                stop_jobs.set()
-                raise
-        else:
-            for i_y, y_i in enumerate(self.data.y):
-                for split in split_results:
-                    h = boost(y_i, self.data.x, self.data.x_pads, split.split, i_start_by_x, i_stop_by_x, delta, mindelta_, error, selective_stopping)
-                    split.add_h(i_y, h)
-                    pbar.update()
-        self.split_results = split_results
-        pbar.close()
+        split_train = tuple([split.train for split in self.data.splits.splits])
+        split_validate = tuple([split.validate for split in self.data.splits.splits])
+        split_train_and_validate = tuple([split.train_and_validate for split in self.data.splits.splits])
+        hs, hs_failed = boosting_runs(self.data.y, self.data.x, self.data.x_pads, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta_, error, selective_stopping)
+        self.split_results = [SplitResult(split, h, h_failed) for split, h, h_failed in zip(self.data.splits.splits, hs, hs_failed)]
+        # pbar.close()
         self.t_fit_done = time.time()
 
     def _get_i_tests(self):
@@ -799,7 +762,7 @@ class Boosting:
                     h_i, self._get_h_failed(i), 0,
                     self.data.basis, self.data.basis_window, None,
                     self.data.y.shape[1], self.data.y_info, self.data.ydims,
-                    algorithm_version=0, i_test=i, **evaluations_i)
+                    algorithm_version=1, i_test=i, **evaluations_i)
                 partition_results_list.append(result)
         else:
             partition_results_list = None
@@ -815,7 +778,7 @@ class Boosting:
             # advanced data properties
             self.data.y.shape[1], self.data.y_info, self.data.ydims,
             partition_results=partition_results_list,
-            algorithm_version=0,
+            algorithm_version=1,
             i_test=i_test, **evaluations)
 
 
@@ -937,6 +900,12 @@ def boosting(
     >>> res = boosting('uts', ['a0', 'a1'], 0, 0.5, partitions=10, model='A', ds=ds)
     >>> y_pred = convolve(res.h_scaled, ['a0', 'a1'], ds=ds)
 
+    Porformance might be improved by
+    `installing Intel SVML <https://numba.readthedocs.io/en/stable/user/performance-tips.html#intel-svml>`_::
+
+        $ conda install -c numba icc_rt
+
+
     References
     ----------
     .. [1] David, S. V., Mesgarani, N., & Shamma, S. A. (2007). Estimating
@@ -970,18 +939,59 @@ def boosting(
     return fit.evaluate_fit(debug=debug, partition_results=partition_results)
 
 
-class BoostingStep:
-    __slots__ = ('i_stim', 'i_time', 'delta', 'e_train', 'e_test')
+@numba.njit(nogil=True, cache=True, parallel=True)
+def boosting_runs(
+        y: np.ndarray,
+        x: np.ndarray,
+        x_pads,
+        split_train,
+        split_validate,
+        split_train_and_validate,
+        i_start_by_x: np.ndarray,
+        i_stop_by_x: np.ndarray,
+        delta: float,
+        mindelta: float,
+        error: str,
+        selective_stopping: int = 0,
+):
+    """Estimate multiple filters with boosting"""
+    n_y = len(y)
+    n_splits = len(split_train)
+    n_total = n_splits * n_y
+    n_times_h = np.max(i_stop_by_x) - np.min(i_start_by_x)
+    h_shape = (n_y, len(x), n_times_h)
+    hs = [np.empty(h_shape) for _ in range(n_splits)]
+    hs_failed = [np.zeros(n_y, 'bool') for _ in range(n_splits)]
+    for i in numba.prange(n_total):
+        i_y = i // n_splits
+        i_split = i % n_splits
+        h, _ = boosting_run(y[i_y], x, x_pads, split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping)
+        if h is None:
+            hs_failed[i_split][i_y] = True
+            hs[i_split][i_y] = 0
+        else:
+            hs[i_split][i_y] = h
+    return hs, hs_failed
 
-    def __init__(self, i_stim, i_time, delta_signed, e_test, e_train):
-        self.i_stim = i_stim
-        self.i_time = i_time
-        self.delta = delta_signed
-        self.e_train = e_train
-        self.e_test = e_test
+
+BoostingStep = namedtuple('BoostingStep', ('i_stim', 'i_time', 'delta', 'e_test', 'e_train'))
 
 
-def boost(y, x, x_pads, split, i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping=0, return_history=False):
+@numba.njit(nogil=True, cache=True)
+def boosting_run(
+        y: np.ndarray,
+        x: np.ndarray,
+        x_pads: np.ndarray,
+        split_train: np.ndarray,
+        split_validate: np.ndarray,
+        split_train_and_validate: np.ndarray,
+        i_start_by_x: np.ndarray,
+        i_stop_by_x: np.ndarray,
+        delta: float,
+        mindelta: float,
+        error: str,
+        selective_stopping: int = 0,
+):
     """Estimate one filter with boosting
 
     Parameters
@@ -992,8 +1002,12 @@ def boost(y, x, x_pads, split, i_start_by_x, i_stop_by_x, delta, mindelta, error
         Stimulus.
     x_pads : array (n_stims,)
         Padding for x.
-    split : Split
-        Training/validation data split.
+    split_train
+        Training data index.
+    split_validate
+        Validation data index.
+    split_train_and_validate
+        Training and validation data index.
     i_start_by_x : ndarray
         Array of i_start for trfs.
     i_stop_by_x : ndarray
@@ -1008,18 +1022,11 @@ def boost(y, x, x_pads, split, i_start_by_x, i_stop_by_x, delta, mindelta, error
         Error function to use.
     selective_stopping : int
         Selective stopping.
-    return_history : bool
-        Return error history as second return value.
-
-    Returns
-    -------
-    history[best_iter] : None | array
-        Winning kernel, or None if 0 is the best kernel.
-    test_sse_history : list (only if ``return_history==True``)
-        SSE for test data at each iteration.
     """
-    delta_error_func = DELTA_ERROR_FUNC[error]
-    error = ERROR_FUNC[error]
+    if error == 'l1':
+        error_func = 1
+    else:
+        error_func = 2
     n_stims, n_times = x.shape
     assert y.shape == (n_times,)
     i_start = np.min(i_start_by_x)
@@ -1035,13 +1042,14 @@ def boost(y, x, x_pads, split, i_start_by_x, i_stop_by_x, delta, mindelta, error
     # history
     best_test_error = np.inf
     history = []
-    i_stim = i_time = delta_signed = None
+    i_stim = i_time = -1
+    delta_signed = 0.
     best_iteration = 0
     # pre-assign iterators
     for i_boost in range(999999):
         # evaluate current h
-        e_train = error(y_error, split.train)
-        e_test = error(y_error, split.validate)
+        e_train = error_for_indexes(y_error, split_train, error_func)
+        e_test = error_for_indexes(y_error, split_validate, error_func)
         step = BoostingStep(i_stim, i_time, delta_signed, e_test, e_train)
         history.append(step)
 
@@ -1072,11 +1080,12 @@ def boost(y, x, x_pads, split, i_start_by_x, i_stop_by_x, delta, mindelta, error
                     undo = -1
 
                 if undo:
+                    # print('undo', end=', ')
                     # revert changes
                     for i in range(-undo):
                         step = history.pop(-1)
                         h[step.i_stim, step.i_time] -= step.delta
-                        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split.train_and_validate, -step.delta, step.i_time + i_start)
+                        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split_train_and_validate, -step.delta, step.i_time + i_start)
                     step = history[-1]
                     # disable predictor
                     x_active[i_stim] = False
@@ -1094,16 +1103,21 @@ def boost(y, x, x_pads, split, i_start_by_x, i_stop_by_x, delta, mindelta, error
                 break
 
         # generate possible movements -> training error
-        generate_options(y_error, x, x_pads, x_active, split.train, i_start, i_start_by_x, i_stop_by_x, delta_error_func, delta, new_error, new_sign)
-        i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)
+        generate_options(y_error, x, x_pads, x_active, split_train, i_start, i_start_by_x, i_stop_by_x, error_func, delta, new_error, new_sign)
+        # i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)  # (not supported by numba)
+        argmin = np.argmin(new_error)
+        i_stim = argmin // n_times_trf
+        i_time = argmin % n_times_trf
         new_train_error = new_error[i_stim, i_time]
         delta_signed = new_sign[i_stim, i_time] * delta
+        # print(new_train_error, end=', ')
 
         # If no improvements can be found reduce delta
         if new_train_error > step.e_train:
             delta *= 0.5
             if delta >= mindelta:
-                i_stim = i_time = delta_signed = None
+                i_stim = i_time = -1
+                delta_signed = 0.
                 # print("new delta: %s" % delta)
                 continue
             else:
@@ -1116,10 +1130,9 @@ def boost(y, x, x_pads, split, i_start_by_x, i_stop_by_x, delta, mindelta, error
 
         # update h with best movement
         h[i_stim, i_time] += delta_signed
-        update_error(y_error, x[i_stim], x_pads[i_stim], split.train_and_validate, delta_signed, i_time + i_start)
+        update_error(y_error, x[i_stim], x_pads[i_stim], split_train_and_validate, delta_signed, i_time + i_start)
     else:
-        raise RuntimeError("Maximum number of iterations exceeded")
-    # print('  (%i iterations)' % (i_boost + 1))
+        raise RuntimeError("Boosting: maximum number of iterations exceeded")
 
     # reverse changes after best iteration
     if best_iteration:
@@ -1129,60 +1142,7 @@ def boost(y, x, x_pads, split, i_start_by_x, i_stop_by_x, delta, mindelta, error
     else:
         h = None
 
-    if return_history:
-        return h, [step.e_test for step in history]
-    else:
-        return h
-
-
-def setup_workers(data, i_start, i_stop, delta, mindelta, error, selective_stopping):
-    n_y, n_times = data.y.shape
-    n_x, _ = data.x.shape
-
-    y_buffer = RawArray('d', n_y * n_times)
-    y_buffer[:] = data.y.ravel()
-    x_buffer = RawArray('d', n_x * n_times)
-    x_buffer[:] = data.x.ravel()
-    x_pads_buffer = RawArray('d', n_x)
-    x_pads_buffer[:] = data.x_pads
-
-    job_queue = mpc.Queue(200)
-    result_queue = mpc.Queue(200)
-
-    args = (y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, data.splits.splits, i_start, i_stop, delta, mindelta, error, selective_stopping, job_queue, result_queue)
-    for _ in range(CONFIG['n_workers']):
-        process = mpc.Process(target=boosting_worker, args=args)
-        process.start()
-
-    return job_queue, result_queue
-
-
-def boosting_worker(y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, splits, i_start, i_stop, delta, mindelta, error, selective_stopping, job_queue, result_queue):
-    if CONFIG['nice']:
-        os.nice(CONFIG['nice'])
-
-    y = np.frombuffer(y_buffer, np.float64, n_y * n_times).reshape((n_y, n_times))
-    x = np.frombuffer(x_buffer, np.float64, n_x * n_times).reshape((n_x, n_times))
-    x_pads = np.frombuffer(x_pads_buffer, np.float64, n_x)
-
-    while True:
-        i_y, i_split = job_queue.get()
-        if i_y == JOB_TERMINATE:
-            return
-        h = boost(y[i_y], x, x_pads, splits[i_split], i_start, i_stop, delta, mindelta, error, selective_stopping)
-        result_queue.put((i_y, i_split, h))
-
-
-def put_jobs(queue, n_y, n_splits, stop):
-    "Feed boosting jobs into a Queue"
-    for job in product(range(n_y), range(n_splits)):
-        queue.put(job)
-        if stop.isSet():
-            while not queue.empty():
-                queue.get()
-            break
-    for _ in range(CONFIG['n_workers']):
-        queue.put((JOB_TERMINATE, None))
+    return h, history
 
 
 def convolve(
@@ -1243,3 +1203,149 @@ def convolve(
             out[stop - pad_tail_n_times: stop] += pad_tail
         convolve_jit(h, x[:, start:stop], out[start:stop], h_i_start, h_i_stop)
     return out
+
+
+@numba.njit(nogil=True, cache=True)
+def generate_options(
+        y_error: np.ndarray,  # (times,)
+        x: np.ndarray,  # (n_stims, n_times)
+        x_pads: np.ndarray,  # (n_stims,)
+        x_active: np.ndarray,  # for each predictor whether it is still used
+        indexes: np.ndarray,  # training segment indexes
+        i_start: int,  # kernel start index (time axis offset)
+        i_start_by_x: np.ndarray,  # (n_stims,) kernel start index
+        i_stop_by_x: np.ndarray, # (n_stims,) kernel stop index
+        error: int,  # ID of the error function (l1/l2)
+        delta: float,
+        # buffers
+        new_error: np.ndarray,  # (n_stims, n_times_trf)
+        new_sign: np.ndarray,  # (n_stims, n_times_trf)
+):
+    assert error in (1, 2)
+    n_stims = new_error.shape[0]
+    for i_stim in range(n_stims):
+        if x_active[i_stim] == 0:
+            continue
+        x_stim = x[i_stim]
+        x_pad = x_pads[i_stim]
+        for i_time in range(i_start_by_x[i_stim], i_stop_by_x[i_stim]):
+            # +/- delta
+            if error == 1:
+                e_add, e_sub = l1_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time)
+            else:
+                e_add, e_sub = l2_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time)
+
+            i_time -= i_start
+            if e_add > e_sub:
+                new_error[i_stim, i_time] = e_sub
+                new_sign[i_stim, i_time] = -1
+            else:
+                new_error[i_stim, i_time] = e_add
+                new_sign[i_stim, i_time] = 1
+
+
+@numba.njit(nogil=True, cache=True)
+def l2_for_delta(
+        y_error: np.ndarray,
+        x: np.ndarray,
+        x_pad: float,  # pad x outside valid convolution area
+        indexes: np.ndarray,  # training segment indexes
+        delta: float,
+        shift: int,  # TRF element offset
+) -> (float, float):
+    e_add = e_sub = 0.
+    for seg_i in range(indexes.shape[0]):
+        seg_start = indexes[seg_i, 0]
+        seg_stop = indexes[seg_i, 1]
+        # determine valid convolution segment
+        conv_start = seg_start
+        conv_stop = seg_stop
+        if shift > 0:
+            conv_start += shift
+        elif shift < 0:
+            conv_stop += shift
+        # padding
+        d = delta * x_pad
+        # pre-
+        for i in range(seg_start, conv_start):
+            e_add += (y_error[i] - d) ** 2
+            e_sub += (y_error[i] + d) ** 2
+        # post-
+        for i in range(conv_stop, seg_stop):
+            e_add += (y_error[i] - d) ** 2
+            e_sub += (y_error[i] + d) ** 2
+        # part of the segment that is affected
+        for i in range(conv_start, conv_stop):
+            d = delta * x[i - shift]
+            e_add += (y_error[i] - d) ** 2
+            e_sub += (y_error[i] + d) ** 2
+    return e_add, e_sub
+
+
+@numba.njit(nogil=True, cache=True)
+def l1_for_delta(
+        y_error: np.ndarray,
+        x: np.ndarray,
+        x_pad: float,  # pad x outside valid convolution area
+        indexes: np.ndarray,  # training segment indexes
+        delta: float,
+        shift: int,  # TRF element offset
+) -> (float, float):
+    e_add = e_sub = 0.
+    for seg_i in range(indexes.shape[0]):
+        seg_start = indexes[seg_i, 0]
+        seg_stop = indexes[seg_i, 1]
+        # determine valid convolution segment
+        conv_start = seg_start
+        conv_stop = seg_stop
+        if shift > 0:
+            conv_start += shift
+        elif shift < 0:
+            conv_stop += shift
+        # padding
+        d = delta * x_pad
+        # pre-
+        for i in range(seg_start, conv_start):
+            e_add += abs(y_error[i] - d)
+            e_sub += abs(y_error[i] + d)
+        # post-
+        for i in range(conv_stop, seg_stop):
+            e_add += abs(y_error[i] - d)
+            e_sub += abs(y_error[i] + d)
+        # valid segment
+        for i in range(conv_start, conv_stop):
+            d = delta * x[i - shift]
+            e_add += abs(y_error[i] - d)
+            e_sub += abs(y_error[i] + d)
+    return e_add, e_sub
+
+
+@numba.njit(nogil=True, cache=True)
+def update_error(
+        y_error: np.ndarray,
+        x: np.ndarray,
+        x_pad: float,  # pad x outside valid convolution area
+        indexes: np.ndarray,  # segment indexes
+        delta: float,
+        shift: int,
+):
+    for seg_i in range(indexes.shape[0]):
+        seg_start = indexes[seg_i, 0]
+        seg_stop = indexes[seg_i, 1]
+        conv_start = seg_start
+        conv_stop = seg_stop
+        if shift > 0:
+            conv_start += shift
+        elif shift < 0:
+            conv_stop += shift
+        # padding
+        d = delta * x_pad
+        # pre-
+        for i in range(seg_start, conv_start):
+            y_error[i] -= d
+        # post-
+        for i in range(conv_stop, seg_stop):
+            y_error[i] -= d
+        # part of the segment that is affected
+        for i in range(conv_start, conv_stop):
+            y_error[i] -= delta * x[i - shift]
