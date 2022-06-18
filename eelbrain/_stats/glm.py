@@ -948,6 +948,9 @@ class ANOVA:
     def __str__(self):
         return str(self.table())
 
+    def _repr_html_(self):
+        return fmtxt.html(self.table())
+
     def _asfmtext(self, **_):
         return self.table()
 

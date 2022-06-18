@@ -337,7 +337,7 @@ def star(
     if not np.iterable(p_list):
         n = _n_stars(p_list, levels)
         if int_out:
-            return out
+            return n
         else:
             return symbols_descending[n]
 
@@ -1158,26 +1158,21 @@ def pairwise(
         Table with results.
     """
     ct = Celltable(y, x, match=match, sub=sub, ds=ds, coercion=asvar)
-    test = _pairwise(ct.get_data(), ct.all_within, par, corr, trend)
+    tests = _pairwise(ct, par, corr, trend)
 
     # extract test results
     k = len(ct)
-    indexes = test['pw_indexes']
-    statistic = test['statistic']
-    _K = test[statistic]
-    _P = test['p']
-    _Pc = mcp_adjust(_P, corr)
-    _df = test['df']
-    symbols = test['symbols']
+    symbols = tests['symbols']
+    ps_adjusted = tests['ps']
     cellnames = ct.cellnames()
     if labels:
         cellnames = [labels.get(name, name) for name in cellnames]
 
     # create TABLE
     table = fmtxt.Table('l' + 'l' * (k - 1 + mirror))
-    title_desc = f"Pairwise {test['test']}"
+    title_desc = f"Pairwise {tests['name']}"
     table.title(title.format(desc=title_desc))
-    table.caption(test['caption'])
+    table.caption(tests['caption'])
 
     # headings
     table.cell()
@@ -1185,7 +1180,6 @@ def pairwise(
         table.cell(name)
     table.midrule()
 
-    # tex_df = fmtxt.Element(df, "_", digits=0)
     if corr and not mirror:
         subrows = 3
     else:
@@ -1198,14 +1192,17 @@ def pairwise(
             if row == col:
                 table.cell()
             elif mirror or col > row:
-                index = indexes[(row, col)]
+                key = ct.cells[min(row, col)], ct.cells[max(row, col)]
+                test = tests['tests'][key]
+                kennwert = getattr(test, test._statistic.lower())
+                df = getattr(test, 'df', None)
                 content = [
-                    fmtxt.eq(statistic, _K[index], _df[index], stars=symbols[index], of=n_stars),
+                    fmtxt.eq(test._statistic, kennwert, df, stars=symbols[key], of=n_stars),
                     fmtxt.linebreak,
-                    fmtxt.peq(_P[index]),
+                    fmtxt.peq(test.p),
                 ]
                 if corr:
-                    content.extend([fmtxt.linebreak, fmtxt.peq(_Pc[index], 'c')])
+                    content.extend([fmtxt.linebreak, fmtxt.peq(ps_adjusted[key], 'c')])
                 table.cell(content)
             else:
                 table.cell()
@@ -1213,8 +1210,7 @@ def pairwise(
 
 
 def _pairwise(
-        data: Sequence[Sequence[float]],  # list of groups/treatments
-        within: bool,
+        ct: Celltable,  # list of groups/treatments
         parametric: bool,
         corr: MCCArg,
         trend: Union[bool, str] = False,
@@ -1236,61 +1232,56 @@ def _pairwise(
         'pw_indexes': dict linking table index (i,j) to the list index for p etc.
     """
     # find test
-    k = len(data)
+    k = len(ct.x.cells)
     if k < 3:  # need no correction for single test
         corr = None
+
     if parametric:
-        if within:
-            test_func = scipy.stats.ttest_rel
+        if ct.all_within:
             test_name = "T-Tests (paired samples)"
+        elif ct.any_within:
+            test_name = "T-Tests (mixed)"
         else:
-            test_func = scipy.stats.ttest_ind
             test_name = "T-Tests (independent samples)"
-        statistic = "t"
-    elif within:
-        test_func = partial(scipy.stats.wilcoxon, alternative='two-sided')
-        test_name = "Wilcoxon Signed-Rank Test"
-        statistic = "z"
     else:
-        test_func = partial(scipy.stats.mannwhitneyu, alternative='two-sided')
-        test_name = "Mann-Whitney U Test"
-        statistic = "u"
+        if ct.all_within:
+            test_name = "Wilcoxon Signed-Rank Test"
+        elif ct.any_within:
+            test_name = "Wilcoxon Signed-Rank/Mann-Whitney U Test"
+        else:
+            test_name = "Mann-Whitney U Test"
 
     # perform test
-    _K = []  # kennwerte
-    _P = []
-    _df = []
-    i = 0
-    indexes = {}
-    for x in range(k):
-        for y in range(x + 1, k):
-            Y1, Y2 = data[x], data[y]
-            t, p = test_func(Y1, Y2)
-            _K.append(t)
+    tests = {}
+    for (cell1, cell2), within in ct.within.items():
+        if parametric:
             if within:
-                _df.append(len(Y1) - 1)
+                test = TTestRelated(ct.y, ct.x, cell1, cell2, ct.match)
             else:
-                _df.append(len(Y1) + len(Y2) - 2)
+                test = TTestIndependent(ct.y, ct.x, cell1, cell2, ct.match)
+        else:
+            if within:
+                test = WilcoxonSignedRank(ct.y, ct.x, cell1, cell2, ct.match)
+            else:
+                test = MannWhitneyU(ct.y, ct.x, cell1, cell2, ct.match)
+        tests[cell1, cell2] = test
 
-            _P.append(p)
-            indexes[(x, y)] = indexes[(y, x)] = i
-            i += 1
-    # add stars
+    # adjusted p-values
+    ps = [test.p for test in tests.values()]
     if corr:
-        p_adjusted = mcp_adjust(_P, corr)
+        ps_adjusted = mcp_adjust(ps, corr)
     else:
-        p_adjusted = _P
+        ps_adjusted = ps
+    p_dict = {key: p for key, p in zip(tests.keys(), ps_adjusted)}
     # prepare output
-    out = {'test': test_name,
-           'caption': _get_correction_caption(corr, len(_P)),
-           'statistic': statistic,
-           statistic: _K,
-           'df': _df,
-           'p': _P,
-           'stars': star(p_adjusted, int, levels, trend),
-           'symbols': star(p_adjusted, str, levels, trend),
-           'pw_indexes': indexes}
-    return out
+    return {
+        'name': test_name,
+        'caption': _get_correction_caption(corr, len(ps)),
+        'tests': tests,
+        'ps': p_dict,
+        'stars': {key: star(p, int, levels, trend) for key, p, in p_dict.items()},
+        'symbols': {key: star(p, str, levels, trend) for key, p, in p_dict.items()},
+    }
 
 
 def pairwise_correlations(
