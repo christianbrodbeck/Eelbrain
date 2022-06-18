@@ -58,8 +58,15 @@ def search():
         if start >= total_results:
             break
     # write to file
+    entry_dict = {e['result_id']: e for e in entries}
+    assert len(entry_dict) == len(entries)
+    for entry in entry_dict.values():
+        entry.pop('position')
+        entry.pop('inline_links')
+        entry.pop('resources', None)
+    entry_dict = {k: entry_dict[k] for k in sorted(entry_dict)}
     with SEARCH_CACHE.open('wt') as file:
-        json.dump(entries, file)
+        json.dump(entry_dict, file, indent=4)
 
 
 def select():
@@ -71,8 +78,7 @@ def select():
     with SEARCH_CACHE.open('rt') as file:
         entries = json.load(file)
     # ask for each new entry
-    for entry in entries:
-        result_id = entry['result_id']
+    for result_id, entry in entries.items():
         if result_id in selection:
             continue
         print(entry['title'])
@@ -134,12 +140,11 @@ def download():
 
 def parse():
     with BIBTEX_CACHE.open('rb') as file:
-        bibtex_entries = pickle.load(file)
+        bibtex_entries = pickle.load(file)  # individual BibTeX entries downloaded from scholar
     with SEARCH_CACHE.open('rt') as file:
-        raw_entries = json.load(file)
+        raw_entries = json.load(file)  # initial search on scholar
     with SELECTION_PATH.open('rt') as file:
         selection = json.load(file)
-    raw_entries = {entry['result_id']: entry for entry in raw_entries}
     # extract citation data
     bib = parse_file(DST, 'bibtex')
     unseen_keys = set(bib.entries.keys())
