@@ -77,6 +77,12 @@ def select():
         selection = {}
     with SEARCH_CACHE.open('rt') as file:
         entries = json.load(file)
+    # remove entries
+    removed = set(selection).difference(entries)
+    if removed:
+        print(f"Removing: {', '.join(removed)}")
+        for key in removed:
+            del selection[key]
     # ask for each new entry
     for result_id, entry in entries.items():
         if result_id in selection:
@@ -94,7 +100,7 @@ def select():
         else:
             raise RuntimeError(f'{response=}')
     with SELECTION_PATH.open('wt') as file:
-        json.dump(selection, file)
+        json.dump(selection, file, indent=1)
 
 
 def download():
@@ -147,9 +153,14 @@ def parse():
         selection = json.load(file)
     # extract citation data
     bib = parse_file(DST, 'bibtex')
+    # remove entries that have been removed upstream
+    removed = [key for key, entry in bib.entries.items() if 'google_result_id' in entry.fields and not selection.get(entry.fields['google_result_id'], False)]
+    if removed:
+        print(f"Removing {', '.join(removed)}")
+    # add new
     unseen_keys = set(bib.entries.keys())
     for result_id, raw_bibtex in bibtex_entries.items():
-        if not selection[result_id]:
+        if not selection.get(result_id, False):
             continue
         raw_bibtex = re.sub(rb'[^\x00-\x7F]+', b' ', raw_bibtex)
         # parse entry
