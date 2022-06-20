@@ -579,7 +579,7 @@ def filter_data(
         data = ndvar.x.swapaxes(axis, -1)
     sfreq = 1. / ndvar.time.tstep
 
-    if data.dtype.kind != 'f':
+    if data.dtype != numpy.float_:
         data = data.astype(float)
 
     filter_kwargs.setdefault('copy', True)
