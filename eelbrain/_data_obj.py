@@ -10451,19 +10451,18 @@ class VolumeSourceSpace(SourceSpaceBase):
 
     Parameters
     ----------
-    vertices : list of 2 int arrays
-        The vertex identities of the dipoles in the source space (left and
-        right hemisphere separately).
-    subject : str
+    vertices
+        List of 2 integer arrays. The vertex identities of the dipoles in the
+        source space (left and right hemisphere separately).
+    subject
         The mri-subject name.
-    src : str
+    src
         The description of the source space (e.g. ``vol-7``).
-    subjects_dir : str
-        The path to the subjects_dir (needed to locate the source space
-        file).
-    parc : None | str
+    subjects_dir
+        The path to the FreeSurfer subjects-directory (needed to locate the
+        source space file).
+    parc
         Add a parcellation to the source space to identify vertex location.
-        Only applies to ico source spaces, default is 'aparc'.
     connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
         Connectivity between elements. Set to ``"none"`` for no connections or
         ``"grid"`` to use adjacency in the sequence of elements as connection.
@@ -10472,9 +10471,9 @@ class VolumeSourceSpace(SourceSpaceBase):
         connection [i, j] with i < j, with rows sorted in ascending order. If
         the array's dtype is uint32, property checks are disabled to improve
         efficiency.
-    name : str
+    name
         Dimension name (default ``"source"``).
-    filename : str
+    filename
         Filename template for the MNE source space file.
 
     See Also
@@ -10484,7 +10483,17 @@ class VolumeSourceSpace(SourceSpaceBase):
     _kinds = ('vol',)
     _default_parc = None  # early version of mne-Python did not scale parcellations for scaled brains
 
-    def __init__(self, vertices, subject=None, src=None, subjects_dir=None, parc=None, connectivity='custom', name='source', filename='{subject}-{src}-src.fif'):
+    def __init__(
+            self,
+            vertices: Sequence[numpy.ndarray],
+            subject: str = None,
+            src: str = None,
+            subjects_dir: PathArg = None,
+            parc: str = None,
+            connectivity: Union[str, Sequence] = 'custom',
+            name: str = 'source',
+            filename: str = '{subject}-{src}-src.fif',
+    ):
         if isinstance(vertices, np.ndarray):
             vertices = [vertices]
         SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename)

@@ -1444,15 +1444,15 @@ def stc_ndvar(
         ss = SourceSpace(vertices, subject, src, subjects_dir, parc, filename=sss_filename)
         is_vector = isinstance(stc, mne.VectorSourceEstimate)
     else:
-        raise TypeError(f"stc={stc!r}")
+        raise TypeError(f"{stc=}")
     # Apply connectivity modification
     if isinstance(connectivity, str):
         if connectivity == 'link-midline':
             ss._link_midline()
         elif connectivity != '':
-            raise ValueError(f"connectivity={connectivity!r}")
+            raise ValueError(f"{connectivity=}")
     elif connectivity is not None:
-        raise TypeError(f"connectivity={connectivity!r}")
+        raise TypeError(f"{connectivity=}")
     # assemble dims
     dims = [ss, time]
     if is_vector:
@@ -1473,7 +1473,7 @@ def stc_ndvar(
         elif method:
             info['unit'] = method
     elif fixed is not None:
-        raise ValueError(f"fixed={fixed!r}")
+        raise ValueError(f"{fixed=}")
 
     return NDVar(x, dims, name, info)
 
