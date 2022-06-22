@@ -1369,7 +1369,7 @@ def stc_ndvar(
         fixed: bool = None,
         name: str = None,
         check: bool = True,
-        parc: Union[str, None] = 'aparc',
+        parc: Optional[str] = '',
         connectivity: str = None,
         sss_filename: str = '{subject}-{src}-src.fif',
 ):
@@ -1399,7 +1399,8 @@ def stc_ndvar(
         and vertices.
     parc
         Name of a parcellation to add to the source space. ``None`` to add no
-        parcellation.
+        parcellation. The default is ``aparc`` for surface source-spaces and
+        none for volume source spaces.
     connectivity : 'link-midline'
         Modify source space connectivity to link medial sources of the two
         hemispheres across the midline.
@@ -1438,9 +1439,13 @@ def stc_ndvar(
     # Construct NDVar Dimensions
     time = UTS(stc.tmin, stc.tstep, stc.times.size)
     if isinstance(stc, MNE_VOLUME_STC):
-        ss = VolumeSourceSpace(vertices, subject, src, subjects_dir, None, filename=sss_filename)
+        if parc == '':
+            parc = None
+        ss = VolumeSourceSpace(vertices, subject, src, subjects_dir, parc, filename=sss_filename)
         is_vector = stc.data.ndim == 3
     elif isinstance(stc, (mne.SourceEstimate, mne.VectorSourceEstimate)):
+        if parc == '':
+            parc = 'aparc'
         ss = SourceSpace(vertices, subject, src, subjects_dir, parc, filename=sss_filename)
         is_vector = isinstance(stc, mne.VectorSourceEstimate)
     else:
