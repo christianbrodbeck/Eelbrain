@@ -22,6 +22,7 @@ doc/source/generated
 *.c
 *.cpp
 !dsyevh3C/*.c
+__pycache__
 *.pyd
 *.so
 *.pyc
