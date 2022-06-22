@@ -346,6 +346,9 @@ def test_vec_source():
     stc = ds[0, 'stc']
     stc2 = load.fiff.stc_ndvar([stc, stc], ds.info['subject'], 'vol-10', ds.info['subjects_dir'])
     assert_dataobj_equal(stc2[1], ds[0, 'src'], name=False)
+    # add parc
+    stc2 = load.fiff.stc_ndvar(stc, ds.info['subject'], 'vol-10', ds.info['subjects_dir'], parc='aparc+aseg')
+    assert stc2.source.parc[0] == 'Right-Cerebellum-Cortex'
     # non-vector
     if hasattr(stc, 'magnitude'):  # added in mne 0.18
         stc = stc.magnitude()

@@ -106,6 +106,11 @@ class BoostingResult(PickleableDataClass):
         Mindelta parameter used.
     n_samples : int
         Number of samples in the input data time axis.
+    proportion_explained : float | NDVar
+        The proportion of the explained variability. Variability is caculated
+        as ``l1`` or ``l2`` norm, depending on the ``error`` that was used for
+        model fitting. For ``l2``, it corresponds to the proportion of variance
+        explained. Calculated as ``1 - (residual / variability)``.
     scale_data : bool
         Scale_data parameter used.
     y_mean : NDVar | scalar
@@ -685,9 +690,9 @@ class Boosting:
         if cross_fit is None:
             cross_fit = bool(self.data.splits.n_test)
         elif cross_fit and not self.data.splits.n_test:
-            raise ValueError(f"cross_fit={cross_fit!r} for model without cross-validation")
+            raise ValueError(f"{cross_fit=} for model without cross-validation")
         if partition_results and not cross_fit:
-            raise ValueError(f"partition_results={partition_results!r} with cross_fit={cross_fit!r}")
+            raise ValueError(f"{partition_results=} with {cross_fit=}")
 
         # fit evaluation
         if metrics is None:
@@ -705,7 +710,7 @@ class Boosting:
             else:
                 i_tests = [i_test]
         elif i_test is not None:
-            raise ValueError(f"i_test={i_test!r} without cross_fit")
+            raise ValueError(f"{i_test=} without cross_fit")
         else:
             i_tests = None
 
@@ -1186,28 +1191,28 @@ def put_jobs(queue, n_y, n_splits, stop):
 
 
 def convolve(
-        h: np.ndarray,
-        x: np.ndarray,
-        x_pads: np.ndarray,
+        h: np.ndarray,  # (n_stims, h_n_samples)
+        x: np.ndarray,  # (n_stims, n_samples)
+        x_pads: np.ndarray,  # (n_stims,)
         h_i_start: int,
-        segments: np.ndarray = None,
+        segments: np.ndarray = None,  # (n_segments, 2)
         out: np.ndarray = None,
-):
+) -> np.ndarray:
     """h * x with time axis matching x
 
     Parameters
     ----------
-    h : array, (n_stims, h_n_samples)
+    h
         H.
-    x : array, (n_stims, n_samples)
+    x
         X.
-    x_pads : array (n_stims,)
+    x_pads
         Padding for x.
-    h_i_start : int
+    h_i_start
         Time shift of the first sample of ``h``.
-    segments : array (n_segments, 2)
+    segments
         Data segments.
-    out : array
+    out
         Buffer for predicted ``y``.
     """
     n_x, n_times = x.shape

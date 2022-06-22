@@ -2232,7 +2232,7 @@ class MneExperiment(FileTree):
                 add_bads_to_info = True
                 add_bads = True
             else:
-                raise ValueError(f"add_bads={add_bads!r}")
+                raise ValueError(f"{add_bads=}")
         else:
             add_bads_to_info = False
 

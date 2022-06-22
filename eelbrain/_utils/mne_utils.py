@@ -69,11 +69,7 @@ def is_fake_mri(mri_dir):
 def get_volume_source_space_labels():
     # see mne.source_space._get_lut
     path = Path(mne.__file__).parent / 'data' / 'FreeSurferColorLUT.txt'
-    labels = {}
-    with path.open() as file:
-        for line in file:
-            if line.startswith('#') or not line:
-                continue
-            id_, label, _ = line.split(maxsplit=2)
-            labels[int(id_)] = label
-    return labels
+    text = path.read_text()
+    lines = (line for line in text.splitlines() if line and not line.startswith('#'))
+    data = (line.split(maxsplit=2) for line in lines)
+    return {int(id_): label for id_, label, _ in data}

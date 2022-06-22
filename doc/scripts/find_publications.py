@@ -58,8 +58,15 @@ def search():
         if start >= total_results:
             break
     # write to file
+    entry_dict = {e['result_id']: e for e in entries}
+    assert len(entry_dict) == len(entries)
+    for entry in entry_dict.values():
+        entry.pop('position')
+        entry.pop('inline_links')
+        entry.pop('resources', None)
+    entry_dict = {k: entry_dict[k] for k in sorted(entry_dict)}
     with SEARCH_CACHE.open('wt') as file:
-        json.dump(entries, file)
+        json.dump(entry_dict, file, indent=4)
 
 
 def select():
@@ -70,9 +77,14 @@ def select():
         selection = {}
     with SEARCH_CACHE.open('rt') as file:
         entries = json.load(file)
+    # remove entries
+    removed = set(selection).difference(entries)
+    if removed:
+        print(f"Removing: {', '.join(removed)}")
+        for key in removed:
+            del selection[key]
     # ask for each new entry
-    for entry in entries:
-        result_id = entry['result_id']
+    for result_id, entry in entries.items():
         if result_id in selection:
             continue
         print(entry['title'])
@@ -88,7 +100,7 @@ def select():
         else:
             raise RuntimeError(f'{response=}')
     with SELECTION_PATH.open('wt') as file:
-        json.dump(selection, file)
+        json.dump(selection, file, indent=1)
 
 
 def download():
@@ -134,17 +146,21 @@ def download():
 
 def parse():
     with BIBTEX_CACHE.open('rb') as file:
-        bibtex_entries = pickle.load(file)
+        bibtex_entries = pickle.load(file)  # individual BibTeX entries downloaded from scholar
     with SEARCH_CACHE.open('rt') as file:
-        raw_entries = json.load(file)
+        raw_entries = json.load(file)  # initial search on scholar
     with SELECTION_PATH.open('rt') as file:
         selection = json.load(file)
-    raw_entries = {entry['result_id']: entry for entry in raw_entries}
     # extract citation data
     bib = parse_file(DST, 'bibtex')
+    # remove entries that have been removed upstream
+    removed = [key for key, entry in bib.entries.items() if 'google_result_id' in entry.fields and not selection.get(entry.fields['google_result_id'], False)]
+    if removed:
+        print(f"Removing {', '.join(removed)}")
+    # add new
     unseen_keys = set(bib.entries.keys())
     for result_id, raw_bibtex in bibtex_entries.items():
-        if not selection[result_id]:
+        if not selection.get(result_id, False):
             continue
         raw_bibtex = re.sub(rb'[^\x00-\x7F]+', b' ', raw_bibtex)
         # parse entry

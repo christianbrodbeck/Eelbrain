@@ -27,6 +27,10 @@ def epoch_impulse_predictor(shape, value=1, latency=0, name=None, ds=None):
         If specified, input items (``shape``, ``value`` and ``latency``) can be
         strings to be evaluated in ``ds``.
 
+    See Also
+    --------
+    event_impulse_predictor : for continuous time series
+
     Examples
     --------
     See :ref:`exa-impulse` example.
@@ -76,6 +80,10 @@ def event_impulse_predictor(shape, time='time', value=1, latency=0, name=None, d
     ds : Dataset
         If specified, input items (``time``, ``value`` and ``latency``) can be
         strings to be evaluated in ``ds``.
+
+    See Also
+    --------
+    event_impulse_predictor : for epoched data (with :class:`Case` dimension)
     """
     if isinstance(shape, NDVar):
         uts = shape.get_dim('time')
