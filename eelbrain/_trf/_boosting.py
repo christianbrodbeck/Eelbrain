@@ -29,7 +29,6 @@ from math import ceil
 from multiprocessing.sharedctypes import RawArray
 from operator import mul
 import os
-import queue
 import threading
 import time
 from typing import Any, Callable, List, Literal, Union, Tuple, Sequence
@@ -45,6 +44,7 @@ from .._ndvar import _concatenate_values, convolve_jit, parallel_convolve, set_c
 from .._utils import PickleableDataClass, user_activity
 from .shared import PredictorData, DeconvolutionData, Split, Splits, merge_segments
 from ._fit_metrics import error_for_indexes, get_evaluators
+from . import _boosting_opt as opt
 
 
 @dataclass(eq=False)
@@ -1068,7 +1068,7 @@ def put_jobs(queue, n_y, n_splits, stop):
 BoostingStep = namedtuple('BoostingStep', ('i_stim', 'i_time', 'delta', 'e_test', 'e_train'))
 
 
-@numba.njit(nogil=True, cache=True)
+# @numba.njit(nogil=True, cache=True)
 def boosting_run(
         y: np.ndarray,
         x: np.ndarray,
@@ -1194,7 +1194,7 @@ def boosting_run(
                 break
 
         # generate possible movements -> training error
-        generate_options(y_error, x, x_pads, x_active, split_train, i_start, i_start_by_x, i_stop_by_x, error_func, delta, new_error, new_sign)
+        opt.generate_options(y_error, x, x_pads, x_active, split_train, i_start, i_start_by_x, i_stop_by_x, error_func, delta, new_error, new_sign)
         # i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)  # (not supported by numba)
         argmin = np.argmin(new_error)
         i_stim = argmin // n_times_trf
