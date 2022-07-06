@@ -26,7 +26,9 @@ from functools import cached_property, reduce
 import inspect
 from itertools import chain, product, repeat
 from math import ceil
+from multiprocessing.sharedctypes import RawArray
 from operator import mul
+import os
 import queue
 import threading
 import time
@@ -36,7 +38,7 @@ import warnings
 import numba
 import numpy as np
 
-from .._config import CONFIG
+from .._config import CONFIG, mpc
 from .._data_obj import Case, Dataset, Dimension, SourceSpaceBase, NDVar, CategorialArg, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
 from .._ndvar import _concatenate_values, convolve_jit, parallel_convolve, set_connectivity, set_parc
@@ -577,7 +579,7 @@ class Boosting:
         split_train = tuple([split.train for split in self.data.splits.splits])
         split_validate = tuple([split.validate for split in self.data.splits.splits])
         split_train_and_validate = tuple([split.train_and_validate for split in self.data.splits.splits])
-        hs, hs_failed = boosting_runs_threaded(self.data.y, self.data.x, self.data.x_pads, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta_, error, selective_stopping)
+        hs, hs_failed = boosting_runs_mp(self.data, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta_, error, selective_stopping)
         self.split_results = [SplitResult(split, h, h_failed) for split, h, h_failed in zip(self.data.splits.splits, hs, hs_failed)]
         # pbar.close()
         self.t_fit_done = time.time()
@@ -977,10 +979,8 @@ def boosting_runs(
     return hs, hs_failed
 
 
-def boosting_runs_threaded(
-        y: np.ndarray,
-        x: np.ndarray,
-        x_pads,
+def boosting_runs_mp(
+        data: DeconvolutionData,
         split_train,
         split_validate,
         split_train_and_validate,
@@ -992,23 +992,32 @@ def boosting_runs_threaded(
         selective_stopping: int = 0,
 ):
     """Estimate multiple filters with boosting"""
-    n_y = len(y)
+    n_y, n_times = data.y.shape
+    n_x, _ = data.x.shape
+
+    y_buffer = RawArray('d', n_y * n_times)
+    y_buffer[:] = data.y.ravel()
+    x_buffer = RawArray('d', n_x * n_times)
+    x_buffer[:] = data.x.ravel()
+    x_pads_buffer = RawArray('d', n_x)
+    x_pads_buffer[:] = data.x_pads
+
     n_splits = len(split_train)
     n_times_h = np.max(i_stop_by_x) - np.min(i_start_by_x)
-    h_shape = (n_y, len(x), n_times_h)
+    h_shape = (n_y, n_x, n_times_h)
     hs = [np.empty(h_shape) for _ in range(n_splits)]
     hs_failed = [np.zeros(n_y, 'bool') for _ in range(n_splits)]
 
     # Make sure cross-validations are added in the same order, otherwise
     # slight numerical differences can occur
-    job_queue = queue.Queue(200)
-    result_queue = queue.Queue(200)
+    job_queue = mpc.Queue(200)
+    result_queue = mpc.Queue(200)
 
-    stop_jobs = threading.Event()
-    args = (y, x, x_pads, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, job_queue, result_queue)
+    stop_jobs = mpc.Event()
+    args = (y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, job_queue, result_queue)
     for _ in range(CONFIG['n_workers']):
-        thread = threading.Thread(target=boosting_worker, args=args)
-        thread.start()
+        process = mpc.Process(target=boosting_worker, args=args)
+        process.start()
 
     thread = threading.Thread(target=put_jobs, args=(job_queue, n_y, n_splits, stop_jobs))
     thread.start()
@@ -1028,7 +1037,14 @@ def boosting_runs_threaded(
     return hs, hs_failed
 
 
-def boosting_worker(y, x, x_pads, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, job_queue, result_queue):
+def boosting_worker(y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, job_queue, result_queue):
+    if CONFIG['nice']:
+        os.nice(CONFIG['nice'])
+
+    y = np.frombuffer(y_buffer, np.float64, n_y * n_times).reshape((n_y, n_times))
+    x = np.frombuffer(x_buffer, np.float64, n_x * n_times).reshape((n_x, n_times))
+    x_pads = np.frombuffer(x_pads_buffer, np.float64, n_x)
+
     while True:
         i_y, i_split = job_queue.get()
         if i_y is None:
@@ -1041,7 +1057,7 @@ def put_jobs(queue, n_y, n_splits, stop):
     "Feed boosting jobs into a Queue"
     for job in product(range(n_y), range(n_splits)):
         queue.put(job)
-        if stop.isSet():
+        if stop.is_set():
             while not queue.empty():
                 queue.get()
             break
@@ -1309,7 +1325,6 @@ def generate_options(
         new_error: np.ndarray,  # (n_stims, n_times_trf)
         new_sign: np.ndarray,  # (n_stims, n_times_trf)
 ):
-    assert error in (1, 2)
     n_stims = new_error.shape[0]
     for i_stim in range(n_stims):
         if x_active[i_stim] == 0:
