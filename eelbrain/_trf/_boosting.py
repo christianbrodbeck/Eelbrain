@@ -850,7 +850,12 @@ def boosting(
     Parameters
     ----------
     y : NDVar
-        Signal to predict.
+        Signal to predict. When ``y`` contains more than one signal (e.g.,
+        multiple EEG channels), results for each signal will be computed
+        independently. Muiltiple cases along a :class:`Case` dimension are
+        treated as different trials which share a filter. For correlation fit
+        metrics, a :class:`Space` dimension is interpreted as defining a vector
+        measure.
     x : NDVar | sequence of NDVar
         Signal to use to predict ``y``. Can be sequence of NDVars to include
         multiple predictors. Time dimension must correspond to ``y``.
@@ -864,7 +869,9 @@ def boosting(
         the standard deviation (when ``error='l2'``) or the mean absolute
         value (when ``error='l1'``). Use ``'inplace'`` to save memory by scaling
         the original objects specified as ``y`` and ``x`` instead of making a 
-        copy.
+        copy. The data scale is stored in the :class:`BoostingResult:
+        :attr:`.y_mean``, :attr:`.y_scale`, :attr:`.x_mean`, and :attr:`.x_scale`
+        attributes.
     delta
         Step for changes in the kernel.
     mindelta
