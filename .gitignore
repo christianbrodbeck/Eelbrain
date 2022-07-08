@@ -19,9 +19,9 @@ doc/source/generated
 .hg
 .bzr
 .svn
-*.c
-*.cpp
-!dsyevh3C/*.c
+eelbrain/**/*.c
+eelbrain/**/*.h
+eelbrain/**/*.cpp
 __pycache__
 *.pyd
 *.so
