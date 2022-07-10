@@ -19,3 +19,4 @@ def test_cnd_dilibach():
     ds = load.cnd(root / 'dataCND' / 'dataSub1.mat')
     assert ds.n_cases == 30
     assert ds[0, 'eeg'].shape == (82395, 64)
+    assert ds[0, 'extChan'].shape == (82395, 2)

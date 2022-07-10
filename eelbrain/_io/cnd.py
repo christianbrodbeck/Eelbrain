@@ -106,7 +106,7 @@ def read_cnd(
         if 'extChan' in data['eeg']:
             desc = ds.info['extChan'] = data['eeg']['extChan']['description']
             extra_data = []
-            for trial_data in data['eeg']['data']:
+            for trial_data in data['eeg']['extChan']['data']:
                 uts = UTS(0, tstep, trial_data.shape[0])
                 channel = Scalar('channel', range(trial_data.shape[1]))
                 extra_data.append(NDVar(trial_data, (uts, channel), desc))
