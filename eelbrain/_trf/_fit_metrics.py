@@ -2,11 +2,11 @@
 from typing import List
 from warnings import catch_warnings, filterwarnings
 
-import numba
 import numpy as np
 from scipy.linalg import norm
 from scipy.stats import spearmanr, SpearmanRConstantInputWarning
 
+from ._boosting_opt import error_for_indexes
 from .shared import DeconvolutionData
 
 
@@ -254,21 +254,3 @@ def get_evaluators(
     evaluators_s = [e for e in evaluators if not e.vector]
     evaluators_v = [e for e in evaluators if e.vector]
     return evaluators, evaluators_s, evaluators_v
-
-
-@numba.njit(nogil=True, cache=True)
-def error_for_indexes(
-        x: np.ndarray,
-        indexes: np.ndarray,
-        error: int,  # 1 --> l1; 2 --> l2
-):
-    out = 0
-    if error == 1:
-        for seg_i in range(indexes.shape[0]):
-            for i in range(indexes[seg_i, 0], indexes[seg_i, 1]):
-                out += abs(x[i])
-    else:
-        for seg_i in range(indexes.shape[0]):
-            for i in range(indexes[seg_i, 0], indexes[seg_i, 1]):
-                out += x[i] ** 2
-    return out
