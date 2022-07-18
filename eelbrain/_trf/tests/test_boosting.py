@@ -2,7 +2,7 @@
 from dataclasses import replace
 from itertools import product
 from math import floor
-import os
+from pathlib import Path
 from warnings import catch_warnings, filterwarnings
 
 import numpy as np
@@ -16,7 +16,10 @@ from eelbrain import datasets, boosting, combine, convolve, correlation_coeffici
 
 from eelbrain.testing import assert_dataobj_equal
 from eelbrain._trf._boosting import Boosting, DeconvolutionData, Split, convolve as boosting_convolve
-# from eelbrain._trf._boosting_opt import boosting_run
+from eelbrain._trf._boosting_opt import boosting_fit
+
+
+DATA_DIR = Path(__file__).parent
 
 
 def assert_res_equal(res1, res):
@@ -221,12 +224,10 @@ def evaluate_kernel(y, y_pred, test_seg_len, n_skip):
     return np.corrcoef(y, y_pred)[0, 1], scipy.stats.spearmanr(y, y_pred)[0]
 
 
-@pytest.mark.skip("Returning history not implemented")
-def test_boosting_func():
+def test_boosting_fit():
     "Test boosting() against svdboostV4pred.m"
     # 1d-TRF
-    path = os.path.join(os.path.dirname(__file__), 'test_boosting.mat')
-    mat = scipy.io.loadmat(path)
+    mat = scipy.io.loadmat(DATA_DIR / 'test_boosting.mat')
     y = mat['signal'][0]
     x = mat['stim']
     x_pads = np.zeros(len(x))
@@ -237,36 +238,35 @@ def test_boosting_func():
     split = Split(all_segments[1:], all_segments[:1])
     tstart = np.array([0], np.int64)
     tstop = np.array([10], np.int64)
-    h, history = boosting_run(y, x, x_pads, split.train, split.validate, split.train_and_validate, tstart, tstop, 0.005, 0.005, 'l2')
+    h, history = boosting_fit(y, x, x_pads, split.train, split.validate, split.train_and_validate, tstart, tstop, 0.005, 0.005, 2)
     test_sse_history = [step.e_test for step in history]
     test_seg_len = int(floor(x.shape[1] / 40))
     y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
     r, rr = evaluate_kernel(y, y_pred, test_seg_len, h.shape[1] - 1)
 
+    assert_allclose(test_sse_history, mat['Str_testE'][0])
     assert_array_equal(h, mat['h'])
     assert r == approx(mat['crlt'][0, 0])
     assert rr == approx(mat['crlt'][1, 0])
-    assert_allclose(test_sse_history, mat['Str_testE'][0])
 
     # 2d-TRF
-    path = os.path.join(os.path.dirname(__file__), 'test_boosting_2d.mat')
-    mat = scipy.io.loadmat(path)
+    mat = scipy.io.loadmat(DATA_DIR / 'test_boosting_2d.mat')
     y = mat['signal'][0]
     x = mat['stim']
     x_pads = np.zeros(len(x))
     tstart = np.array([0, 0, 0], np.int64)
     tstop = np.array([10, 10, 10], np.int64)
-    h, history = boosting_run(y, x, x_pads, split.train, split.validate, split.train_and_validate, tstart, tstop, 0.005, 0.005, 'l2')
+    h, history = boosting_fit(y, x, x_pads, split.train, split.validate, split.train_and_validate, tstart, tstop, 0.005, 0.005, 2)
     test_sse_history = [step.e_test for step in history]
     test_seg_len = int(floor(x.shape[1] / 40))
     y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
     r, rr = evaluate_kernel(y, y_pred, test_seg_len, h.shape[1] - 1)
 
+    # svdboostV4pred multiplies error by number of predictors
+    assert_allclose(test_sse_history, mat['Str_testE'][0] / 3)
     assert_array_equal(h, mat['h'])
     assert r == approx(mat['crlt'][0, 0])
     assert rr == approx(mat['crlt'][1, 0])
-    # svdboostV4pred multiplies error by number of predictors
-    assert_allclose(test_sse_history, mat['Str_testE'][0] / 3)
 
 
 def test_trf_len():

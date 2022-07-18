@@ -1,8 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 # cython: language_level=3, boundscheck=False, wraparound=False
+import numpy
 from libc.math cimport fabs
-from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cython.parallel import prange
+from libc.stdlib cimport malloc, free
 import numpy as np
 
 cimport numpy as np
@@ -178,13 +179,16 @@ def boosting_runs(
         long i_y, i_split
         FLOAT64[:,:] h
         Py_ssize_t i
+        BoostingRunResult result
 
     for i in prange(n_total, nogil=True):
         i_y = i // n_splits
         i_split = i % n_splits
         with gil:
             # print('starting', i, 'of', n_total)
-            hs_failed[i_split, i_y] = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping)
+            result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping)
+        hs_failed[i_split, i_y] = result.failed
+        free_history(result.history)
     # print('done')
     return hs.base, np.asarray(hs_failed, 'bool')
 
@@ -196,10 +200,29 @@ cdef struct BoostingStep:
     double delta
     double e_test
     double e_train
-    BoostingStep* previous
+    BoostingStep *previous
 
 
-cdef int boosting_run(
+cdef struct BoostingRunResult:
+    int failed
+    BoostingStep *history
+
+
+cdef void free_history(
+        BoostingStep *history,
+) nogil:
+    cdef:
+        BoostingStep *step
+        BoostingStep *step_i
+
+    step = history
+    while step.previous != NULL:
+        step_i = step.previous
+        free(step)
+        step = step_i
+
+
+cdef BoostingRunResult boosting_run(
         FLOAT64 [:] y,  # (n_times,)
         FLOAT64 [:,:] x,  # (n_stims, n_times)
         FLOAT64 [:] x_pads,  # (n_stims,)
@@ -256,12 +279,12 @@ cdef int boosting_run(
         BoostingStep *step_i
         BoostingStep *history = NULL
 
-    # buffers
-    cdef:
-        FLOAT64[:] y_error = y
+        # buffers
+        FLOAT64[:] y_error = y.copy()
         FLOAT64[:,:] new_error = np.empty((n_x, n_times_h))
         INT8[:,:] new_sign = np.empty((n_x, n_times_h), np.int8)
         INT8[:] x_active = np.ones(n_x, np.int8)
+
     h[...] = 0
     new_error[...] = np.inf  # ignore values outside TRF
 
@@ -270,17 +293,19 @@ cdef int boosting_run(
         long i_stim = -1
         long i_time = -1
         double delta_signed = 0.
+        double new_train_error
         double best_test_error = np.inf
         size_t best_iteration = 0
         int n_bad, undo
         long argmin
+        Py_ssize_t i_step, i
 
     # pre-assign iterators
     for i_step in range(999999):
         # evaluate current h
         e_train = error_for_indexes(y_error, split_train, error)
         e_test = error_for_indexes(y_error, split_validate, error)
-        step = <BoostingStep*> PyMem_Malloc(sizeof(BoostingStep))
+        step = <BoostingStep*> malloc(sizeof(BoostingStep))
         step[0] = BoostingStep(i_step, i_stim, i_time, delta_signed, e_test, e_train, history)
         history = step
 
@@ -296,34 +321,36 @@ cdef int boosting_run(
             # print(' ', e_test, '>', step_i.e_test, '? (', step.i_step, step_i.i_step, ')')
             if e_test > step_i.e_test:
                 if selective_stopping:
-                    if selective_stopping > 1:
-                        n_bad = selective_stopping - 1
-                        # only stop if the predictor overfits twice without intermittent improvement
-                        undo = 0
+                    if selective_stopping == 1:
+                        undo = 1
+                    else:
+                        # only stop if the predictor overfits n times without intermittent improvement
+                        n_bad = 1
+                        undo = 1
                         while step_i.previous != NULL:
                             if step_i.e_test > e_test:
+                                undo = 0
                                 break  # the error improved
-                            elif step_i.i_stim == i_stim:
+                            undo += 1
+                            if step_i.i_stim == i_stim:
                                 if step_i.e_test > step_i.previous[0].e_test:
                                     # the same stimulus caused an error increase
-                                    if n_bad == 1:
-                                        undo = i
+                                    n_bad += 1
+                                    if n_bad == selective_stopping:
                                         break
-                                    n_bad -= 1
                                 else:
+                                    undo = 0
                                     break
                             step_i = step_i.previous
-                    else:
-                        undo = -1
 
                     if undo:
                         # print(' undo')
                         # revert changes
-                        for i in range(-undo):
+                        for i in range(undo):
                             h[step.i_stim, step.i_time] -= step.delta
                             update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split_train_and_validate, -step.delta, step.i_time + i_start)
                             step_i = step.previous
-                            PyMem_Free(step)
+                            free(step)
                             step = step_i
                         history = step
                         # disable predictor
@@ -380,17 +407,10 @@ cdef int boosting_run(
             if step.delta:
                 h[step.i_stim, step.i_time] -= step.delta
             step = step.previous
-        out = 0
+        return BoostingRunResult(0, history)
     else:
-        out = 1
-
-    # Free history memory
-    step = history
-    while step.previous != NULL:
-        step_i = step.previous
-        PyMem_Free(step)
-        step = step_i
-    return out
+        print(' failed')
+        return BoostingRunResult(1, history)
 
 
 cdef void generate_options(
@@ -466,3 +486,55 @@ cdef void update_error(
         # part of the segment that is affected
         for i in range(conv_start, conv_stop):
             y_error[i] -= delta * x[i - shift]
+
+
+cdef class BoostingStep2:
+    cdef readonly:
+        long i_step, i_stim, i_time
+        double delta, e_test, e_train
+
+    def __init__(self, i_step, i_stim, i_time, delta, e_test, e_train):
+        self.i_step = i_step
+        self.i_stim = i_stim
+        self.i_time = i_time
+        self.delta = delta
+        self.e_test = e_test
+        self.e_train = e_train
+
+    def __repr__(self):
+        return f"{self.i_step:4}: {self.i_stim:4}, {self.i_time:4} {self.delta:+} --> {self.e_train:10f} / {self.e_test:10f}"
+
+
+def boosting_fit(
+        FLOAT64 [:] y,  # (n_times,)
+        FLOAT64 [:,:] x,  # (n_stims, n_times)
+        FLOAT64 [:] x_pads,  # (n_stims,)
+        # FLOAT64 [:,:] h,
+        INT64[:,:] split_train,
+        INT64[:,:] split_validate,
+        INT64[:,:] split_train_and_validate,
+        INT64 [:] i_start_by_x,  # (n_stims,) kernel start index
+        INT64 [:] i_stop_by_x, # (n_stims,) kernel stop index
+        double delta,
+        double mindelta,
+        int error,
+        int selective_stopping = 0,
+):
+    """Single model fit using boosting"""
+    cdef:
+        BoostingRunResult result
+        BoostingStep *step
+        BoostingStep2 step2
+        Py_ssize_t n_x = len(x)
+        Py_ssize_t n_times_h = np.max(i_stop_by_x) - np.min(i_start_by_x)
+        FLOAT64[:, :] h = np.empty((n_x, n_times_h))
+
+    result = boosting_run(y, x, x_pads, h, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping)
+    out = []
+    step = result.history
+    while step != NULL:
+        step2 = BoostingStep2(step.i_step, step.i_stim, step.i_time, step.delta, step.e_test, step.e_train)
+        out.insert(0, step2)
+        step = step.previous
+    free_history(result.history)
+    return np.asarray(h), out
