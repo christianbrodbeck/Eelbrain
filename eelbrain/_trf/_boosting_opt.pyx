@@ -104,7 +104,7 @@ cdef void l2_for_delta(
     ) nogil:
     cdef:
         double d
-        size_t i, seg_i, seg_start, seg_stop, conv_start, conv_stop
+        Py_ssize_t i, seg_i, seg_start, seg_stop, conv_start, conv_stop
 
     e_add[0] = 0.
     e_sub[0] = 0.
@@ -184,15 +184,15 @@ def boosting_runs(
         Py_ssize_t i
         BoostingRunResult result
 
-    with nogil, parallel(num_threads=8):
-        for i in prange(n_total, schedule='guided', chunksize=1):
-            i_y = i // n_splits
-            i_split = i % n_splits
-            with gil:
-                print('starting', i, 'of', n_total, ' (thread ', threadid(), ')')
-                result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping)
-            hs_failed[i_split, i_y] = result.failed
-            free_history(result.history)
+    # with nogil, parallel(num_threads=8):
+    for i in prange(n_total, nogil=True):#, schedule='guided', chunksize=1):
+        i_y = i // n_splits
+        i_split = i % n_splits
+        with gil:
+            # print('starting', i, 'of', n_total, ' (thread ', threadid(), ')')
+            result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping)
+        hs_failed[i_split, i_y] = result.failed
+        free_history(result.history)
     # print('done')
     return hs.base, np.asarray(hs_failed, 'bool')
 
@@ -208,9 +208,9 @@ ctypedef struct BoostingStep:
 
 
 cdef BoostingStep * boosting_step(
-        long i_step,
-        long i_stim,
-        long i_time,
+        Py_ssize_t i_step,
+        Py_ssize_t i_stim,
+        Py_ssize_t i_time,
         double delta,
         double e_test,
         double e_train,
@@ -306,8 +306,8 @@ cdef BoostingRunResult boosting_run(
         Py_ssize_t n_x_active = n_x
         Py_ssize_t n_times = x.shape[1]
         Py_ssize_t n_times_h = h.shape[1]
-        long i_start
-        long n_times_trf
+        Py_ssize_t i_start
+        Py_ssize_t n_times_trf
         BoostingStep *step
         BoostingStep *step_i
         BoostingStep *history = NULL
@@ -331,12 +331,12 @@ cdef BoostingRunResult boosting_run(
 
     # history
     cdef:
-        long i_stim = -1
-        long i_time = -1
+        Py_ssize_t i_stim = -1
+        Py_ssize_t i_time = -1
         double delta_signed = 0.
         double new_train_error
         double best_test_error = inf
-        size_t best_iteration = 0
+        Py_ssize_t best_iteration = 0
         int n_bad, undo
         long argmin
         Py_ssize_t i_step, i
@@ -472,7 +472,7 @@ cdef void generate_options(
     ) nogil:
     cdef:
         double e_add, e_sub, x_pad
-        size_t n_stims = new_error.shape[0]
+        Py_ssize_t n_stims = new_error.shape[0]
         Py_ssize_t i_stim, i_time
         FLOAT64 [:] x_stim
 
