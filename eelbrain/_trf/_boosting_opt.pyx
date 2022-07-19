@@ -2,7 +2,7 @@
 # cython: language_level=3, boundscheck=False, wraparound=False
 import numpy
 from libc.math cimport fabs
-from cython.parallel import prange
+from cython.parallel import prange, threadid, parallel
 from libc.stdlib cimport malloc, free
 import numpy as np
 
@@ -11,6 +11,9 @@ cimport numpy as np
 ctypedef np.int8_t INT8
 ctypedef np.int64_t INT64
 ctypedef np.float64_t FLOAT64
+
+
+cdef double inf = float('inf')
 
 
 def l1(
@@ -137,7 +140,7 @@ cpdef double error_for_indexes(
         FLOAT64[:] x,
         INT64[:,:] indexes,  # (n_segments, 2)
         int error,  # 1 --> l1; 2 --> l2
-):
+) nogil:
     cdef:
         Py_ssize_t seg_i, i
         double out = 0
@@ -181,19 +184,20 @@ def boosting_runs(
         Py_ssize_t i
         BoostingRunResult result
 
-    for i in prange(n_total, nogil=True):
-        i_y = i // n_splits
-        i_split = i % n_splits
-        with gil:
-            # print('starting', i, 'of', n_total)
-            result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping)
-        hs_failed[i_split, i_y] = result.failed
-        free_history(result.history)
+    with nogil, parallel(num_threads=8):
+        for i in prange(n_total, schedule='guided', chunksize=1):
+            i_y = i // n_splits
+            i_split = i % n_splits
+            with gil:
+                print('starting', i, 'of', n_total, ' (thread ', threadid(), ')')
+                result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping)
+            hs_failed[i_split, i_y] = result.failed
+            free_history(result.history)
     # print('done')
     return hs.base, np.asarray(hs_failed, 'bool')
 
 
-cdef struct BoostingStep:
+ctypedef struct BoostingStep:
     long i_step
     long i_stim
     long i_time
@@ -203,9 +207,37 @@ cdef struct BoostingStep:
     BoostingStep *previous
 
 
-cdef struct BoostingRunResult:
+cdef BoostingStep * boosting_step(
+        long i_step,
+        long i_stim,
+        long i_time,
+        double delta,
+        double e_test,
+        double e_train,
+        BoostingStep *previous,
+) nogil:
+    step = <BoostingStep*> malloc(sizeof(BoostingStep))
+    step.i_step = i_step
+    step.i_stim = i_stim
+    step.i_time = i_time
+    step.delta = delta
+    step.e_test = e_test
+    step.e_train = e_train
+    step.previous = previous
+    return step
+
+
+
+ctypedef struct BoostingRunResult:
     int failed
     BoostingStep *history
+
+
+cdef BoostingRunResult boosting_run_result(int failed, BoostingStep *history) nogil:
+    result = <BoostingRunResult*> malloc(sizeof(BoostingRunResult))
+    result.failed = failed
+    result.history = history
+    return result[0]
 
 
 cdef void free_history(
@@ -236,7 +268,7 @@ cdef BoostingRunResult boosting_run(
         double mindelta,
         int error,
         int selective_stopping,
-):
+) nogil:
     """Estimate one filter with boosting
 
     Parameters
@@ -271,22 +303,31 @@ cdef BoostingRunResult boosting_run(
     cdef:
         int out
         Py_ssize_t n_x = len(x)
+        Py_ssize_t n_x_active = n_x
         Py_ssize_t n_times = x.shape[1]
         Py_ssize_t n_times_h = h.shape[1]
-        long i_start = np.min(i_start_by_x)
-        long n_times_trf = np.max(i_stop_by_x) - i_start
+        long i_start
+        long n_times_trf
         BoostingStep *step
         BoostingStep *step_i
         BoostingStep *history = NULL
 
         # buffers
-        FLOAT64[:] y_error = y.copy()
-        FLOAT64[:,:] new_error = np.empty((n_x, n_times_h))
-        INT8[:,:] new_sign = np.empty((n_x, n_times_h), np.int8)
-        INT8[:] x_active = np.ones(n_x, np.int8)
+        FLOAT64[:] y_error
+        FLOAT64[:,:] new_error
+        INT8[:,:] new_sign
+        INT8[:] x_active
+
+    with gil:
+        i_start = np.min(i_start_by_x)
+        n_times_trf = np.max(i_stop_by_x) - i_start
+        y_error = y.copy()
+        new_error = np.empty((n_x, n_times_h))
+        new_sign = np.empty((n_x, n_times_h), np.int8)
+        x_active = np.ones(n_x, np.int8)
 
     h[...] = 0
-    new_error[...] = np.inf  # ignore values outside TRF
+    new_error[...] = inf  # ignore values outside TRF
 
     # history
     cdef:
@@ -294,7 +335,7 @@ cdef BoostingRunResult boosting_run(
         long i_time = -1
         double delta_signed = 0.
         double new_train_error
-        double best_test_error = np.inf
+        double best_test_error = inf
         size_t best_iteration = 0
         int n_bad, undo
         long argmin
@@ -305,8 +346,7 @@ cdef BoostingRunResult boosting_run(
         # evaluate current h
         e_train = error_for_indexes(y_error, split_train, error)
         e_test = error_for_indexes(y_error, split_validate, error)
-        step = <BoostingStep*> malloc(sizeof(BoostingStep))
-        step[0] = BoostingStep(i_step, i_stim, i_time, delta_signed, e_test, e_train, history)
+        step = boosting_step(i_step, i_stim, i_time, delta_signed, e_test, e_train, history)
         history = step
 
         # print(i_step, 'error:', e_test)
@@ -355,9 +395,10 @@ cdef BoostingRunResult boosting_run(
                         history = step
                         # disable predictor
                         x_active[i_stim] = False
-                        if not np.any(x_active):
+                        n_x_active -= 1
+                        if n_x_active == 0:
                             break
-                        new_error[i_stim, :] = np.inf
+                        new_error[i_stim, :] = inf
                 # Basic
                 # -----
                 # stop the iteration if all the following requirements are met
@@ -371,7 +412,8 @@ cdef BoostingRunResult boosting_run(
         # generate possible movements -> training error
         generate_options(y_error, x, x_pads, x_active, split_train, i_start, i_start_by_x, i_stop_by_x, error, delta, new_error, new_sign)
         # i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)  # (not supported by numba)
-        argmin = np.argmin(new_error)
+        with gil:
+            argmin = np.argmin(new_error)
         i_stim = argmin // n_times_trf
         i_time = argmin % n_times_trf
         new_train_error = new_error[i_stim, i_time]
@@ -407,10 +449,10 @@ cdef BoostingRunResult boosting_run(
             if step.delta:
                 h[step.i_stim, step.i_time] -= step.delta
             step = step.previous
-        return BoostingRunResult(0, history)
+        return boosting_run_result(0, history)
     else:
-        print(' failed')
-        return BoostingRunResult(1, history)
+        # print(' failed')
+        return boosting_run_result(1, history)
 
 
 cdef void generate_options(
