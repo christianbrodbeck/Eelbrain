@@ -422,9 +422,7 @@ cdef BoostingRunResult boosting_run(
 
         # generate possible movements -> training error
         generate_options(y_error, x, x_pads, x_active, split_train, i_start, i_start_by_x, i_stop_by_x, error, delta, new_error, new_sign)
-        # i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)  # (not supported by numba)
-        with gil:
-            argmin = np.argmin(new_error)
+        argmin = argmin_2d(new_error)
         i_stim = argmin // n_times_trf
         i_time = argmin % n_times_trf
         new_train_error = new_error[i_stim, i_time]
@@ -506,6 +504,23 @@ cdef void generate_options(
             else:
                 new_error[i_stim, i_time] = e_add
                 new_sign[i_stim, i_time] = 1
+
+
+cdef Py_ssize_t argmin_2d(FLOAT64[:,:] data) nogil:
+    cdef:
+        Py_ssize_t i_stim, i_time, i_stim_min, i_time_min
+        Py_ssize_t n_stims = data.shape[0]
+        Py_ssize_t n_times = data.shape[1]
+        double min_value = inf
+
+    for i_stim in range(n_stims):
+        for i_time in range(n_times):
+            if data[i_stim, i_time] < min_value:
+                i_stim_min = i_stim
+                i_time_min = i_time
+                min_value = data[i_stim, i_time]
+
+    return i_stim_min * n_times + i_time_min
 
 
 cdef void update_error(
