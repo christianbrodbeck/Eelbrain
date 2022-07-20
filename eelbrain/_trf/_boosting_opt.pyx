@@ -196,11 +196,9 @@ def boosting_runs(
         Py_ssize_t i
         BoostingRunResult result
 
-    # with nogil, parallel(num_threads=8):
-    for i in prange(n_total, nogil=True):#, schedule='guided', chunksize=1):
+    for i in prange(n_total, nogil=True):
         i_y = i // n_splits
         i_split = i % n_splits
-        # print('starting', i, 'of', n_total, ' (thread ', threadid(), ')')
         result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping)
         hs_failed[i_split, i_y] = result.failed
         free_history(result.history)
@@ -269,10 +267,10 @@ cdef BoostingRunResult boosting_run(
         FLOAT64 [:] y,  # (n_times,)
         FLOAT64 [:,:] x,  # (n_stims, n_times)
         FLOAT64 [:] x_pads,  # (n_stims,)
-        FLOAT64 [:,:] h,
-        INT64[:,:] split_train,
-        INT64[:,:] split_validate,
-        INT64[:,:] split_train_and_validate,
+        FLOAT64 [:,:] h,  # (n_stims, n_times_h)
+        INT64[:,:] split_train,  # Training data index
+        INT64[:,:] split_validate,  # Validation data index
+        INT64[:,:] split_train_and_validate,  # Training and validation data index
         INT64 [:] i_start_by_x,  # (n_stims,) kernel start index
         INT64 [:] i_stop_by_x, # (n_stims,) kernel stop index
         double delta,
@@ -280,37 +278,6 @@ cdef BoostingRunResult boosting_run(
         int error,
         int selective_stopping,
 ) nogil:
-    """Estimate one filter with boosting
-
-    Parameters
-    ----------
-    y : array (n_times,)
-        Dependent signal, time series to predict.
-    x : array (n_stims, n_times)
-        Stimulus.
-    x_pads : array (n_stims,)
-        Padding for x.
-    split_train
-        Training data index.
-    split_validate
-        Validation data index.
-    split_train_and_validate
-        Training and validation data index.
-    i_start_by_x : ndarray
-        Array of i_start for trfs.
-    i_stop_by_x : ndarray
-        Array of i_stop for TRF.
-    delta : scalar
-        Step of the adjustment.
-    mindelta : scalar
-        Smallest delta to use. If no improvement can be found in an iteration,
-        the first step is to divide delta in half, but stop if delta becomes
-        smaller than ``mindelta``.
-    error : str
-        Error function to use.
-    selective_stopping : int
-        Selective stopping.
-    """
     cdef:
         int out
         Py_ssize_t n_x = len(x)
@@ -589,7 +556,37 @@ def boosting_fit(
         int error,
         int selective_stopping = 0,
 ):
-    """Single model fit using boosting"""
+    """Single model fit using boosting
+
+    Parameters
+    ----------
+    y : array (n_times,)
+        Dependent signal, time series to predict.
+    x : array (n_stims, n_times)
+        Stimulus.
+    x_pads : array (n_stims,)
+        Padding for x.
+    split_train
+        Training data index.
+    split_validate
+        Validation data index.
+    split_train_and_validate
+        Training and validation data index.
+    i_start_by_x : ndarray
+        Array of i_start for trfs.
+    i_stop_by_x : ndarray
+        Array of i_stop for TRF.
+    delta : scalar
+        Step of the adjustment.
+    mindelta : scalar
+        Smallest delta to use. If no improvement can be found in an iteration,
+        the first step is to divide delta in half, but stop if delta becomes
+        smaller than ``mindelta``.
+    error: int
+        Error function to use (1 for l1, 2 for l2).
+    selective_stopping : int
+        Selective stopping.
+    """
     cdef:
         BoostingRunResult result
         BoostingStep *step
