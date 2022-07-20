@@ -191,18 +191,15 @@ def boosting_runs(
         Py_ssize_t n_times_h = np.max(i_stop_by_x) - np.min(i_start_by_x)
         FLOAT64[:,:,:,:] hs = np.empty((n_splits, n_y, n_x, n_times_h))
         INT8[:,:] hs_failed = np.zeros((n_splits, n_y), 'int8')
-        long i_y, i_split
-        FLOAT64[:,:] h
-        Py_ssize_t i
-        BoostingRunResult result
+        Py_ssize_t i, i_y, i_split
+        BoostingRunResult *result
 
     for i in prange(n_total, nogil=True):
         i_y = i // n_splits
         i_split = i % n_splits
         result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping)
         hs_failed[i_split, i_y] = result.failed
-        free_history(result.history)
-    # print('done')
+        free_history(result)
     return hs.base, np.asarray(hs_failed, 'bool')
 
 
@@ -242,28 +239,29 @@ ctypedef struct BoostingRunResult:
     BoostingStep *history
 
 
-cdef BoostingRunResult boosting_run_result(int failed, BoostingStep *history) nogil:
+cdef BoostingRunResult * boosting_run_result(int failed, BoostingStep *history) nogil:
     result = <BoostingRunResult*> malloc(sizeof(BoostingRunResult))
     result.failed = failed
     result.history = history
-    return result[0]
+    return result
 
 
 cdef void free_history(
-        BoostingStep *history,
+        BoostingRunResult *result,
 ) nogil:
     cdef:
         BoostingStep *step
         BoostingStep *step_i
 
-    step = history
+    step = result.history
     while step.previous != NULL:
         step_i = step.previous
         free(step)
         step = step_i
+    free(result)
 
 
-cdef BoostingRunResult boosting_run(
+cdef BoostingRunResult * boosting_run(
         FLOAT64 [:] y,  # (n_times,)
         FLOAT64 [:,:] x,  # (n_stims, n_times)
         FLOAT64 [:] x_pads,  # (n_stims,)
@@ -588,7 +586,7 @@ def boosting_fit(
         Selective stopping.
     """
     cdef:
-        BoostingRunResult result
+        BoostingRunResult *result
         BoostingStep *step
         BoostingStep2 step2
         Py_ssize_t n_x = len(x)
@@ -602,5 +600,5 @@ def boosting_fit(
         step2 = BoostingStep2(step.i_step, step.i_stim, step.i_time, step.delta, step.e_test, step.e_train)
         out.insert(0, step2)
         step = step.previous
-    free_history(result.history)
+    free_history(result)
     return np.asarray(h), out
