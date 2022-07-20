@@ -26,6 +26,8 @@ def l1(
 
     with nogil:
         for seg_i in range(indexes.shape[0]):
+            if indexes[seg_i, 0] == -1:
+                break
             for i in range(indexes[seg_i, 0], indexes[seg_i, 1]):
                 out += fabs(x[i])
 
@@ -42,6 +44,8 @@ def l2(
 
     with nogil:
         for seg_i in range(indexes.shape[0]):
+            if indexes[seg_i, 0] == -1:
+                break
             for i in range(indexes[seg_i, 0], indexes[seg_i, 1]):
                 out += x[i] ** 2
 
@@ -67,6 +71,8 @@ cdef void l1_for_delta(
 
     for seg_i in range(indexes.shape[0]):
         seg_start = indexes[seg_i, 0]
+        if seg_start == -1:
+            break
         seg_stop = indexes[seg_i, 1]
         # determine valid convolution segment
         conv_start = seg_start
@@ -111,6 +117,8 @@ cdef void l2_for_delta(
 
     for seg_i in range(indexes.shape[0]):
         seg_start = indexes[seg_i, 0]
+        if seg_start == -1:
+            break
         seg_stop = indexes[seg_i, 1]
         # determine valid convolution segment
         conv_start = seg_start
@@ -147,10 +155,14 @@ cpdef double error_for_indexes(
 
     if error == 1:
         for seg_i in range(indexes.shape[0]):
+            if indexes[seg_i, 0] == -1:
+                break
             for i in range(indexes[seg_i, 0], indexes[seg_i, 1]):
                 out += fabs(x[i])
     else:
         for seg_i in range(indexes.shape[0]):
+            if indexes[seg_i, 0] == -1:
+                break
             for i in range(indexes[seg_i, 0], indexes[seg_i, 1]):
                 out += x[i] ** 2
     return out
@@ -160,9 +172,9 @@ def boosting_runs(
         FLOAT64[:,:] y,  # (n_y, n_times)
         FLOAT64[:,:] x,  # (n_stims, n_times)
         FLOAT64 [:] x_pads,  # (n_stims,)
-        tuple split_train,
-        tuple split_validate,
-        tuple split_train_and_validate,
+        INT64[:,:,:] split_train,
+        INT64[:,:,:] split_validate,
+        INT64[:,:,:] split_train_and_validate,
         INT64 [:] i_start_by_x,  # (n_stims,) kernel start index
         INT64 [:] i_stop_by_x, # (n_stims,) kernel stop index
         double delta,
@@ -188,9 +200,8 @@ def boosting_runs(
     for i in prange(n_total, nogil=True):#, schedule='guided', chunksize=1):
         i_y = i // n_splits
         i_split = i % n_splits
-        with gil:
-            # print('starting', i, 'of', n_total, ' (thread ', threadid(), ')')
-            result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping)
+        # print('starting', i, 'of', n_total, ' (thread ', threadid(), ')')
+        result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping)
         hs_failed[i_split, i_y] = result.failed
         free_history(result.history)
     # print('done')
@@ -510,6 +521,8 @@ cdef void update_error(
 
     for seg_i in range(indexes.shape[0]):
         seg_start = indexes[seg_i, 0]
+        if seg_start == -1:
+            break
         seg_stop = indexes[seg_i, 1]
         conv_start = seg_start
         conv_stop = seg_stop
@@ -551,7 +564,6 @@ def boosting_fit(
         FLOAT64 [:] y,  # (n_times,)
         FLOAT64 [:,:] x,  # (n_stims, n_times)
         FLOAT64 [:] x_pads,  # (n_stims,)
-        # FLOAT64 [:,:] h,
         INT64[:,:] split_train,
         INT64[:,:] split_validate,
         INT64[:,:] split_train_and_validate,

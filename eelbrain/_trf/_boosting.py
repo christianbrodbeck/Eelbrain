@@ -577,9 +577,9 @@ class Boosting:
         self.t_fit_start = time.time()
 
         # boosting
-        split_train = tuple([split.train for split in self.data.splits.splits])
-        split_validate = tuple([split.validate for split in self.data.splits.splits])
-        split_train_and_validate = tuple([split.train_and_validate for split in self.data.splits.splits])
+        split_train = package_splits([split.train for split in self.data.splits.splits])
+        split_validate = package_splits([split.validate for split in self.data.splits.splits])
+        split_train_and_validate = package_splits([split.train_and_validate for split in self.data.splits.splits])
         hs, hs_failed = opt.boosting_runs(self.data.y, self.data.x, self.data.x_pads, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta_, error_id, selective_stopping)
         self.split_results = [SplitResult(split, h, h_failed) for split, h, h_failed in zip(self.data.splits.splits, hs, hs_failed)]
         # pbar.close()
@@ -1015,4 +1015,13 @@ def convolve_jit_(
         if pad_tail_n_times:
             out[stop - pad_tail_n_times: stop] += pad_tail
         convolve_jit(h, x[:, start:stop], out[start:stop], h_i_start, h_i_stop)
+    return out
+
+
+def package_splits(splits: Sequence[np.ndarray]) -> np.ndarray:
+    n = max(len(split) for split in splits)
+    out = np.empty((len(splits), n, 2), np.int64)
+    out.fill(-1)
+    for i, split in enumerate(splits):
+        out[i, :len(split)] = split
     return out
