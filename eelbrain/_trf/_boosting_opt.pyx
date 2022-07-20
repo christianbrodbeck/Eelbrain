@@ -16,42 +16,6 @@ ctypedef np.float64_t FLOAT64
 cdef double inf = float('inf')
 
 
-def l1(
-        FLOAT64 [:] x,
-        INT64 [:,:] indexes,
-    ):
-    cdef:
-        double out = 0.
-        Py_ssize_t i, seg_i
-
-    with nogil:
-        for seg_i in range(indexes.shape[0]):
-            if indexes[seg_i, 0] == -1:
-                break
-            for i in range(indexes[seg_i, 0], indexes[seg_i, 1]):
-                out += fabs(x[i])
-
-    return out
-
-
-def l2(
-        FLOAT64 [:] x,
-        INT64 [:,:] indexes,
-    ):
-    cdef:
-        double out = 0.
-        Py_ssize_t i, seg_i
-
-    with nogil:
-        for seg_i in range(indexes.shape[0]):
-            if indexes[seg_i, 0] == -1:
-                break
-            for i in range(indexes[seg_i, 0], indexes[seg_i, 1]):
-                out += x[i] ** 2
-
-    return out
-
-
 cdef void l1_for_delta(
         FLOAT64 [:] y_error,
         FLOAT64 [:] x,
