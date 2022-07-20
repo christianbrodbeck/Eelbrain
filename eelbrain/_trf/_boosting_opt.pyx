@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-# cython: language_level=3, boundscheck=False, wraparound=False
+# cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 import numpy
 from libc.math cimport fabs
 from cython.parallel import prange
@@ -242,7 +242,7 @@ cdef BoostingRunResult * boosting_run(
 ) nogil:
     cdef:
         int out
-        Py_ssize_t n_x = len(x)
+        Py_ssize_t n_x = x.shape[0]
         Py_ssize_t n_x_active = n_x
         Py_ssize_t n_times = x.shape[1]
         Py_ssize_t n_times_h = h.shape[1]
