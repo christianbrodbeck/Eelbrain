@@ -2,7 +2,7 @@
 # cython: language_level=3, boundscheck=False, wraparound=False
 import numpy
 from libc.math cimport fabs
-from cython.parallel import prange, threadid, parallel
+from cython.parallel import prange
 from libc.stdlib cimport malloc, free
 import numpy as np
 
@@ -415,7 +415,8 @@ cdef BoostingRunResult * boosting_run(
         h[i_stim, i_time] += delta_signed
         update_error(y_error, x[i_stim], x_pads[i_stim], split_train_and_validate, delta_signed, i_time + i_start)
     else:
-        raise RuntimeError("Boosting: maximum number of iterations exceeded")
+        with gil:
+            raise RuntimeError("Boosting: maximum number of iterations exceeded")
 
     # reverse changes after best iteration
     if best_iteration:
