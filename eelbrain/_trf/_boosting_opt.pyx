@@ -386,8 +386,7 @@ cdef BoostingRunResult * boosting_run(
                     break
 
         # generate possible movements -> training error
-        generate_options(y_error, x, x_pads, x_active, split_train, i_start, i_start_by_x, i_stop_by_x, error, delta, new_error, new_sign)
-        argmin = argmin_2d(new_error)
+        argmin = generate_options(y_error, x, x_pads, x_active, split_train, i_start, i_start_by_x, i_stop_by_x, error, delta, new_error, new_sign)
         i_stim = argmin // n_times_trf
         i_time = argmin % n_times_trf
         new_train_error = new_error[i_stim, i_time]
@@ -430,7 +429,7 @@ cdef BoostingRunResult * boosting_run(
         return boosting_run_result(1, history)
 
 
-cdef void generate_options(
+cdef Py_ssize_t generate_options(
         FLOAT64 [:] y_error,
         FLOAT64 [:,:] x,  # (n_stims, n_times)
         FLOAT64 [:] x_pads,  # (n_stims,)
@@ -446,10 +445,12 @@ cdef void generate_options(
         INT8 [:,:] new_sign,  # (n_stims, n_times_trf)
     ) nogil:
     cdef:
-        double e_add, e_sub, x_pad
+        double e_add, e_sub, e_new, x_pad
         Py_ssize_t n_stims = new_error.shape[0]
-        Py_ssize_t i_stim, i_time
+        Py_ssize_t n_times = new_error.shape[1]
+        Py_ssize_t i_stim, i_time, i_stim_min, i_time_min
         FLOAT64 [:] x_stim
+        double e_min = inf
 
     for i_stim in range(n_stims):
         if x_active[i_stim] == 0:
@@ -465,26 +466,18 @@ cdef void generate_options(
 
             i_time -= i_start
             if e_add > e_sub:
-                new_error[i_stim, i_time] = e_sub
+                e_new = e_sub
                 new_sign[i_stim, i_time] = -1
             else:
-                new_error[i_stim, i_time] = e_add
+                e_new = e_add
                 new_sign[i_stim, i_time] = 1
+            new_error[i_stim, i_time] = e_new
 
-
-cdef Py_ssize_t argmin_2d(FLOAT64[:,:] data) nogil:
-    cdef:
-        Py_ssize_t i_stim, i_time, i_stim_min, i_time_min
-        Py_ssize_t n_stims = data.shape[0]
-        Py_ssize_t n_times = data.shape[1]
-        double min_value = inf
-
-    for i_stim in range(n_stims):
-        for i_time in range(n_times):
-            if data[i_stim, i_time] < min_value:
+            # find smallest error
+            if e_new < e_min:
+                e_min = e_new
                 i_stim_min = i_stim
                 i_time_min = i_time
-                min_value = data[i_stim, i_time]
 
     return i_stim_min * n_times + i_time_min
 
