@@ -517,7 +517,7 @@ cdef void update_error(
             y_error[i] -= delta * x[i - shift]
 
 
-cdef class BoostingStep2:
+cdef class Step:
     cdef readonly:
         long i_step, i_stim, i_time
         double delta, e_test, e_train
@@ -582,7 +582,7 @@ def boosting_fit(
     cdef:
         BoostingRunResult *result
         BoostingStep *step
-        BoostingStep2 step2
+        Step step2
         Py_ssize_t n_x = len(x)
         Py_ssize_t n_times_h = np.max(i_stop_by_x) - np.min(i_start_by_x)
         FLOAT64[:, :] h = np.empty((n_x, n_times_h))
@@ -591,7 +591,7 @@ def boosting_fit(
     out = []
     step = result.history
     while step != NULL:
-        step2 = BoostingStep2(step.i_step, step.i_stim, step.i_time, step.delta, step.e_test, step.e_train)
+        step2 = Step(step.i_step, step.i_stim, step.i_time, step.delta, step.e_test, step.e_train)
         out.insert(0, step2)
         step = step.previous
     free_history(result)
