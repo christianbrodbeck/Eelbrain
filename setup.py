@@ -19,6 +19,7 @@ from ez_setup import use_setuptools
 use_setuptools('17')
 
 from packaging.version import Version
+import os
 import re
 from setuptools import setup, find_packages, Extension
 
@@ -35,6 +36,7 @@ except ImportError:
 DESC = """
 GitHub: https://github.com/christianbrodbeck/Eelbrain
 """
+IS_WINDOWS = os.name == 'nt'
 
 # version must be in X.X.X format, e.g., "0.0.3dev"
 with open('eelbrain/__init__.py') as fid:
@@ -49,9 +51,13 @@ Version(version)  # check that it's a valid version
 args = {'define_macros': [("NPY_NO_DEPRECATED_API", "NPY_1_11_API_VERSION")]}
 ext = '.pyx' if cythonize else '.c'
 ext_cpp = '.pyx' if cythonize else '.cpp'
+if IS_WINDOWS:
+    open_mp = dict(extra_compile_args=['/openmp'])
+else:
+    open_mp = dict(extra_compile_args=['-fopenmp'], extra_link_args=['-fopenmp'])
 extensions = [
     Extension('eelbrain._data_opt', [f'eelbrain/_data_opt{ext}'], **args),
-    Extension('eelbrain._trf._boosting_opt', [f'eelbrain/_trf/_boosting_opt{ext}'], extra_compile_args=['-fopenmp'], extra_link_args=['-fopenmp'], **args),
+    Extension('eelbrain._trf._boosting_opt', [f'eelbrain/_trf/_boosting_opt{ext}'], **open_mp, **args),
     Extension('eelbrain._stats.connectivity_opt', [f'eelbrain/_stats/connectivity_opt{ext}'], **args),
     Extension('eelbrain._stats.opt', [f'eelbrain/_stats/opt{ext}'], **args),
     Extension('eelbrain._stats.error_functions', [f'eelbrain/_stats/error_functions{ext}'], **args),

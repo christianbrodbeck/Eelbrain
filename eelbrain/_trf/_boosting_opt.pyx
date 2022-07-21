@@ -16,6 +16,11 @@ ctypedef np.float64_t FLOAT64
 cdef double inf = float('inf')
 
 
+cdef double square(double x) nogil:
+    # cf. https://github.com/scikit-image/scikit-image/issues/3026
+    return x * x
+
+
 cdef void l1_for_delta(
         FLOAT64 [:] y_error,
         FLOAT64 [:] x,
@@ -95,17 +100,17 @@ cdef void l2_for_delta(
         d = delta * x_pad
         # pre-
         for i in range(seg_start, conv_start):
-            e_add[0] += (y_error[i] - d) ** 2
-            e_sub[0] += (y_error[i] + d) ** 2
+            e_add[0] += square(y_error[i] - d)
+            e_sub[0] += square(y_error[i] + d)
         # post-
         for i in range(conv_stop, seg_stop):
-            e_add[0] += (y_error[i] - d) ** 2
-            e_sub[0] += (y_error[i] + d) ** 2
+            e_add[0] += square(y_error[i] - d)
+            e_sub[0] += square(y_error[i] + d)
         # part of the segment that is affected
         for i in range(conv_start, conv_stop):
             d = delta * x[i - shift]
-            e_add[0] += (y_error[i] - d) ** 2
-            e_sub[0] += (y_error[i] + d) ** 2
+            e_add[0] += square(y_error[i] - d)
+            e_sub[0] += square(y_error[i] + d)
 
 
 cpdef double error_for_indexes(
@@ -128,7 +133,7 @@ cpdef double error_for_indexes(
             if indexes[seg_i, 0] == -1:
                 break
             for i in range(indexes[seg_i, 0], indexes[seg_i, 1]):
-                out += x[i] ** 2
+                out += x[i] * x[i]
     return out
 
 
