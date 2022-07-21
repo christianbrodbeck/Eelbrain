@@ -151,7 +151,7 @@ def boosting_runs(
         Py_ssize_t n_y = len(y)
         Py_ssize_t n_x = len(x)
         Py_ssize_t n_splits = len(split_train)
-        long n_total = n_splits * n_y
+        Py_ssize_t n_total = n_splits * n_y
         Py_ssize_t n_times_h = np.max(i_stop_by_x) - np.min(i_start_by_x)
         FLOAT64[:,:,:,:] hs = np.empty((n_splits, n_y, n_x, n_times_h))
         INT8[:,:] hs_failed = np.zeros((n_splits, n_y), 'int8')
@@ -168,9 +168,9 @@ def boosting_runs(
 
 
 ctypedef struct BoostingStep:
-    long i_step
-    long i_stim
-    long i_time
+    Py_ssize_t i_step
+    Py_ssize_t i_stim
+    Py_ssize_t i_time
     double delta
     double e_test
     double e_train
@@ -452,7 +452,7 @@ cdef void update_error(
         double x_pad,  # pad x outside valid convolution area
         INT64 [:,:] indexes,  # segment indexes
         double delta,
-        int shift,
+        Py_ssize_t shift,
     ) nogil:
     cdef:
         Py_ssize_t i, seg_i, seg_start, seg_stop, conv_start, conv_stop
