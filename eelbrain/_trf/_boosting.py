@@ -20,16 +20,12 @@ x2 = ds['x2']
 """
 from __future__ import annotations
 
-from collections import namedtuple
 from dataclasses import dataclass, field, fields
 from functools import cached_property, reduce
 import inspect
-from itertools import chain, product, repeat
+from itertools import chain, repeat
 from math import ceil
-from multiprocessing.sharedctypes import RawArray
 from operator import mul
-import os
-import threading
 import time
 from typing import Any, Callable, List, Literal, Union, Tuple, Sequence
 import warnings
@@ -37,7 +33,6 @@ import warnings
 import numba
 import numpy as np
 
-from .._config import CONFIG, mpc
 from .._data_obj import Case, Dataset, Dimension, SourceSpaceBase, NDVar, CategorialArg, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
 from .._ndvar import _concatenate_values, convolve_jit, parallel_convolve, set_connectivity, set_parc
@@ -49,7 +44,7 @@ from . import _boosting_opt as opt
 
 @dataclass(eq=False)
 class BoostingResult(PickleableDataClass):
-    """Result from boosting a temporal response function
+    """Result from boosting
 
     Attributes
     ----------
