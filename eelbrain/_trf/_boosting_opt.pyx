@@ -22,7 +22,7 @@ cdef double square(double x) nogil:
 
 
 cdef void l1_for_delta(
-        FLOAT64 [:] y_error,
+        FLOAT64 * y_error,
         FLOAT64 [:] x,
         double x_pad,  # pad x outside valid convolution area
         INT64 [:,:] indexes,  # training segment indexes
@@ -68,7 +68,7 @@ cdef void l1_for_delta(
 
 
 cdef void l2_for_delta(
-        FLOAT64 [:] y_error,
+        FLOAT64 * y_error,
         FLOAT64 [:] x,
         double x_pad,  # pad x outside valid convolution area
         INT64 [:,:] indexes,  # training segment indexes
@@ -113,8 +113,19 @@ cdef void l2_for_delta(
             e_sub[0] += square(y_error[i] + d)
 
 
-cpdef double error_for_indexes(
-        FLOAT64[:] x,
+
+
+def error_for_indexes(
+        FLOAT64 [:] x,
+        INT64[:,:] indexes,  # (n_segments, 2)
+        int error,  # 1 --> l1; 2 --> l2
+):
+    # cdef FLOAT64 * x_ptr = <FLOAT64*> &x[0]
+    return error_for_indexes_c(&x[0], indexes, error)
+
+
+cdef double error_for_indexes_c(
+        FLOAT64 * x,
         INT64[:,:] indexes,  # (n_segments, 2)
         int error,  # 1 --> l1; 2 --> l2
 ) nogil:
@@ -258,7 +269,7 @@ cdef BoostingRunResult * boosting_run(
         BoostingStep *history = NULL
 
         # buffers
-        FLOAT64[:] y_error
+        FLOAT64* y_error = <FLOAT64*> malloc(sizeof(FLOAT64) * n_times)
         FLOAT64[:,:] new_error
         INT8[:,:] new_sign
         INT8[:] x_active
@@ -266,7 +277,6 @@ cdef BoostingRunResult * boosting_run(
     with gil:
         i_start = np.min(i_start_by_x)
         n_times_trf = np.max(i_stop_by_x) - i_start
-        y_error = y.copy()
         new_error = np.empty((n_x, n_times_h))
         new_sign = np.empty((n_x, n_times_h), np.int8)
         x_active = np.ones(n_x, np.int8)
@@ -286,11 +296,15 @@ cdef BoostingRunResult * boosting_run(
         long argmin
         Py_ssize_t i_step, i
 
+    # initialize error
+    for i in range(n_times):
+        y_error[i] = y[i]
+
     # pre-assign iterators
     for i_step in range(999999):
         # evaluate current h
-        e_train = error_for_indexes(y_error, split_train, error)
-        e_test = error_for_indexes(y_error, split_validate, error)
+        e_train = error_for_indexes_c(y_error, split_train, error)
+        e_test = error_for_indexes_c(y_error, split_validate, error)
         step = boosting_step(i_step, i_stim, i_time, delta_signed, e_test, e_train, history)
         history = step
 
@@ -386,6 +400,8 @@ cdef BoostingRunResult * boosting_run(
         with gil:
             raise RuntimeError("Boosting: maximum number of iterations exceeded")
 
+    free(y_error)
+
     # reverse changes after best iteration
     if best_iteration:
         while step.i_step > best_iteration:
@@ -399,7 +415,7 @@ cdef BoostingRunResult * boosting_run(
 
 
 cdef Py_ssize_t generate_options(
-        FLOAT64 [:] y_error,
+        FLOAT64 * y_error,
         FLOAT64 [:,:] x,  # (n_stims, n_times)
         FLOAT64 [:] x_pads,  # (n_stims,)
         INT8 [:] x_active,  # for each predictor whether it is still used
@@ -452,7 +468,7 @@ cdef Py_ssize_t generate_options(
 
 
 cdef void update_error(
-        FLOAT64 [:] y_error,
+        FLOAT64 * y_error,
         FLOAT64 [:] x,
         double x_pad,  # pad x outside valid convolution area
         INT64 [:,:] indexes,  # segment indexes
