@@ -164,11 +164,12 @@ def boosting_runs(
 ):
     """Estimate multiple filters with boosting"""
     cdef:
+        Py_ssize_t i_start = np.min(i_start_by_x)
         Py_ssize_t n_y = len(y)
         Py_ssize_t n_x = len(x)
         Py_ssize_t n_splits = len(split_train)
         Py_ssize_t n_total = n_splits * n_y
-        Py_ssize_t n_times_h = np.max(i_stop_by_x) - np.min(i_start_by_x)
+        Py_ssize_t n_times_h = np.max(i_stop_by_x) - i_start
         FLOAT64[:,:,:,:] hs = np.empty((n_splits, n_y, n_x, n_times_h))
         INT8[:,:] hs_failed = np.zeros((n_splits, n_y), 'int8')
         Py_ssize_t i, i_y, i_split
@@ -177,7 +178,7 @@ def boosting_runs(
     for i in prange(n_total, nogil=True):
         i_y = i // n_splits
         i_split = i % n_splits
-        result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping)
+        result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, i_start, n_times_h)
         hs_failed[i_split, i_y] = result.failed
         free_history(result)
     return hs.base, np.asarray(hs_failed, 'bool')
@@ -255,37 +256,23 @@ cdef BoostingRunResult * boosting_run(
         double mindelta,
         int error,
         int selective_stopping,
+        Py_ssize_t i_start,
+        Py_ssize_t n_times_h,
 ) nogil:
     cdef:
         int out
         Py_ssize_t n_x = x.shape[0]
         Py_ssize_t n_x_active = n_x
         Py_ssize_t n_times = x.shape[1]
-        Py_ssize_t n_times_h = h.shape[1]
-        Py_ssize_t i_start
-        Py_ssize_t n_times_trf
         BoostingStep *step
         BoostingStep *step_i
         BoostingStep *history = NULL
-
         # buffers
         FLOAT64* y_error = <FLOAT64*> malloc(sizeof(FLOAT64) * n_times)
         FLOAT64[:,:] new_error
         INT8[:,:] new_sign
         INT8[:] x_active
-
-    with gil:
-        i_start = np.min(i_start_by_x)
-        n_times_trf = np.max(i_stop_by_x) - i_start
-        new_error = np.empty((n_x, n_times_h))
-        new_sign = np.empty((n_x, n_times_h), np.int8)
-        x_active = np.ones(n_x, np.int8)
-
-    h[...] = 0
-    new_error[...] = inf  # ignore values outside TRF
-
-    # history
-    cdef:
+        # history
         Py_ssize_t i_stim = -1
         Py_ssize_t i_time = -1
         double delta_signed = 0.
@@ -296,7 +283,15 @@ cdef BoostingRunResult * boosting_run(
         long argmin
         Py_ssize_t i_step, i
 
-    # initialize error
+    # initialize buffers
+    with gil:
+        new_error = np.empty((n_x, n_times_h))
+        new_sign = np.empty((n_x, n_times_h), np.int8)
+        x_active = np.ones(n_x, np.int8)
+
+    h[...] = 0
+    new_error[...] = inf  # ignore values outside TRF
+
     for i in range(n_times):
         y_error[i] = y[i]
 
@@ -370,8 +365,8 @@ cdef BoostingRunResult * boosting_run(
 
         # generate possible movements -> training error
         argmin = generate_options(y_error, x, x_pads, x_active, split_train, i_start, i_start_by_x, i_stop_by_x, error, delta, new_error, new_sign)
-        i_stim = argmin // n_times_trf
-        i_time = argmin % n_times_trf
+        i_stim = argmin // n_times_h
+        i_time = argmin % n_times_h
         new_train_error = new_error[i_stim, i_time]
         delta_signed = new_sign[i_stim, i_time] * delta
         # print(new_train_error, end=', ')
@@ -568,11 +563,12 @@ def boosting_fit(
         BoostingRunResult *result
         BoostingStep *step
         Step step2
+        Py_ssize_t i_start = np.min(i_start_by_x)
         Py_ssize_t n_x = len(x)
-        Py_ssize_t n_times_h = np.max(i_stop_by_x) - np.min(i_start_by_x)
+        Py_ssize_t n_times_h = np.max(i_stop_by_x) - i_start
         FLOAT64[:, :] h = np.empty((n_x, n_times_h))
 
-    result = boosting_run(y, x, x_pads, h, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping)
+    result = boosting_run(y, x, x_pads, h, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, i_start, n_times_h)
     out = []
     step = result.history
     while step != NULL:
