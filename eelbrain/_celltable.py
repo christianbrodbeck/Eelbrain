@@ -1,6 +1,6 @@
 from fnmatch import fnmatchcase
 from itertools import combinations
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Union
 
 import numpy as np
 
@@ -361,9 +361,15 @@ class Celltable:
     def _get_dispersion(
             self,
             cell: CellArg,
-            spec: DispersionSpec,
+            spec: Union[str, DispersionSpec],
             pool: bool,  # pooled variance estimate
-    ):
+    ) -> np.ndarray:
+        spec = DispersionSpec.from_string(spec)
+        if spec.measure == 'SD':
+            out = self.data[cell].x.std(0)
+            if spec.multiplier != 1:
+                out *= spec.multiplier
+            return out
         if pool:
             sem = self._pooled_sem
         else:

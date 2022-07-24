@@ -25,7 +25,7 @@ class DispersionSpec:
     def from_string(cls, string: Union[str, 'DispersionSpec']):
         if isinstance(string, cls):
             return string
-        m = re.match(r"^([.\d]*)(%?)(CI|SEM)$", string.upper())
+        m = re.match(r"^([.\d]*)(%?)(CI|SEM|SD)$", string.upper())
         if m is None:
             raise ValueError(f"{string!r}: invalid dispersion specification")
         multiplier, perc, measure = m.groups()
@@ -496,7 +496,11 @@ def variability(y, x, match, spec: str, pool: bool, cells=None):
         cells = x.cells
 
     y = np.asarray(y, np.float64)
-    if pool or x is None:
+    if spec_.measure == 'SD':
+        out = y.std(0)
+        if spec_.multiplier != 1:
+            out *= spec_.multiplier
+    elif pool or x is None:
         out = SEM(y, x, match).get(spec_)
     else:
         out = np.array([SEM(y[x == cell]).get(spec_) for cell in cells])

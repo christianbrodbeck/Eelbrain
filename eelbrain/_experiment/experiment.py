@@ -213,11 +213,7 @@ class TreeModel:
         from .. import __version__
         import mne
         import scipy
-        out.append('\n'.join(("Eelbrain %s" % __version__,
-                              "mne-python %s" % mne.__version__,
-                              "SciPy %s" % scipy.__version__,
-                              "NumPy %s" % np.__version__)))
-
+        out.append(f"Eelbrain {__version__}\nmne-python {mne.__version__}\nSciPy {scipy.__version__}\nNumPy {np.__version__}")
         return out
 
     def _find_missing_fields(self):
@@ -235,8 +231,7 @@ class TreeModel:
                 if field not in self._fields:
                     missing.add(field)
         if missing:
-            raise KeyError("The following fields occur in templates but "
-                           "are undefined: %s" % ', '.join(sorted(missing)))
+            raise KeyError(f"The following fields occur in templates but are undefined: {', '.join(sorted(missing))}")
 
     def _register_compound(self, key, elements):
         """Register a field that is composed out of other fields
@@ -261,7 +256,7 @@ class TreeModel:
     def _register_constant(self, key, value):
         value = self._defaults.get(key, value)
         if value is None:
-            raise ValueError("The %r field needs to be set as default" % key)
+            raise ValueError(f"The {key!r} field needs to be set as default")
         self._fields[key] = value
 
     def _register_field(self, key, values=None, default=None, set_handler=None,
@@ -568,7 +563,7 @@ class TreeModel:
                 disable = True
             # iteration
             with self._temporary_state:
-                for v_list in tqdm(product(*v_lists), progress_bar, n, disable=disable, leave=False):
+                for v_list in tqdm(product(*v_lists), progress_bar, n, disable=disable):
                     self._restore_state(discard_tip=False)
                     self.set(**dict(zip(iter_fields, v_list)))
                     if yield_str:
@@ -1106,7 +1101,7 @@ class FileTree(TreeModel):
         src_filenames, dst_filenames = self._find_files_with_target('Copy', temp, dst_root, inclusive, overwrite, confirm, state)
         if not src_filenames:
             return
-        for src, dst in tqdm(zip(src_filenames, dst_filenames), "Copying", len(src_filenames), leave=False):
+        for src, dst in tqdm(zip(src_filenames, dst_filenames), "Copying", len(src_filenames)):
             dirname = os.path.dirname(dst)
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
@@ -1149,7 +1144,7 @@ class FileTree(TreeModel):
         src_filenames, dst_filenames = self._find_files_with_target('Move', temp, dst_root, inclusive, overwrite, confirm, state)
         if not src_filenames:
             return
-        for src, dst in tqdm(zip(src_filenames, dst_filenames), "Moving", len(src_filenames), leave=False):
+        for src, dst in tqdm(zip(src_filenames, dst_filenames), "Moving", len(src_filenames)):
             dirname = os.path.dirname(dst)
             if not os.path.exists(dirname):
                 os.makedirs(dirname)

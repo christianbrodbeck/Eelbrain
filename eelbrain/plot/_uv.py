@@ -1110,10 +1110,25 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
         ColorBarMixin.__init__(self, data=color_obj, mappable=mappable)
         self._n_cases = n
         self._show()
+        self.x = x
+        self.y = y
 
     def _fill_toolbar(self, tb):
         LegendMixin._fill_toolbar(self, tb)
         ColorBarMixin._fill_toolbar(self, tb)
+
+    def add_diagonal(self, **kwargs):
+        """Add a diagonal to the plot.
+
+        Parameters
+        ----------
+        ...
+            :meth:`matplotlib.axes.Axes.plot` parameters.
+        """
+        v_min = max(self.x.min(), self.y.min())
+        v_max = min(self.x.max(), self.y.max())
+        for ax in self.axes:
+            ax.plot([v_min, v_max], [v_min, v_max], **kwargs)
 
 
 class Regression(EelFigure, LegendMixin):

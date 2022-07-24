@@ -2232,7 +2232,7 @@ class MneExperiment(FileTree):
                 add_bads_to_info = True
                 add_bads = True
             else:
-                raise ValueError(f"add_bads={add_bads!r}")
+                raise ValueError(f"{add_bads=}")
         else:
             add_bads_to_info = False
 
@@ -2986,7 +2986,7 @@ class MneExperiment(FileTree):
         method, make_kw, apply_kw = self._inv_params()
         stcs = []
         invs = {}
-        for subject, evoked in tqdm(ds.zip('subject', 'evoked'), "Localize", ds.n_cases, leave=False):
+        for subject, evoked in tqdm(ds.zip('subject', 'evoked'), "Localize", ds.n_cases):
             # get inv
             if subject in invs:
                 inv = invs[subject]
@@ -6266,8 +6266,13 @@ class MneExperiment(FileTree):
         """
         if subject is not None:
             if 'group' not in state:
-                state['subject'] = subject
-                subject = None
+                if subject not in self._field_values['subject'] and subject in self._groups['all']:
+                    old = self.get('group')
+                    print(f"group: {old} --> all ({subject} not in {old})")
+                    state['group'] = 'all'
+                else:
+                    state['subject'] = subject
+                    subject = None
         FileTree.set(self, match, allow_asterisk, **state)
         if subject is not None:
             FileTree.set(self, match, allow_asterisk, subject=subject)

@@ -95,6 +95,11 @@ class BoostingResult(PickleableDataClass):
         Mindelta parameter used.
     n_samples : int
         Number of samples in the input data time axis.
+    proportion_explained : float | NDVar
+        The proportion of the explained variability. Variability is caculated
+        as ``l1`` or ``l2`` norm, depending on the ``error`` that was used for
+        model fitting. For ``l2``, it corresponds to the proportion of variance
+        explained. Calculated as ``1 - (residual / variability)``.
     scale_data : bool
         Scale_data parameter used.
     y_mean : NDVar | scalar
@@ -806,7 +811,12 @@ def boosting(
     Parameters
     ----------
     y : NDVar
-        Signal to predict.
+        Signal to predict. When ``y`` contains more than one signal (e.g.,
+        multiple EEG channels), results for each signal will be computed
+        independently. Muiltiple cases along a :class:`Case` dimension are
+        treated as different trials which share a filter. For correlation fit
+        metrics, a :class:`Space` dimension is interpreted as defining a vector
+        measure.
     x : NDVar | sequence of NDVar
         Signal to use to predict ``y``. Can be sequence of NDVars to include
         multiple predictors. Time dimension must correspond to ``y``.
@@ -820,7 +830,9 @@ def boosting(
         the standard deviation (when ``error='l2'``) or the mean absolute
         value (when ``error='l1'``). Use ``'inplace'`` to save memory by scaling
         the original objects specified as ``y`` and ``x`` instead of making a 
-        copy.
+        copy. The data scale is stored in the :class:`BoostingResult:
+        :attr:`.y_mean``, :attr:`.y_scale`, :attr:`.x_mean`, and :attr:`.x_scale`
+        attributes.
     delta
         Step for changes in the kernel.
     mindelta
@@ -934,28 +946,28 @@ def boosting(
 
 
 def convolve(
-        h: np.ndarray,
-        x: np.ndarray,
-        x_pads: np.ndarray,
+        h: np.ndarray,  # (n_stims, h_n_samples)
+        x: np.ndarray,  # (n_stims, n_samples)
+        x_pads: np.ndarray,  # (n_stims,)
         h_i_start: int,
-        segments: np.ndarray = None,
+        segments: np.ndarray = None,  # (n_segments, 2)
         out: np.ndarray = None,
-):
+) -> np.ndarray:
     """h * x with time axis matching x
 
     Parameters
     ----------
-    h : array, (n_stims, h_n_samples)
+    h
         H.
-    x : array, (n_stims, n_samples)
+    x
         X.
-    x_pads : array (n_stims,)
+    x_pads
         Padding for x.
-    h_i_start : int
+    h_i_start
         Time shift of the first sample of ``h``.
-    segments : array (n_segments, 2)
+    segments
         Data segments.
-    out : array
+    out
         Buffer for predicted ``y``.
     """
     n_x, n_times = x.shape

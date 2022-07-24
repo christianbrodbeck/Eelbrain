@@ -94,6 +94,10 @@ def test_ttest():
     b1_index = ds.eval("B == 'b1'")
     a1_in_b1_index = np.logical_and(a1_index, b1_index)
     a2_in_b1_index = np.logical_and(a2_index, b1_index)
+    a1 = ds[a1_index, 'fltvar'].x
+    a2 = ds[a2_index, 'fltvar'].x
+    a1_in_b1 = ds[a1_in_b1_index, 'fltvar'].x
+    a2_in_b1 = ds[a2_in_b1_index, 'fltvar'].x
 
     # TTest1Samp
     standard = pingouin.ttest(ds['fltvar'], 0)
@@ -110,21 +114,21 @@ def test_ttest():
     assert str(res.full) == 'M = 0.40, SD = 1.20, t(79) = 2.96, p = .002'
 
     # TTestIndependent
+    cohens_d = pingouin.compute_effsize(a1, a2)
     res = test.TTestIndependent('fltvar', 'A', 'a1', 'a2', ds=ds)
     t, p = scipy.stats.ttest_ind(ds[a1_index, 'fltvar'], ds[a2_index, 'fltvar'])
     assert res.t == pytest.approx(t, 10)
     assert res.p == pytest.approx(p, 10)
     assert str(res.full) == 'a1: M = 1.00, SD = 1.02; a2: M = -0.20, SD = 1.05; t(78) = 5.10, p < .001'
+    assert res.d == cohens_d
 
     # TTestRelated
     res = test.TTestRelated('fltvar', 'A', 'a1', 'a2', 'rm', "B=='b1'", ds)
-    a1 = ds[a1_in_b1_index, 'fltvar'].x
-    a2 = ds[a2_in_b1_index, 'fltvar'].x
-    standard = pingouin.ttest(a1, a2)
-    difference = a1 - a2
-    t, p = scipy.stats.ttest_rel(a1, a2)
+    standard = pingouin.ttest(a1_in_b1, a2_in_b1)
+    difference = a1_in_b1 - a2_in_b1
+    t, p = scipy.stats.ttest_rel(a1_in_b1, a2_in_b1)
     assert_array_equal(res.difference.x, difference)
-    assert res.df == len(a1) - 1
+    assert res.df == len(a1_in_b1) - 1
     assert res.tail == 0
     assert res.t == pytest.approx(t)
     assert res.p == pytest.approx(p)
@@ -135,7 +139,7 @@ def test_ttest():
 
     res = test.TTestRelated('fltvar', 'A', 'a1', 'a2', 'rm', "B=='b1'", ds, 1)
     assert_array_equal(res.difference.x, difference)
-    assert res.df == len(a1) - 1
+    assert res.df == len(a1_in_b1) - 1
     assert res.tail == 1
     assert res.t == pytest.approx(t)
     assert res.p == pytest.approx(p / 2)
@@ -144,23 +148,23 @@ def test_ttest():
 
     res = test.TTestRelated('fltvar', 'A', 'a2', 'a1', 'rm', "B=='b1'", ds, 1)
     assert_array_equal(res.difference.x, -difference)
-    assert res.df == len(a1) - 1
+    assert res.df == len(a1_in_b1) - 1
     assert res.tail == 1
     assert res.t == pytest.approx(-t)
     assert res.p == pytest.approx(1 - p / 2)
 
     res = test.TTestRelated('fltvar', 'A', 'a1', 'a2', 'rm', "B=='b1'", ds, -1)
     assert_array_equal(res.difference.x, difference)
-    assert res.df == len(a1) - 1
+    assert res.df == len(a1_in_b1) - 1
     assert res.tail == -1
     assert res.t == pytest.approx(t)
     assert res.p == pytest.approx(1 - p / 2)
     print(res)
     print(asfmtext(res))
     # alternative argspec
-    a1 = ds.eval("fltvar[(B == 'b1') & (A == 'a1')]")
-    a2 = ds.eval("fltvar[(B == 'b1') & (A == 'a2')]")
-    res_alt = test.TTestRelated(a1, a2, tail=-1)
+    a1_in_b1 = ds.eval("fltvar[(B == 'b1') & (A == 'a1')]")
+    a2_in_b1 = ds.eval("fltvar[(B == 'b1') & (A == 'a2')]")
+    res_alt = test.TTestRelated(a1_in_b1, a2_in_b1, tail=-1)
     print(res_alt)
     assert res_alt.t == res.t
     assert res_alt.p == res.p

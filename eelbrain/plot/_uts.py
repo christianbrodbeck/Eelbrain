@@ -8,7 +8,7 @@ import matplotlib.patches
 import numpy as np
 
 from .._colorspaces import oneway_colors
-from .._data_obj import NDVarArg, CategorialArg, CellArg, IndexArg, Dataset, NDVar, cellname, longname
+from .._data_obj import NDVarArg, Case, CategorialArg, CellArg, IndexArg, Dataset, NDVar, asndvar, cellname, longname
 from .._stats.testnd import NDTest
 from . import _base
 from ._base import AxisData, EelFigure, Layout, LegendArg, LegendMixin, PlotType, PlotData, StatLayer, DataLayer, TimeSlicerEF, XAxisMixin, YLimMixin
@@ -42,8 +42,9 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         ``sem``: Standard error of the mean;
         ``2sem``: 2 standard error of the mean;
         ``ci``: 95% confidence interval;
-        ``99%ci``: 99% confidence interval.
-        ``all``: Show all traces.
+        ``99%ci``: 99% confidence interval;
+        ``sd``: standard deviation;
+        ``all``: Show all traces;
         ``none``: No variability indication.
     pool_error
         Pool the errors for the estimate of variability (default is True
@@ -78,6 +79,8 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         The lower end of the plot's y axis.
     top
         The upper end of the plot's y axis.
+    case
+        Dimension to treat as case (default is ``'case'``).
     xdim
         Dimension to plot along the x-axis (default is ``'time'``)
     xlim
@@ -164,6 +167,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             invy: bool = False,
             bottom: float = None,
             top: float = None,
+            case: str = None,
             xdim: str = None,
             xlim: Union[float, Tuple[float, float]] = None,
             clip: bool = None,
@@ -174,6 +178,15 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             pmax: float = 0.05,
             ptrend: float = 0.1,
             **kwargs):
+        if case and case != 'case':
+            if x or xax or match:
+                raise ValueError('x, xax and match cannot be specified with case')
+            y = asndvar(y, sub, ds)
+            dimnames = y.get_dimnames(first=case)
+            new_x = y.get_data(dimnames)
+            dims = y.get_dims(dimnames[1:])
+            y = NDVar(new_x, (Case, *dims))
+
         data = PlotData.from_stats(y, x, xax, match, sub, ds, (xdim,), colors, mask).for_plot(PlotType.LINE)
         xdim, = data.dims
 

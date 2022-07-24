@@ -55,7 +55,7 @@ class CodeBase:
         if i is None:
             i = self._i
         elif not isinstance(i, int):
-            raise RuntimeError(f"i={i!r}")
+            raise RuntimeError(f"{i=}")
 
         if i < 0:
             code_str = self.string

@@ -8,7 +8,7 @@ from typing import Any, Dict, Literal, Union
 
 from matplotlib.colors import to_rgb
 
-from ._utils import IS_OSX, ScreenHandler
+from ._utils import IS_OSX, IS_WINDOWS, ScreenHandler
 
 
 SUPPRESS_WARNINGS = True
@@ -19,7 +19,7 @@ CONFIG: Dict[str, Any] = {
     'show': True,
     'format': 'svg',
     'figure_background': 'white',
-    'prompt_toolkit': 'eelbrain',
+    'prompt_toolkit': 'wx' if IS_WINDOWS else 'eelbrain',
     'animate': True,
     'nice': 0,
     'tqdm': False,  # disable=CONFIG['tqdm']
