@@ -150,13 +150,13 @@ cdef double error_for_indexes_c(
 
 def boosting_runs(
         FLOAT64[:,:] y,  # (n_y, n_times)
-        FLOAT64[:,:] x,  # (n_stims, n_times)
-        FLOAT64 [:] x_pads,  # (n_stims,)
+        FLOAT64[:,:] x,  # (n_x, n_times)
+        FLOAT64 [:] x_pads,  # (n_x,)
         INT64[:,:,:] split_train,
         INT64[:,:,:] split_validate,
         INT64[:,:,:] split_train_and_validate,
-        INT64 [:] i_start_by_x,  # (n_stims,) kernel start index
-        INT64 [:] i_stop_by_x, # (n_stims,) kernel stop index
+        INT64 [:] i_start_by_x,  # (n_x,) kernel start index
+        INT64 [:] i_stop_by_x, # (n_x,) kernel stop index
         double delta,
         double mindelta,
         int error,
@@ -194,27 +194,6 @@ ctypedef struct BoostingStep:
     BoostingStep *previous
 
 
-cdef BoostingStep * boosting_step(
-        Py_ssize_t i_step,
-        Py_ssize_t i_stim,
-        Py_ssize_t i_time,
-        double delta,
-        double e_test,
-        double e_train,
-        BoostingStep *previous,
-) nogil:
-    step = <BoostingStep*> malloc(sizeof(BoostingStep))
-    step.i_step = i_step
-    step.i_stim = i_stim
-    step.i_time = i_time
-    step.delta = delta
-    step.e_test = e_test
-    step.e_train = e_train
-    step.previous = previous
-    return step
-
-
-
 ctypedef struct BoostingRunResult:
     int failed
     BoostingStep *history
@@ -244,14 +223,14 @@ cdef void free_history(
 
 cdef BoostingRunResult * boosting_run(
         FLOAT64 [:] y,  # (n_times,)
-        FLOAT64 [:,:] x,  # (n_stims, n_times)
-        FLOAT64 [:] x_pads,  # (n_stims,)
-        FLOAT64 [:,:] h,  # (n_stims, n_times_h)
+        FLOAT64 [:,:] x,  # (n_x, n_times)
+        FLOAT64 [:] x_pads,  # (n_x,)
+        FLOAT64 [:,:] h,  # (n_x, n_times_h)
         INT64[:,:] split_train,  # Training data index
         INT64[:,:] split_validate,  # Validation data index
         INT64[:,:] split_train_and_validate,  # Training and validation data index
-        INT64 [:] i_start_by_x,  # (n_stims,) kernel start index
-        INT64 [:] i_stop_by_x, # (n_stims,) kernel stop index
+        INT64 [:] i_start_by_x,  # (n_x,) kernel start index
+        INT64 [:] i_stop_by_x, # (n_x,) kernel stop index
         double delta,
         double mindelta,
         int error,
@@ -265,132 +244,120 @@ cdef BoostingRunResult * boosting_run(
         Py_ssize_t n_x_active = n_x
         Py_ssize_t n_times = x.shape[1]
         BoostingStep *step
-        BoostingStep *step_i
-        BoostingStep *history = NULL
+        BoostingStep *step_j
+        BoostingStep *history
         # buffers
-        FLOAT64* y_error = <FLOAT64*> malloc(sizeof(FLOAT64) * n_times)
-        FLOAT64[:,:] new_error
-        INT8[:,:] new_sign
-        INT8[:] x_active
+        FLOAT64 * y_error = <FLOAT64*> malloc(sizeof(FLOAT64) * n_times)
+        INT8 * x_active = <INT8*> malloc(sizeof(INT8) * n_x)
         # history
-        Py_ssize_t i_stim = -1
-        Py_ssize_t i_time = -1
-        double delta_signed = 0.
-        double new_train_error
         double best_test_error = inf
-        Py_ssize_t best_iteration = 0
+        Py_ssize_t best_step_i = -1
         int n_bad, undo
-        long argmin
         Py_ssize_t i_step, i
 
     # initialize buffers
-    with gil:
-        new_error = np.empty((n_x, n_times_h))
-        new_sign = np.empty((n_x, n_times_h), np.int8)
-        x_active = np.ones(n_x, np.int8)
-
     h[...] = 0
-    new_error[...] = inf  # ignore values outside TRF
-
+    for i in range(n_x):
+        x_active[i] = 1
     for i in range(n_times):
         y_error[i] = y[i]
+
+    # first step
+    step = <BoostingStep*> malloc(sizeof(BoostingStep))
+    step.previous = NULL
+    step.i_step = -1
+    step.i_stim = -1
+    step.i_time = -1
+    step.delta = 0
+    step.e_train = error_for_indexes_c(y_error, split_train, error)
+    history = step
 
     # pre-assign iterators
     for i_step in range(999999):
         # evaluate current h
-        e_train = error_for_indexes_c(y_error, split_train, error)
         e_test = error_for_indexes_c(y_error, split_validate, error)
-        step = boosting_step(i_step, i_stim, i_time, delta_signed, e_test, e_train, history)
-        history = step
-
-        # print(i_step, 'error:', e_test)
+        step.e_test = e_test
 
         # evaluate stopping conditions
         if e_test < best_test_error:
             # print(' ', e_test, '<', best_test_error)
             best_test_error = e_test
-            best_iteration = i_step
-        elif i_step >= 2:
-            step_i = step.previous
-            # print(' ', e_test, '>', step_i.e_test, '? (', step.i_step, step_i.i_step, ')')
-            if e_test > step_i.e_test:
-                if selective_stopping:
-                    if selective_stopping == 1:
-                        undo = 1
-                    else:
-                        # only stop if the predictor overfits n times without intermittent improvement
-                        n_bad = 1
-                        undo = 1
-                        while step_i.previous != NULL:
-                            if step_i.e_test > e_test:
-                                undo = 0
-                                break  # the error improved
-                            undo += 1
-                            if step_i.i_stim == i_stim:
-                                if step_i.e_test > step_i.previous[0].e_test:
-                                    # the same stimulus caused an error increase
-                                    n_bad += 1
-                                    if n_bad == selective_stopping:
-                                        break
-                                else:
-                                    undo = 0
+            best_step_i = step.i_step
+        elif e_test > step.previous[0].e_test and i_step >= 2:
+            step_j = step.previous
+            if selective_stopping:
+                undo = 1
+                if selective_stopping > 1:
+                    # only stop if the predictor overfits n times without intermittent improvement
+                    n_bad = 1
+                    while True:
+                        undo += 1
+                        if step_j.i_stim == step.i_stim:
+                            if step_j.e_test > step_j.previous[0].e_test:
+                                # the same stimulus caused an error increase
+                                n_bad += 1
+                                if n_bad == selective_stopping:
                                     break
-                            step_i = step_i.previous
+                            else:
+                                undo = 0
+                                break
+                        step_j = step_j.previous
+                        if step_j == NULL or step_j.e_test > e_test:
+                            undo = 0
+                            break  # the error improved
 
-                    if undo:
-                        # print(' undo')
-                        # revert changes
-                        for i in range(undo):
-                            h[step.i_stim, step.i_time] -= step.delta
-                            update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split_train_and_validate, -step.delta, step.i_time + i_start)
-                            step_i = step.previous
-                            free(step)
-                            step = step_i
-                        history = step
-                        # disable predictor
-                        x_active[i_stim] = False
-                        n_x_active -= 1
-                        if n_x_active == 0:
-                            break
-                        new_error[i_stim, :] = inf
-                # Basic
-                # -----
-                # stop the iteration if all the following requirements are met
-                # 1. more than 10 iterations are done
-                # 2. The testing error in the latest iteration is higher than that in
-                #    the previous two iterations
-                elif i_step > 10 and e_test > step_i.previous[0].e_test:
-                    # print("error(test) not improving in 2 steps")
-                    break
+                if undo:
+                    # disable predictor
+                    x_active[step.i_stim] = 0
+                    n_x_active -= 1
+                    if n_x_active == 0:
+                        break
+                    # revert changes
+                    for i in range(undo):
+                        h[step.i_stim, step.i_time] -= step.delta
+                        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split_train_and_validate, -step.delta, step.i_time + i_start)
+                        step_j = step.previous
+                        free(step)
+                        step = step_j
+                    history = step
+            # Basic
+            # -----
+            # stop the iteration if all the following requirements are met
+            # 1. more than 10 iterations are done
+            # 2. The testing error in the latest iteration is higher than that in
+            #    the previous two iterations
+            elif i_step > 10 and e_test > step_j.previous[0].e_test:
+                # print("error(test) not improving in 2 steps")
+                break
 
         # generate possible movements -> training error
-        argmin = generate_options(y_error, x, x_pads, x_active, split_train, i_start, i_start_by_x, i_stop_by_x, error, delta, new_error, new_sign)
-        i_stim = argmin // n_times_h
-        i_time = argmin % n_times_h
-        new_train_error = new_error[i_stim, i_time]
-        delta_signed = new_sign[i_stim, i_time] * delta
-        # print(new_train_error, end=', ')
+        step = <BoostingStep *> malloc(sizeof(BoostingStep))
+        step.previous = history
+        step.i_step = i_step
+        generate_options(step, y_error, x, x_pads, x_active, split_train, i_start, i_start_by_x, i_stop_by_x, error, delta, n_x)
+        history = step
 
         # If no improvements can be found reduce delta
-        if new_train_error > step.e_train:
+        if step.e_train > step.previous.e_train:
             delta *= 0.5
+            step.delta = 0
             if delta >= mindelta:
-                i_stim = i_time = -1
-                delta_signed = 0.
-                # print("new delta: %s" % delta)
+                step.i_stim = -1
+                step.i_time = -1
                 continue
             else:
                 # print("No improvement possible for training data")
                 break
 
         # abort if we're moving in circles
-        if step.delta and i_stim == step.i_stim and i_time == step.i_time and delta_signed == -step.delta:
+        if step.delta == -step.previous.delta and step.i_stim == step.previous.i_stim and step.i_time == step.previous.i_time:
+            step.delta = 0
             # print("Moving in circles")
             break
 
         # update h with best movement
-        h[i_stim, i_time] += delta_signed
-        update_error(y_error, x[i_stim], x_pads[i_stim], split_train_and_validate, delta_signed, i_time + i_start)
+        h[step.i_stim, step.i_time] += step.delta
+        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split_train_and_validate, step.delta, step.i_time + i_start)
     else:
         with gil:
             raise RuntimeError("Boosting: maximum number of iterations exceeded")
@@ -398,8 +365,8 @@ cdef BoostingRunResult * boosting_run(
     free(y_error)
 
     # reverse changes after best iteration
-    if best_iteration:
-        while step.i_step > best_iteration:
+    if best_step_i > -1:
+        while step.i_step > best_step_i:
             if step.delta:
                 h[step.i_stim, step.i_time] -= step.delta
             step = step.previous
@@ -409,30 +376,27 @@ cdef BoostingRunResult * boosting_run(
         return boosting_run_result(1, history)
 
 
-cdef Py_ssize_t generate_options(
+cdef void generate_options(
+        BoostingStep * step,
         FLOAT64 * y_error,
-        FLOAT64 [:,:] x,  # (n_stims, n_times)
-        FLOAT64 [:] x_pads,  # (n_stims,)
-        INT8 [:] x_active,  # for each predictor whether it is still used
+        FLOAT64 [:,:] x,  # (n_x, n_times)
+        FLOAT64 [:] x_pads,  # (n_x,)
+        INT8 * x_active,  # for each predictor whether it is still used
         INT64 [:,:] indexes,  # training segment indexes
         int i_start,  # kernel start index (time axis offset)
-        INT64 [:] i_start_by_x,  # (n_stims,) kernel start index
-        INT64 [:] i_stop_by_x, # (n_stims,) kernel stop index
+        INT64 [:] i_start_by_x,  # (n_x,) kernel start index
+        INT64 [:] i_stop_by_x, # (n_x,) kernel stop index
         int error,  # ID of the error function (l1/l2)
         double delta,
-        # buffers
-        FLOAT64 [:,:] new_error,  # (n_stims, n_times_trf)
-        INT8 [:,:] new_sign,  # (n_stims, n_times_trf)
+        Py_ssize_t n_x,
     ) nogil:
     cdef:
         double e_add, e_sub, e_new, x_pad
-        Py_ssize_t n_stims = new_error.shape[0]
-        Py_ssize_t n_times = new_error.shape[1]
-        Py_ssize_t i_stim, i_time, i_stim_min, i_time_min
+        Py_ssize_t i_stim, i_time, new_sign
         FLOAT64 [:] x_stim
-        double e_min = inf
 
-    for i_stim in range(n_stims):
+    step.e_train = inf
+    for i_stim in range(n_x):
         if x_active[i_stim] == 0:
             continue
         x_stim = x[i_stim]
@@ -447,19 +411,17 @@ cdef Py_ssize_t generate_options(
             i_time -= i_start
             if e_add > e_sub:
                 e_new = e_sub
-                new_sign[i_stim, i_time] = -1
+                new_sign = -1
             else:
                 e_new = e_add
-                new_sign[i_stim, i_time] = 1
-            new_error[i_stim, i_time] = e_new
+                new_sign = 1
 
             # find smallest error
-            if e_new < e_min:
-                e_min = e_new
-                i_stim_min = i_stim
-                i_time_min = i_time
-
-    return i_stim_min * n_times + i_time_min
+            if e_new < step.e_train:
+                step.e_train = e_new
+                step.i_stim = i_stim
+                step.i_time = i_time
+                step.delta = delta * new_sign
 
 
 cdef void update_error(
@@ -516,13 +478,13 @@ cdef class Step:
 
 def boosting_fit(
         FLOAT64 [:] y,  # (n_times,)
-        FLOAT64 [:,:] x,  # (n_stims, n_times)
-        FLOAT64 [:] x_pads,  # (n_stims,)
+        FLOAT64 [:,:] x,  # (n_x, n_times)
+        FLOAT64 [:] x_pads,  # (n_x,)
         INT64[:,:] split_train,
         INT64[:,:] split_validate,
         INT64[:,:] split_train_and_validate,
-        INT64 [:] i_start_by_x,  # (n_stims,) kernel start index
-        INT64 [:] i_stop_by_x, # (n_stims,) kernel stop index
+        INT64 [:] i_start_by_x,  # (n_x,) kernel start index
+        INT64 [:] i_stop_by_x, # (n_x,) kernel stop index
         double delta,
         double mindelta,
         int error,
@@ -534,9 +496,9 @@ def boosting_fit(
     ----------
     y : array (n_times,)
         Dependent signal, time series to predict.
-    x : array (n_stims, n_times)
+    x : array (n_x, n_times)
         Stimulus.
-    x_pads : array (n_stims,)
+    x_pads : array (n_x,)
         Padding for x.
     split_train
         Training data index.
