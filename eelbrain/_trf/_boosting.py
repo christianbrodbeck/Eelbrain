@@ -536,7 +536,6 @@ class Boosting:
         self.error = error
         self.delta = delta
         self.mindelta = mindelta
-        n_y = len(self.data.y)
         n_x = len(self.data.x)
         # find TRF start/stop for each x
         if isinstance(tstart, (tuple, list, np.ndarray)):
