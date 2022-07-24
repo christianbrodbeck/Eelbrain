@@ -566,9 +566,6 @@ class Boosting:
         if len(self.data.segments) == 1:
             self.n_skip = h_n_times - 1
 
-        # progress bar
-        n_splits = len(self.data.splits.splits)
-        # pbar = tqdm(desc=f"Fitting models", total=n_y * n_splits, disable=CONFIG['tqdm'], leave=False)
         self.t_fit_start = time.time()
 
         # boosting
@@ -577,7 +574,7 @@ class Boosting:
         split_train_and_validate = package_splits([split.train_and_validate for split in self.data.splits.splits])
         hs, hs_failed = opt.boosting_runs(self.data.y, self.data.x, self.data.x_pads, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta_, error_id, selective_stopping)
         self.split_results = [SplitResult(split, h, h_failed) for split, h, h_failed in zip(self.data.splits.splits, hs, hs_failed)]
-        # pbar.close()
+
         self.t_fit_done = time.time()
 
     def _get_i_tests(self):
@@ -649,9 +646,9 @@ class Boosting:
         if cross_fit is None:
             cross_fit = bool(self.data.splits.n_test)
         elif cross_fit and not self.data.splits.n_test:
-            raise ValueError(f"cross_fit={cross_fit!r} for model without cross-validation")
+            raise ValueError(f"{cross_fit=} for model without cross-validation")
         if partition_results and not cross_fit:
-            raise ValueError(f"partition_results={partition_results!r} with cross_fit={cross_fit!r}")
+            raise ValueError(f"{partition_results=} with {cross_fit=}")
 
         # fit evaluation
         if metrics is None:
@@ -669,7 +666,7 @@ class Boosting:
             else:
                 i_tests = [i_test]
         elif i_test is not None:
-            raise ValueError(f"i_test={i_test!r} without cross_fit")
+            raise ValueError(f"{i_test=} without cross_fit")
         else:
             i_tests = None
 
@@ -900,12 +897,8 @@ def boosting(
     >>> ds['a0'] = epoch_impulse_predictor('uts', 'A=="a0"', ds=ds)
     >>> res = boosting('uts', ['a0', 'a1'], 0, 0.5, partitions=10, model='A', ds=ds)
     >>> y_pred = convolve(res.h_scaled, ['a0', 'a1'], ds=ds)
-
-    Porformance might be improved by
-    `installing Intel SVML <https://numba.readthedocs.io/en/stable/user/performance-tips.html#intel-svml>`_::
-
-        $ conda install -c numba icc_rt
-
+    >>> y = ds['uts']
+    >>> plot.UTS([y-y.mean('time'), y_pred], '.case')
 
     References
     ----------
