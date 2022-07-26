@@ -1,6 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
-import numpy
 from libc.math cimport fabs
 from cython.parallel import prange
 from libc.stdlib cimport malloc, free
@@ -111,8 +110,6 @@ cdef void l2_for_delta(
             d = delta * x[i - shift]
             e_add[0] += square(y_error[i] - d)
             e_sub[0] += square(y_error[i] + d)
-
-
 
 
 def error_for_indexes(
