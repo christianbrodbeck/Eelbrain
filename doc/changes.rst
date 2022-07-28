@@ -3,6 +3,12 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.38
+-----------
+
+* :func:`boosting` optimized (as a consequence, the progress bar has been disabled).
+
+
 New in 0.37
 -----------
 
