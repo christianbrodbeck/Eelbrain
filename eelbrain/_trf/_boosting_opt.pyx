@@ -158,6 +158,7 @@ def boosting_runs(
         double mindelta,
         int error,
         int selective_stopping,
+        int num_threads,
 ):
     """Estimate multiple filters with boosting"""
     cdef:
@@ -172,7 +173,7 @@ def boosting_runs(
         Py_ssize_t i, i_y, i_split
         BoostingRunResult *result
 
-    for i in prange(n_total, nogil=True):
+    for i in prange(n_total, nogil=True, schedule='guided', num_threads=num_threads):
         i_y = i // n_splits
         i_split = i % n_splits
         result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, i_start, n_times_h)

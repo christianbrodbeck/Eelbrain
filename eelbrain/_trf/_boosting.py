@@ -33,6 +33,7 @@ import warnings
 import numba
 import numpy as np
 
+from .._config import CONFIG
 from .._data_obj import Case, Dataset, Dimension, SourceSpaceBase, NDVar, CategorialArg, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
 from .._ndvar import _concatenate_values, convolve_jit, parallel_convolve, set_connectivity, set_parc
@@ -573,10 +574,11 @@ class Boosting:
         self.t_fit_start = time.time()
 
         # boosting
+        num_threads = CONFIG['n_workers']
         split_train = package_splits([split.train for split in self.data.splits.splits])
         split_validate = package_splits([split.validate for split in self.data.splits.splits])
         split_train_and_validate = package_splits([split.train_and_validate for split in self.data.splits.splits])
-        hs, hs_failed = opt.boosting_runs(self.data.y, self.data.x, self.data.x_pads, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta_, error_id, selective_stopping)
+        hs, hs_failed = opt.boosting_runs(self.data.y, self.data.x, self.data.x_pads, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta_, error_id, selective_stopping, num_threads)
         self.split_results = [SplitResult(split, h, h_failed) for split, h, h_failed in zip(self.data.splits.splits, hs, hs_failed)]
 
         self.t_fit_done = time.time()
