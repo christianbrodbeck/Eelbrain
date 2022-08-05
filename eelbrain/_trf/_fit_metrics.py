@@ -4,7 +4,11 @@ from warnings import catch_warnings, filterwarnings
 
 import numpy as np
 from scipy.linalg import norm
-from scipy.stats import spearmanr, SpearmanRConstantInputWarning
+from scipy.stats import spearmanr
+try:
+    from scipy.stats import ConstantInputWarning  # >= 1.9
+except ImportError:
+    from scipy.stats import SpearmanRConstantInputWarning as ConstantInputWarning  # < 1.9
 
 from ._boosting_opt import error_for_indexes
 from .shared import DeconvolutionData
@@ -120,7 +124,7 @@ class RankCorrelation(Evaluator):
             y_i, y_pred_i = self._crop_y(segments, y, y_pred)
             with catch_warnings():
                 filterwarnings('ignore', "invalid value encountered", RuntimeWarning)
-                filterwarnings('ignore', category=SpearmanRConstantInputWarning)
+                filterwarnings('ignore', category=ConstantInputWarning)
                 r = spearmanr(y_i, y_pred_i)[0]
             x[i] = 0 if np.isnan(r) else r
 
