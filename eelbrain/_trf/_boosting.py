@@ -2,11 +2,7 @@
 
 Versions
 --------
-Stored in ``algorithm_version`` attribute
-
- -1. Prior to storing version
- 0. Normalize ``x`` after applying basis
- 1. Numba implementation
+Stored in ``algorithm_version`` attribute (see docstring)
 
 Profiling
 ---------
@@ -27,7 +23,7 @@ from itertools import chain, repeat
 from math import ceil
 from operator import mul
 import time
-from typing import Any, Callable, List, Literal, Union, Tuple, Sequence
+from typing import Any, Callable, List, Literal, Optional, Union, Tuple, Sequence
 import warnings
 
 import numba
@@ -118,12 +114,16 @@ class BoostingResult(PickleableDataClass):
         If :func:`boosting` is called with ``partition_results=True``, this
         attribute contains the results for the individual test paritions.
     algorithm_version : int
-        Version of the algorithm with which the model was estimated; ``-1`` for
-        results from before this attribute was added.
+        Version of the algorithm with which the model was estimated
+
+          - -1: results from before this attribute was added
+          - 0: Normalize ``x`` after applying basis
+          - 1: Numba implementation
+          - 2: Cython multiprocessing implementation (Eelbrain 0.38)
     """
     # basic parameters
-    y: str
-    x: Union[str, Tuple[str]]
+    y: Optional[str]
+    x: Union[Optional[str], Tuple[Optional[str]]]
     tstart: Union[float, Tuple[float, ...]]
     tstop: Union[float, Tuple[float, ...]]
     scale_data: bool

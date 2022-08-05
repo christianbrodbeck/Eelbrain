@@ -1266,7 +1266,11 @@ class EffectList(list):
 
 class Named:
 
-    def __init__(self, name, info):
+    def __init__(
+            self,
+            name: str = None,
+            info: Dict = None,
+    ):
         self.info = {} if info is None else dict(info)
         self._name = name
 
