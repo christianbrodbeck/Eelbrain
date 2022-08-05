@@ -6,7 +6,7 @@ import numpy as np
 from scipy.linalg import norm
 from scipy.stats import spearmanr, SpearmanRConstantInputWarning
 
-from ._boosting_opt import l1, l2
+from ._boosting_opt import error_for_indexes
 from .shared import DeconvolutionData
 
 
@@ -68,7 +68,7 @@ class L1(Evaluator):
     ):
         err = y - y_pred
         for x, segments in zip(self.xs, self.segments):
-            x[i] = l1(err, segments)
+            x[i] = error_for_indexes(err, segments, 1)
 
 
 class L2(Evaluator):
@@ -83,7 +83,7 @@ class L2(Evaluator):
     ):
         err = y - y_pred
         for x, segments in zip(self.xs, self.segments):
-            x[i] = l2(err, segments)
+            x[i] = error_for_indexes(err, segments, 2)
 
 
 class Correlation(Evaluator):
