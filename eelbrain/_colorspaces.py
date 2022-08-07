@@ -12,8 +12,9 @@ if logger.level == 0:  # otherwise it was probably set by user (DEBUG=10)
 
 from colormath.color_objects import LCHabColor, sRGBColor
 from colormath.color_conversions import convert_color
+import matplotlib
 from matplotlib.colors import ListedColormap
-from matplotlib.cm import LUTSIZE, register_cmap, get_cmap
+from matplotlib.cm import register_cmap, get_cmap
 from matplotlib.colors import LinearSegmentedColormap, to_rgb, to_rgba
 import numpy as np
 
@@ -369,15 +370,13 @@ def two_step_colormap(left_max, left, center='transparent', right=None, right_ma
 def pigtailed_cmap(cmap, swap_order=('green', 'red', 'blue')):
     # nilearn colormaps with neutral middle
     orig = get_cmap(cmap)._segmentdata
-    f = ((LUTSIZE - 1) // 2) / LUTSIZE
     cdict = {
-        'green': [(f * (1 - p), *c) for p, *c in reversed(orig[swap_order[0]])],
-        'blue': [(f * (1 - p), *c) for p, *c in reversed(orig[swap_order[1]])],
-        'red': [(f * (1 - p), *c) for p, *c in reversed(orig[swap_order[2]])],
+        'green': [(0.5 * (1 - p), *c) for p, *c in reversed(orig[swap_order[0]])],
+        'blue': [(0.5 * (1 - p), *c) for p, *c in reversed(orig[swap_order[1]])],
+        'red': [(0.5 * (1 - p), *c) for p, *c in reversed(orig[swap_order[2]])],
     }
-    start = 1 - f * 0.5
     for color in ('red', 'green', 'blue'):
-        cdict[color].extend((start + f * p, *c) for p, *c in orig[color])
+        cdict[color].extend((0.5 * (1 + p), *c) for p, *c in orig[color])
     return cdict
 
 
@@ -615,10 +614,12 @@ def make_cmaps():
     register_cmap(cmap=cmap)
 
     # Nilearn cmaps
-    cmap = LinearSegmentedColormap('cold_hot', pigtailed_cmap('hot'), LUTSIZE)
-    register_cmap(cmap=cmap)
-    cmap = LinearSegmentedColormap('cold_white_hot', pigtailed_cmap('hot_r'), LUTSIZE)
-    register_cmap(cmap=cmap)
+    if 'cold_hot' not in matplotlib.colormaps:
+        cmap = LinearSegmentedColormap('cold_hot', pigtailed_cmap('hot'))
+        register_cmap(cmap=cmap)
+    if 'cold_white_hot' not in matplotlib.colormaps:
+        cmap = LinearSegmentedColormap('cold_white_hot', pigtailed_cmap('hot_r'))
+        register_cmap(cmap=cmap)
 
 
 make_cmaps()
