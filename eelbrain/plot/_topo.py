@@ -249,6 +249,8 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         Size of the markers (see :func:`matplotlib.pyplot.scatter`).
     marker
         Marker shape (see :func:`matplotlib.pyplot.scatter`).
+    axtitle
+        Title for the individual axes. The default is the time bin center.
     ...
         Also accepts :ref:`general-layout-parameters`.
 
@@ -288,6 +290,8 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
             mcolor: Union[ColorArg, Sequence[ColorArg]] = None,
             msize: Union[float, Sequence[float]] = 20,
             marker: Union[str, matplotlib.markers.MarkerStyle] = 'o',
+            # layout
+            axtitle: Union[bool, Sequence[str]] = True,
             **kwargs,
     ):
         data = PlotData.from_args(y, ('sensor', 'time'), xax, ds, sub)
@@ -300,7 +304,8 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         time = bin_data.y0.get_dim('time')
         n_bins = len(time)
         n_rows = bin_data.n_plots
-        layout = Layout(n_bins * n_rows, 1, 1.5, tight=False, nrow=n_rows, ncol=n_bins, **kwargs)
+        kwargs.setdefault('tight', False)
+        layout = Layout(n_bins * n_rows, 1, 1.5, nrow=n_rows, ncol=n_bins, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._plots.extend(repeat(None, n_bins * n_rows))
 
@@ -311,7 +316,12 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
                 ax = self.axes[i]
                 self._plots[i] = _ax_topomap(ax, layers, clip, clip_distance, sensors, sensorlabels, mark, mcolor, msize, marker, proj, res, im_interpolation, None, self._vlims, self._cmaps, self._contours, interpolation, head_radius, head_pos)
 
-        self._set_axtitle((str(t) for t in time), axes=self.axes[:len(time)])
+        # Time labels
+        if axtitle is True:
+            fmt, _, _ = time._axis_format(True, True)
+            self._set_axtitle((fmt(t) for t in time), axes=self.axes[:len(time)])
+        elif axtitle:
+            self._set_axtitle(axtitle)
         TopoMapKey.__init__(self, self._topo_data)
         SensorMapMixin.__init__(self, [h.sensors for h in self._plots])
         self._show()
