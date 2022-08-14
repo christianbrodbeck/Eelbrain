@@ -19,7 +19,7 @@ from ._data_obj import (
 
 
 def difference(
-        y: Union[NDVar, VarArg],
+        y: Union[NDVar, VarArg, Sequence[Union[NDVar, VarArg]]],
         x: CategorialArg,
         c1: CellArg,
         c0: CellArg,
@@ -32,7 +32,7 @@ def difference(
     Parameters
     ----------
     y
-        Dependent variable.
+        One or several variables for which to calculate the difference.
     x
         Model for subtraction, providing categories to compute ``c1 - c0``.
     c1
@@ -78,18 +78,28 @@ def difference(
         ... 'subject', ds=diff)
 
     """
-    ct = Celltable(y, x, match, sub, (c1, c0), ds=ds)
-    if not ct.all_within:
-        raise ValueError("Design is not fully balanced")
-    out = Dataset()
-    groups = ct.groups[c1]
-    if isinstance(groups, Interaction):
-        for x in groups.base:
-            out.add(x)
+    if isinstance(y, (str, Var, NDVar)):
+        ys = [y]
+    elif len(y) == 0:
+        raise ValueError(f'{y=}')
     else:
-        out.add(groups)
-    yname = y if isinstance(y, str) else ct.y.name
-    out[yname] = ct.data[c1] - ct.data[c0]
+        ys = y
+
+    out = None
+    for yi in ys:
+        ct = Celltable(yi, x, match, sub, (c1, c0), ds=ds)
+        if not ct.all_within:
+            raise ValueError("Design is not fully balanced")
+        if out is None:
+            out = Dataset()
+            groups = ct.groups[c1]
+            if isinstance(groups, Interaction):
+                for x in groups.base:
+                    out.add(x)
+            else:
+                out.add(groups)
+        yname = yi if isinstance(yi, str) else ct.y.name
+        out[yname] = ct.data[c1] - ct.data[c0]
     # Transfer other variables in ds that are compatible with the rm-structure
     if ds is not None:
         out.update(ct._align_ds(ds, True, out.keys(), isuv))
