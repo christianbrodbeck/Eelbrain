@@ -1,5 +1,5 @@
 # optimized statistics functions
-# cython: language_level=3, boundscheck=False, wraparound=False
+# cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 from cython.view cimport array as cvarray
 from libc.stdlib cimport malloc, free
 cimport numpy as np
@@ -30,8 +30,8 @@ def anova_full_fmaps(
     e_ms : array (n_effects, n_effects)
         Each row represents the expected MS of one effect.
     """
-    cdef unsigned long i
-    cdef size_t df, i_beta, i_effect, i_effect_ms, i_start, i_stop, i_fmap, case
+    cdef Py_ssize_t i, i_beta, i_effect, i_effect_ms, i_start, i_stop, case
+    cdef size_t df, i_fmap
     cdef double v, ss, ms_denom
 
     cdef unsigned long n_tests = y.shape[1]
