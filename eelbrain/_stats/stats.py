@@ -27,7 +27,7 @@ class DispersionSpec:
             return string
         m = re.match(r"^([.\d]*)(%?)(CI|SEM|SD)$", string.upper())
         if m is None:
-            raise ValueError(f"{string!r}: invalid dispersion specification")
+            raise ValueError(f"{string!r}: invalid dispersion specification (available: CI, SEM, SD)")
         multiplier, perc, measure = m.groups()
         if multiplier:
             multiplier = float(multiplier)

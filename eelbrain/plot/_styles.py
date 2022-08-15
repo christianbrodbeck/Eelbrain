@@ -277,6 +277,8 @@ def colors_for_oneway(
         Use `unambiguos colors <https://jfly.uni-koeln.de/html/color_blind/
         #pallet>`_. If ``True``, choose the ``n`` first colors; use a list of
         ``int`` to pick specific colors. Other parameters are ignored.
+        For resources for constructing custom color palettes, see also:
+        https://davidmathlogic.com/colorblind/.
 
     Returns
     -------

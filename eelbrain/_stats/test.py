@@ -458,7 +458,7 @@ def ttest(
         title: str = '{desc}',
         ds: Dataset = None,
         tail: Literal[-1, 0, 1] = 0,
-):
+) -> fmtxt.Table:
     """T-tests for one or more samples
 
     parameters

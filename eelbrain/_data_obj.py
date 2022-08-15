@@ -1205,7 +1205,7 @@ def combine(
                     sub_items.append(item)
                 else:
                     sub_items.append(item.sub(**idx))
-        elif not check_dims and all(dims_stackable(dims_i, dims, True) for dims_i in other_dims):
+        elif check_dims and all(dims_stackable(dims_i, dims, True) for dims_i in other_dims):
             raise DimensionMismatchError.from_dims_list("Some NDVars have mismatching dimensions; set check_dims=False to ignore non-critical differences (e.g. connectivity)", all_dims, check_dims)
         else:
             raise DimensionMismatchError.from_dims_list("Some NDVars have mismatching dimensions; use to_list=True to combine them into a list, or dim_intersection=True to discard elements not present in all", all_dims, check_dims)
@@ -9413,7 +9413,7 @@ class Sensor(Dimension):
             Boolean :class:`NDVar` indexing selected channels.
         """
         if (include is None) == (exclude is None):
-            raise TypeError(f"inclide={include!r}, exclude={exclude!r}: Need to specify exactly one of include, exclude")
+            raise TypeError(f"{include=}, {exclude=}: Need to specify exactly one of include, exclude")
         elif include is not None:
             if isinstance(include, str):
                 include = [include]
@@ -9456,7 +9456,7 @@ class Sensor(Dimension):
         elif missing == 'return':
             return sorted(valid_chs), missing_chs
         else:
-            raise ValueError(f"missing={missing!r}")
+            raise ValueError(f"{missing=}")
 
     def intersect(self, dim, check_dims=True):
         """Create a Sensor dimension that is the intersection with dim
