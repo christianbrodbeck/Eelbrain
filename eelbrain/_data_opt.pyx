@@ -1,11 +1,15 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-# cython: language_level=3, boundscheck=False, wraparound=False
+# cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 
-from libc.math cimport exp, sqrt
+from libc.math cimport exp, sqrt, M_PI
 import numpy as np
 
+cimport numpy as np
 
-def gaussian_smoother(const double[:, :] dist, double std):
+ctypedef np.float64_t FLOAT64
+
+
+def gaussian_smoother(FLOAT64[:,:] dist, double std):
     """Create a gaussian smoothing matrix
 
     Parameters
@@ -21,15 +25,16 @@ def gaussian_smoother(const double[:, :] dist, double std):
     kernel : array (float64)
         Gaussian smoothing kernel, with same shape as dist.
     """
-    cdef size_t source, target
-    cdef long n_vertices = len(dist)
-    cdef double weight, target_sum
-    cdef double a = 1. / (std * sqrt(2 * np.pi))
+    cdef:
+        Py_ssize_t source, target
+        Py_ssize_t n_vertices = len(dist)
+        double weight, target_sum
+        double a = 1. / (std * sqrt(2 * M_PI))
+        FLOAT64[:,:] out = np.empty((n_vertices, n_vertices))
 
     if dist.shape[1] != n_vertices:
         raise ValueError(f"dist needs to be rectangular, got shape {dist.shape}")
 
-    out = np.empty((n_vertices, n_vertices), np.double)
     for target in range(n_vertices):
         target_sum = 0
         for source in range(n_vertices):
@@ -44,4 +49,4 @@ def gaussian_smoother(const double[:, :] dist, double std):
         for source in range(n_vertices):
             out[target, source] /= target_sum
 
-    return out
+    return np.asarray(out)
