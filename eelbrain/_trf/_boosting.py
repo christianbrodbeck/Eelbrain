@@ -455,6 +455,12 @@ class BoostingResult(PickleableDataClass):
                 if not all(v is not None for v in values):
                     raise ValueError(f'partition_results avaiable for some but not all part-results')
                 new_value = [cls._eelbrain_concatenate(p_results) for p_results in zip(*values)]
+            elif field.name == 'algorithm_version':
+                values = set(values)
+                if len(values) == 1:
+                    new_value = values.pop()
+                else:
+                    new_value = tuple(sorted(values))
             elif any(v is None for v in values):
                 new_value = None
             else:
