@@ -3364,6 +3364,7 @@ class MneExperiment(FileTree):
             epoch: str = None,
             add_bads: bool = True,
             return_data: bool = False,
+            average_reference: bool = False,
             **state,
     ) -> Union[NDVar, Dataset, Tuple[NDVar, NDVar]]:
         """Load sensor neighbor correlation
@@ -3383,6 +3384,8 @@ class MneExperiment(FileTree):
         return_data
             Return the data from which the correlation is calculated. Only
             possible when loading neighbor-correlation for a single subject.
+        average_reference
+            Apply average reference before computing correlation.
 
         Returns
         -------
@@ -3412,6 +3415,8 @@ class MneExperiment(FileTree):
             data = concatenate(ds[key])
         else:
             data = self.load_raw(ndvar=True, add_bads=add_bads, **state)
+        if average_reference:
+            data -= data.mean('sensor')
         n_corr = neighbor_correlation(data)
         if return_data:
             return data, n_corr
