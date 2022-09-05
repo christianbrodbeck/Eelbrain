@@ -2,8 +2,8 @@
 """
 .. _exa-generate-ndvar:
 
-Generate :class:`NDVar` (with artificial data)
-==============================================
+Generate NDVar (with artificial data)
+=====================================
 
 .. currentmodule:: eelbrain
 

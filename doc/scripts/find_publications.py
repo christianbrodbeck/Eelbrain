@@ -6,7 +6,7 @@ Reuires https://github.com/maenu/scholar.py::
 
 !! Run from interpreter to retain data for debugging access
 
-run find_publications.py, then copy-paste download function
+run find_publications.py with command
 
 """
 from argparse import ArgumentParser
@@ -31,6 +31,9 @@ SELECTION_PATH = DIR / 'selection.json'
 BIBTEX_CACHE = DIR / 'bibtex.pickle'
 # Parse
 DST = DIR.parent / 'publications.bib'
+OBSOLETE = """
+Qm4WZWrznhEJ
+""".split()
 BIORXIV_OBSOLETE = """
 10.1101/326785
 2018/10/09/439158
@@ -161,6 +164,8 @@ def parse():
     unseen_keys = set(bib.entries.keys())
     for result_id, raw_bibtex in bibtex_entries.items():
         if not selection.get(result_id, False):
+            continue
+        elif result_id in OBSOLETE:
             continue
         raw_bibtex = re.sub(rb'[^\x00-\x7F]+', b' ', raw_bibtex)
         # parse entry

@@ -23,14 +23,36 @@ Style
 
 In order to produce multiple plots with consistent style it is useful to set
 some :mod:`matplotlib` options globally. One way to do this is by updating
-``rcParams`` inside a script, e.g.::
+:attr:`matplotlib.rcParams` at the beginning of a script/notebook, e.g.::
 
-    import matplotlib
+    from matplotlib import pyplot
 
-    matplotlib.rcParams['font.family'] = 'sans-serif'
-    matplotlib.rcParams['font.size'] = 9
-    # The size of saved figures depends on the figure size (w, h) and DPI
-    matplotlib.rcParams['savefig.dpi'] = 300
+    FONT = 'Arial'
+    FONT_SIZE = 8
+    LINEWIDTH = 0.5
+    pyplot.rcParams.update({
+        'figure.dpi': 150,
+        'savefig.dpi': 300,
+        'savefig.transparent': True,
+        # Font
+        'font.family': 'sans-serif',
+        'font.sans-serif': FONT,
+        'font.size': FONT_SIZE,
+        'axes.labelsize': FONT_SIZE,
+        'axes.titlesize': FONT_SIZE,
+        'xtick.labelsize': FONT_SIZE,
+        'ytick.labelsize': FONT_SIZE,
+        'legend.fontsize': FONT_SIZE,
+        # line width
+        'axes.linewidth': LINEWIDTH,
+        'grid.linewidth': LINEWIDTH,
+        'lines.linewidth': LINEWIDTH,
+        'patch.linewidth': LINEWIDTH,
+        'xtick.major.width': LINEWIDTH,
+        'xtick.minor.width': LINEWIDTH,
+        'ytick.major.width': LINEWIDTH,
+        'ytick.minor.width': LINEWIDTH,
+    })
 
 
 Plot sizes

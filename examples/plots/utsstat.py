@@ -15,8 +15,8 @@
 """
 .. _exa-utsstat:
 
-UTS-statistics (``UTSStat``)
-============================
+UTS-statistics (plot.UTSStat)
+=============================
 
 """
 # sphinx_gallery_thumbnail_number = 5
