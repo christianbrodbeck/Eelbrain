@@ -121,7 +121,15 @@
         "link": "https://search.proquest.com/openview/671784502734dbd4074d0b4f97d26a97/1?pq-origsite=gscholar&cbl=18750&diss=y",
         "snippet": "\u2026 Eelbrain Eelbrain is a python-based toolbox for statistical analysis of EEG and MEG signals \u2026 Eelbrain package has a Var class that works as a \u2026",
         "publication_info": {
-            "summary": "MH Anowar - 2020 - search.proquest.com"
+            "summary": "MH Anowar - 2020 - search.proquest.com",
+            "authors": [
+                {
+                    "name": "MH Anowar",
+                    "link": "https://scholar.google.com/citations?user=uxVbaYYAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=uxVbaYYAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "uxVbaYYAAAAJ"
+                }
+            ]
         }
     },
     "6HkSecOndzMJ": {
@@ -379,6 +387,12 @@
             "summary": "F Tezcan, H Weissbart, AE Martin - bioRxiv, 2022 - biorxiv.org",
             "authors": [
                 {
+                    "name": "F Tezcan",
+                    "link": "https://scholar.google.com/citations?user=hzSH8LkAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=hzSH8LkAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "hzSH8LkAAAAJ"
+                },
+                {
                     "name": "AE Martin",
                     "link": "https://scholar.google.com/citations?user=54_vS5gAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=54_vS5gAAAAJ&engine=google_scholar_author&hl=en",
@@ -569,7 +583,7 @@
         "link": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9393379/",
         "snippet": "Voice pitch carries linguistic and non-linguistic information. Previous studies have described cortical tracking of voice pitch in clean speech, with responses reflecting both pitch strength \u2026",
         "publication_info": {
-            "summary": "C Brodbeck, JZ Simon - Frontiers in Neuroscience, 2022 - ncbi.nlm.nih.gov",
+            "summary": "C Brodbeck, JZ Simon - Frontiers in neuroscience, 2022 - ncbi.nlm.nih.gov",
             "authors": [
                 {
                     "name": "C Brodbeck",
@@ -984,7 +998,7 @@
         "link": "https://research.iusspavia.it/handle/20.500.12076/5781",
         "snippet": "\u2026 We used a 157-channel MEG system (KIT, Japan) for recording, and MEG-Python and Eelbrain packages for the MEG analyses. As our primary target was the M170, the region of \u2026",
         "publication_info": {
-            "summary": "P Lorusso, MP Greco, C Chesi\u2026 - \u2026 , 25th Architectures and \u2026, 2019 - research.iusspavia.it",
+            "summary": "P Lorusso, M Greco, C Chesi\u2026 - The 25th Architectures \u2026, 2019 - research.iusspavia.it",
             "authors": [
                 {
                     "name": "P Lorusso",
@@ -1573,6 +1587,15 @@
                     "author_id": "LLq-Ti4AAAAJ"
                 }
             ]
+        }
+    },
+    "sn9W_cUDRqQJ": {
+        "title": "Neural and developmental bases of processing language outside the here-and-now",
+        "result_id": "sn9W_cUDRqQJ",
+        "link": "https://search.proquest.com/openview/bae98a7cd0e7c6bbb436ed364ed00e8e/1.pdf?pq-origsite=gscholar&cbl=18750&diss=y",
+        "snippet": "This dissertation investigates the neural bases and development of displacement, which is a language property that allows us to communicate about situations outside the here-and-now\u2026",
+        "publication_info": {
+            "summary": "MA Tulling - 2022 - search.proquest.com"
         }
     },
     "t5g817um_mQJ": {
