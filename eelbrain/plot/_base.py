@@ -76,7 +76,6 @@ import __main__
 
 from collections.abc import Iterable
 from collections import defaultdict
-from copy import copy
 from dataclasses import dataclass, replace
 from enum import Enum, auto
 from functools import cached_property, reduce
@@ -198,8 +197,8 @@ DEFAULT_CMAPS = {
     't': 'xpolar',
 }
 
-INITIAL_RC = mpl.rcParams.copy()
-del INITIAL_RC['backend']
+INITIAL_RC = dict(mpl.rcParams)
+INITIAL_RC.pop('backend', None)
 
 
 def reset_rc():
