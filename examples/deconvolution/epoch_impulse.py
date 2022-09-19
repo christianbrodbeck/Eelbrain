@@ -15,7 +15,7 @@ experiment, but not intended as a physiologically realistic simulation.
 # sphinx_gallery_thumbnail_number = 2
 from eelbrain import *
 
-ds = datasets.simulate_erp()
+ds = datasets.simulate_erp(snr=1)
 print(ds.summary())
 
 ###############################################################################
@@ -42,7 +42,7 @@ cloze_code = Var.from_dict(ds['cloze_cat'], {'high': 0, 'low': 1})
 low_cloze = epoch_impulse_predictor('eeg', cloze_code, ds=ds, name='low_cloze')
 
 # plot the predictors for each trial
-plot.UTS([any_word, low_cloze], '.case')
+p = plot.UTS([any_word, low_cloze], '.case', stem=True)
 
 ###############################################################################
 # Estimate response functions for these two predictors. Based on the coding,
@@ -51,3 +51,25 @@ plot.UTS([any_word, low_cloze], '.case')
 
 fit = boosting('eeg', [any_word, low_cloze], 0, 0.5, basis=0.050, model='cloze_cat', ds=ds, partitions=2, delta=0.01)
 p = plot.TopoButterfly(fit.h, xlim=(-0.100, 0.600), t=0.400)
+
+###############################################################################
+# Continuous coding
+# -----------------
+# Impulse predictors can similarly accommodate continuous variables:
+
+# effect code for cloze (1 for low cloze, -1 for high cloze)
+n_chars = epoch_impulse_predictor('eeg', 'n_chars', ds=ds, name='n_chars')
+surprisal = epoch_impulse_predictor('eeg', '-log2(cloze)', ds=ds, name='surprisal')
+
+# plot the predictors for each trial
+p = plot.UTS([n_chars, surprisal, any_word], '.case', stem=True)
+
+###############################################################################
+# Estimate response functions. Based on the coding, ``any_word`` reflects the
+# hypothetical response to a words with 0 characters and 0 surprisal, whereas
+# the two other predictors reflect the change in response by ``n_chars`` and
+# surprisal:
+
+fit = boosting('eeg', [any_word, n_chars, surprisal], 0, 0.5, basis=0.050, model='cloze_cat', ds=ds, partitions=2, delta=0.01)
+p = plot.TopoButterfly(fit.h, xlim=(-0.100, 0.600), t=0.400)
+

@@ -70,13 +70,14 @@ def simulate_erp(
     # Generate timing
     n400_timecourse = gaussian(0.400, 0.034, time)
     # Put all the dimensions together to simulate the EEG signal
-    signal = (1 - cloze) * n400_timecourse * n400_topo
+    surprisal = -cloze.log(2)
+    signal = surprisal * 0.25 * n400_timecourse * n400_topo
 
     # add early responses:
     # 130 ms
     tc = gaussian(0.130, 0.025, time)
     topo = _topo(sensor, 'O1') + _topo(sensor, 'O2') - 0.5 * _topo(sensor, 'Cz')
-    signal += n_chars * 0.5 * tc * topo
+    signal += (2 + n_chars * 0.25) * tc * topo
     # 195 ms
     amp = Var(rng.normal(0.8, 1, n_trials))
     tc = gaussian(0.195, 0.015, time)
