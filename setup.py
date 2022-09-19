@@ -60,7 +60,6 @@ extensions = [
     Extension('eelbrain._trf._boosting_opt', [f'eelbrain/_trf/_boosting_opt{ext}'], **open_mp, **args),
     Extension('eelbrain._stats.connectivity_opt', [f'eelbrain/_stats/connectivity_opt{ext}'], **args),
     Extension('eelbrain._stats.opt', [f'eelbrain/_stats/opt{ext}'], **args),
-    Extension('eelbrain._stats.error_functions', [f'eelbrain/_stats/error_functions{ext}'], **args),
     Extension('eelbrain._stats.vector', [f'eelbrain/_stats/vector{ext_cpp}'], include_dirs=['dsyevh3C'], **args),
 ]
 if cythonize:
