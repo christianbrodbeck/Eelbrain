@@ -5614,6 +5614,10 @@ class Datalist(list):
     def __add__(self, other):
         return Datalist(super(Datalist, self).__add__(other), fmt=self._fmt)
 
+    def __sub__(self, other):
+        assert len(other) == len(self)
+        return Datalist([s - o for s, o in zip(self, other)], self.name, self._fmt)
+
     def aggregate(
             self,
             x: CategorialArg,
