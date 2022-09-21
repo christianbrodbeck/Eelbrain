@@ -102,7 +102,7 @@ import fnmatch
 from functools import cached_property, partial
 from itertools import chain, combinations, product, repeat, zip_longest
 from keyword import iskeyword
-from math import ceil, floor, log
+from math import ceil, floor, isnan, log
 from numbers import Integral, Number
 from pathlib import Path
 import pickle
@@ -5724,14 +5724,14 @@ def cases_arg(cases, n_cases) -> Iterable:
         if cases < 1:
             cases = n_cases + cases
             if cases < 0:
-                raise ValueError(f"cases={cases}: Can't get table for fewer than 0 cases")
+                raise ValueError(f"{cases=}: Can't get table for fewer than 0 cases")
         else:
             cases = min(cases, n_cases)
         return range(cases)
     elif isinstance(cases, Iterable):
         return cases
     else:
-        raise TypeError(f"cases={cases}")
+        raise TypeError(f"{cases=}")
 
 
 class Dataset(dict):
@@ -6161,9 +6161,22 @@ class Dataset(dict):
                 data[key] = pandas.Categorical.from_codes(column.x, categories)
         return pandas.DataFrame(data)
 
-    def as_table(self, cases=0, fmt='%.6g', sfmt='%s', sort=False, header=True,
-                 midrule=False, count=False, title=None, caption=None,
-                 ifmt='%s', bfmt='%s', lfmt=False):
+    def as_table(
+            self,
+            cases: Union[int, Iterable[int]] = 0,
+            fmt: str = '%.6g',
+            sfmt: Optional[str] = '%s',
+            sort: bool = False,
+            header: bool = True,
+            midrule: bool = False,
+            count: bool = False,
+            title: str = None,
+            caption: str = None,
+            ifmt: str = '%s',
+            bfmt: str = '%s',
+            lfmt: bool = False,
+            nan: str = None,
+    ):
         r"""
         Create an fmtxt.Table containing all Vars and Factors in the Dataset.
 
@@ -6171,31 +6184,33 @@ class Dataset(dict):
 
         Parameters
         ----------
-        cases : int | iterator of int
+        cases
             Cases to include (int includes that many cases from the beginning,
             0 includes all; negative number works like negative indexing).
-        fmt : str
+        fmt
             Format string for float variables (default ``'%.6g'``).
-        sfmt : str | None
+        sfmt
             Formatting for strings (None -> code; default ``'%s'``).
-        sort : bool
+        sort
             Sort the columns alphabetically.
-        header : bool
+        header
             Include the varibale names as a header row.
-        midrule : bool
+        midrule
             print a midrule after table header.
-        count : bool
+        count
             Add an initial column containing the case number.
-        title : None | str
+        title
             Title for the table.
-        caption : None | str
+        caption
             Caption for the table (default is the Dataset's caption).
-        ifmt : str
+        ifmt
             Formatting for integers (default ``'%s'``).
-        bfmt : str
+        bfmt
             Formatting for booleans (default ``'%s'``).
-        lfmt : bool
+        lfmt
             Include Datalists.
+        nan
+            Label to write for NaN.
         """
         cases = cases_arg(cases, self.n_cases)
         if cases is None:
@@ -6207,45 +6222,41 @@ class Dataset(dict):
         if caption is None:
             caption = self._caption
 
-        values = [self[key] for key in keys]
-        fmts = []
-        for v in values:
-            if isinstance(v, Factor):
-                fmts.append(sfmt)
-            elif isintvar(v):
-                fmts.append(ifmt)
-            elif isboolvar(v):
-                fmts.append(bfmt)
-            elif isdatalist(v):
-                fmts.append('dl')
+        columns = {}
+        if count:
+            columns['#'] = range(self.n_cases)
+        for key in keys:
+            data_obj = self[cases, key]
+            if isinstance(data_obj, Factor):
+                if sfmt is None:
+                    columns[key] = data_obj.x
+                elif sfmt == '%s':
+                    columns[key] = data_obj
+                else:
+                    columns[key] = [sfmt % v for v in data_obj]
+            elif isdatalist(data_obj):
+                columns[key] = [data_obj._item_repr(v) for v in data_obj]
             else:
-                fmts.append(fmt)
+                if isintvar(data_obj):
+                    fmt_ = ifmt
+                elif isboolvar(data_obj):
+                    fmt_ = bfmt
+                else:
+                    if nan is not None:
+                        columns[key] = [nan if isnan(v) else fmtxt.Number(v, fmt=fmt) for v in data_obj]
+                        continue
+                    fmt_ = fmt
+                columns[key] = [fmtxt.Number(v, fmt=fmt_) for v in data_obj]
 
-        columns = 'l' * (len(keys) + count)
-        table = fmtxt.Table(columns, True, title, caption)
-
+        table = fmtxt.Table('l' * len(columns), True, title, caption)
         if header:
-            if count:
-                table.cell('#')
-            for name in keys:
+            for name in columns:
                 table.cell(name)
-
             if midrule:
                 table.midrule()
 
-        for i in cases:
-            if count:
-                table.cell(i)
-
-            for v, fmt_ in zip(values, fmts):
-                if fmt_ is None:
-                    table.cell(v.x[i])
-                elif fmt_ == 'dl':
-                    table.cell(v._item_repr(v[i]))
-                elif fmt_.endswith(('r', 's')):
-                    table.cell(fmt_ % v[i])
-                else:
-                    table.cell(fmtxt.Number(v[i], fmt=fmt_))
+        for row in zip(*columns.values()):
+            table.cells(*row)
 
         return table
 
@@ -6794,31 +6805,37 @@ class Dataset(dict):
         table = self.as_table(fmt=fmt, header=header, midrule=midrule)
         table.save_tex(path)
 
-    def save_txt(self, path=None, fmt='%s', delimiter='\t', header=True, delim=None):
+    def save_txt(
+            self,
+            path: PathArg = None,
+            fmt: str = '%s',
+            delimiter: str = '\t',
+            header: bool = True,
+            nan: str = None,
+    ):
         """Save the Dataset as text file.
 
         Parameters
         ----------
-        path : str
+        path
             Target file name (by default, a Save As dialog is displayed). If
             ``path`` is missing an extension, ``'.txt'`` is appended.
-        fmt : format string
+        fmt
             Formatting for scalar values.
-        delimiter : str
+        delimiter
             Column delimiter (default is tab).
-        header : bool
+        header
             write the variables' names in the first line
+        nan
+            Label to write for NaN.
         """
-        if delim is not None:
-            warn("the delim parameter to Dataset.save_txt() is deprecated and will be removed after Eelbrain 0.31; use delimiter instead", DeprecationWarning)
-            delimiter = delim
         if path is None:
             path = ui.ask_saveas(f"Save {self.name or 'Dataset'} as Text", "", [_tsv_wildcard], defaultFile=self.name)
         path = Path(path)
         if not path.suffix:
             path = path.with_suffix('.txt')
 
-        table = self.as_table(fmt=fmt, header=header)
+        table = self.as_table(fmt=fmt, header=header, nan=nan)
         table.save_tsv(path, delimiter, fmt)
 
     def save_pickled(self, path=None):
