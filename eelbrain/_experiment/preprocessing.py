@@ -214,8 +214,6 @@ class RawSource(RawPipe):
         return True
 
     def _link(self, name, pipes, root, raw_dir, cache_dir, log):
-        if name != 'raw':
-            raise NotImplementedError("RawSource with name {name!r}: the raw source must be called 'raw'")
         path = join(raw_dir, self.filename)
         if self.filename.endswith('-raw.fif'):
             head = path[:-8]
@@ -942,11 +940,8 @@ def assemble_pipeline(raw_dict, raw_dir, cache_path, root, sessions, log):
                 if params:
                     raise DefinitionError(f"Unused parameters in raw definition {key!r}: {raw_def}")
         raw[key] = raw_def
-    n_source = sum(isinstance(p, RawSource) for p in raw.values())
-    if n_source == 0:
+    if not any(isinstance(p, RawSource) for p in raw.values()):
         raise DefinitionError("No RawSource pipe")
-    elif n_source > 1:
-        raise NotImplementedError("More than one RawSource pipes")
     # link sources
     linked_raw = {}
     while raw:
