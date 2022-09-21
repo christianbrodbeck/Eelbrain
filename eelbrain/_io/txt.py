@@ -156,41 +156,47 @@ def tsv(
     if skiprows:
         lines = lines[skiprows:]
 
-    # read / create names
+    # determine column names
     if names is True:
-        names = lines.pop(0)
+        column_names = lines.pop(0)
     elif names:
-        names = list(names)
+        column_names = list(names)
+    else:
+        column_names = []
 
+    # determine number of columns
     row_lens = set(len(row) for row in lines)
     if not ignore_missing and len(row_lens) > 1:
         raise IOError("Not all rows have same number of entries. Set ignore_missing to True in order to ignore this error.")
-    n_cols = max(row_lens)
-    n_rows = len(lines)
+    n_columns = max(row_lens)
 
-    if names:
-        n_names = len(names)
-        if n_names == n_cols - 1:
-            # R write.table saves unnamed column with row names
+    # check/adjust column names
+    if names is True:  # R write.table saves unnamed column with row names
+        if len(column_names) == n_columns - 1:
             name = "row"
-            while name in names:
+            while name in column_names:
                 name += '_'
-            names.insert(0, name)
-        elif n_names != n_cols:
-            raise IOError(f"The number of names in the header ({n_names}) does not correspond to the number of columns in the table ({n_cols})")
-    else:
-        names = [f'v{i}' for i in range(n_cols)]
+            column_names.insert(0, name)
+    elif names:
+        if len(column_names) > n_columns:
+            raise IOError(f"{names=}: More names than columns ({len(names)=}, {n_columns=})")
+    # fill in missing column names
+    for column in range(len(column_names), n_columns):
+        key = f'v{column}'
+        while key in column_names:
+            key += '_'
+        column_names.append(key)
 
     # check random
-    missing = [k for k in random if k not in names]
+    missing = [k for k in random if k not in column_names]
     if missing:
-        raise ValueError(f"random={random} includes non-existent names: {', '.join(missing)}")
+        raise ValueError(f"{random=} includes non-existent names: {', '.join(missing)}")
 
     # coerce types parameter
     if types is None:
-        types_ = 'a' * n_cols
+        types_ = 'a' * n_columns
     elif isinstance(types, dict):
-        types_ = [types.get(n, 'a') for n in names]
+        types_ = [types.get(n, 'a') for n in column_names]
     elif isinstance(types, str):
         types_ = types
     elif isinstance(types, (list, tuple)):
@@ -200,15 +206,15 @@ def tsv(
         raise TypeError(f'types={types!r}')
 
     # check types values
-    if len(types_) != n_cols:
-        raise ValueError(f'types={types!r}: {len(types)} values for file with {n_cols} columns')
+    if len(types_) != n_columns:
+        raise ValueError(f'types={types!r}: {len(types)} values for file with {n_columns} columns')
     elif set(types_).difference('afvb'):
         invalid = ', '.join(map(repr, set(types_).difference('afvb')))
         raise ValueError(f'types={types!r}: invalid values {invalid}')
 
     # find quotes (imply type 1)
     # quotes = "'\""
-    data = np.empty((n_rows, n_cols), object)
+    data = np.empty((len(lines), n_columns), object)
     for r, line in enumerate(lines):
         for c, v in enumerate(line):
             # for str_del in quotes:
@@ -237,7 +243,7 @@ def tsv(
             raise TypeError(f'empty={empty!r}')
     bool_dict = {'True': True, 'False': False, None: False}
     keys = {}
-    for name, values, type_ in zip(names, data.T, types_):
+    for name, values, type_ in zip(column_names, data.T, types_):
         # infer type
         if type_ in 'fvb':
             pass
