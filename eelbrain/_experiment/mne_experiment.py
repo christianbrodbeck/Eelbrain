@@ -181,11 +181,12 @@ class MneExperiment(FileTree):
 
     Parameters
     ----------
-    root : str | None
-        the root directory for the experiment (usually the directory
-        containing the 'meg' and 'mri' directories). The experiment can be
-        initialized without the root for testing purposes.
-    find_subjects : bool
+    root
+        Override the root directory for the experiment (the directory
+        containing the data subdirectories, usually ``meg`` and ``mri``; default
+        is the :attr:`root` attribute). The experiment can be initialized
+        without the root for testing purposes.
+    find_subjects
         Automatically look for subjects in the MEG-directory (default
         True). Set ``find_subjects=False`` to initialize the experiment
         without any files.
@@ -211,6 +212,8 @@ class MneExperiment(FileTree):
     # hard drive space ~ 100 mb/file
     check_raw_mtime: bool = True  # check raw input files' mtime for change
 
+    # Location of data
+    root: PathArg = None
     # Customize data locations, relative to root:
     # Main data files (MEG/EEG)
     data_dir: str = 'meg'
@@ -524,6 +527,8 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # subjects
+        if root is None:
+            root = self.root
         if root is None:
             find_subjects = False
         else:
