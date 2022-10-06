@@ -2321,8 +2321,8 @@ class MneExperiment(FileTree):
             if ds.info[INTERPOLATE_CHANNELS] and any(ds[INTERPOLATE_CHANNELS]):
                 bads_individual = ds[INTERPOLATE_CHANNELS]
                 if bads_all:
-                    bads_all = set(bads_all)
-                    bads_individual = [sorted(bads_all.union(bads)) for bads in bads_individual]
+                    base = set(bads_all)
+                    bads_individual = [sorted(base.union(bads)) if set(bads).difference(base) else [] for bads in bads_individual]
 
         # interpolate bad channels
         if bads_all:
@@ -2719,14 +2719,7 @@ class MneExperiment(FileTree):
                 # set interpolated channels to good
                 for ds in dss:
                     for e in ds['evoked']:
-                        if e.info['description'] is None:
-                            continue
-                        m = re.match(r"Eelbrain (\d+)", e.info['description'])
-                        if not m:
-                            continue
-                        v = int(m.group(1))
-                        if v >= 11:
-                            e.info['bads'] = []
+                        e.info['bads'] = []
             ds = combine(dss, incomplete='drop')
 
             if not ndvar and not individual_ndvar:
@@ -4339,7 +4332,8 @@ class MneExperiment(FileTree):
         equal_count = self.get('equalize_evoked_count') == 'eq'
         if use_cache and exists(dst) and cache_valid(getmtime(dst), self._evoked_mtime()):
             evoked = mne.read_evokeds(dst, proj=False)
-            if int(evoked[0].info['description'].split(' ')[1]) >= 13:
+            evoked_version = int(re.match(r"Eelbrain (\d+)", evoked[0].info['description']).group(1))
+            if evoked_version >= 13:
                 ds = self.load_selected_events(data_raw=data_raw, vardef=vardef)
                 ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count, drop=('i_start', 't_edf', 'T', 'index', 'trigger'))
                 # check cells
