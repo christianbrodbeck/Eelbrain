@@ -3774,7 +3774,6 @@ class MneExperiment(FileTree):
                 ds['i_start'] += np.round(shift * ds.info['sfreq']).astype(int)
 
         # Additional variables
-        self._add_vars(ds, self._variables)
         self._add_vars(ds, epoch.vars)
         self._add_vars(ds, vardef)
 
