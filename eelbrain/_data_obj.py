@@ -2026,15 +2026,23 @@ class Var(Named):
         """
         return Var(self.x.repeat(repeats), *op_name(self, name=name))
 
-    def split(self, n=2, name=None):
+    def split(
+            self,
+            n: int = 2,
+            labels: Dict[int, str] = None,
+            name: str = None,
+    ):
         """
         A Factor splitting y into ``n`` categories with equal number of cases
 
         Parameters
         ----------
-        n : int
+        n
             number of categories
-        name : str
+        labels
+            Dictionary mapping indices to labels; for example
+            ``n=2, labels={0: 'low', 1: 'high'}``.
+        name
             Name of the output Var (default is current name).
 
         Examples
@@ -2060,7 +2068,7 @@ class Var(Named):
             x += y > v
         if name is None:
             name = self.name
-        return Factor(x, name)
+        return Factor(x, name, labels=labels)
 
     def std(self, ddof: float = 0):
         "The standard deviation"
