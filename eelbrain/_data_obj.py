@@ -5522,7 +5522,7 @@ class Datalist(list):
             fmt: str = 'repr',
     ):
         if fmt not in ('repr', 'str', 'strlist'):
-            raise ValueError("fmt=%s" % repr(fmt))
+            raise ValueError(f"{fmt=}")
 
         self.name = name
         self._fmt = fmt

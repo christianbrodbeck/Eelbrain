@@ -232,7 +232,7 @@ def colors_for_categorial(x, hue_start=0.2, cmap=None):
     elif isinstance(x, Interaction):
         return colors_for_nway([f.cells for f in x.base], hue_start)
     else:
-        raise TypeError(f"x={x!r}: needs to be Factor or Interaction")
+        raise TypeError(f"{x=}: needs to be Factor or Interaction")
 
 
 def colors_for_oneway(
