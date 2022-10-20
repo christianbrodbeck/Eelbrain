@@ -42,9 +42,8 @@ class LM:
     See :ref:`exa-two-stage` example.
     """
     def __init__(self, y, model, ds=None, coding='dummy', subject=None, sub=None):
-        sub = assub(sub, ds)
-        y = asndvar(y, sub, ds)
-        n_cases = len(y)
+        sub, n_cases = assub(sub, ds, return_n=True)
+        y, n_cases = asndvar(y, sub, ds, n_cases, return_n=True)
         model = asmodel(model, sub, ds, n_cases)
         p = model._parametrize(coding)
         b, se, t = stats.lm_t(y.x, p)
