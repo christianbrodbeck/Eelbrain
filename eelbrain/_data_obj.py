@@ -120,10 +120,7 @@ from mne.source_space import label_src_vertno_sel
 import nibabel
 from nibabel.freesurfer import read_annot, read_geometry
 import numpy as np
-try:  # numpy ≥ 1.20
-    from numpy.typing import ArrayLike, DTypeLike
-except ImportError:
-    ArrayLike = DTypeLike = Any
+from numpy.typing import ArrayLike, DTypeLike
 import scipy.interpolate
 import scipy.ndimage
 import scipy.optimize
