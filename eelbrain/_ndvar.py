@@ -418,6 +418,7 @@ def cwt_morlet(
         zero_mean: bool = True,
         output: Literal['complex', 'power', 'phase', 'magnitude'] = 'magnitude',
         decim: int = 1,
+        n_jobs: int = 1,
 ) -> NDVar:
     """Time frequency decomposition with Morlet wavelets (mne-python)
 
@@ -439,6 +440,8 @@ def cwt_morlet(
         transform.
     decim
         Decimate the time axis by this factor.
+    n_jobs
+        Nomber of parallel threads.
 
     Returns
     -------
@@ -466,7 +469,7 @@ def cwt_morlet(
         fdim = Scalar("frequency", frequencies, 'Hz')
         frequencies = fdim.values
 
-    x_flat: np.ndarray = mne.time_frequency.tfr_array_morlet(data_flat, sfreq, frequencies, n_cycles, zero_mean, use_fft, decim, output)
+    x_flat: np.ndarray = mne.time_frequency.tfr_array_morlet(data_flat, sfreq, frequencies, n_cycles, zero_mean, use_fft, decim, output, n_jobs)
 
     out_shape = list(data.shape)
     out_dims = list(dims)
