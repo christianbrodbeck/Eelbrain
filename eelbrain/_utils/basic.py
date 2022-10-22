@@ -5,6 +5,7 @@ from dataclasses import dataclass, fields
 import functools
 import logging
 import re
+from typing import Dict
 from warnings import warn
 
 from .notebooks import tqdm
@@ -28,19 +29,28 @@ def as_sequence(items, item_type=str):
     return items
 
 
-def ask(message, options, allow_empty=False, help=None) -> str:
+def ask(
+        message: str,
+        options: Dict[str, str],
+        allow_empty: bool = False,
+        help: str = None,
+        default: str = '',
+) -> str:
     """Ask user for input
 
     Parameters
     ----------
-    message : str
+    message
         Message.
-    options : dict
+    options
         ``{command: description}`` mapping.
-    allow_empty : bool
+    allow_empty
         Allow empty string as command.
-    help : str
+    help
         If provided, add a "help" option that prints ``help``.
+    default
+        Default answer; implies ``allow_empty``, but will substitute ``default``
+        when user input is the empty string.
 
     Returns
     -------
@@ -51,11 +61,14 @@ def ask(message, options, allow_empty=False, help=None) -> str:
     if help is not None:
         assert 'help' not in options
         options['help'] = 'display help'
+    if default:
+        options[default] += ' (default)'
+        allow_empty = True
     print(message)
     print('---')
     print('\n'.join(f'{k}:  {v}' for k, v in options.items()))
     while True:
-        command = input(" > ")
+        command = input(" > ") or default
         if command in options or (allow_empty and not command):
             if help is not None and command == 'help':
                 print(help)
