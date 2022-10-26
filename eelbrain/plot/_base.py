@@ -1260,7 +1260,7 @@ class PlotData:
         xax, xax_dim = x_arg(xax)
         if x_dim or xax_dim:
             if isinstance(y, NDVar):
-                varname = Dataset.as_key(y.name)
+                varname = Dataset.as_key(y.name, 'y')
             else:
                 varname = y
 
