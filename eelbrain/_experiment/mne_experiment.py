@@ -6949,27 +6949,45 @@ class MneExperiment(FileTree):
         has_epoch_rejection = rej['kind'] is not None
         has_interp = rej.get('interpolation')
 
+        # format bad channels
+        if bads:
+            bads_fmt = ', '.join
+        else:
+            bads_fmt = len
+
+        bads_in_rej = False
         subjects = []
         n_events = []
         n_good = []
         bad_chs = []
         n_interp = []
-
         for subject in self:
             subjects.append(subject)
-            bads_raw = self.load_bad_channels()
+            try:
+                bads_raw = self.load_bad_channels()
+            except FileMissing:  # raw file is missing
+                bad_chs.append(('NaN', 'NaN'))
+                if has_epoch_rejection:
+                    n_good.append(float('nan'))
+                if has_interp:
+                    n_interp.append(float('nan'))
+                n_events.append(np.NaN)
+                continue
+
             try:
                 ds = self.load_selected_events(reject='keep')
-            except FileMissing:
+            except FileMissing:  # rejection file is missing
                 ds = self.load_selected_events(reject=False)
-                bad_chs.append((bads_raw, ()))
+                bad_chs.append((bads_fmt(bads_raw), 'NaN'))
                 if has_epoch_rejection:
                     n_good.append(float('nan'))
                 if has_interp:
                     n_interp.append(float('nan'))
             else:
                 bads_rej = set(ds.info[BAD_CHANNELS]).difference(bads_raw)
-                bad_chs.append((bads_raw, bads_rej))
+                if bads_rej:
+                    bads_in_rej = True
+                bad_chs.append((bads_fmt(bads_raw), bads_fmt(bads_rej)))
                 if has_epoch_rejection:
                     n_good.append(ds['accept'].sum())
                 if has_interp:
@@ -6978,14 +6996,7 @@ class MneExperiment(FileTree):
         has_interp = has_interp and any(n_interp)
         caption = f"Rejection info for raw={raw_name}, epoch={epoch_name}, rej={rej_name}. Percent is rounded to one decimal."
 
-        # format bad channels
-        if bads:
-            func = ', '.join
-        else:
-            func = len
-        bad_chs = [(func(bads_raw), func(bads_rej)) for bads_raw, bads_rej in bad_chs]
-
-        if any(bads_rej for bads_raw, bads_rej in bad_chs):
+        if bads_in_rej:
             caption += " Bad channels: defined in bad_channels file and in rej-file."
             bad_chs = [f'{bads_raw} + {bads_rej}' for bads_raw, bads_rej in bad_chs]
         else:
