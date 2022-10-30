@@ -323,7 +323,7 @@ def get_mne_sample(
     ds = load.fiff.events(raw_file, events=event_file)
     if hpf:
         ds.info['raw'].load_data()
-        ds.info['raw'].filter(hpf, None)
+        ds.info['raw'].filter(hpf, None, n_jobs=1)
     ds.index()
     ds.info['subjects_dir'] = subjects_dir
     ds.info['subject'] = subject

@@ -5703,7 +5703,7 @@ class MneExperiment(FileTree):
             src = self.get('src')
             self._log.info(f"Scaling {src} source space for {subject}...")
             subjects_dir = self.get('mri-sdir')
-            mne.scale_source_space(subject, f'{{subject}}-{src}-src.fif', subjects_dir=subjects_dir)
+            mne.scale_source_space(subject, f'{{subject}}-{src}-src.fif', subjects_dir=subjects_dir, n_jobs=1)
         elif exists(dst):
             return
         else:
@@ -5744,7 +5744,7 @@ class MneExperiment(FileTree):
             else:
                 assert not special
                 spacing = kind + param
-                sss = mne.setup_source_space(subject, spacing=spacing, add_dist=True, subjects_dir=mri_sdir)
+                sss = mne.setup_source_space(subject, spacing=spacing, add_dist=True, subjects_dir=mri_sdir, n_jobs=1)
             Path(dst).parent.mkdir(exist_ok=True)
             mne.write_source_spaces(dst, sss)
 

@@ -442,6 +442,9 @@ class RawFilter(CachedRawPipe):
         High cut-off frequency in Hz.
     cache : bool
         Cache the resulting raw files (default ``True``).
+    n_jobs
+        Parameter for :meth:`mne.io.Raw.filter`; Values other than 1 are slower
+        in most cases due to added overhead except for very large files.
     ...
         :meth:`mne.io.Raw.filter` parameters.
 
@@ -450,10 +453,19 @@ class RawFilter(CachedRawPipe):
     MneExperiment.raw
     """
 
-    def __init__(self, source, l_freq=None, h_freq=None, cache=True, **kwargs):
+    def __init__(
+            self,
+            source: str,
+            l_freq: float = None,
+            h_freq: float = None,
+            cache: bool = True,
+            n_jobs: Union[str, int, None] = 1,
+            **kwargs,
+    ):
         CachedRawPipe.__init__(self, source, cache)
         self.args = (l_freq, h_freq)
         self.kwargs = kwargs
+        self.n_jobs = n_jobs
         # mne backwards compatibility (fir_design default change 0.15 -> 0.16)
         if 'use_kwargs' in kwargs:
             self._use_kwargs = kwargs.pop('use_kwargs')
@@ -469,7 +481,7 @@ class RawFilter(CachedRawPipe):
     def _make(self, subject, recording):
         raw = self.source.load(subject, recording, preload=True)
         self.log.info("Raw %s: filtering for %s/%s...", self.name, subject, recording)
-        raw.filter(*self.args, **self._use_kwargs)
+        raw.filter(*self.args, **self._use_kwargs, n_jobs=self.n_jobs)
         return raw
 
 

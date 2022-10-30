@@ -548,6 +548,7 @@ def filter_data(
         high: float = None,
         *,
         name: str = None,
+        n_jobs: Union[str, int, None] = 1,  # overhead not worth it; tested for 5 min KIT MEG @ 1000 Hz
         **filter_kwargs,
 ) -> NDVar:
     """Apply :func:`mne.filter.filter_data` to an NDVar
@@ -583,7 +584,7 @@ def filter_data(
         data = data.astype(float)
 
     filter_kwargs.setdefault('copy', True)
-    x = mne.filter.filter_data(data, sfreq, low, high, **filter_kwargs)
+    x = mne.filter.filter_data(data, sfreq, low, high, n_jobs=n_jobs, **filter_kwargs)
 
     if axis is not None:
         x = x.swapaxes(axis, -1)
@@ -1108,6 +1109,7 @@ def resample(
         window: Union[str, tuple] = None,
         pad: str = 'edge',
         name: str = None,
+        n_jobs: Union[str, int] = 1,
 ) -> NDVar:
     """Resample an NDVar along the time dimension
 
@@ -1128,6 +1130,8 @@ def resample(
         parameter).
     name
         Name for the new NDVar (default is ``ndvar.name``).
+    n_jobs
+        Parameter for :func:`mne.filter.resample`.
 
     Notes
     -----
@@ -1149,7 +1153,7 @@ def resample(
         x = mne.filter.resample(x, sfreq, old_sfreq, npad, axis, window, pad=pad)
         new_num = x.shape[axis]
         if isinstance(ndvar.x, np.ma.masked_array):
-            mask = mne.filter.resample(ndvar.x.mask.astype(float), sfreq, old_sfreq, npad, axis, window, pad=pad)
+            mask = mne.filter.resample(ndvar.x.mask.astype(float), sfreq, old_sfreq, npad, axis, window, pad=pad, n_jobs=n_jobs)
             x = np.ma.masked_array(x, mask > 0.5)
     else:
         new_num = int(floor((time.tstop - time.tmin) / new_tstep))

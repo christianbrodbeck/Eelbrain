@@ -9,7 +9,7 @@ raw = mne.io.read_raw_kit('Data/R2290_HAYO_P3H_08.26.2015.sqd',
                           preload=True)
 
 # filter the raw data
-raw.filter(1, 8)
+raw.filter(1, 8, n_jobs=1)
 
 # load the events
 ds = load.fiff.events(raw)
