@@ -6573,6 +6573,8 @@ class MneExperiment(FileTree):
                 raise ValueError(f"Seeded parc set without size, use e.g. parc='{parc}-25'")
             else:
                 return parc
+        elif parc == '':
+            return parc
         m = SEEDED_PARC_RE.match(parc)
         if m:
             name = m.group(1)
