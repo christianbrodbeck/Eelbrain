@@ -421,6 +421,11 @@ class IndividualSeededParc(SeededParc):
         return {name: seed for name, seed in seeds.items() if seed}
 
 
+class VolumeParc(Parcellation):
+    "Assume it exists"
+    kind = 'volume'
+
+
 def parc_from_dict(name, params):
     p = params.copy()
     kind = p.pop('kind', None)

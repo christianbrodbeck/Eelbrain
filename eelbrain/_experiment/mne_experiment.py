@@ -53,7 +53,7 @@ from .epochs import ContinuousEpoch, PrimaryEpoch, SecondaryEpoch, SuperEpoch, E
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
 from .groups import assemble_groups
-from .parc import SEEDED_PARC_RE, CombinationParc, EelbrainParc, FreeSurferParc, FSAverageParc, SeededParc, IndividualSeededParc, LabelParc, Parcellation, SubParc, assemble_parcs
+from .parc import SEEDED_PARC_RE, CombinationParc, EelbrainParc, FreeSurferParc, FSAverageParc, SeededParc, IndividualSeededParc, LabelParc, VolumeParc, Parcellation, SubParc, assemble_parcs
 from .preprocessing import (
     assemble_pipeline, RawPipe, RawSource, RawFilter, RawICA, RawApplyICA,
     compare_pipelines, ask_to_delete_ica_files)
@@ -319,6 +319,9 @@ class MneExperiment(FileTree):
         'PALS_B12_Lobes': FSAverageParc(),
         'PALS_B12_OrbitoFrontal': FSAverageParc(),
         'PALS_B12_Visuotopic': FSAverageParc(),
+        # Volume
+        'aparc+aseg': VolumeParc(),
+        # Combinations
         'lobes': EelbrainParc(True, ('lateral', 'medial')),
         'lobes-op': CombinationParc('lobes', {'occipitoparietal': "occipital + parietal"}, ('lateral', 'medial')),
         'lobes-ot': CombinationParc('lobes', {'occipitotemporal': "occipital + temporal"}, ('lateral', 'medial')),
@@ -4089,8 +4092,8 @@ class MneExperiment(FileTree):
         self.set(**state)
 
         # variables
-        parc, p = self._get_parc()
-        if p is None:
+        parc, parc_def = self._get_parc()
+        if parc_def is None or isinstance(parc_def, VolumeParc):
             return
 
         mrisubject = self.get('mrisubject')
@@ -4098,7 +4101,7 @@ class MneExperiment(FileTree):
         mtime = self._annot_file_mtime()
         if mrisubject != common_brain:
             is_fake = is_fake_mri(self.get('mri-dir'))
-            if p.morph_from_fsaverage or is_fake:
+            if parc_def.morph_from_fsaverage or is_fake:
                 # make sure annot exists for common brain
                 self.set(mrisubject=common_brain, match=False)
                 common_brain_mtime = self.make_annot()
@@ -4123,7 +4126,7 @@ class MneExperiment(FileTree):
         if mtime:
             return mtime
         self._log.info("Make parcellation %s for %s", parc, mrisubject)
-        labels = p._make(self, parc)
+        labels = parc_def._make(self, parc)
         write_labels_to_annot(labels, mrisubject, parc, True, self.get('mri-sdir'))
 
     def make_bad_channels(self, bad_chs=(), redo=False, **kwargs):
