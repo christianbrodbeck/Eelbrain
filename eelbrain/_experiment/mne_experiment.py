@@ -4486,8 +4486,12 @@ class MneExperiment(FileTree):
         # display data
         subject = self.get('subject')
         pipe = self._get_ica_pipe(state)
-        bads = pipe.load_bad_channels(subject, self.get('recording'))
-        with self._temporary_state:
+        if pipe.session is None:
+            add_bads = True
+        else:
+            add_bads = pipe.load_bad_channels(subject, self.get('recording'))
+        with self._temporary_state, warnings.catch_warnings():
+            warnings.filterwarnings('ignore', 'The measurement information indicates a low-pass', RuntimeWarning)
             if epoch is None:
                 if session is None:
                     session = pipe.session
@@ -4498,7 +4502,10 @@ class MneExperiment(FileTree):
             elif session is not None:
                 raise TypeError(f"{session=} with {epoch=}")
             else:
-                ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, samplingrate=samplingrate, decim=decim, add_bads=bads)
+                ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, samplingrate=samplingrate, decim=decim, add_bads=add_bads)
+                if add_bads is True:
+                    ica = mne.preprocessing.read_ica(path)
+                    ds['epochs'].info['bads'] = [ch for ch in ds['epochs'].ch_names if ch not in ica.ch_names]
                 if isinstance(ds['epochs'], Datalist):  # variable-length epoch
                     data = np.concatenate([epoch.get_data()[0] for epoch in ds['epochs']], axis=1)  # n_epochs, n_channels, n_times
                     raw = mne.io.RawArray(data, ds[0, 'epochs'].info)
