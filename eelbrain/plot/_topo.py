@@ -908,6 +908,9 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
         :meth:`~matplotlib.axes.Axes.imshow`). Matplotlib 1.5.3's SVG output
         can't handle uneven aspect with ``interpolation='none'``, use
         ``interpolation='nearest'`` instead.
+    sensors
+        How to mark sensor locations in the topomap (empty string ``''`` to
+        omit marks).
     sensorlabels
         Show sensor labels. For 'name', any prefix common to all names
         is removed; with 'fullname', the full name is shown. Set to ``''`` to
@@ -974,6 +977,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
             head_pos: Union[float, Sequence[float]] = 0,
             im_interpolation: str = None,
             # sensor-map args
+            sensors: Union[str, matplotlib.markers.MarkerStyle] = '.',
             sensorlabels: SensorLabelsArg = None,
             mark: IndexArg = None,
             mcolor: ColorArg = None,
@@ -1037,7 +1041,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
         self._array_axes = []
         self._array_plots = []
         self._topo_windows = []
-        topomap_args = dict(clip=clip, clip_distance=clip_distance, sensorlabels=sensorlabels, mark=mark, mcolor=mcolor, proj=proj, res=res, im_interpolation=im_interpolation, vlims=self._vlims, cmaps=self._cmaps, contours=self._contours, interpolation=interpolation, head_radius=head_radius, head_pos=head_pos)
+        topomap_args = dict(clip=clip, clip_distance=clip_distance, sensors=sensors, sensorlabels=sensorlabels, mark=mark, mcolor=mcolor, proj=proj, res=res, im_interpolation=im_interpolation, vlims=self._vlims, cmaps=self._cmaps, contours=self._contours, interpolation=interpolation, head_radius=head_radius, head_pos=head_pos)
         for i, layers in enumerate(data):
             ax_i = i * (ntopo + 1)
             ax = self.axes[ax_i]
