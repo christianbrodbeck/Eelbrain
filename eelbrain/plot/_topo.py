@@ -942,6 +942,11 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
         Color for connection line.
     topo_labels
         Where to label time on topo-maps.
+    gridspec_kw
+        The figure attempts to produce a useful layout, but sometimes this will
+        still result in unwanted artifacts like overlapping text; use gridspec
+        parameters to customize the spacing (see
+        :class:~matplotlib.gridspec.GridSpec).
     ...
         Also accepts :ref:`general-layout-parameters`.
 
@@ -990,6 +995,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
             connectionstyle: str = "angle3,angleA=90,angleB=0",
             connection_color: ColorArg = UNAMBIGUOUS_COLORS['bluish green'],
             topo_labels: Literal['above', 'below', 'none'] = 'above',
+            gridspec_kw: dict = None,
             **kwargs,
     ):
         if ntopo is None:
@@ -1018,7 +1024,10 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
         else:
             x_frame_l = .6 / layout.axw / data.n_plots
             x_frame_r = .025 / data.n_plots
-            gs = self.figure.add_gridspec(layout.nrow * 2, layout.ncol * ntopo, left=x_frame_l, right=1 - x_frame_r, bottom=.05, top=.9, wspace=.1, hspace=.3)
+            kw = dict(left=x_frame_l, right=1 - x_frame_r, bottom=.05, top=.9, wspace=.1, hspace=.3)
+            if gridspec_kw:
+                kw.update(gridspec_kw)
+            gs = self.figure.add_gridspec(layout.nrow * 2, layout.ncol * ntopo, **kw)
             if layout.nrow == 1:
                 for col, used in enumerate(data.plot_used):
                     if not used:
