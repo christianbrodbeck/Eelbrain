@@ -10,7 +10,7 @@ import numpy as np
 
 from .._types import PathArg
 from .._utils import ui
-from .._utils.parse import FLOAT_NAN_PATTERN
+from .._utils.parse import FLOAT_NAN_PATTERN, PERCENT_PATTERN
 from .. import _data_obj as _data
 
 __all__ = ('tsv', 'var')
@@ -36,6 +36,7 @@ def tsv(
         strip: bool = False,
         encoding: str = None,
         comment: str = '^#',
+        percent_to_proportion: bool = False,
         **fmtparams,
 ) -> _data.Dataset:
     r"""Load a :class:`Dataset` from a text file.
@@ -93,6 +94,9 @@ def tsv(
     comment
         Regular expression for lines to skip (default is lines starting with
         ``#``).
+    percent_to_proportion
+        Convert columns that end in the percent sign into a float reflecting
+        proportion (i.e. strip the percent sign and divide the number by 100).
     **fmtparams
         Further formatting parameters for :func:`csv.reader`. For example, a
         fixed-width column file can be loaded with ``skipinitialspace=True``
@@ -217,6 +221,7 @@ def tsv(
 
     # convert values to data-objects
     float_pattern = re.compile(FLOAT_NAN_PATTERN)
+    percent_pattern = re.compile(PERCENT_PATTERN)
     ds = _data.Dataset(name=path.name)
     np_vars = {
         'NA': np.nan,
@@ -237,22 +242,28 @@ def tsv(
     keys = {}
     for name, values, type_ in zip(column_names, data.T, types_):
         # infer type
-        if type_ in 'fvb':
+        if type_ in 'fvb%':
             pass
         elif all(v in bool_dict for v in values):
             type_ = 'b'
         elif empty is not None:
             if all(v in (None, '') or float_pattern.match(v) for v in values):
                 type_ = 'v'
+            elif percent_to_proportion and all(v in (None, '') or percent_pattern.match(v) for v in values):
+                type = '%'
             else:
                 type_ = 'f'
         elif all(v is None or float_pattern.match(v) for v in values):
             type_ = 'v'
+        elif all(v is None or percent_pattern.match(v) for v in values):
+            type_ = '%'
         else:
             type_ = 'f'
 
         # substitute values
-        if type_ == 'v':
+        if type_ == '%':
+            values = [v.rstrip().rstrip('%') for v in values]
+        if type_ in 'v%':
             values = [np_vars[v] if v in np_vars else to_num(v) for v in values]
         elif type_ == 'b':
             values = [bool_dict[v] for v in values]
@@ -268,6 +279,8 @@ def tsv(
             raise ValueError(f"{random=}: {name} is not categorial")
         else:
             d_obj = _data.Var(values, name)
+            if type_ == '%':
+                d_obj /= 100
         key = _data.Dataset.as_key(name)
         keys[name] = key
         ds[key] = d_obj
