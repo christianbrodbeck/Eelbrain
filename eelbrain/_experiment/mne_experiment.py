@@ -6534,10 +6534,7 @@ class MneExperiment(FileTree):
         epoch = fields['epoch']
         if epoch in self._epochs:
             epoch = self._epochs[epoch]
-            if isinstance(epoch, (PrimaryEpoch, SecondaryEpoch)):
-                return epoch.session
-            else:
-                return  # default for non-primary epoch
+            return epoch.sessions[0]
         elif not epoch or epoch == '*':
             return  # don't force session
         return '*'  # if a named epoch is not in _epochs it might be a removed epoch
