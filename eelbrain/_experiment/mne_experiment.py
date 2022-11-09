@@ -3562,7 +3562,7 @@ class MneExperiment(FileTree):
             State parameters.
         """
         if data != 'source':
-            raise NotImplementedError("data=%s" % repr(data))
+            raise NotImplementedError(f"{data=}")
         elif not isinstance(pmin, float):
             raise NotImplementedError("Threshold-free tests")
 
@@ -3573,8 +3573,7 @@ class MneExperiment(FileTree):
         if dst is None:
             dst = self.get('res-plot-dir', mkdir=True)
 
-        return ClusterPlotter(ds, res, colors, dst, vec_fmt, pix_fmt, labels, h,
-                              rc)
+        return ClusterPlotter(ds, res, colors, dst, vec_fmt, pix_fmt, labels, h, rc)
 
     def load_selected_events(self, subjects=None, reject=True, add_bads=True,
                              index=True, data_raw=False, vardef=None, cat=None,
@@ -4627,11 +4626,9 @@ class MneExperiment(FileTree):
         state['model'] = ''
         subject, group = self._process_subject_arg(subjects, state)
         data = TestDims("source", morph=bool(group))
-        brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background,
-                                                smoothing_steps, hemi)
+        brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background, smoothing_steps, hemi)
         self._set_analysis_options(data, baseline, src_baseline, None, None, None)
-        self.set(equalize_evoked_count='',
-                 resname="GA dSPM %s %s" % (brain_kwargs['surf'], fmin))
+        self.set(equalize_evoked_count='', resname=f"GA dSPM {brain_kwargs['surf']} {fmin}")
 
         if dst is None:
             if group is None:
