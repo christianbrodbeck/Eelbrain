@@ -132,6 +132,41 @@
             ]
         }
     },
+    "5m5W40xRnIQJ": {
+        "title": "Neural tracking as a diagnostic tool to assess the auditory pathway",
+        "result_id": "5m5W40xRnIQJ",
+        "link": "https://www.sciencedirect.com/science/article/pii/S0378595522001757",
+        "snippet": "When a person listens to sound, the brain time-locks to specific aspects of the sound. This is called neural tracking and it can be investigated by analysing neural responses (eg, \u2026",
+        "publication_info": {
+            "summary": "M Gillis, J Van Canneyt, T Francart, J Vanthornhout - Hearing Research, 2022 - Elsevier",
+            "authors": [
+                {
+                    "name": "M Gillis",
+                    "link": "https://scholar.google.com/citations?user=_3DlZ_EAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=_3DlZ_EAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "_3DlZ_EAAAAJ"
+                },
+                {
+                    "name": "J Van Canneyt",
+                    "link": "https://scholar.google.com/citations?user=Nd9x9FIAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=Nd9x9FIAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "Nd9x9FIAAAAJ"
+                },
+                {
+                    "name": "T Francart",
+                    "link": "https://scholar.google.com/citations?user=rv2nwCEAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=rv2nwCEAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "rv2nwCEAAAAJ"
+                },
+                {
+                    "name": "J Vanthornhout",
+                    "link": "https://scholar.google.com/citations?user=I0EdEu0AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=I0EdEu0AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "I0EdEu0AAAAJ"
+                }
+            ]
+        }
+    },
     "6HkSecOndzMJ": {
         "title": "Prefix stripping re-re-revisited: MEG investigations of morphological decomposition and recomposition",
         "result_id": "6HkSecOndzMJ",
@@ -1341,6 +1376,12 @@
                     "link": "https://scholar.google.com/citations?user=aMvZiJYAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=aMvZiJYAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "aMvZiJYAAAAJ"
+                },
+                {
+                    "name": "A Djalovski",
+                    "link": "https://scholar.google.com/citations?user=kRDHxuYAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=kRDHxuYAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "kRDHxuYAAAAJ"
                 }
             ]
         }
@@ -1497,6 +1538,88 @@
                     "link": "https://scholar.google.com/citations?user=yGIs62YAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=yGIs62YAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "yGIs62YAAAAJ"
+                }
+            ]
+        }
+    },
+    "jQmGaEK_518J": {
+        "title": "Tracking the online construction of linguistic meaning through negation",
+        "result_id": "jQmGaEK_518J",
+        "link": "https://www.biorxiv.org/content/10.1101/2022.10.14.512299.abstract",
+        "snippet": "Combining words and composing meanings is at the basis of human language. However, how the brain constructs meaning online is not well understood. We develop an approach to \u2026",
+        "publication_info": {
+            "summary": "A Zuanazzi, P Ripolles, WM Lin, L Gwilliams, JR King\u2026 - bioRxiv, 2022 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "A Zuanazzi",
+                    "link": "https://scholar.google.com/citations?user=vztswb4AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=vztswb4AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "vztswb4AAAAJ"
+                },
+                {
+                    "name": "P Ripolles",
+                    "link": "https://scholar.google.com/citations?user=za76NZAAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=za76NZAAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "za76NZAAAAAJ"
+                },
+                {
+                    "name": "WM Lin",
+                    "link": "https://scholar.google.com/citations?user=S5OJ5NYAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=S5OJ5NYAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "S5OJ5NYAAAAJ"
+                },
+                {
+                    "name": "L Gwilliams",
+                    "link": "https://scholar.google.com/citations?user=fmfkdsAAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=fmfkdsAAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "fmfkdsAAAAAJ"
+                },
+                {
+                    "name": "JR King",
+                    "link": "https://scholar.google.com/citations?user=XZOgIwEAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=XZOgIwEAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "XZOgIwEAAAAJ"
+                }
+            ]
+        }
+    },
+    "lC-KuCZxkksJ": {
+        "title": "Cortical tracking of continuous speech under bimodal divided attention",
+        "result_id": "lC-KuCZxkksJ",
+        "link": "https://www.biorxiv.org/content/10.1101/2022.10.29.514344.abstract",
+        "snippet": "Speech processing often occurs amidst competing inputs from other modalities, eg, listening to the radio while driving. We examined the extent to which dividing attention between \u2026",
+        "publication_info": {
+            "summary": "Z Xie, C Brodbeck, B Chandresekaran - bioRxiv, 2022 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "C Brodbeck",
+                    "link": "https://scholar.google.com/citations?user=m2x515IAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=m2x515IAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "m2x515IAAAAJ"
+                }
+            ]
+        }
+    },
+    "mBZCoKR6Va4J": {
+        "title": "Models of processing complex spoken words: the na\u00efve, the passive, and the predictive",
+        "result_id": "mBZCoKR6Va4J",
+        "type": "Pdf",
+        "link": "https://2022.ccneuro.org/proceedings/0000331.pdf",
+        "snippet": "Speech processing involves segmenting a continuous input stream at various levels (eg, sounds or words). But does the brain also segment spoken words into their meaningful \u2026",
+        "publication_info": {
+            "summary": "S Matar, A Marantz - 2022.ccneuro.org",
+            "authors": [
+                {
+                    "name": "S Matar",
+                    "link": "https://scholar.google.com/citations?user=scIFaNwAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=scIFaNwAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "scIFaNwAAAAJ"
+                },
+                {
+                    "name": "A Marantz",
+                    "link": "https://scholar.google.com/citations?user=LLq-Ti4AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=LLq-Ti4AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "LLq-Ti4AAAAJ"
                 }
             ]
         }
@@ -1748,6 +1871,12 @@
                     "author_id": "aMvZiJYAAAAJ"
                 },
                 {
+                    "name": "A Djalovski",
+                    "link": "https://scholar.google.com/citations?user=kRDHxuYAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=kRDHxuYAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "kRDHxuYAAAAJ"
+                },
+                {
                     "name": "G Dumas",
                     "link": "https://scholar.google.com/citations?user=TakXk9MAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=TakXk9MAAAAJ&engine=google_scholar_author&hl=en",
@@ -1757,7 +1886,7 @@
         }
     },
     "xgoUWQYzdnoJ": {
-        "title": "Cortical Networks for Recognition of Speech with Simultaneous Talkers",
+        "title": "Cortical networks for recognition of speech with simultaneous talkers",
         "result_id": "xgoUWQYzdnoJ",
         "link": "https://psyarxiv.com/vea5y/",
         "snippet": "The relative contributions of superior temporal (auditory) vs. inferior frontal and parietal (sensorimotor) networks to recognition of speech against competing speech remain unclear, \u2026",
