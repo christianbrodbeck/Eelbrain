@@ -43,6 +43,18 @@ from . import _boosting_opt as opt
 class BoostingResult(PickleableDataClass):
     """Result from boosting
 
+    Fit metrics are computed from all time points in ``y``.
+
+    - For models estimated with ``test=False``, the entire ``y_pred`` is
+      predicted with the averaged TRF from the different runs (with each run
+      corresponding to one validation set).
+    - For models estimated with ``test=True``, ``y_pred`` in each test segment
+      is predicted from the averaged TRF from the corresponding training runs
+      (each non-test segment used as validation set once), and the different
+      test segments are then concatenated to compute the fit-metrics in
+      comparison with ``y``.
+
+
     Attributes
     ----------
     h : NDVar | tuple of NDVar
@@ -70,6 +82,9 @@ class BoostingResult(PickleableDataClass):
         is computed as the average dot product over time.
         The type of ``r`` depends on the ``y`` parameter to :func:`boosting`:
         If ``y`` is one-dimensional, ``r`` is scalar, otherwise it is a :class:`NDVar`.
+        Note that ``r`` does not take into account the model's ability to predict
+        the magnitude of the response, only its shape; for a measure that reflects both,
+        consider using ``proportion_explained``.
     r_rank : float | NDVar
         As ``r``, the Spearman rank correlation.
     t_run : float
@@ -93,10 +108,12 @@ class BoostingResult(PickleableDataClass):
     n_samples : int
         Number of samples in the input data time axis.
     proportion_explained : float | NDVar
-        The proportion of the explained variability. Variability is caculated
-        as ``l1`` or ``l2`` norm, depending on the ``error`` that was used for
-        model fitting. For ``l2``, it corresponds to the proportion of variance
-        explained. Calculated as ``1 - (residual / variability)``.
+        The proportion of the variation in ``y`` that is explained by the model.
+        Calculated as ``1 - (variation(residual) / variation(y))``.
+        Variation is caculated as the ``l1`` or ``l2`` norm,
+        depending on the ``error`` that was used for model fitting.
+        Note that this does not correspond to ``r**2`` even for ``error='l2'``,
+        because residuals are not guaranteed to be orthogonal to predictions.
     scale_data : bool
         Scale_data parameter used.
     y_mean : NDVar | scalar
@@ -455,6 +472,12 @@ class BoostingResult(PickleableDataClass):
                 if not all(v is not None for v in values):
                     raise ValueError(f'partition_results avaiable for some but not all part-results')
                 new_value = [cls._eelbrain_concatenate(p_results) for p_results in zip(*values)]
+            elif field.name == 'algorithm_version':
+                values = set(values)
+                if len(values) == 1:
+                    new_value = values.pop()
+                else:
+                    new_value = tuple(sorted(values))
             elif any(v is None for v in values):
                 new_value = None
             else:

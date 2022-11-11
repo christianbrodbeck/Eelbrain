@@ -18,7 +18,6 @@ import warnings
 
 import numpy as np
 import mne
-from mne.baseline import rescale
 from mne.minimum_norm import make_inverse_operator, apply_inverse, apply_inverse_epochs, apply_inverse_raw
 
 from .. import fmtxt
@@ -2759,7 +2758,7 @@ class MneExperiment(FileTree):
                 raise NotImplementedError
             elif baseline and not epoch.post_baseline_trigger_shift:
                 for e in ds['evoked']:
-                    rescale(e.data, e.times, baseline, 'mean', copy=False)
+                    mne.baseline.rescale(e.data, e.times, baseline, 'mean', copy=False)
 
         # convert to NDVar
         if ndvar:
@@ -2998,7 +2997,7 @@ class MneExperiment(FileTree):
 
             # baseline correction
             if src_baseline:
-                rescale(stc._data, stc.times, src_baseline, 'mean', copy=False)
+                mne.baseline.rescale(stc._data, stc.times, src_baseline, 'mean', copy=False)
 
             if morph:
                 subject_from = from_subjects[subject]
@@ -3774,7 +3773,6 @@ class MneExperiment(FileTree):
                 ds['i_start'] += np.round(shift * ds.info['sfreq']).astype(int)
 
         # Additional variables
-        self._add_vars(ds, self._variables)
         self._add_vars(ds, epoch.vars)
         self._add_vars(ds, vardef)
 
@@ -6536,10 +6534,7 @@ class MneExperiment(FileTree):
         epoch = fields['epoch']
         if epoch in self._epochs:
             epoch = self._epochs[epoch]
-            if isinstance(epoch, (PrimaryEpoch, SecondaryEpoch)):
-                return epoch.session
-            else:
-                return  # default for non-primary epoch
+            return epoch.sessions[0]
         elif not epoch or epoch == '*':
             return  # don't force session
         return '*'  # if a named epoch is not in _epochs it might be a removed epoch

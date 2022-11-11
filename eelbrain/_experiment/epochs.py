@@ -466,6 +466,7 @@ class ContinuousEpoch(EpochBase):
         self.split = typed_arg(split, float)
         self.samplingrate = typed_arg(samplingrate, float, int)
         self.vars = vars
+        self.sessions = (session,)
 
 
 def decim_param(samplingrate: int, decim: int, epoch: Optional[Epoch], raw_samplingrate: float):

@@ -1820,9 +1820,7 @@ class ANOVA(MultiEffectNDTest):
                 thresholds = tuple(repeat(None, len(effects)))
 
             cdists = [
-                NDPermutationDistribution(
-                    y, samples, thresh, tfce, 1, 'f', e.name,
-                    tstart, tstop, criteria, parc, force_permutation)
+                NDPermutationDistribution( y, samples, thresh, tfce, 1, 'f', e.name, tstart, tstop, criteria, parc, force_permutation)
                 for e, thresh in zip(effects, thresholds)]
 
             # Find clusters in the actual data
@@ -1843,8 +1841,7 @@ class ANOVA(MultiEffectNDTest):
             f.append(NDVar(fmap, dims, e.name, info))
 
         # store attributes
-        MultiEffectNDTest.__init__(self, y, match, sub_arg, samples, tfce, pmin,
-                                   cdists, tstart, tstop)
+        MultiEffectNDTest.__init__(self, y, match, sub_arg, samples, tfce, pmin, cdists, tstart, tstop)
         self.x = x_arg if isinstance(x_arg, str) else x.name
         self._effects = effects
         self._dfs_denom = dfs_denom

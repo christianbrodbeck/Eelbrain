@@ -98,8 +98,7 @@ def difference(
                     out.add(x)
             else:
                 out.add(groups)
-        yname = yi if isinstance(yi, str) else ct.y.name
-        out[yname] = ct.data[c1] - ct.data[c0]
+        out[ct.y.name] = ct.data[c1] - ct.data[c0]  # use ct.y.name because yi can be expression
     # Transfer other variables in ds that are compatible with the rm-structure
     if ds is not None:
         out.update(ct._align_ds(ds, True, out.keys(), isuv))

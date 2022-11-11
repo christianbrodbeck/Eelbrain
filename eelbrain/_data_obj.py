@@ -120,10 +120,7 @@ from mne.source_space import label_src_vertno_sel
 import nibabel
 from nibabel.freesurfer import read_annot, read_geometry
 import numpy as np
-try:  # numpy ≥ 1.20
-    from numpy.typing import ArrayLike, DTypeLike
-except ImportError:
-    ArrayLike = DTypeLike = Any
+from numpy.typing import ArrayLike, DTypeLike
 import scipy.interpolate
 import scipy.ndimage
 import scipy.optimize
@@ -5525,7 +5522,7 @@ class Datalist(list):
             fmt: str = 'repr',
     ):
         if fmt not in ('repr', 'str', 'strlist'):
-            raise ValueError("fmt=%s" % repr(fmt))
+            raise ValueError(f"{fmt=}")
 
         self.name = name
         self._fmt = fmt
@@ -6078,18 +6075,25 @@ class Dataset(dict):
                 f"different length ({self.n_cases})")
 
     @staticmethod
-    def as_key(name):
+    def as_key(name: Optional[str], default: str = None):
         """Convert a string ``name`` to a legal dataset key
 
         This is a shortcut to simplify storing varaibles with non-compliant
         names, consisting mostly of replacing invalid characters with '_'.
         Note that the result is not unique.
 
+        If ``name`` is ``None``, return ``default``, or raise a ValueError if
+        ``default`` is not set.
+
         Examples
         --------
         >>> Dataset.as_key('var-1|2')
         'var_1_2'
         """
+        if name is None:
+            if default is None:
+                raise ValueError(f"Unnamed variabe")
+            return default
         return as_legal_dataset_key(name)
 
     def add(self, item, replace=False):
