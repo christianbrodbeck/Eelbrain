@@ -1,4 +1,4 @@
-"""Predictors for deconvolution"""
+"""Predictors for continuous data"""
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import repeat
 

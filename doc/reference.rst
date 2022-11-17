@@ -168,9 +168,9 @@ functions. See also :class:`NDVar` methods.
    xhemi
 
 
-^^^^^^^^^^^^^
-Deconvolution
-^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Temporal Response Functions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
    :toctree: generated
