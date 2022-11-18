@@ -30,7 +30,7 @@ Once set up, an :class:`MneExperiment` subclass instance provides access into th
 An :class:`MneExperiment` instance has a state, which determines what data and settings it is currently using. Not all settings are always relevant. For example, :ref:`state-subject` is relevenat for steps applied separately to each subject, like :meth:`~MneExperiment.make_ica_selection`, whereas :ref:`state-group` defines the group of subjects in group level analysis, such as in :meth:`~MneExperiment.load_test`. For more information, see :ref:`state-parameters`.
 
 
-Step by step
+Step by Step
 ============
 
 .. contents:: Contents

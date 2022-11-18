@@ -29,7 +29,8 @@ class LM:
         Model parametrization (default is dummy coding). Vars are centered for
         effect coding (but not for dummy coding).
     subject : str
-        Optional information used by :class:`LMGroup`.
+        Optional information used by :class:`LMGroup`; if subject is a column in
+        ``ds`` it will be extracted automatically.
     sub : index
         Only use part of the data.
 
@@ -59,7 +60,7 @@ class LM:
         # subject
         if subject is not None:
             if not isinstance(subject, str):
-                raise TypeError(f"subject={subject!r}: needs to be string or None")
+                raise TypeError(f"{subject=}: needs to be string or None")
             variables['subject'] = subject
         self.coding = coding
         self._coeffs_flat = b.reshape((len(b), -1))
@@ -99,7 +100,7 @@ class LM:
 
     def __repr__(self):
         y = self._y or '<?>'
-        return f"<LM: {y} ~ {self.model.name}>"
+        return f"<LM: {y} ~ {self.model.name}, {self.subject}>"
 
     def _coefficient(self, term):
         """Regression coefficient for a given term"""

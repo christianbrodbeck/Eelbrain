@@ -121,7 +121,7 @@ example_order = NameOrder({
         'colormaps.py',
         'customizing.py',
     ],
-    'deconvolution': [
+    'temporal-response-functions': [
         'trf_intro.py',
         'mtrf.py',
         'partitions.py',

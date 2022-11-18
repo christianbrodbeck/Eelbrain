@@ -1,5 +1,5 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-Mass-univariate statistics
+Mass-Univariate Statistics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 :class:`NDVar`, n-dimensional variables, allow mass-univariate statistics

@@ -44,7 +44,7 @@ eeg = eeg[sensor.index(exclude='A13')]
 plot.Array(spectrogram, xlim=5, w=6, h=2)
 
 ###############################################################################
-# Plot the envelope used as stimulus representation for deconvolution:
+# Plot the envelope used as stimulus representation for TRFs:
 plot.UTS(envelope, xlim=5, w=6, h=2)
 
 ###############################################################################
@@ -53,8 +53,8 @@ p = plot.TopoButterfly(eeg, xlim=5, w=7, h=2)
 p.set_time(1.200)
 
 ###############################################################################
-# Deconvolution
-# -------------
+# TRF estimation
+# --------------
 # TRF for the envelope using boosting:
 #
 # - TRF from -100 to 400 ms
