@@ -94,8 +94,8 @@ def difference(
             out = Dataset()
             groups = ct.groups[c1]
             if isinstance(groups, Interaction):
-                for x in groups.base:
-                    out.add(x)
+                for x_i in groups.base:
+                    out.add(x_i)
             else:
                 out.add(groups)
         out[ct.y.name] = ct.data[c1] - ct.data[c0]  # use ct.y.name because yi can be expression
