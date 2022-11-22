@@ -6238,8 +6238,7 @@ class MneExperiment(FileTree):
         Sets the current directory to raw-dir, and sets the SUBJECT and
         SUBJECTS_DIR to current values
         """
-        subp.run_mne_browse_raw(self.get('raw-dir'), self.get('mrisubject'),
-                                self.get('mri-sdir'), modal)
+        subp.run_mne_browse_raw(self.get('raw-dir'), self.get('mrisubject'), self.get('mri-sdir'), modal)
 
     def set(self, subject=None, match=True, allow_asterisk=False, **state):
         """
