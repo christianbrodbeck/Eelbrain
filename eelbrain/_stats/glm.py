@@ -347,8 +347,7 @@ class _NDANOVA:
             A list with maps of F values (order corresponding to self.effects).
         """
         if y.shape[0] != self._n_obs:
-            raise ValueError("y has wrong number of observations (%i, model "
-                             "has %i)" % (y.shape[0], self._n_obs))
+            raise ValueError(f"y has wrong number of observations ({y.shape[0]}, model has {self._n_obs})")
 
         # find result container
         if self._flat_f_map is None:
@@ -402,7 +401,7 @@ class _NDANOVA:
             content of this array will change (and map() will not return
             anything)
         """
-        shape = (self.n_effects,) + y_shape
+        shape = (self.n_effects, *y_shape)
         f_map = np.empty(shape)
         self._flat_f_map = f_map.reshape((self.n_effects, -1))
         return f_map

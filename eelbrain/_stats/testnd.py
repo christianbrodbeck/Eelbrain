@@ -90,8 +90,7 @@ class NDTest:
         Map of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
     """
-    _state_common = ('y', 'match', 'sub', 'samples', 'tfce', 'pmin', '_cdist',
-                     'tstart', 'tstop', '_dims')
+    _state_common = ('y', 'match', 'sub', 'samples', 'tfce', 'pmin', '_cdist', 'tstart', 'tstop', '_dims')
     _state_specific = ()
     _statistic = None
     _statistic_tail = 0
@@ -224,21 +223,20 @@ class NDTest:
                                "with threshold-based clustering and tests with "
                                "a permutation distribution (samples > 0)")
 
-    def masked_parameter_map(self, pmin=0.05, **sub):
-        """Create a copy of the parameter map masked by significance
+    def masked_parameter_map(self, pmin: float = 0.05, **sub) -> NDVar:
+        """Statistical parameter map masked by significance
 
         Parameters
         ----------
-        pmin : scalar
+        pmin
             Threshold p-value for masking (default 0.05). For threshold-based
             cluster tests, ``pmin=1`` includes all clusters regardless of their
             p-value.
 
         Returns
         -------
-        masked_map : NDVar
-            NDVar with data from the original parameter map wherever p <= pmin
-            and 0 everywhere else.
+        NDVar
+            Parameter map with a mask that is ``True`` (masked) where p > pmin.
         """
         self._assert_has_cdist()
         return self._cdist.masked_parameter_map(pmin, **sub)
@@ -1298,26 +1296,26 @@ class TTestRelated(NDMaskedC1Mixin, NDDifferenceTest):
         0: both (two-tailed, default);
         1: upper tail (one-tailed);
         -1: lower tail (one-tailed).
-    samples : int
+    samples
         Number of samples for permutation test (default 10,000).
-    pmin : None | scalar (0 < pmin < 1)
+    pmin
         Threshold for forming clusters:  use a t-value equivalent to an
         uncorrected p-value.
-    tmin : scalar
+    tmin
         Threshold for forming clusters as t-value.
-    tfce : bool | scalar
+    tfce
         Use threshold-free cluster enhancement. Use a scalar to specify the
         step of TFCE levels (for ``tfce is True``, 0.1 is used).
-    tstart : scalar
+    tstart
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
-    tstop : scalar
+    tstop
         Stop of the time window for the permutation test (default is the
         end of ``y``).
-    parc : str
+    parc
         Collect permutation statistics for all regions of the parcellation of
         this dimension. For threshold-based test, the regions are disconnected.
-    force_permutation: bool
+    force_permutation
         Conduct permutations regardless of whether there are any clusters.
     mintime : scalar
         Minimum duration for clusters (in seconds).
@@ -1502,14 +1500,14 @@ class MultiEffectNDTest(NDTest):
     def _repr_test_args(self):
         args = [repr(self.y), repr(self.x)]
         if self.match is not None:
-            args.append('match=%r' % self.match)
+            args.append(f'match={self.match!r}')
         return args
 
     def _repr_cdist(self):
         args = self._cdist[0]._repr_test_args(self.pmin)
         for cdist in self._cdist:
             effect_args = cdist._repr_clusters()
-            args.append("%r: %s" % (cdist.name, ', '.join(effect_args)))
+            args.append(f"{cdist.name!r}: {', '.join(effect_args)}")
         return args
 
     def _asfmtext(self, **_):
@@ -1612,23 +1610,27 @@ class MultiEffectNDTest(NDTest):
         i = self._effect_index(effect)
         return self._cdist[i].compute_probability_map(**sub)
 
-    def masked_parameter_map(self, effect=0, pmin=0.05, **sub):
-        """Create a copy of the parameter map masked by significance
+    def masked_parameter_map(
+            self,
+            effect: Union[str, int] = 0,
+            pmin: float = 0.05,
+            **sub,
+    ) -> NDVar:
+        """Statistical parameter map masked by significance
 
         Parameters
         ----------
-        effect : int | str
-            Index or name of the effect from which to use the parameter map.
-        pmin : scalar
+        effect
+            Index or name of the effect for which to retrieve the parameter map.
+        pmin
             Threshold p-value for masking (default 0.05). For threshold-based
             cluster tests, ``pmin=1`` includes all clusters regardless of their
             p-value.
 
         Returns
         -------
-        masked_map : NDVar
-            NDVar with data from the original parameter map wherever p <= pmin
-            and 0 everywhere else.
+        NDVar
+            Parameter map with a mask that is ``True`` (masked) where p > pmin.
         """
         self._assert_has_cdist()
         i = self._effect_index(effect)
@@ -1805,30 +1807,29 @@ class ANOVA(MultiEffectNDTest):
         dfs_denom = lm.dfs_denom
         fmaps = lm.map(y.x)
 
+        # Cluster-based tests
         n_threshold_params = sum((pmin is not None, fmin is not None, bool(tfce)))
         if n_threshold_params == 0 and not samples:
             cdists = None
-            thresholds = tuple(repeat(None, len(effects)))
+            thresholds = repeat(None, len(effects))
         elif n_threshold_params > 1:
             raise ValueError("Only one of pmin, fmin and tfce can be specified")
         else:
             if pmin is not None:
-                thresholds = tuple(stats.ftest_f(pmin, e.df, df_den) for e, df_den in zip(effects, dfs_denom))
+                thresholds = [stats.ftest_f(pmin, e.df, df_den) for e, df_den in zip(effects, dfs_denom)]
             elif fmin is not None:
                 thresholds = tuple(repeat(abs(fmin), len(effects)))
             else:
                 thresholds = tuple(repeat(None, len(effects)))
 
-            cdists = [
-                NDPermutationDistribution( y, samples, thresh, tfce, 1, 'f', e.name, tstart, tstop, criteria, parc, force_permutation)
-                for e, thresh in zip(effects, thresholds)]
+            cdists = [NDPermutationDistribution(y, samples, thresh, tfce, 1, 'f', e.name, tstart, tstop, criteria, parc, force_permutation) for e, thresh in zip(effects, thresholds)]
 
             # Find clusters in the actual data
             do_permutation = 0
             for cdist, fmap in zip(cdists, fmaps):
                 cdist.add_original(fmap)
                 do_permutation += cdist.do_permutation
-
+            # Generate null distribution
             if do_permutation:
                 iterator = permute_order(len(y), samples, unit=match)
                 run_permutation_me(lm, cdists, iterator)
