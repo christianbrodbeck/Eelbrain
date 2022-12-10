@@ -1927,10 +1927,14 @@ class EelFigure(MatplotlibFigure):
             label: Union[bool, str],  # override label
             ticklabels: Union[str, int, Sequence[int]] = True,  # where to show tick-labels
             axes: List[matplotlib.axes.Axes] = None,  # axes which to format
+            labels: Dict[str, str] = None,  # user-provided labels
     ):
         "Configure an axis based on data"
+        if label is True and labels is not None:
+            label = labels.get(data.name, label)
         scale = AxisScale(data, label)
         formatters = repeat(scale.formatter)
+        # One label for each subplot
         if not isinstance(scale.label, str) and isinstance(scale.label, Iterable):
             labels = chain(scale.label, repeat(None))
         else:

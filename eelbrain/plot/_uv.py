@@ -1087,8 +1087,8 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
         # figure
         layout = Layout(1, 1, 5, autoscale=True, **kwargs)
         EelFigure.__init__(self, frame_title(y, x), layout)
-        self._configure_axis_data('y', y, ylabel)
-        self._configure_axis_data('x', x, xlabel)
+        self._configure_axis_data('y', y, ylabel, labels=labels)
+        self._configure_axis_data('x', x, xlabel, labels=labels)
 
         ax = self.axes[0]
         ax.set_aspect(aspect)
