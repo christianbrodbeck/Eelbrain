@@ -115,6 +115,41 @@
             "summary": "VNKC Puvvada - 2017 - search.proquest.com"
         }
     },
+    "4D5RTBi0ub8J": {
+        "title": "Neural tracking as a diagnostic tool to assess the auditory pathway",
+        "result_id": "4D5RTBi0ub8J",
+        "link": "https://www.biorxiv.org/content/10.1101/2021.11.26.470129.abstract",
+        "snippet": "When a person listens to sound, the brain time-locks to specific aspects of the sound. This is called neural tracking and it can be investigated by analysing neural responses (eg, \u2026",
+        "publication_info": {
+            "summary": "M Gillis, J Van Canneyt, T Francart, J Vanthornhout - bioRxiv, 2022 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "M Gillis",
+                    "link": "https://scholar.google.com/citations?user=_3DlZ_EAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=_3DlZ_EAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "_3DlZ_EAAAAJ"
+                },
+                {
+                    "name": "J Van Canneyt",
+                    "link": "https://scholar.google.com/citations?user=Nd9x9FIAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=Nd9x9FIAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "Nd9x9FIAAAAJ"
+                },
+                {
+                    "name": "T Francart",
+                    "link": "https://scholar.google.com/citations?user=rv2nwCEAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=rv2nwCEAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "rv2nwCEAAAAJ"
+                },
+                {
+                    "name": "J Vanthornhout",
+                    "link": "https://scholar.google.com/citations?user=I0EdEu0AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=I0EdEu0AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "I0EdEu0AAAAJ"
+                }
+            ]
+        }
+    },
     "4QAnG8imeE4J": {
         "title": "A Python-based Brain-Computer Interface Package for Neural Data Analysis",
         "result_id": "4QAnG8imeE4J",
@@ -265,6 +300,12 @@
             "summary": "M Tulling, R Law, A Cournane, L Pylkk\u00e4nen - Eneuro, 2021 - ncbi.nlm.nih.gov",
             "authors": [
                 {
+                    "name": "M Tulling",
+                    "link": "https://scholar.google.com/citations?user=rXzC82IAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=rXzC82IAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "rXzC82IAAAAJ"
+                },
+                {
                     "name": "R Law",
                     "link": "https://scholar.google.com/citations?user=d06kiU8AAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=d06kiU8AAAAJ&engine=google_scholar_author&hl=en",
@@ -281,6 +322,35 @@
                     "link": "https://scholar.google.com/citations?user=yGIs62YAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=yGIs62YAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "yGIs62YAAAAJ"
+                }
+            ]
+        }
+    },
+    "7w3_G4qWqWUJ": {
+        "title": "Heard or understood? Neural tracking of language features in a comprehensible story, an incomprehensible story and a word list",
+        "result_id": "7w3_G4qWqWUJ",
+        "link": "https://www.biorxiv.org/content/10.1101/2022.11.22.517477.abstract",
+        "snippet": "Speech comprehension is a complex neural process on which relies on activation and integration of multiple brain regions. In the current study, we evaluated whether speech \u2026",
+        "publication_info": {
+            "summary": "M Gillis, J Vanthornhout, T Francart - bioRxiv, 2022 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "M Gillis",
+                    "link": "https://scholar.google.com/citations?user=_3DlZ_EAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=_3DlZ_EAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "_3DlZ_EAAAAJ"
+                },
+                {
+                    "name": "J Vanthornhout",
+                    "link": "https://scholar.google.com/citations?user=I0EdEu0AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=I0EdEu0AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "I0EdEu0AAAAJ"
+                },
+                {
+                    "name": "T Francart",
+                    "link": "https://scholar.google.com/citations?user=rv2nwCEAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=rv2nwCEAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "rv2nwCEAAAAJ"
                 }
             ]
         }
@@ -432,6 +502,29 @@
                     "link": "https://scholar.google.com/citations?user=54_vS5gAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=54_vS5gAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "54_vS5gAAAAJ"
+                }
+            ]
+        }
+    },
+    "ERvT26o8AlUJ": {
+        "title": "Age-related changes in'cortical'1/f dynamics are explained by cardiac activity",
+        "result_id": "ERvT26o8AlUJ",
+        "link": "https://www.biorxiv.org/content/10.1101/2022.11.07.515423.abstract",
+        "snippet": "The power of electrophysiologically measured cortical activity decays 1/fX. The slope of this decay (ie the spectral exponent) is modulated by various factors such as age, cognitive \u2026",
+        "publication_info": {
+            "summary": "F Schmidt, SK Danboeck, E Trinka, G Demarchi\u2026 - bioRxiv, 2022 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "SK Danboeck",
+                    "link": "https://scholar.google.com/citations?user=6s-AmMwAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=6s-AmMwAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "6s-AmMwAAAAJ"
+                },
+                {
+                    "name": "G Demarchi",
+                    "link": "https://scholar.google.com/citations?user=GiarXIUAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=GiarXIUAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "GiarXIUAAAAJ"
                 }
             ]
         }
@@ -1534,6 +1627,12 @@
             "summary": "J Li, L Pylkk\u00e4nen - Journal of Neuroscience, 2021 - Soc Neuroscience",
             "authors": [
                 {
+                    "name": "J Li",
+                    "link": "https://scholar.google.com/citations?user=T5EokYYAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=T5EokYYAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "T5EokYYAAAAJ"
+                },
+                {
                     "name": "L Pylkk\u00e4nen",
                     "link": "https://scholar.google.com/citations?user=yGIs62YAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=yGIs62YAAAAJ&engine=google_scholar_author&hl=en",
@@ -1718,7 +1817,15 @@
         "link": "https://search.proquest.com/openview/bae98a7cd0e7c6bbb436ed364ed00e8e/1.pdf?pq-origsite=gscholar&cbl=18750&diss=y",
         "snippet": "This dissertation investigates the neural bases and development of displacement, which is a language property that allows us to communicate about situations outside the here-and-now\u2026",
         "publication_info": {
-            "summary": "MA Tulling - 2022 - search.proquest.com"
+            "summary": "MA Tulling - 2022 - search.proquest.com",
+            "authors": [
+                {
+                    "name": "MA Tulling",
+                    "link": "https://scholar.google.com/citations?user=rXzC82IAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=rXzC82IAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "rXzC82IAAAAJ"
+                }
+            ]
         }
     },
     "t5g817um_mQJ": {
