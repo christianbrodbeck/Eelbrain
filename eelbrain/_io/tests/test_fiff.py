@@ -28,8 +28,7 @@ def test_load_fiff_ctf():
 def test_load_fiff_mne():
     data_path = mne.datasets.sample.data_path()
     fwd_path = os.path.join(data_path, 'MEG', 'sample', 'sample-ico-4-fwd.fif')
-    evoked_path = os.path.join(data_path, 'MEG', 'sample',
-                               'sample_audvis-no-filter-ave.fif')
+    evoked_path = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis-no-filter-ave.fif')
     cov_path = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis-cov.fif')
     mri_sdir = os.path.join(data_path, 'subjects')
 

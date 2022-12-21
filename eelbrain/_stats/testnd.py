@@ -3751,16 +3751,14 @@ def distribution_worker(dist_array, dist_shape, in_queue, kill_beacon):
     dist = np.frombuffer(dist_array, np.float64, n)
     dist.shape = dist_shape
     samples = dist_shape[0]
-    for i in trange(samples, desc="Permutation test", unit=' permutations',
-                    disable=CONFIG['tqdm']):
+    for i in trange(samples, desc="Permutation test", unit=' permutations', disable=CONFIG['tqdm']):
         dist[i] = in_queue.get()
         if kill_beacon.is_set():
             return
 
 
-def permutation_worker(in_queue, out_queue, y, y_flat_shape, stat_map_shape,
-                       test_func, args, map_args, kill_beacon):
-    "Worker for 1 sample t-test"
+def permutation_worker(in_queue, out_queue, y, y_flat_shape, stat_map_shape, test_func, args, map_args, kill_beacon):
+    "Worker function for permutation test"
     if CONFIG['nice']:
         os.nice(CONFIG['nice'])
 
@@ -3779,6 +3777,7 @@ def permutation_worker(in_queue, out_queue, y, y_flat_shape, stat_map_shape,
 
 
 def run_permutation(test_func, dist, iterator, *args):
+    "Perform permutation test"
     if CONFIG['n_workers']:
         workers, out_queue, kill_beacon = setup_workers(test_func, dist, args)
 
@@ -3808,9 +3807,9 @@ def run_permutation(test_func, dist, iterator, *args):
 
 
 def setup_workers(test_func, dist, func_args):
-    "Initialize workers for permutation tests"
+    "Initialize workers for permutation test"
     logger = logging.getLogger(__name__)
-    logger.debug("Setting up %i worker processes..." % CONFIG['n_workers'])
+    logger.debug("Setting up %i worker processes...", CONFIG['n_workers'])
     permutation_queue = mpc.SimpleQueue()
     dist_queue = mpc.SimpleQueue()
     kill_beacon = mpc.Event()
@@ -3837,6 +3836,7 @@ def setup_workers(test_func, dist, func_args):
 
 
 def run_permutation_me(test, dists, iterator):
+    "Perform multi-effect permutation test"
     dist = dists[0]
     if dist.kind == 'cluster':
         thresholds = tuple(d.threshold for d in dists)
@@ -3887,9 +3887,9 @@ def run_permutation_me(test, dists, iterator):
 
 
 def setup_workers_me(test_func, dists, thresholds):
-    "Initialize workers for permutation tests"
+    "Initialize workers for multi-effect permutation test"
     logger = logging.getLogger(__name__)
-    logger.debug("Setting up %i worker processes..." % CONFIG['n_workers'])
+    logger.debug("Setting up %i worker processes...", CONFIG['n_workers'])
     permutation_queue = mpc.SimpleQueue()
     dist_queue = mpc.SimpleQueue()
     kill_beacon = mpc.Event()
@@ -3899,8 +3899,7 @@ def setup_workers_me(test_func, dists, thresholds):
     # permutation workers
     dist = dists[0]
     y, y_flat_shape, stat_map_shape = dist.data_for_permutation()
-    args = (permutation_queue, dist_queue, y, y_flat_shape, stat_map_shape,
-            test_func, dist.map_args, thresholds, kill_beacon)
+    args = (permutation_queue, dist_queue, y, y_flat_shape, stat_map_shape, test_func, dist.map_args, thresholds, kill_beacon)
     workers = []
     for _ in range(CONFIG['n_workers']):
         w = mpc.Process(target=permutation_worker_me, args=args)
@@ -3916,8 +3915,7 @@ def setup_workers_me(test_func, dists, thresholds):
     return workers, permutation_queue, kill_beacon
 
 
-def permutation_worker_me(in_queue, out_queue, y, y_flat_shape, stat_map_shape,
-                          test, map_args, thresholds, kill_beacon):
+def permutation_worker_me(in_queue, out_queue, y, y_flat_shape, stat_map_shape, test, map_args, thresholds, kill_beacon):
     if CONFIG['nice']:
         os.nice(CONFIG['nice'])
 
