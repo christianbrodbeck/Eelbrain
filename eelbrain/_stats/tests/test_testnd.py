@@ -561,6 +561,12 @@ def test_ttest_ind():
     with pytest.raises(ValueError):
         testnd.TTestIndependent(ds['utsnd'], ds[:-1, 'A'], samples=0)
 
+    # large array (#52)
+    ds = datasets.simulate_erp(60, time=UTS(-0.1, 0.001, 601), snr=0.7)
+    res = testnd.TTestIndependent('eeg', 'cloze_cat', 'low', 'high', ds=ds, pmin=0.05, tstart=0.100, mintime=0.020, samples=20)
+    clusters = res.find_clusters()
+    assert_array_equal(clusters['p'], [0, 0.15, 0])
+
 
 def test_ttest_rel():
     "Test testnd.TTestRelated()"
