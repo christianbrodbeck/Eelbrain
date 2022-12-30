@@ -24,6 +24,8 @@ def simulate_erp(
         n_trials: int = 80,
         seed: int = 0,
         snr: float = 0.2,
+        sensor: Sensor = None,
+        time: UTS = None,
 ) -> Dataset:
     """Simulate event-related EEG data
 
@@ -35,6 +37,10 @@ def simulate_erp(
         Random seed.
     snr
         Signal-to-noise ratio.
+    sensor
+        Sensor dimension.
+    time
+        Time dimension.
 
     Examples
     --------
@@ -50,9 +56,11 @@ def simulate_erp(
     """
     assert n_trials % 2 == 0
 
-    sensor = Sensor.from_montage('standard_alphabetic')
-    sensor.set_connectivity(connect_dist=1.66)
-    time = UTS(-0.100, 0.005, 140)
+    if sensor is None:
+        sensor = Sensor.from_montage('standard_alphabetic')
+        sensor.set_connectivity(connect_dist=1.66)
+    if time is None:
+        time = UTS(-0.100, 0.005, 140)
 
     # Generate random values for the independent variable (cloze probability)
     rng = np.random.RandomState(seed)

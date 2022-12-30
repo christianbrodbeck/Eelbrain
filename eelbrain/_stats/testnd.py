@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 from functools import cached_property, reduce, partial
 from itertools import chain, repeat
 from math import ceil
-from multiprocessing.sharedctypes import RawArray
+from multiprocessing.shared_memory import SharedMemory
 import logging
 import operator
 import os
@@ -2997,6 +2997,7 @@ class NDPermutationDistribution:
         self._dist_dims = dist_dims
         self._max_axes = max_axes
         self.dist = None
+        self.dist_memory = None
         self.threshold = threshold
         self.tfce = tfce
         self.tail = tail
@@ -3096,26 +3097,17 @@ class NDPermutationDistribution:
         self.dt_original = self._t0 - self._init_time
         self._original_param_map = stat_map
 
+        # create the distribution container
         if self.force_permutation or (self.samples and n_clusters):
-            self._create_dist()
             self.do_permutation = True
+            if CONFIG['n_workers']:
+                n = reduce(operator.mul, self.dist_shape)
+                self.dist_memory = SharedMemory(create=True, size=8*n)
+                self.dist = np.ndarray(self.dist_shape, np.float64, self.dist_memory.buf)
+            else:
+                self.dist = np.zeros(self.dist_shape)
         else:
-            self.dist_array = None
             self.finalize()
-
-    def _create_dist(self):
-        "Create the distribution container"
-        if CONFIG['n_workers']:
-            n = reduce(operator.mul, self.dist_shape)
-            dist_array = RawArray('d', n)
-            dist = np.frombuffer(dist_array, np.float64, n)
-            dist.shape = self.dist_shape
-        else:
-            dist_array = None
-            dist = np.zeros(self.dist_shape)
-
-        self.dist_array = dist_array
-        self.dist = dist
 
     def _aggregate_dist(self, **sub):
         """Aggregate permutation distribution to one value per permutation
@@ -3314,10 +3306,10 @@ class NDPermutationDistribution:
         if not raw:
             return x.reshape(y_flat_shape)
 
-        n = reduce(operator.mul, y_flat_shape)
-        ra = RawArray('d', n)
-        ra[:] = x.ravel()  # OPT: don't copy data
-        return ra, y_flat_shape, x.shape[ndims:]
+        shared_memory = SharedMemory(create=True, size=x.nbytes)
+        array = np.ndarray(x.shape, x.dtype, buffer=shared_memory.buf)
+        array[:] = x
+        return shared_memory, y_flat_shape, x.shape[ndims:]
 
     @staticmethod
     def _cluster_properties(cluster_map, cids):
@@ -3745,27 +3737,23 @@ class _MergedTemporalClusterDist:
         return clusters
 
 
-def distribution_worker(dist_array, dist_shape, in_queue, kill_beacon):
+def distribution_worker(dist_memory_name, dist_shape, in_queue, kill_beacon):
     "Worker that accumulates values and places them into the distribution"
-    n = reduce(operator.mul, dist_shape)
-    dist = np.frombuffer(dist_array, np.float64, n)
-    dist.shape = dist_shape
-    samples = dist_shape[0]
-    for i in trange(samples, desc="Permutation test", unit=' permutations',
-                    disable=CONFIG['tqdm']):
+    shared_memory = SharedMemory(dist_memory_name)
+    dist = np.ndarray(dist_shape, np.float64, shared_memory.buf)
+    for i in trange(dist_shape[0], desc="Permutation test", unit=' permutations', disable=CONFIG['tqdm']):
         dist[i] = in_queue.get()
         if kill_beacon.is_set():
             return
 
 
-def permutation_worker(in_queue, out_queue, y, y_flat_shape, stat_map_shape,
-                       test_func, args, map_args, kill_beacon):
-    "Worker for 1 sample t-test"
+def permutation_worker(in_queue, out_queue, memory_name, y_flat_shape, stat_map_shape, test_func, args, map_args, kill_beacon):
+    "Worker function for permutation test"
     if CONFIG['nice']:
         os.nice(CONFIG['nice'])
 
-    n = reduce(operator.mul, y_flat_shape)
-    y = np.frombuffer(y, np.float64, n).reshape(y_flat_shape)
+    shared_memory = SharedMemory(memory_name)
+    y = np.ndarray(y_flat_shape, np.float64, buffer=shared_memory.buf)
     stat_map = np.empty(stat_map_shape)
     stat_map_flat = stat_map.ravel()
     map_processor = get_map_processor(*map_args)
@@ -3779,8 +3767,9 @@ def permutation_worker(in_queue, out_queue, y, y_flat_shape, stat_map_shape,
 
 
 def run_permutation(test_func, dist, iterator, *args):
+    "Perform permutation test"
     if CONFIG['n_workers']:
-        workers, out_queue, kill_beacon = setup_workers(test_func, dist, args)
+        workers, out_queue, kill_beacon, shared_memory = setup_workers(test_func, dist, args)
 
         try:
             for perm in iterator:
@@ -3808,9 +3797,9 @@ def run_permutation(test_func, dist, iterator, *args):
 
 
 def setup_workers(test_func, dist, func_args):
-    "Initialize workers for permutation tests"
+    "Initialize workers for permutation test"
     logger = logging.getLogger(__name__)
-    logger.debug("Setting up %i worker processes..." % CONFIG['n_workers'])
+    logger.debug("Setting up %i worker processes...", CONFIG['n_workers'])
     permutation_queue = mpc.SimpleQueue()
     dist_queue = mpc.SimpleQueue()
     kill_beacon = mpc.Event()
@@ -3818,9 +3807,8 @@ def setup_workers(test_func, dist, func_args):
     restore_main_spec()
 
     # permutation workers
-    y, y_flat_shape, stat_map_shape = dist.data_for_permutation()
-    args = (permutation_queue, dist_queue, y, y_flat_shape, stat_map_shape,
-            test_func, func_args, dist.map_args, kill_beacon)
+    shared_memory, y_flat_shape, stat_map_shape = dist.data_for_permutation()
+    args = (permutation_queue, dist_queue, shared_memory.name, y_flat_shape, stat_map_shape, test_func, func_args, dist.map_args, kill_beacon)
     workers = []
     for _ in range(CONFIG['n_workers']):
         w = mpc.Process(target=permutation_worker, args=args)
@@ -3828,15 +3816,16 @@ def setup_workers(test_func, dist, func_args):
         workers.append(w)
 
     # distribution worker
-    args = (dist.dist_array, dist.dist_shape, dist_queue, kill_beacon)
+    args = (dist.dist_memory.name, dist.dist_shape, dist_queue, kill_beacon)
     w = mpc.Process(target=distribution_worker, args=args)
     w.start()
     workers.append(w)
 
-    return workers, permutation_queue, kill_beacon
+    return workers, permutation_queue, kill_beacon, shared_memory  # return shared_memory so that it does not get garbage collected
 
 
 def run_permutation_me(test, dists, iterator):
+    "Perform multi-effect permutation test"
     dist = dists[0]
     if dist.kind == 'cluster':
         thresholds = tuple(d.threshold for d in dists)
@@ -3844,7 +3833,7 @@ def run_permutation_me(test, dists, iterator):
         thresholds = None
 
     if CONFIG['n_workers']:
-        workers, out_queue, kill_beacon = setup_workers_me(test, dists, thresholds)
+        workers, out_queue, kill_beacon, shared_memory = setup_workers_me(test, dists, thresholds)
 
         try:
             for perm in iterator:
@@ -3887,9 +3876,9 @@ def run_permutation_me(test, dists, iterator):
 
 
 def setup_workers_me(test_func, dists, thresholds):
-    "Initialize workers for permutation tests"
+    "Initialize workers for multi-effect permutation test"
     logger = logging.getLogger(__name__)
-    logger.debug("Setting up %i worker processes..." % CONFIG['n_workers'])
+    logger.debug("Setting up %i worker processes...", CONFIG['n_workers'])
     permutation_queue = mpc.SimpleQueue()
     dist_queue = mpc.SimpleQueue()
     kill_beacon = mpc.Event()
@@ -3898,9 +3887,8 @@ def setup_workers_me(test_func, dists, thresholds):
 
     # permutation workers
     dist = dists[0]
-    y, y_flat_shape, stat_map_shape = dist.data_for_permutation()
-    args = (permutation_queue, dist_queue, y, y_flat_shape, stat_map_shape,
-            test_func, dist.map_args, thresholds, kill_beacon)
+    shared_memory, y_flat_shape, stat_map_shape = dist.data_for_permutation()
+    args = (permutation_queue, dist_queue, shared_memory.name, y_flat_shape, stat_map_shape, test_func, dist.map_args, thresholds, kill_beacon)
     workers = []
     for _ in range(CONFIG['n_workers']):
         w = mpc.Process(target=permutation_worker_me, args=args)
@@ -3908,21 +3896,21 @@ def setup_workers_me(test_func, dists, thresholds):
         workers.append(w)
 
     # distribution worker
-    args = ([d.dist_array for d in dists], dist.dist_shape, dist_queue, kill_beacon)
+    shared_memory_names = [None if d.dist_memory is None else d.dist_memory.name for d in dists]
+    args = (shared_memory_names, dist.dist_shape, dist_queue, kill_beacon)
     w = mpc.Process(target=distribution_worker_me, args=args)
     w.start()
     workers.append(w)
 
-    return workers, permutation_queue, kill_beacon
+    return workers, permutation_queue, kill_beacon, shared_memory
 
 
-def permutation_worker_me(in_queue, out_queue, y, y_flat_shape, stat_map_shape,
-                          test, map_args, thresholds, kill_beacon):
+def permutation_worker_me(in_queue, out_queue, memory_name, y_flat_shape, stat_map_shape, test, map_args, thresholds, kill_beacon):
     if CONFIG['nice']:
         os.nice(CONFIG['nice'])
 
-    n = reduce(operator.mul, y_flat_shape)
-    y = np.frombuffer(y, np.float64, n).reshape(y_flat_shape)
+    shared_memory = SharedMemory(memory_name)
+    y = np.ndarray(y_flat_shape, np.float64, buffer=shared_memory.buf)
     iterator = test.preallocate(stat_map_shape)
     if thresholds:
         iterator = tuple(zip(iterator, thresholds))
@@ -3942,14 +3930,13 @@ def permutation_worker_me(in_queue, out_queue, y, y_flat_shape, stat_map_shape,
         out_queue.put(max_v)
 
 
-def distribution_worker_me(dist_arrays, dist_shape, in_queue, kill_beacon):
+def distribution_worker_me(dist_memory_names, dist_shape, in_queue, kill_beacon):
     "Worker that accumulates values and places them into the distribution"
-    n = reduce(operator.mul, dist_shape)
-    dists = [d if d is None else np.frombuffer(d, np.float64, n).reshape(dist_shape)
-             for d in dist_arrays]
-    samples = dist_shape[0]
-    for i in trange(samples, desc="Permutation test", unit=' permutations',
-                    disable=CONFIG['tqdm']):
+    # Recover distributions from shared memory
+    shared_memories = [SharedMemory(name) if name else None for name in dist_memory_names]  # keep reference to avoid garbage collection
+    dists = [np.ndarray(dist_shape, np.float64, memory.buf) if memory else None for memory in shared_memories]
+    # Collect results
+    for i in trange(dist_shape[0], desc="Permutation test", unit=' permutations', disable=CONFIG['tqdm']):
         for dist, v in zip(dists, in_queue.get()):
             if dist is not None:
                 dist[i] = v

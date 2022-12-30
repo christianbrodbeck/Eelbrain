@@ -812,7 +812,8 @@ def sensor_dim(
                 vec_ids = {name[-1] for name in ch_names}
                 if len(vec_ids) > 1:
                     raise NotImplementedError("Connectivity for Neuromag vector data")
-                names = [f'{n[:3]} {n[3:]}' for n in names]
+                if ' ' not in names[0]:  # mne-python < ~1.2
+                    names = [f'{n[:3]} {n[3:]}' for n in names]
             elif connectivity == 'ctf275':
                 ch_names = [name[:5] for name in ch_names]
 
