@@ -100,7 +100,8 @@ class LM:
 
     def __repr__(self):
         y = self._y or '<?>'
-        return f"<LM: {y} ~ {self.model.name}, {self.subject}>"
+        subject = '' if self.subject is None else f', {self.subject}'
+        return f"<LM: {y} ~ {self.model.name}{subject}>"
 
     def _coefficient(self, term):
         """Regression coefficient for a given term"""
