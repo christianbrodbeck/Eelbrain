@@ -3283,7 +3283,8 @@ class NDPermutationDistribution:
         Parameters
         ----------
         raw : bool
-            Return a RawArray and a shape tuple instead of a numpy array.
+            Return SharedMemory and array shape instead of a numpy array
+            (for multiprocessing).
         """
         # get data in the right shape
         x = self.y_perm.x
