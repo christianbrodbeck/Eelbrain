@@ -244,7 +244,7 @@ def colors_for_oneway(
         always_cycle_hue: bool = False,
         locations: Sequence[float] = None,
         unambiguous: Union[bool, Sequence[int]] = None,
-):
+) -> Dict:
     """Define colors for a single factor design
 
     Parameters
@@ -282,8 +282,7 @@ def colors_for_oneway(
 
     Returns
     -------
-    dict
-        Mapping from cells to colors.
+    Mapping from cells to colors.
     """
     if isinstance(cells, Iterator):
         cells = tuple(cells)
@@ -306,7 +305,7 @@ def colors_for_twoway(
         hue_shift: float = 0.,
         hues: Sequence[float] = None,
         lightness: Union[float, Sequence[float]] = None,
-):
+) -> Dict[Tuple[str, str], Tuple[float, float, float]]:
     """Define cell colors for a two-way design
 
     Parameters
@@ -330,8 +329,7 @@ def colors_for_twoway(
 
     Returns
     -------
-    dict : {tuple: tuple}
-        Mapping from cells to colors.
+    Mapping from cells to colors.
     """
     x1_cells = list(x1_cells)
     x2_cells = list(x2_cells)
@@ -347,7 +345,7 @@ def colors_for_twoway(
 def colors_for_nway(
         cell_lists: Sequence[CellArg],
         hue_start: float = 0.2,
-):
+) -> Dict[CellArg, Tuple]:
     """Define cell colors for a two-way design
 
     Parameters
@@ -360,8 +358,7 @@ def colors_for_nway(
 
     Returns
     -------
-    dict : {tuple: tuple}
-        Mapping from cells to colors.
+    Mapping from cells to colors.
     """
     if len(cell_lists) == 1:
         return colors_for_oneway(cell_lists[0])
@@ -412,8 +409,7 @@ def styles_for_twoway(
 
     Returns
     -------
-    dict
-        Mapping from cells to plot styles.
+    Mapping from cells to plot styles.
     """
     x1_cells = list(x1_cells)
     x2_cells = list(x2_cells)
@@ -426,18 +422,13 @@ def styles_for_twoway(
     return out
 
 
-def single_hue_colormap(hue: ColorArg):
-    """Colormap based on single hue
+def single_hue_colormap(hue: ColorArg) -> LinearSegmentedColormap:
+    """Colormap ranging from transparent to ``hue``
 
     Parameters
     ----------
     hue : matplotlib color
         Base RGB color.
-
-    Returns
-    -------
-    colormap : matplotlib Colormap
-        Colormap from transparent to ``hue``.
     """
     name = str(hue)
     color = to_rgb(hue)
@@ -476,11 +467,6 @@ def soft_threshold_colormap(
     alpha
         Control the global alpha level (opacity) of the colormap (original
         colormap alpha is multiplied by ``alpha``).
-
-    Returns
-    -------
-    thresholded_cmap
-        Soft-thresholded colormap.
     """
     assert vmax > threshold >= 0
     cmap = mpl.cm.get_cmap(cmap)

@@ -3,7 +3,7 @@ from itertools import cycle
 import logging
 from math import ceil
 from numbers import Real
-from typing import Sequence, Tuple, Union
+from typing import Sequence, List, Tuple, Union
 
 # colormath starts out at 0; needs to be set before init
 logger = logging.getLogger('colormath.color_conversions')
@@ -232,7 +232,7 @@ def twoway_colors(
         hue_shift: float = 0.,
         hues: Sequence[float] = None,
         lightness: Union[float, Sequence[float]] = None,
-):
+) -> List[Tuple[float, float, float]]:
     """Create colors for two-way interaction
 
     Parameters
