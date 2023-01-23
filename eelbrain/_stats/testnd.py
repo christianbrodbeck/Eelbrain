@@ -2853,6 +2853,8 @@ class NDPermutationDistribution:
     Permutation data shape: case, [vector, ][non-adjacent, ] ...
     internal shape: [non-adjacent, ] ...
     """
+    dist = None
+    dist_memory = None
     tfce_warning = None
 
     def __init__(self, y, samples, threshold, tfce=False, tail=0, meas='?', name=None,
@@ -2996,8 +2998,6 @@ class NDPermutationDistribution:
         self.dist_shape = dist_shape
         self._dist_dims = dist_dims
         self._max_axes = max_axes
-        self.dist = None
-        self.dist_memory = None
         self.threshold = threshold
         self.tfce = tfce
         self.tail = tail
@@ -3252,6 +3252,11 @@ class NDPermutationDistribution:
         "Package results and delete temporary data"
         if self.dt_perm is None:
             self.dt_perm = current_time() - self._t0
+
+        if self.dist_memory is not None:
+            self.dist = self.dist.copy()
+            self.dist_memory.close()
+            self.dist_memory.unlink()
 
         # original parameter map
         param_contours = {}
@@ -3745,7 +3750,8 @@ def distribution_worker(dist_memory_name, dist_shape, in_queue, kill_beacon):
     for i in trange(dist_shape[0], desc="Permutation test", unit=' permutations', disable=CONFIG['tqdm']):
         dist[i] = in_queue.get()
         if kill_beacon.is_set():
-            return
+            break
+    shared_memory.close()
 
 
 def permutation_worker(in_queue, out_queue, memory_name, y_flat_shape, stat_map_shape, test_func, args, map_args, kill_beacon):
@@ -3765,6 +3771,7 @@ def permutation_worker(in_queue, out_queue, memory_name, y_flat_shape, stat_map_
         test_func(y, *args, stat_map_flat, perm)
         max_v = map_processor.max_stat(stat_map)
         out_queue.put(max_v)
+    shared_memory.close()
 
 
 def run_permutation(test_func, dist, iterator, *args):
@@ -3786,6 +3793,9 @@ def run_permutation(test_func, dist, iterator, *args):
         except KeyboardInterrupt:
             kill_beacon.set()
             raise
+        finally:
+            shared_memory.close()
+            shared_memory.unlink()
     else:
         y = dist.data_for_permutation(False)
         map_processor = get_map_processor(*dist.map_args)
@@ -3850,6 +3860,9 @@ def run_permutation_me(test, dists, iterator):
         except KeyboardInterrupt:
             kill_beacon.set()
             raise
+        finally:
+            shared_memory.close()
+            shared_memory.unlink()
     else:
         y = dist.data_for_permutation(False)
         map_processor = get_map_processor(*dist.map_args)
@@ -3929,6 +3942,7 @@ def permutation_worker_me(in_queue, out_queue, memory_name, y_flat_shape, stat_m
         else:
             max_v = [map_processor.max_stat(m) for m in iterator]
         out_queue.put(max_v)
+    shared_memory.close()
 
 
 def distribution_worker_me(dist_memory_names, dist_shape, in_queue, kill_beacon):
@@ -3942,7 +3956,9 @@ def distribution_worker_me(dist_memory_names, dist_shape, in_queue, kill_beacon)
             if dist is not None:
                 dist[i] = v
         if kill_beacon.is_set():
-            return
+            break
+    for shared_memory in shared_memories:
+        shared_memory.close()
 
 
 # Backwards compatibility for pickling
