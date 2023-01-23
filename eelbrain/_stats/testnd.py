@@ -30,6 +30,7 @@ import operator
 import os
 import re
 import socket
+from threading import Thread
 from time import time as current_time
 from typing import Union
 
@@ -2854,7 +2855,6 @@ class NDPermutationDistribution:
     internal shape: [non-adjacent, ] ...
     """
     dist = None
-    dist_memory = None
     tfce_warning = None
 
     def __init__(self, y, samples, threshold, tfce=False, tail=0, meas='?', name=None,
@@ -3100,12 +3100,7 @@ class NDPermutationDistribution:
         # create the distribution container
         if self.force_permutation or (self.samples and n_clusters):
             self.do_permutation = True
-            if CONFIG['n_workers']:
-                n = reduce(operator.mul, self.dist_shape)
-                self.dist_memory = SharedMemory(create=True, size=8*n)
-                self.dist = np.ndarray(self.dist_shape, np.float64, self.dist_memory.buf)
-            else:
-                self.dist = np.zeros(self.dist_shape)
+            self.dist = np.zeros(self.dist_shape)
         else:
             self.finalize()
 
@@ -3252,11 +3247,6 @@ class NDPermutationDistribution:
         "Package results and delete temporary data"
         if self.dt_perm is None:
             self.dt_perm = current_time() - self._t0
-
-        if self.dist_memory is not None:
-            self.dist = self.dist.copy()
-            self.dist_memory.close()
-            self.dist_memory.unlink()
 
         # original parameter map
         param_contours = {}
@@ -3743,15 +3733,12 @@ class _MergedTemporalClusterDist:
         return clusters
 
 
-def distribution_worker(dist_memory_name, dist_shape, in_queue, kill_beacon):
+def distribution_worker(dist, in_queue, kill_beacon):
     "Worker that accumulates values and places them into the distribution"
-    shared_memory = SharedMemory(dist_memory_name)
-    dist = np.ndarray(dist_shape, np.float64, shared_memory.buf)
-    for i in trange(dist_shape[0], desc="Permutation test", unit=' permutations', disable=CONFIG['tqdm']):
+    for i in trange(dist.shape[0], desc="Permutation test", unit=' permutations', disable=CONFIG['tqdm']):
         dist[i] = in_queue.get()
         if kill_beacon.is_set():
             break
-    shared_memory.close()
 
 
 def permutation_worker(in_queue, out_queue, memory_name, y_flat_shape, stat_map_shape, test_func, args, map_args, kill_beacon):
@@ -3827,8 +3814,8 @@ def setup_workers(test_func, dist, func_args):
         workers.append(w)
 
     # distribution worker
-    args = (dist.dist_memory.name, dist.dist_shape, dist_queue, kill_beacon)
-    w = mpc.Process(target=distribution_worker, args=args)
+    args = (dist.dist, dist_queue, kill_beacon)
+    w = Thread(target=distribution_worker, args=args)
     w.start()
     workers.append(w)
 
@@ -3910,9 +3897,8 @@ def setup_workers_me(test_func, dists, thresholds):
         workers.append(w)
 
     # distribution worker
-    shared_memory_names = [None if d.dist_memory is None else d.dist_memory.name for d in dists]
-    args = (shared_memory_names, dist.dist_shape, dist_queue, kill_beacon)
-    w = mpc.Process(target=distribution_worker_me, args=args)
+    args = ([dist.dist for dist in dists], dist_queue, kill_beacon)
+    w = Thread(target=distribution_worker_me, args=args)
     w.start()
     workers.append(w)
 
@@ -3945,20 +3931,20 @@ def permutation_worker_me(in_queue, out_queue, memory_name, y_flat_shape, stat_m
     shared_memory.close()
 
 
-def distribution_worker_me(dist_memory_names, dist_shape, in_queue, kill_beacon):
+def distribution_worker_me(dists, in_queue, kill_beacon):
     "Worker that accumulates values and places them into the distribution"
-    # Recover distributions from shared memory
-    shared_memories = [SharedMemory(name) if name else None for name in dist_memory_names]  # keep reference to avoid garbage collection
-    dists = [np.ndarray(dist_shape, np.float64, memory.buf) if memory else None for memory in shared_memories]
-    # Collect results
-    for i in trange(dist_shape[0], desc="Permutation test", unit=' permutations', disable=CONFIG['tqdm']):
+    for dist in dists:
+        if dist is not None:
+            n = dist.shape[0]
+            break
+    else:
+        raise RuntimeError("No distirbutions")
+    for i in trange(n, desc="Permutation test", unit=' permutations', disable=CONFIG['tqdm']):
         for dist, v in zip(dists, in_queue.get()):
             if dist is not None:
                 dist[i] = v
         if kill_beacon.is_set():
             break
-    for shared_memory in shared_memories:
-        shared_memory.close()
 
 
 # Backwards compatibility for pickling
