@@ -48,10 +48,9 @@ extensions = [
     # 'scanpydoc',  # https://github.com/theislab/scanpydoc
     'sphinx_rtd_theme',  # https://sphinx-rtd-theme.readthedocs.io/
 ]
-# enable to  have all methods documented on the same page as a class:
+# enable to have all methods documented on the same page as a class:
 # autodoc_default_flags=['inherited-members']
 autosummary_generate = True
-numpydoc_show_class_members = False
 
 # Napoleon settings
 napoleon_google_docstring = False
