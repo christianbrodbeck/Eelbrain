@@ -207,10 +207,10 @@ def tsv(
 
     # check types values
     if len(types_) != n_columns:
-        raise ValueError(f'types={types!r}: {len(types)} values for file with {n_columns} columns')
+        raise ValueError(f'{types=}: {len(types)} values for file with {n_columns} columns')
     elif set(types_).difference('afvb'):
         invalid = ', '.join(map(repr, set(types_).difference('afvb')))
-        raise ValueError(f'types={types!r}: invalid values {invalid}')
+        raise ValueError(f'{types=}: invalid values {invalid}')
 
     # find quotes (imply type 1)
     # quotes = "'\""
@@ -240,7 +240,7 @@ def tsv(
         elif isinstance(empty, Number):
             np_vars[''] = empty
         else:
-            raise TypeError(f'empty={empty!r}')
+            raise TypeError(f'{empty=}')
     bool_dict = {'True': True, 'False': False, None: False}
     keys = {}
     for name, values, type_ in zip(column_names, data.T, types_):
@@ -273,7 +273,7 @@ def tsv(
                 if any(cell.strip() != cell for cell in d_obj.cells):
                     d_obj.update_labels({cell: cell.strip() for cell in d_obj.cells})
         elif name in random:
-            raise ValueError(f"random={random}: {name} is not categorial")
+            raise ValueError(f"{random=}: {name} is not categorial")
         else:
             d_obj = _data.Var(values, name)
         key = _data.Dataset.as_key(name)

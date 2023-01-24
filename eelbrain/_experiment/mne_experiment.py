@@ -593,8 +593,7 @@ class MneExperiment(FileTree):
         # make : can be made if non-existent
         # morph_from_fraverage : can be morphed from fsaverage to other subjects
         self._parcs = assemble_parcs(chain(self.__parcs.items(), self.parcs.items()))
-        parc_values = list(self._parcs.keys())
-        parc_values.append('')
+        parc_values = [*self._parcs.keys(), '']
 
         ########################################################################
         # frequency
@@ -868,22 +867,22 @@ class MneExperiment(FileTree):
 
                 # determine which sessions to use for forward solutions
                 # -> {for_session: use_session}
-                use_for_session = input_state['fwd-sessions'].setdefault(subject, {})
+                use_for_recording = input_state['fwd-sessions'].setdefault(subject, {})
                 # -> {marker_id: use_session}, initialize with previously used sessions
-                use_for_id = {marker_ids[s]: s for s in use_for_session.values() if s in marker_ids}
+                use_for_id = {marker_ids[s]: s for s in use_for_recording.values() if s in marker_ids}
                 for recording in sorted(marker_ids):
                     mrk_id = marker_ids[recording]
-                    if recording in use_for_session:
-                        assert mrk_id == marker_ids[use_for_session[recording]]
+                    if recording in use_for_recording:
+                        assert mrk_id == marker_ids[use_for_recording[recording]]
                         continue
                     elif mrk_id not in use_for_id:
                         use_for_id[mrk_id] = recording
-                    use_for_session[recording] = use_for_id[mrk_id]
+                    use_for_recording[recording] = use_for_id[mrk_id]
                 # for files missing digitizer, use singe available fwd-recording
                 for recording in dig_missing:
                     if use_for_id:
                         assert len(use_for_id) == 1
-                        use_for_session[recording] = use_for_id[0]
+                        use_for_recording[recording] = use_for_id[0]
 
         # save input-state
         if not cache_dir_existed:
@@ -2950,7 +2949,7 @@ class MneExperiment(FileTree):
         # check baseline
         epoch = self._epochs[self.get('epoch')]
         if src_baseline and epoch.post_baseline_trigger_shift:
-            raise NotImplementedError(f"src_baseline={src_baseline!r}: post_baseline_trigger_shift is not implemented for baseline correction in source space")
+            raise NotImplementedError(f"{src_baseline=}: post_baseline_trigger_shift is not implemented for baseline correction in source space")
         elif src_baseline is True:
             src_baseline = epoch.baseline
 
@@ -3260,7 +3259,7 @@ class MneExperiment(FileTree):
             if src[:3] == 'vol':
                 inv = self.get('inv')
                 if not (inv.startswith('vec') or inv.startswith('free')):
-                    raise ValueError(f'inv={inv!r} with src={src!r}: volume source space requires free or vector inverse')
+                    raise ValueError(f'{inv=} with {src=}: volume source space requires free or vector inverse')
 
             if fiff is None:
                 fiff = self.load_raw()
@@ -3808,11 +3807,12 @@ class MneExperiment(FileTree):
         fpath = self.get('src-file', make=True, **state)
         if ndvar:
             src = self.get('src')
+            mri_sdir = self.get('mri-sdir')
+            mri_subject = self.get('mrisubject')
             if src.startswith('vol'):
-                return VolumeSourceSpace.from_file(
-                    self.get('mri-sdir'), self.get('mrisubject'), src)
-            return SourceSpace.from_file(
-                self.get('mri-sdir'), self.get('mrisubject'), src, self.get('parc'))
+                return VolumeSourceSpace.from_file(mri_sdir, mri_subject, src)
+            parc = self.get('parc')
+            return SourceSpace.from_file(mri_sdir, mri_subject, src, parc)
         return mne.read_source_spaces(fpath, add_geom)
 
     def load_test(
@@ -5708,6 +5708,7 @@ class MneExperiment(FileTree):
             return
         else:
             src = self.get('src')
+            mri_sdir = self.get('mri-sdir')
             kind, param, special = SRC_RE.match(src).groups()
             grade = int(param)
             self._log.info(f"Generating {src} source space for {subject}...")
@@ -5734,8 +5735,8 @@ class MneExperiment(FileTree):
                 else:
                     raise RuntimeError(f'src={src!r}')
                 voi.extend('%s-%s' % fmt for fmt in product(('Left', 'Right'), voi_lat))
-                mri_sdir = self.get('mri-sdir')
-                sss = mne.setup_volume_source_space(subject, pos=float(param), bem=bem, mri=join(self.get('mri-dir'), 'mri', 'aseg.mgz'), volume_label=voi, subjects_dir=mri_sdir)
+                mri_dir = self.get('mri-dir')
+                sss = mne.setup_volume_source_space(subject, pos=float(param), bem=bem, mri=join(mri_dir, 'mri', 'aseg.mgz'), volume_label=voi, subjects_dir=mri_sdir)
                 sss = merge_volume_source_space(sss, name)
                 if special is None:
                     sss = restrict_volume_source_space(sss, grade, mri_sdir, subject, grow=1)
@@ -5743,7 +5744,7 @@ class MneExperiment(FileTree):
             else:
                 assert not special
                 spacing = kind + param
-                sss = mne.setup_source_space(subject, spacing=spacing, add_dist=True, subjects_dir=self.get('mri-sdir'))
+                sss = mne.setup_source_space(subject, spacing=spacing, add_dist=True, subjects_dir=mri_sdir)
             Path(dst).parent.mkdir(exist_ok=True)
             mne.write_source_spaces(dst, sss)
 
@@ -5914,11 +5915,8 @@ class MneExperiment(FileTree):
         parc_name, parc = self._get_parc()
         if seeds:
             if not isinstance(parc, SeededParc):
-                raise ValueError(
-                    "seeds=True is only valid for seeded parcellation, "
-                    "not for parc=%r" % (parc_name,))
-            # if seeds are defined on a scaled common-brain, we need to plot the
-            # scaled brain:
+                raise ValueError(f"seeds=True is only valid for seeded parcellation, not for parc={parc_name!r}")
+            # if seeds are defined on a scaled common-brain, we need to plot the scaled brain:
             plot_on_scaled_common_brain = isinstance(parc, IndividualSeededParc)
         else:
             plot_on_scaled_common_brain = False
@@ -5929,26 +5927,19 @@ class MneExperiment(FileTree):
         else:
             subject = self.get('mrisubject')
 
-        kwa = self._surfer_plot_kwargs(surf, views, foreground, background,
-                                       None, hemi)
-        brain = plot.brain.annot(parc_name, subject, borders=borders, alpha=alpha,
-                                 w=w, h=h, axw=axw, axh=axh,
-                                 subjects_dir=mri_sdir, **kwa)
+        kwa = self._surfer_plot_kwargs(surf, views, foreground, background, None, hemi)
+        brain = plot.brain.annot(parc_name, subject, borders=borders, alpha=alpha, w=w, h=h, axw=axw, axh=axh, subjects_dir=mri_sdir, **kwa)
         if seeds:
             from mayavi import mlab
 
             seeds = parc.seeds_for_subject(subject)
-            seed_points = {hemi: [np.atleast_2d(coords) for name, coords in
-                                  seeds.items() if name.endswith(hemi)]
-                           for hemi in ('lh', 'rh')}
-            plot_points = {hemi: np.vstack(points).T if len(points) else None
-                           for hemi, points in seed_points.items()}
+            seed_points = {hemi: [np.atleast_2d(coords) for name, coords in seeds.items() if name.endswith(hemi)] for hemi in ('lh', 'rh')}
+            plot_points = {hemi: np.vstack(points).T if len(points) else None for hemi, points in seed_points.items()}
             for hemisphere in brain.brains:
                 if plot_points[hemisphere.hemi] is None:
                     continue
                 x, y, z = plot_points[hemisphere.hemi]
-                mlab.points3d(x, y, z, figure=hemisphere._f, color=(1, 0, 0),
-                              scale_factor=10)
+                mlab.points3d(x, y, z, figure=hemisphere._f, color=(1, 0, 0), scale_factor=10)
             brain.set_parallel_view(scale=True)
 
         return brain
@@ -6542,8 +6533,7 @@ class MneExperiment(FileTree):
     def _eval_parc(self, parc):
         if parc in self._parcs:
             if isinstance(self._parcs[parc], SeededParc):
-                raise ValueError("Seeded parc set without size, use e.g. "
-                                 "parc='%s-25'" % parc)
+                raise ValueError(f"Seeded parc set without size, use e.g. parc='{parc}-25'")
             else:
                 return parc
         m = SEEDED_PARC_RE.match(parc)
@@ -6554,7 +6544,7 @@ class MneExperiment(FileTree):
             else:
                 raise ValueError("No seeded parc with name %r" % name)
         else:
-            raise ValueError("parc=%r" % parc)
+            raise ValueError(f"{parc=}")
 
     def _get_parc(self):
         """Parc information

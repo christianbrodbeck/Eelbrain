@@ -1119,7 +1119,7 @@ def combine(
     elif not isdatacontainer(first_item):
         return Datalist(items)
     elif any(type(item) is not stype for item in items[1:]):
-        raise TypeError(f"All items to be combined need to have the same type, got {enumeration({type(i) for i in items})}%s.")
+        raise TypeError(f"All items to be combined need to have the same type, got {enumeration({type(i) for i in items})}.")
 
     # find name
     if name is None:
@@ -1162,7 +1162,7 @@ def combine(
         x = np.hstack([i.x for i in items])
         return Var(x, name, _info.merge_info(items))
     elif stype is Factor:
-        random = set(f.random for f in items)
+        random = {f.random for f in items}
         if len(random) > 1:
             raise ValueError("Factors have different values for random parameter")
         random = random.pop()
@@ -2372,7 +2372,7 @@ class Factor(_Effect):
         labels = {} if labels is None else dict(labels)
         if isinstance(x, Factor):
             # translate label keys to x codes
-            labels = {x._codes[s]: d for s, d in labels.items() if s in x._codes}
+            labels = {x._codes[src]: dst for src, dst in labels.items() if src in x._codes}
             if default is None:  # fill in missing labels from x
                 labels.update({code: label for code, label in x._labels.items() if code not in labels})
             else:  # use default
@@ -7753,7 +7753,7 @@ class Parametrization:
                 raise ValueError(f"{method=}")
             name = longname(e)
             if name in terms:
-                raise KeyError("Duplicate term name: {name!r}")
+                raise KeyError(f"Duplicate term name: {name!r}")
             terms[name] = slice(i, j)
             effect_names.append(name)
             col_names = e._coefficient_names(method)
@@ -10539,7 +10539,7 @@ class VolumeSourceSpace(SourceSpaceBase):
     ) -> Factor:
         path = Path(subjects_dir) / subject / 'mri' / f'{parc}.mgz'
         if not path.exists():
-            raise ValueError(f"parc={parc!r}: parcellation does not exist at {path}")
+            raise ValueError(f"{parc=}: parcellation does not exist at {path}")
         mgz = nibabel.load(str(path))
         voxel_to_mri = mgz.affine.copy()
         voxel_to_mri[:3] /= 1000

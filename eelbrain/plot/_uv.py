@@ -1206,7 +1206,7 @@ class Regression(EelFigure, LegendMixin):
         legend_handles = {}
         if cat is None:
             legend = False
-            if type(c) in [list, tuple]:
+            if isinstance(c, (list, tuple)):
                 color = c[0]
             else:
                 color = c

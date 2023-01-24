@@ -322,7 +322,7 @@ def correlation_coefficient(x, y, dim=None, name=None):
 
     Returns
     -------
-    correlation_coefficient : float | NDVar
+    float | NDVar
         Correlation coefficient over ``dim``. Any other dimensions in ``x`` and
         ``y`` are retained in the output.
     """
@@ -388,7 +388,7 @@ def cross_correlation(in1, in2, name=None):
         
     Returns
     -------
-    cross_correlation : NDVar  (time,)
+    NDVar  (time,)
         Cross-correlation between ``in1`` and ``in2``, with a time axis 
         reflecting time shift.
     """
@@ -442,7 +442,7 @@ def cwt_morlet(
 
     Returns
     -------
-    tfr
+    NDVar
         Time frequency decompositions.
     """
     if output == 'magnitude':
@@ -567,9 +567,9 @@ def filter_data(
 
     Returns
     -------
-    filtered_ndvar
-        NDVar with same dimensions as ``ndvar`` and filtered data. The output
-        type is always floating point regardless of the type of ``ndvar``.
+    NDVar
+        Filtered data, same dimensions as ``ndvar``. The type is always floating
+        point regardless of the type of ``ndvar``.
     """
     axis = ndvar.get_axis('time')
     if axis == ndvar.ndim:
@@ -874,9 +874,9 @@ def neighbor_correlation(
 
     Returns
     -------
-    correlation
-        NDVar that contains for each element in ``dim`` the with average
-        correlation coefficient with its neighbors.
+    NDVar
+        Contains for each element the averaged correlation coefficient with its
+        neighbors in ``dim`` .
     """
     x = asndvar(x)
     is_flat = x.std(obs).x < 1e-25

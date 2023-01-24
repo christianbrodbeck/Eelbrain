@@ -120,20 +120,20 @@ class RawSource(RawPipe):
 
     Parameters
     ----------
-    filename : str
+    filename
         Pattern for filenames. The pattern should contain the fields
         ``{subject}`` and ``{recording}`` (which internally is expanded to
         ``session`` and, if applicable, ``visit``;
         default ``'{subject}_{recording}-raw.fif'``).
-    reader : callable
+    reader
         Function for reading data (default is :func:`mne.io.read_raw_fif`).
-    sysname : str
+    sysname
         Used to determine sensor positions (not needed for KIT files, or when a
         montage is specified).
-    rename_channels : dict
+    rename_channels
         Rename channels before applying montage, ``{from: to}`` dictionary;
         useful to convert idiosyncratic naming conventions to standard montages.
-    montage : str
+    montage
         Name of a montage that is applied to raw data to set sensor positions.
     connectivity
         Connectivity between sensors. Can be specified as:

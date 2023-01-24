@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 from time import localtime, strftime
+from typing import List
 import traceback
 
 import numpy as np
@@ -990,7 +991,7 @@ class FileTree(TreeModel):
 
         return path
 
-    def glob(self, temp, inclusive=False, **state):
+    def glob(self, temp, inclusive=False, **state) -> List[str]:
         """Find all files matching a certain pattern
 
         Parameters
@@ -1014,7 +1015,7 @@ class FileTree(TreeModel):
         pattern = self._glob_pattern(temp, inclusive, **state)
         return glob(pattern)
 
-    def _glob_pattern(self, temp, inclusive=False, **state):
+    def _glob_pattern(self, temp, inclusive=False, **state) -> str:
         if inclusive:
             for key in self._terminal_fields:
                 if key in state or key == 'root':

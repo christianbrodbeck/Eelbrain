@@ -385,8 +385,14 @@ class BoostingResult(PickleableDataClass):
             name = self.y
         return NDVar(y_pred, dims, name, self._y_info)
 
-    def partition_result_data(self) -> Dataset:
-        """Results from the different test partitions in a :class:`Dataset`"""
+    def partition_result_data(self, model: str = None) -> Dataset:
+        """Results from the different test partitions in a :class:`Dataset`
+
+        Parameters
+        ----------
+        model
+            Add a ``'model'`` column to the dataset to distinguish
+        """
         h_is_list = isinstance(self._h, tuple)
         rows = []
         for res in self.partition_results:

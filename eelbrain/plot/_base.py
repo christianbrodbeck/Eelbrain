@@ -1254,6 +1254,8 @@ class PlotData:
         if isinstance(y, (tuple, list)):
             if xax is not None:
                 raise TypeError(f"{y=}, {xax=}: xax cannot be specified with multiple y")
+            elif any(isinstance(yi, (tuple, list)) for yi in y):
+                raise NotImplementedError("Nested y")
             plot_used = [yi is not None for yi in y]
             axes_data = [cls.from_stats(yi, x, xax, match, sub, ds, dims, colors, mask) for yi in y if yi is not None]
             axes = list(chain.from_iterable(ax.plot_data for ax in axes_data))
