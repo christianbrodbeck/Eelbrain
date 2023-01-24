@@ -154,9 +154,9 @@ def parse():
         raw_entries = json.load(file)  # initial search on scholar
     with SELECTION_PATH.open('rt') as file:
         selection = json.load(file)
-    # extract citation data
+    # Load existing citation data
     bib = parse_file(DST, 'bibtex')
-    # remove entries that have been removed upstream
+    # Remove entries that have been removed upstream
     removed = [key for key, entry in bib.entries.items() if 'google_result_id' in entry.fields and not selection.get(entry.fields['google_result_id'], False)]
     if removed:
         print(f"Removing {', '.join(removed)}")
@@ -172,11 +172,15 @@ def parse():
         data = parse_bytes(raw_bibtex, 'bibtex')
         assert len(data.entries) == 1
         ((key, entry),) = data.entries.items()
-        if key in bib.entries:
-            if key not in unseen_keys:
-                raise NotImplementedError('Duplicate cite key')
+        if key in bib.entries and key in unseen_keys:
             unseen_keys.remove(key)
             continue
+        # For later additions, use Google ID
+        elif result_id in bib.entries:
+            if result_id in unseen_keys:
+                unseen_keys.remove(result_id)
+                continue
+            raise RuntimeError(f"Duplicate key {result_id}")
         url = raw_entries[result_id]['link']
         journal = entry.fields.get('journal', '').lower()
         doi = None
@@ -202,16 +206,10 @@ def parse():
         else:
             entry.fields['url'] = url
         entry.fields['google_result_id'] = result_id
-        # store
-        if key in bib.entries:
-            i = 2
-            while f'{key}_{i}' in bib.entries:
-                i += 1
-            key = f'{key}_{i}'
         # fix title
         for repl in ACRONYMS:
             entry.fields['title'] = re.sub(repl, '{' + repl + '}', entry.fields['title'])
-        bib.add_entry(key, entry)
+        bib.add_entry(result_id, entry)
     # Fix escape-char bug in PybTex
     out = bib.to_bytes('bibtex')
     for bad_char in [br'\&', b'_']:
