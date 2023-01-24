@@ -3111,12 +3111,12 @@ class NDVar(Named):
     ----------
     x : array_like
         The data.
-    dims : Sequence of Dimension
+    dims
         The dimensions characterizing the axes of the data. If present, ``Case``
         should always occupy the first position.
-    name : str
+    name
         Name for the NDVar.
-    info : dict
+    info
         A dictionary with data properties (can contain arbitrary
         information that will be accessible in the info attribute).
 
