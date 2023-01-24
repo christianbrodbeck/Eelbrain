@@ -181,7 +181,8 @@ def find_cell_styles(
                 for cell in missing[:]:
                     if isinstance(cell, str):
                         continue
-                    super_cells = chain((cell[:-i] for i in range(1, len(cell))), (cell[0],))
+                    i_max = len(cell) - 1
+                    super_cells = chain((cell[:-i] for i in range(1, i_max)), (cell[i:] for i in range(1, i_max)), (cell[0], cell[-1]))
                     for super_cell in super_cells:
                         if super_cell in out:
                             out[cell] = replace(out[super_cell], alias=super_cell)
