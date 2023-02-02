@@ -3491,7 +3491,7 @@ class TopoMapKey:
 
 class CategorialAxisMixin:
 
-    def __init__(self, ax, axis, layout, label, model, ticks, labels, tick_delim, tick_pos, cells, origin=None):
+    def __init__(self, ax, axis, layout, label, model, ticks, labels, tick_delim, tick_pos, cells, rotation, origin=None):
         self.__ax = ax
         self.__axis = axis
         self.__cells = cells
@@ -3529,8 +3529,7 @@ class CategorialAxisMixin:
                 tick_labels = [labels_[cell] for cell in cells]
             else:
                 tick_labels = ticks
-            self.__axis_obj.set_ticks(tick_pos)
-            self.__axis_obj.set_ticklabels(tick_labels)
+            self.__axis_obj.set_ticks(tick_pos, tick_labels, rotation=rotation)
         elif ticks is False:
             self.__axis_obj.set_ticks(())
 

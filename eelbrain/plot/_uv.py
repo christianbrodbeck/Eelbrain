@@ -236,6 +236,8 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     xtick_delim
         Delimiter for x axis category descriptors (default is ``'\n'``,
         i.e. the level on each Factor of ``x`` on a separate line).
+    xtick_rotation
+        Tick label orientation – ``'vertical'`` ``'horizontal'`` or an angle.
     colors : bool | sequence | dict of matplitlib colors
         Matplotlib colors to use for boxes (True to use the module default;
         default is False, i.e. no colors).
@@ -269,6 +271,7 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
             labels: Dict[CellArg, str] = None,
             xticks: Union[bool, Dict[CellArg, str], Sequence[str]] = True,
             xtick_delim: str = '\n',
+            xtick_rotation: Union[float, str] = None,
             colors: ColorsArg = False,
             ds: Dataset = None,
             label_fliers: bool = False,
@@ -294,7 +297,7 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
 
-        CategorialAxisMixin.__init__(self, self._ax, 'x', self._layout, xlabel, ct.x, xticks, labels, xtick_delim, p.pos, ct.cells)
+        CategorialAxisMixin.__init__(self, self._ax, 'x', self._layout, xlabel, ct.x, xticks, labels, xtick_delim, p.pos, ct.cells, xtick_rotation)
         YLimMixin.__init__(self, (p,))
         self._show()
 
@@ -362,6 +365,8 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     xtick_delim
         Delimiter for x axis category descriptors (default is ``'\n'``,
         i.e. the level on each Factor of ``x`` on a separate line).
+    xtick_rotation
+        Tick label orientation – ``'vertical'`` ``'horizontal'`` or an angle.
     colors : bool | dict | sequence of matplitlib colors
         Matplotlib colors to use for boxes (True to use the module default;
         default is False, i.e. no colors).
@@ -403,6 +408,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
             labels: Dict[CellArg, str] = None,
             xticks: Union[bool, Dict[CellArg, str], Sequence[str]] = True,
             xtick_delim: str = '\n',
+            xtick_rotation: Union[float, str] = None,
             colors: ColorsArg = False,
             pos: Sequence[float] = None,
             width: Union[float, Sequence[float]] = 0.5,
@@ -426,7 +432,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
 
-        CategorialAxisMixin.__init__(self, self._ax, 'x', self._layout, xlabel, ct.x, xticks, labels, xtick_delim, p.pos, ct.cells, p.origin)
+        CategorialAxisMixin.__init__(self, self._ax, 'x', self._layout, xlabel, ct.x, xticks, labels, xtick_delim, p.pos, ct.cells, xtick_rotation, p.origin)
         YLimMixin.__init__(self, (p,))
         self._show()
 
@@ -495,6 +501,8 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
         :class:`dict`, or set to ``False`` to plot no labels.
     xtick_delim
         Delimiter for x axis category descriptors.
+    xtick_rotation
+        Tick label orientation – ``'vertical'`` ``'horizontal'`` or an angle.
     colors : bool | dict | sequence of matplitlib colors
         Matplotlib colors to use for boxes (True to use the module default;
         default is False, i.e. no colors).
@@ -536,6 +544,7 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
             labels: Dict[CellArg, str] = None,
             xticks: Union[bool, Dict[CellArg, str], Sequence[str]] = True,
             xtick_delim: str = ' ',
+            xtick_rotation: Union[float, str] = None,
             colors: ColorsArg = False,
             pos: Sequence[float] = None,
             width: Union[float, Sequence[float]] = 0.5,
@@ -562,7 +571,7 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
         self._configure_axis_data('x', ct.y, ylabel)
 
         XAxisMixin.__init__(self, p.bottom, p.top, axes=[p.ax])
-        CategorialAxisMixin.__init__(self, self._ax, 'y', self._layout, xlabel, ct.x, xticks, labels, xtick_delim, p.pos, ct.cells, p.origin)
+        CategorialAxisMixin.__init__(self, self._ax, 'y', self._layout, xlabel, ct.x, xticks, labels, xtick_delim, p.pos, ct.cells, xtick_rotation, p.origin)
         self._show()
 
 
