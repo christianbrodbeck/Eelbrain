@@ -374,8 +374,8 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         Position of the bars on the x-axis (default is ``range(n_cells)``).
     width
         Width of the bars (deault 0.5).
-    c
-        Bar color (ignored if colors is specified).
+    color
+        Bar color (ignored if ``colors`` is specified).
     edgec : matplotlib color
         Barplot edge color.
     ds
@@ -412,7 +412,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
             colors: ColorsArg = False,
             pos: Sequence[float] = None,
             width: Union[float, Sequence[float]] = 0.5,
-            c: Any = '#0099FF',
+            color: Any = '#0099FF',
             edgec: Any = None,
             ds: Dataset = None,
             **kwargs,
@@ -428,7 +428,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), **kwargs)
         self._configure_axis_data('y', ct.y, ylabel)
 
-        p = _plt_barplot(self._ax, ct, error, pool_error, styles, bottom, top, origin, pos, width, c, edgec, ec, test, tail, par, trend, corr, test_markers)
+        p = _plt_barplot(self._ax, ct, error, pool_error, styles, bottom, top, origin, pos, width, color, edgec, ec, test, tail, par, trend, corr, test_markers)
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
 
