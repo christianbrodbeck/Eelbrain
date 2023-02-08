@@ -481,7 +481,7 @@ def test_ttest_1samp():
     assert repr(res2) == "<TTestOneSample 'uts', sub=\"A == 'a0'\", samples=10, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05, 1 clusters, p < .001>"
 
     # clusters with permutations
-    dss = ds.sub("logical_and(A=='a0', B=='b0')")[:8]
+    dss = ds.sub("numpy.logical_and(A=='a0', B=='b0')")[:8]
     res3 = testnd.TTestOneSample('uts', sub="A == 'a0'", ds=dss, samples=10000, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
     assert repr(res3) == "<TTestOneSample 'uts', sub=\"A == 'a0'\", samples=255, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05, 2 clusters, p = .020>"
     assert res3.clusters.n_cases == 2

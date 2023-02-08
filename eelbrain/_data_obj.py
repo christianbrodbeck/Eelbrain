@@ -165,7 +165,7 @@ _pickled_ds_wildcard = ("Pickled Dataset (*.pickle)", '*.pickle')
 _tex_wildcard = ("TeX (*.tex)", '*.tex')
 _tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
 _txt_wildcard = ("Plain Text (*.txt)", '*.txt')
-EVAL_CONTEXT = vars(np)  # updated at end of file
+EVAL_CONTEXT = {'numpy': numpy}  # updated at end of file
 
 AxisArg = Union[None, str, Sequence[str], 'NDVar']
 DimsArg = Union[str, Sequence[str]]
@@ -3986,9 +3986,7 @@ class NDVar(Named):
             else:
                 func = np.mean
         elif isinstance(func, str):
-            if func not in EVAL_CONTEXT:
-                raise ValueError(f"{func=}: unknown summary function")
-            func = EVAL_CONTEXT[func]
+            func = getattr(numpy, func)
         elif not callable(func):
             raise TypeError(f"{func=}")
 

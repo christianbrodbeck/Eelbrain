@@ -59,14 +59,14 @@ def test_aggregate():
 
     dsa = ds.aggregate('A%B', drop=drop)
     assert_array_equal(dsa['n'], [15, 15, 15, 15])
-    idx1 = ds.eval("logical_and(A=='a0', B=='b0')")
+    idx1 = ds.eval("numpy.logical_and(A=='a0', B=='b0')")
     assert dsa['Y', 0] == ds['Y', idx1].mean()
 
     # unequal cell counts
     ds = ds[:-3]
     dsa = ds.aggregate('A%B', drop=drop)
     assert_array_equal(dsa['n'], [15, 15, 15, 12])
-    idx1 = ds.eval("logical_and(A=='a0', B=='b0')")
+    idx1 = ds.eval("numpy.logical_and(A=='a0', B=='b0')")
     assert dsa['Y', 0] == ds['Y', idx1].mean()
 
     # equalize count
@@ -76,7 +76,7 @@ def test_aggregate():
     assert dsa['Y', 0] == ds['Y', idx1_12].mean()
 
     # equalize count with empty cell
-    sds = ds.sub("logical_or(A == 'a1', B == 'b1')")
+    sds = ds.sub("numpy.logical_or(A == 'a1', B == 'b1')")
     dsa = sds.aggregate('A%B', drop=drop, equal_count=True)
     assert_array_equal(dsa['n'], [12, 12, 12])
 
@@ -1149,7 +1149,7 @@ def test_ndvar_connectivity():
     assert_equal(sub_nonmono.sensor.connectivity(), conn)
 
     # date for labeling
-    x1 = ds.eval("utsnd[logical_and(A=='a0', B=='b0')].mean('case')")
+    x1 = ds.eval("utsnd[numpy.logical_and(A=='a0', B=='b0')].mean('case')")
     x2 = ds.eval("utsnd[A=='a1'].mean('case')")
     x = x1 + x2
     # insert point that is connected by sensors but not by grid

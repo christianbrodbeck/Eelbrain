@@ -59,7 +59,7 @@ p = plot.TopoButterfly(fit.h, xlim=(-0.100, 0.600), t=0.400)
 
 # effect code for cloze (1 for low cloze, -1 for high cloze)
 n_chars = epoch_impulse_predictor('eeg', 'n_chars', ds=ds, name='n_chars')
-surprisal = epoch_impulse_predictor('eeg', '-log2(cloze)', ds=ds, name='surprisal')
+surprisal = epoch_impulse_predictor('eeg', '-numpy.log2(cloze)', ds=ds, name='surprisal')
 
 # plot the predictors for each trial
 p = plot.UTS([n_chars, surprisal, any_word], '.case', stem=True)
