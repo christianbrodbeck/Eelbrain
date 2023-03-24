@@ -1877,7 +1877,7 @@ class EelFigure(MatplotlibFigure):
             elif ticklabels == 'none':
                 show_ticklabels = [False] * nax
             else:
-                raise ValueError(f"ticklabels={ticklabels!r}")
+                raise ValueError(f"{ticklabels=}")
         else:
             show_ticklabels = [False] * nax
             if isinstance(ticklabels, int):
@@ -2149,10 +2149,7 @@ def format_axes(
         yaxis: bool,
 ):
     if frame == 't':
-        ax.tick_params(direction='inout', bottom=False, top=True,
-                       left=False, right=True, labelbottom=True,
-                       labeltop=False, labelleft=True,
-                       labelright=False)
+        ax.tick_params(direction='inout', bottom=False, top=True, left=False, right=True, labelbottom=True, labeltop=False, labelleft=True, labelright=False)
         ax.spines['right'].set_position('zero')
         ax.spines['left'].set_visible(False)
         ax.spines['top'].set_position('zero')
@@ -3438,6 +3435,11 @@ class TimeSlicerEF(TimeSlicer):
             is specified, ``time_dilation`` is ignored.
         ...
             :func:`imageio.mimwrite` parmeters.
+
+        Notes
+        -----
+        For a given size (figure width and height in inches), control export
+        resolution through ``pyplot.rcParams['figure.dpi']``.
         """
         import imageio
 

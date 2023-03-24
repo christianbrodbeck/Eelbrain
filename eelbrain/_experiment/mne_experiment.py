@@ -3670,7 +3670,7 @@ class MneExperiment(FileTree):
                             raw = raw_
                         else:
                             ds['i_start'] += raw.last_samp + 1 - raw_.first_samp
-                            raw.append(raw_)
+                            raw.append(raw_) # FIXME: if one is cached and not the other, they may be different types
 
             # combine bad channels
             ds = combine(dss)
