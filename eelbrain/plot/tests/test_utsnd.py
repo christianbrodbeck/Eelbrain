@@ -62,6 +62,11 @@ def test_plot_array():
     assert labels == ['9.0', '9.4', '9.7', '10.0', '10.4', '10.8', '11.1', '11.4', '11.8', '12.2']
     p.close()
 
+    # From test results
+    res1 = testnd.TTestIndependent('utsnd', 'A', 'a1', 'a0', ds=ds, tstart=0, samples=10)
+    res2 = testnd.TTestIndependent('utsnd', 'B', 'b1', 'b0', ds=ds, tstart=0, samples=10)
+    plot.TopoArray([res1, res2])
+
     # Categorial dimension
     ds = datasets._get_continuous()
     p = plot.Array(ds['x2'], interpolation='none')
