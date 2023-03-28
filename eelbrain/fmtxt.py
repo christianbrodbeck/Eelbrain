@@ -1750,7 +1750,7 @@ class Table(FMTextElement):
         """
         buffer = StringIO(newline='')
         writer = csv.writer(buffer, delimiter=delimiter, lineterminator='\n')
-        env = {'fmt': fmt}
+        env = ENV if fmt is None else {'fmt': fmt}
         for row in self.rows:
             if isinstance(row, str):
                 pass
@@ -1800,7 +1800,7 @@ class Table(FMTextElement):
 
         document.save(path)
 
-    def save_tsv(self, path: PathArg = None, delimiter='\t', fmt='%.15g'):
+    def save_tsv(self, path: PathArg = None, delimiter='\t', fmt=None):
         r"""Save the table as tab-separated values file
 
         Parameters
@@ -1810,13 +1810,12 @@ class Table(FMTextElement):
         delimiter : str
             String that is placed between cells (default: ``'\t'``).
         fmt : str
-            Format string for representing numerical cells.
-            (see 'Python String Formatting Documentation
-            <http://docs.python.org/library/stdtypes.html#string-formatting-operations>'_)
+            Format string for representing numerical cells (see 'Python String
+            Formatting Documentation <http://docs.python.org/library/stdtypes.html#string-formatting-operations>'_).
         """
         _save_txt(self.get_tsv(delimiter, fmt), path)
 
-    def save_txt(self, path: PathArg = None, fmt='%.15g', delim='   ', linesep='\n'):
+    def save_txt(self, path: PathArg = None, fmt=None, delim='   ', linesep='\n'):
         r"""Save the table as text file
 
         Parameters
@@ -1824,13 +1823,15 @@ class Table(FMTextElement):
         path
             Destination file name.
         fmt : str
-            Format string for representing numerical cells (default '%.15g').
+            Format string for representing numerical cells (see 'Python String
+            Formatting Documentation <http://docs.python.org/library/stdtypes.html#string-formatting-operations>'_).
         delim : str
             Cell delimiter.
         linesep : str
             String that is placed in between lines (default is ``'\n'``).
         """
-        _save_txt(self.get_str({'fmt': fmt}, delim, linesep), path)
+        env = ENV if fmt is None else {'fmt': fmt}
+        _save_txt(self.get_str(env, delim, linesep), path)
 
 
 class Image(FMTextElement, BytesIO):
