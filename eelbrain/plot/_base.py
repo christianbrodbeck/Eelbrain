@@ -1148,6 +1148,8 @@ class PlotData:
         sub = assub(sub, ds)
         if hasattr(y, '_default_plot_obj'):
             ys = getattr(y, '_default_plot_obj')()
+        elif isinstance(y, (tuple, list)):
+            ys = [getattr(yi, '_default_plot_obj')() if hasattr(yi, '_default_plot_obj') else yi for yi in y]
         else:
             ys = y
 
