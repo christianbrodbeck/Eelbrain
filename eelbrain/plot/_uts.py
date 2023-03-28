@@ -483,7 +483,7 @@ class _ax_uts_stat:
             plt = _plt_uts_stat(ax, layer, xdim, main, error, pool_error, clip, error_alpha)
             self.stat_plots.append(plt)
             if plt.main is not None:
-                self.legend_handles[layer.cell] = plt.main[0]
+                self.legend_handles[layer.style_key] = plt.main[0]
 
         # cluster plot
         self.cluster_plt = _plt_uts_clusters(ax, clusters, pmax, ptrend)

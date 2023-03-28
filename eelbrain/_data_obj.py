@@ -209,11 +209,15 @@ def _effect_interaction(a, b):
 
 
 def combine_cells(cell_1: 'CellArg', cell_2: 'CellArg') -> Tuple[str, ...]:
+    if cell_1 is None:
+        return cell_2
+    elif cell_2 is None:
+        return cell_1
     if isinstance(cell_1, str):
         cell_1 = (cell_1,)
     if isinstance(cell_2, str):
         cell_2 = (cell_2,)
-    return (*cell_1, *cell_2)
+    return *cell_1, *cell_2
 
 
 def cellname(cell, delim=' '):

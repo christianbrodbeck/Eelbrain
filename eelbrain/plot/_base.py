@@ -945,9 +945,14 @@ class DataLayer(Layer):
 class StatLayer(Layer):
     style: Style = None
     ct: Celltable = None
-    cell: CellArg = None
+    cell: CellArg = None  # key for Celltable
     mask: NDVar = None  # mask needs to be applied to stats
     mask_missing: bool = True
+    style_key: CellArg = None  # Key for legend - usually equal to cell
+
+    def __post_init__(self):
+        if self.style_key is None:
+            self.style_key = self.cell
 
     def _apply_mask(self, y: np.ndarray) -> np.ndarray:
         if self.mask is None:
@@ -1250,16 +1255,33 @@ class PlotData:
             dims: Tuple[Union[str, None]] = None,
             colors: dict = None,
             mask: Union[NDVar, Dict[CellArg, NDVar]] = None,
+            level: Literal[1, 2, 3] = 1,
     ):
         if isinstance(y, (tuple, list)):
-            if xax is not None:
+            if level == 2:
+                if x is not None:
+                    raise TypeError(f"Nested y, {x=}: x cannot be specified with nested y")
+                data = [cls.from_stats(yi, x, xax, match, sub, ds, dims, colors, mask, level=3) for yi in y]
+                layers = [data_i.plot_data[0].layers[0] for data_i in data]
+                plot_data = [replace(data[0].plot_data[0], layers=layers)]
+                return replace(data[0], plot_data=plot_data)
+            elif level == 3:
+                raise TypeError("Doubly nested y")
+            elif xax is not None:
                 raise TypeError(f"{y=}, {xax=}: xax cannot be specified with multiple y")
-            elif any(isinstance(yi, (tuple, list)) for yi in y):
-                raise NotImplementedError("Nested y")
             plot_used = [yi is not None for yi in y]
-            axes_data = [cls.from_stats(yi, x, xax, match, sub, ds, dims, colors, mask) for yi in y if yi is not None]
+            axes_data = [cls.from_stats(yi, x, xax, match, sub, ds, dims, mask=mask, level=2) for yi in y if yi is not None]
             axes = list(chain.from_iterable(ax.plot_data for ax in axes_data))
-            return replace(axes_data[0], plot_data=axes, plot_used=plot_used, plot_names=None)
+            # cells for styles are based on y and x
+            for ax in axes:
+                for layer in ax.layers:
+                    layer.style_key = combine_cells(layer.ct.y.name, layer.cell)
+            cells = {layer.style_key for ax in axes for layer in ax.layers}
+            styles = find_cell_styles(cells, colors)
+            for ax in axes:
+                for layer in ax.layers:
+                    layer.style = styles[layer.style_key]
+            return replace(axes_data[0], plot_data=axes, plot_used=plot_used, plot_names=None, styles=styles)
         x, x_dim = x_arg(x)
         xax, xax_dim = x_arg(xax)
         if x_dim or xax_dim:

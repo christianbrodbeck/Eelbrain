@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from eelbrain import datasets, plot, testnd, Factor, concatenate, set_tmin
+from eelbrain import datasets, plot, table, testnd, Factor, concatenate, set_tmin
 from eelbrain.testing import hide_plots
 
 
@@ -64,6 +64,11 @@ def test_uts_stat():
     # x-axis other than time
     p = plot.UTSStat("utsnd.sub(time=0)", 'A', ds=ds)
     assert p.figure.axes[0].get_xlim() == (0, 4)
+    p.close()
+
+    # y as nested list
+    rm_ds = table.repmeas('uts', 'A%B', 'rm', ds=ds)
+    p = plot.UTSStat([['a0_b0', 'a0_b1', 'a1_b0', 'a1_b1']], ds=rm_ds)
     p.close()
 
 
