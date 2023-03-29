@@ -151,6 +151,7 @@ functions. See also :class:`NDVar` methods.
    find_intervals
    find_peaks
    frequency_response
+   gammatone_bank
    label_operator
    labels_from_clusters
    maximum
