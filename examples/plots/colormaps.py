@@ -35,7 +35,7 @@ fig.subplots_adjust(top=1-.35/figh, bottom=.15/figh, left=0.2, right=0.99)
 axs[0].set_title('Eelbrain colormaps', fontsize=14)
 
 for ax, name in zip(axs, cmap_list):
-    ax.imshow(gradient, aspect='auto', cmap=plt.get_cmap(name))
+    ax.imshow(gradient, aspect='auto', cmap=name)
     ax.text(-.01, .5, name, va='center', ha='right', fontsize=10,
             transform=ax.transAxes)
 

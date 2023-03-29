@@ -291,7 +291,7 @@ def colors_for_oneway(
     if cmap is None:
         colors = oneway_colors(n, hue_start, light_range, light_cycle, always_cycle_hue, locations, unambiguous)
     else:
-        cm = mpl.cm.get_cmap(cmap)
+        cm = mpl.colormaps.get_cmap(cmap)
         if locations is None:
             imax = n - 1
             locations = (i / imax for i in range(n))
@@ -470,7 +470,7 @@ def soft_threshold_colormap(
         colormap alpha is multiplied by ``alpha``).
     """
     assert vmax > threshold >= 0
-    cmap = mpl.cm.get_cmap(cmap)
+    cmap = mpl.colormaps.get_cmap(cmap)
     if symmetric is None:
         symmetric = cmap.name in symmetric_cmaps
 

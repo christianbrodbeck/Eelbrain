@@ -422,7 +422,7 @@ class ColorBar(EelFigure):
         elif isinstance(cmap, Colormap):
             cm = cmap
         else:
-            cm = matplotlib.cm.get_cmap(cmap)
+            cm = matplotlib.colormaps.get_cmap(cmap)
 
         if any([right_of, left_of, below]):
             if sum(map(bool, [axes, right_of, left_of, below])) != 1:
