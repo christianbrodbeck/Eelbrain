@@ -18,11 +18,14 @@ Major changes
 New in 0.39
 -----------
 
-* New :class:`NDVar` functions: :func:`pad`, :func:`gammatone_bank`
+* New :class:`NDVar` functions for time series and an auditory model: :func:`pad`, :func:`gammatone_bank`, :func:`edge_detector`
 * API:
 
    - The evaluation context for :class:`Dataset` does not include ``from numpy import *`` anymore, to avoid overwriting builtins like :func:`abs`; instead, NumPy is accessible as ``numpy``.
    - :class:`plot.Barplot` parameter ``c`` renamed to ``color``.
+
+* In the ipython environment, prompt_toolkit
+Disable GUI
 
 
 New in 0.38
