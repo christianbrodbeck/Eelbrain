@@ -20,16 +20,16 @@ import numpy as np
 import numpy
 from scipy import linalg, ndimage, signal, stats
 
-from . import _info, mne_fixes
-from ._data_obj import NDVarArg, CategorialArg, Dataset, NDVar, Var, Factor, Case, Categorial, Dimension, Scalar, SourceSpace, SourceSpaceBase, UTS, ascategorial, asndvar, isnumeric, op_name
-from ._exceptions import DimensionMismatchError
-from ._external.colorednoise import powerlaw_psd_gaussian
-from ._info import merge_info
-from ._mne import complete_source_space
-from ._stats.connectivity import Connectivity
-from ._stats.connectivity import find_peaks as _find_peaks
-from ._trf._fit_metrics import error_for_indexes
-from ._utils.numpy_utils import aslice, newaxis
+from .. import _info, mne_fixes
+from .._data_obj import NDVarArg, CategorialArg, Dataset, NDVar, Var, Factor, Case, Categorial, Dimension, Scalar, SourceSpace, SourceSpaceBase, UTS, ascategorial, asndvar, isnumeric, op_name
+from .._exceptions import DimensionMismatchError
+from .._external.colorednoise import powerlaw_psd_gaussian
+from .._info import merge_info
+from .._mne import complete_source_space
+from .._stats.connectivity import Connectivity
+from .._stats.connectivity import find_peaks as _find_peaks
+from .._trf._fit_metrics import error_for_indexes
+from .._utils.numpy_utils import aslice, newaxis
 
 
 NDNumeric = Union[NDVar, Var, np.ndarray, float]
