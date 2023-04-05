@@ -12,10 +12,10 @@ dependencies:
 - libblas=*=*mkl  # openblas produces incorrect results for ICA in iMac Pro
 - libcblas
 - libclang
-- numpy >= 1.20, < 1.23  # Numba needs NumPy 1.22 or less
+- numpy >= 1.20, < 1.24  # Numba needs NumPy ≤ 1.23
 - scipy >= 1.5
 - numba
-- matplotlib-base >= 3.4  # https://github.com/matplotlib/matplotlib/issues/15410
+- matplotlib-base >= 3.6
 - pymatreader
 - pyarrow
 - pillow
