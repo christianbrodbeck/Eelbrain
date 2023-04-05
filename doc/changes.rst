@@ -18,8 +18,11 @@ Major changes
 New in 0.39
 -----------
 
-* API: The evaluation context for :class:`Dataset` does not include ``from numpy import *`` anymore, to avoid overwriting builtins like :func:`abs`; instead, NumPy is accessible as ``numpy``.
-* API: :class:`plot.Barplot` parameter ``c`` renamed to ``color``.
+* New :class:`NDVar` functions: :func:`pad`, :func:`gammatone_bank`
+* API:
+
+   - The evaluation context for :class:`Dataset` does not include ``from numpy import *`` anymore, to avoid overwriting builtins like :func:`abs`; instead, NumPy is accessible as ``numpy``.
+   - :class:`plot.Barplot` parameter ``c`` renamed to ``color``.
 
 
 New in 0.38

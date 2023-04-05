@@ -239,7 +239,7 @@ For each primary epoch that is defined, bad trials can be rejected using
 :meth:`MneExperiment.make_epoch_selection`. Rejections are specific to a given ``raw``
 state::
 
-    >>> e.set(raw='ica1-40')
+    >>> e.set(raw='ica1-40', epoch='word')
     >>> e.make_epoch_selection()
     >>> e.next()
     subject: 'R1801' -> 'R2079'

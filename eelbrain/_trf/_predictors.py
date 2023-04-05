@@ -83,7 +83,7 @@ def event_impulse_predictor(shape, time='time', value=1, latency=0, name=None, d
 
     See Also
     --------
-    event_impulse_predictor : for epoched data (with :class:`Case` dimension)
+    epoch_impulse_predictor : for epoched data (with :class:`Case` dimension and a single impulse per epoch)
     """
     if isinstance(shape, NDVar):
         uts = shape.get_dim('time')
