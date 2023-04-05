@@ -108,6 +108,7 @@ class Celltable:
         else:
             x, n_cases = ascategorial(x, sub, ds, n_cases, return_n=True)
             if cat is not None:
+                cat = tuple(cat)
                 # reconstruct cat if some cells are provided as None
                 is_none = [c is None for c in cat]
                 if any(is_none):
@@ -116,13 +117,13 @@ class Celltable:
                             cat = x.cells
                         else:
                             cells = [c for c in x.cells if c not in cat]
-                            cat = tuple(cells.pop(0) if c is None else c for c in cat)
+                            cat = tuple([cells.pop(0) if c is None else c for c in cat])
                     else:
                         raise ValueError(f"{cat=}: categories can only be specified as None if all cells in x are used, but there are more than {len(cat)} cells: {x.cells}")
 
                 # make sure all categories are in data
-                if not all(c in x.cells for c in cat):
-                    raise ValueError(f"{cat=} contains categories that are not in the data: {', '.join(str(c) for c in cat if c not in x.cells)}")
+                if missing := [c for c in cat if c not in x.cells]:
+                    raise ValueError(f"{cat=} contains categories that are not in the data: {', '.join(missing)}")
 
                 # apply cat
                 sort_idx = x.sort_index(order=cat)
