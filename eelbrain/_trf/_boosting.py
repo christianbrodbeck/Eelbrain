@@ -178,7 +178,7 @@ class BoostingResult(PickleableDataClass):
     # debug parameters
     y_pred: NDVar = None
     fit: Any = None  # scanpydoc can't handle undocumented 'Boosting'
-    # legacy attributes
+    # Legacy attributes (pickled objects may have these attributes)
     prefit: str = None
 
     def __post_init__(self):
