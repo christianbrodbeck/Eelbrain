@@ -211,6 +211,7 @@ class PredictorData:
             self,
             x: Union[NDVarArg, Sequence[NDVarArg]],
             ds: Dataset = None,
+            copy: bool = False,
     ):
         if isinstance(x, (NDVar, str)):
             multiple_x = False
@@ -275,7 +276,7 @@ class PredictorData:
             x_meta.append((xi.name, xdims, index))
             n_x += len(data)
 
-        if len(x_data) == 1:
+        if len(x_data) == 1 and not copy:
             x_data = x_data[0]
             x_data_is_copy = False
         else:
@@ -456,7 +457,7 @@ class DeconvolutionData:
             y_scale = (y_data_for_scale ** 2).mean(-1) ** 0.5
             x_scale = (self.x ** 2).mean(-1) ** 0.5
         else:
-            raise RuntimeError(f"error={error!r}")
+            raise RuntimeError(f"{error=}")
 
         if self.vector_shape:
             y_data_vector_shape /= y_scale[:, newaxis, newaxis]

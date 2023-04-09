@@ -32,11 +32,20 @@ import numpy as np
 from .._config import CONFIG
 from .._data_obj import Case, Dataset, Dimension, SourceSpaceBase, NDVar, CategorialArg, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
-from .._ndvar.ndvar import _concatenate_values, convolve_jit, parallel_convolve, set_connectivity, set_parc
+from .._ndvar.ndvar import _concatenate_values, convolve_jit, set_connectivity, set_parc
 from .._utils import PickleableDataClass, user_activity
 from .shared import PredictorData, DeconvolutionData, Split, Splits, merge_segments
 from ._fit_metrics import get_evaluators
 from . import _boosting_opt as opt
+
+
+def to_array(ndvar: Union[NDVar, Tuple[NDVar, ...], float]) -> np.ndarray:
+    if isinstance(ndvar, NDVar):
+        return ndvar.x.ravel()
+    elif isinstance(ndvar, tuple):
+        return np.concatenate([to_array(x) for x in ndvar])
+    else:
+        return np.array([ndvar])
 
 
 @dataclass(eq=False)
@@ -243,6 +252,14 @@ class BoostingResult(PickleableDataClass):
         return f"<{', '.join(items)}>"
 
     @cached_property
+    def _x_mean_array(self):
+        return to_array(self.x_mean)
+
+    @cached_property
+    def _x_scale_array(self):
+        return to_array(self.x_scale)
+
+    @cached_property
     def h(self):
         if not self.basis:
             return self._h
@@ -293,6 +310,7 @@ class BoostingResult(PickleableDataClass):
             self,
             x: Union[NDVarArg, Sequence[NDVarArg]] = None,
             ds: Dataset = None,
+            scale: Literal['original', 'normalized'] = 'original',
             name: str = None,
     ) -> NDVar:
         """Predict responses to ``x`` using complementary training data
@@ -305,6 +323,10 @@ class BoostingResult(PickleableDataClass):
             used in the original fit exactly in cases and time.
         ds
             Dataset with predictors. If ``ds`` is specified, ``x`` can be omitted.
+        scale
+            Return predictions at the scale of the original data (the ``y``
+            supplied to the :func:`boosting` function) or at the normalized
+            scale that is used for model fitting (``y`` and ``x`` normalized).
         name
             Name for the output :class:`NDVar`.
 
@@ -316,12 +338,28 @@ class BoostingResult(PickleableDataClass):
         -----
         This function does not adjust the mean across time of predicted
         responses; subtract the mean in order to compute explained variance.
+
+        Examples
+        --------
+        Fit a TRF and reproduce the error using the cross-predict function::
+
+            trf = boosting(y, x, 0, 0.5, partitions=5, test=1)
+            y_pred = trf.cross_predict(x, scale='normalized')
+
+            y_normalized = (y - trf.y_mean) / trf.y_scale
+            y_residual = y_normalized - y_pred
+            proportion_explained_l1 = 1 - (y_residual.abs().sum('time') / y_normalized.abs().sum('time'))
+            proportion_explained_l2 = 1 - ((y_residual ** 2).sum('time') / (y_normalized ** 2).sum('time'))
+
+        ```
         """
-        # predictors
-        x_ = self.x if x is None else x
-        x_data = PredictorData(x_, ds)
+        if scale not in ('original', 'normalized'):
+            raise ValueError(f"{scale=}")
         if not self.partition_results:
             raise ValueError("BoostingResult does not contain partition-specific models; fit with partition_results=True")
+        # predictors
+        x_ = self.x if x is None else x
+        x_data = PredictorData(x_, ds, copy=True)
         # check predictors match h
         if x_data.x_name == self.x:
             x_use = None
@@ -342,12 +380,18 @@ class BoostingResult(PickleableDataClass):
             y_dims = self._y_dims
         y_dimnames = [dim.name for dim in y_dims]
         n_y = sum(len(dim) for dim in y_dims) or 1
-        y_pred = np.zeros((1, n_y, x_data.n_times_flat))
+        y_pred = np.empty((1, n_y, x_data.n_times_flat))
         # prepare x:  (n_x_only, n_shared, n_x_times)
-        x_array = x_data.data[np.newaxis, :, :]
+        x_array = x_data.data
+        if self.scale_data:
+            x_array -= self._x_mean_array[:, np.newaxis]
+            x_pads = -(self._x_mean_array / self._x_scale_array)[np.newaxis]
+            x_array /= self._x_scale_array[:, np.newaxis]
+        else:
+            x_pads = np.zeros((1, len(x_array)))
+        x_array = x_array[np.newaxis, :, :]
         # prepare h
         h_i_start = int(round(self.h_time.tmin / self.h_time.tstep))
-        h_i_stop = h_i_start + len(self.h_time)
         # iterate through partitions
         for result in self.partition_results:
             # find segments
@@ -358,7 +402,7 @@ class BoostingResult(PickleableDataClass):
             else:
                 raise RuntimeError(f"Split missing for test segment {result.i_test}")
             # h to flat array: (n_h_only == in y, n_shared == in x, n_h_times)
-            hs = [result.h_scaled] if isinstance(result.h_scaled, NDVar) else result.h_scaled
+            hs = [result.h] if isinstance(result.h, NDVar) else result.h
             if x_use:
                 hs = {h.name: h for h in hs}
                 hs = [hs[x] for x in x_use]
@@ -370,8 +414,7 @@ class BoostingResult(PickleableDataClass):
                 h_array.append(h_data)
             h_array = np.concatenate(h_array, 1)
             # convolution
-            for start, stop in segments:
-                parallel_convolve(h_array, x_array[:, :, start:stop], y_pred[:, :, start:stop], h_i_start, h_i_stop)
+            parallel_convolve_segments(h_array, x_array, x_pads, h_i_start, segments, y_pred)
         # package output
         dims = [*y_dims, x_data.time_dim]
         shape = [len(dim) for dim in dims]
@@ -383,7 +426,11 @@ class BoostingResult(PickleableDataClass):
             y_pred = np.rollaxis(y_pred, -2)
         if name is None:
             name = self.y
-        return NDVar(y_pred, dims, name, self._y_info)
+        y_pred = NDVar(y_pred, dims, name, self._y_info)
+        if scale == 'original' and self.scale_data:
+            y_pred *= self.y_scale
+            y_pred += self.y_mean
+        return y_pred
 
     def partition_result_data(self, model: str = None) -> Dataset:
         """Results from the different test partitions in a :class:`Dataset`
@@ -749,7 +796,7 @@ class Boosting:
             for i_y, y_pred_i in enumerate(y_pred_iter):
                 # for cross-validation, different segments are predicted by different h:
                 for h, segments in hs:
-                    convolve_jit_(h[i_y], self.data.x, self.data.x_pads, self._i_start, segments, y_pred_i)
+                    convolve_segments_jit(h[i_y], self.data.x, self.data.x_pads, self._i_start, segments, y_pred_i)
 
                 if evaluators_s:
                     for e in evaluators_s:
@@ -1005,17 +1052,33 @@ def convolve(
         segments = np.array(((0, n_times),), np.int64)
     if out is None:
         out = np.empty(n_times)
-    return convolve_jit_(h, x, x_pads, h_i_start, segments, out)
+    return convolve_segments_jit(h, x, x_pads, h_i_start, segments, out)
+
+
+@numba.njit(nogil=True, cache=True, parallel=True)
+def parallel_convolve_segments(
+        h_flat: np.ndarray,  # (n_h_only, n_shared, n_h_times)
+        x_flat: np.ndarray,  # (n_x_only, n_shared, n_x_times)
+        x_pads: np.ndarray,  # (n_x_only, n_shared)
+        h_i_start: int,  # offset of the first sample of h
+        segments: np.ndarray,  # (n_segments, 2)
+        out_flat: np.ndarray,  # (n_x_only, n_h_only, n_x_times)
+):
+    # loop through x and h dimensions
+    out_indexes = [(ix, ih) for ix in range(len(x_flat)) for ih in range(len(h_flat))]
+    for i_out in numba.prange(len(out_indexes)):
+        i_x, i_h = out_indexes[i_out]
+        convolve_segments_jit(h_flat[i_h], x_flat[i_x], x_pads[i_x], h_i_start, segments, out_flat[i_x, i_h])
 
 
 @numba.njit(nogil=True, cache=True)
-def convolve_jit_(
-        h: np.ndarray,  # (n_stims, h_n_samples)
-        x: np.ndarray,  # (n_stims, n_samples)
-        x_pads: np.ndarray,  # (n_stims,)
-        h_i_start: int,
+def convolve_segments_jit(
+        h: np.ndarray,  # (n_x, n_h_times)
+        x: np.ndarray,  # (n_x, n_x_times)
+        x_pads: np.ndarray,  # (n_x,)
+        h_i_start: int,  # offset of the first sample of h
         segments: np.ndarray,  # (n_segments, 2)
-        out: np.ndarray,
+        out: np.ndarray,  # (n_x_times,)
 ):
     h_n_times = h.shape[1]
     segments_start = segments[:, 0]

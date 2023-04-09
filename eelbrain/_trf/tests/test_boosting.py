@@ -80,7 +80,7 @@ def test_boosting():
     res_cv = boosting(y, x1, 0, 1, test=1, scale_data=False, partitions=4, debug=True, partition_results=True)
     assert correlation_coefficient(res.h, res_cv.h) == approx(.986, abs=.001)
     # using cross-prediction
-    y_pred = res_cv.cross_predict(x1)
+    y_pred = res_cv.cross_predict(x1, scale='normalized')
     assert correlation_coefficient(y_pred, y, 'time') == pytest.approx(res_cv.r)
     # fit res_cv on same data as res
     fit = res_cv.fit
@@ -118,6 +118,35 @@ def test_boosting():
     assert_dataobj_equal(correlation_coefficient(y_pred, ynd, 'time'), res_cv.r, 2, name=False)
 
 
+@pytest.mark.parametrize('error', ['l1', 'l2'])
+def test_boosting_cross_predict(error):
+    """Test cross-predicting data using stored TRFs"""
+    ds = datasets._get_continuous()
+
+    # Without scaling
+    trf = boosting('y', 'x1', 0, 1, ds=ds, error=error, partitions=3, test=1, partition_results=True, debug=True, scale_data=False)
+    y_pred = trf.cross_predict('x1', ds)
+    assert_array_equal(y_pred, trf.y_pred)
+
+    # With scaling: normalized
+    trf = boosting('y', 'x1', 0, 1, ds=ds, error=error, partitions=3, test=1, partition_results=True, debug=True)
+    y_pred = trf.cross_predict('x1', ds, scale='normalized')
+    assert_array_equal(y_pred, trf.y_pred)
+    # Proportion explained
+    y_normalized = ds['y'] - trf.y_mean
+    y_normalized /= trf.y_scale
+    y_residual = y_normalized - y_pred
+    if error == 'l1':
+        proportion_explained = 1 - (y_residual.abs().sum('time') / y_normalized.abs().sum('time'))
+    else:
+        proportion_explained = 1 - ((y_residual ** 2).sum('time') / (y_normalized ** 2).sum('time'))
+    assert proportion_explained == pytest.approx(trf.proportion_explained, 1e-16)
+
+    # With scaling: original scale
+    y_pred = trf.cross_predict('x1', ds)
+    assert_array_equal(y_pred, trf.y_pred * trf.y_scale + trf.y_mean)
+
+
 def test_boosting_epochs():
     """Test boosting with epoched data"""
     ds = datasets.get_uts(True, vector3d=True)
@@ -146,8 +175,8 @@ def test_boosting_epochs():
     assert_dataobj_equal(res.r, r, decimal=3, name=False)
     # cross-validation
     res_cv = boosting('utsnd', [p0, p1], 0, 0.6, error='l1', ds=ds, partitions=3, test=1, partition_results=True, debug=True)
-    y_pred = res_cv.cross_predict([p0, p1])
-    assert correlation_coefficient(y_pred - y_pred.mean('time'), res_cv.y_pred - res_cv.y_pred.mean('time')) > 0.99
+    y_pred = res_cv.cross_predict([p0, p1], scale='normalized')
+    assert_array_equal(y_pred, res_cv.y_pred)
     # vector
     res = boosting('v3d', [p0, p1], 0, 0.6, error='l1', model='A', ds=ds, partitions=3)
     assert res.residual.ndim == 0
