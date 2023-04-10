@@ -1104,8 +1104,6 @@ def combine(
         items = list(items)
     if len(items) == 0:
         raise ValueError(f"{items=}: combine() called with empty sequence")
-    elif len(items) == 1:
-        return items[0]
 
     # find type
     first_item = items[0]

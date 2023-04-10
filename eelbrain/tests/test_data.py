@@ -426,9 +426,13 @@ def test_dataset():
         'x': Factor('ab'),
         'z': Factor('uv', random=True),
     })
+    names = ['y', 'x', 'z']
     cases = [[1, 'a', 'u'], [2, 'b', 'v']]
-    ds = Dataset.from_caselist(['y', 'x', 'z'], cases, random='z')
+    ds = Dataset.from_caselist(names, cases, random='z')
     assert_dataobj_equal(ds, target)
+    # Length 1
+    ds0 = Dataset.from_caselist(names, cases[:1], random='z')
+    assert_dataobj_equal(ds0, target[:1])
 
 
 def test_dataset_combining():
