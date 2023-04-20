@@ -12,6 +12,7 @@
    add_mne_epochs
    epochs_ndvar
    evoked_ndvar
+   raw_ndvar
    sensor_dim
    stc_ndvar
    forward_operator
