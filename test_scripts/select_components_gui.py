@@ -7,7 +7,7 @@ import mne
 
 PATH = 'test-ica.fif'
 
-ds = datasets.get_mne_sample()
+ds = datasets.get_mne_sample(baseline=None)
 if os.path.exists(PATH):
     ica = mne.preprocessing.read_ica(PATH)
 else:
