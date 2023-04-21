@@ -719,6 +719,9 @@ class Frame(SharedToolsMenu, FileFrame):
     def OnPlotCompTopomap(self, event):
         self.PlotCompTopomap(event.EventObject.i_comp)
 
+    def OnPlotEpoch(self, event):
+        self.PlotEpochButterfly(event.EventObject.i_epoch)
+
     def OnPointerEntersAxes(self, event):
         try:
             sb = self.GetStatusBar()
@@ -768,6 +771,8 @@ class Frame(SharedToolsMenu, FileFrame):
             self.Bind(wx.EVT_MENU, self.OnFindTopComponent, item)
             item = menu.Append(wx.ID_ANY, "Top Accepted Component")
             self.Bind(wx.EVT_MENU, self.OnFindTopAcceptedComponent, item)
+            item = menu.Append(wx.ID_ANY, "Plot Epoch")
+            self.Bind(wx.EVT_MENU, self.OnPlotEpoch, item)
         return menu
 
     def OnRightDown(self, event):
