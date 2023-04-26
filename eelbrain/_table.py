@@ -406,6 +406,7 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None, labels=None):
         ds_[dimname, :] = label(cell)
         dss.append(ds_)
     out = combine(dss)
+    out.info['varname'] = varname
     for k, v in dim_vars.items():
         if k not in out:
             out[k] = v.repeat(len(ndvar))

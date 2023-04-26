@@ -1020,7 +1020,7 @@ class AxisData:
 
 def x_arg(x: CategorialArg):
     if isinstance(x, str) and x.startswith('.'):
-        return None, x
+        return None, x[1:]
     else:
         return x, None
 
@@ -1283,24 +1283,15 @@ class PlotData:
                     layer.style = styles[layer.style_key]
             return replace(axes_data[0], plot_data=axes, plot_used=plot_used, plot_names=None, styles=styles)
         x, x_dim = x_arg(x)
+        if x_dim is not None:
+            ds = melt_ndvar(y, x_dim, ds=ds)
+            y = ds.info['varname']
+            x = combine_x_args(x, x_dim)
         xax, xax_dim = x_arg(xax)
-        if x_dim or xax_dim:
-            if isinstance(y, NDVar):
-                varname = Dataset.as_key(y.name, 'y')
-            else:
-                varname = y
-
-            if x_dim:
-                dim = x_dim[1:]
-                ds = melt_ndvar(y, dim, ds=ds, varname=varname)
-                y = varname
-                x = combine_x_args(x, dim)
-
-            if xax_dim:
-                dim = xax_dim[1:]
-                ds = melt_ndvar(y, dim, ds=ds, varname=varname)
-                y = varname
-                xax = combine_x_args(xax, dim)
+        if xax_dim is not None:
+            ds = melt_ndvar(y, xax_dim, ds=ds)
+            y = ds.info['varname']
+            xax = combine_x_args(xax, xax_dim)
         x_full = combine_x_args(x, xax)
         ct = Celltable(y, x_full, match, sub, ds=ds)
         # data dimensions
