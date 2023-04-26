@@ -5085,16 +5085,16 @@ class NDVar(Named):
             if axis:
                 x = np.moveaxis(x, 0, axis)
         elif dim_object._connectivity_type == 'custom':
-            raise ValueError(f"window={window!r} for {dim_object.__class__.__name__} dimension (must be 'gaussian')")
+            raise ValueError(f"{window=} for {dim_object.__class__.__name__} dimension (must be 'gaussian')")
         else:
             if window_samples:
                 n = window_samples
             elif dim == 'time':
                 n = int(round(window_size / dim_object.tstep))
                 if not n:
-                    raise ValueError(f"window_size={window_size}: Window too small for sampling rate")
+                    raise ValueError(f"{window_size=}: Window too small for sampling rate")
             else:
-                raise NotImplementedError(f"window={window!r} for {dim_object.__class__.__name__} dimension")
+                raise NotImplementedError(f"{window=} for {dim_object.__class__.__name__} dimension")
             window = scipy.signal.get_window(window, n, False)
             window /= window.sum()
             window.shape = (1,) * axis + (n,) + (1,) * (self.ndim - axis - 1)
@@ -5116,7 +5116,7 @@ class NDVar(Named):
                         window_i = (window_i / window_i.sum()) - window_i
                         x[aslice(axis, start=nx-1-w_center-i)] += window_i * self.x[aslice(axis, nx-1-i, nx-i)]
             elif fix_edges:
-                raise NotImplementedError(f"fix_edges=True with mode={mode!r}")
+                raise NotImplementedError(f"{fix_edges=} with {mode=}")
             else:
                 x = scipy.signal.convolve(self.x, window, 'full')
                 if mode == 'left':
@@ -5126,12 +5126,12 @@ class NDVar(Named):
                     x = x[aslice(axis, start=-self.shape[axis])]
                 elif mode == 'full':
                     if not isinstance(dim_object, UTS):
-                        raise NotImplementedError(f"mode='full' for {dim_object.__class__.__name__} dimension")
+                        raise NotImplementedError(f"{mode=} for {dim_object.__class__.__name__} dimension")
                     dims = list(dims)
                     tmin = dim_object.tmin - dim_object.tstep * floor((n - 1) / 2)
                     dims[axis] = UTS(tmin, dim_object.tstep, dim_object.nsamples + n - 1)
                 else:
-                    raise ValueError("mode=%r" % (mode,))
+                    raise ValueError(f"{mode=}")
         return NDVar(x, dims, name or self.name, self.info)
 
     def std(
