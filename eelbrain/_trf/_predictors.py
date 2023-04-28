@@ -95,10 +95,10 @@ def event_impulse_predictor(shape, time='time', value=1, latency=0, name=None, d
     time, n = asarray(time, ds=ds, return_n=True)
     dt = uts.tstep / 2
     index = (time > uts.tmin - dt) & (time < uts.tstop - dt)
-    if (sub_time := not index.all()):
-        time = time[index]
-    else:
+    if index.all():
         index = None
+    else:
+        time = time[index]
 
     if isinstance(value, str) or not np.isscalar(value):
         value = asarray(value, sub=index, ds=ds, n=n)

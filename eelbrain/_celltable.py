@@ -255,12 +255,18 @@ class Celltable:
                 out[k] = reference_v
         return out
 
-    def _align(self, y, rm: bool = False, ds: Dataset = None, coerce: Callable = asdataobject):
+    def _align(
+            self,
+            y: Sequence,
+            rm: bool = False,
+            ds: Dataset = None,
+            coerce: Callable = asdataobject,
+    ):
         """Align an additional variable to the celltable
 
         Parameters
         ----------
-        y : data-object
+        y
             Data-object to align.
         rm
             If the celltable is a repeated-measures celltable, align ``y`` to
