@@ -60,7 +60,7 @@ class RawPipe:
         out.log = log
         return out
 
-    def as_dict(self, args: Sequence[str] = ()):
+    def _as_dict(self, args: Sequence[str] = ()):
         out = {arg: getattr(self, arg) for arg in chain(args, ('name',))}
         out['type'] = self.__class__.__name__
         return out
@@ -223,8 +223,8 @@ class RawSource(RawPipe):
         out.bads_path = head + '-bad_channels.txt'
         return out
 
-    def as_dict(self, args: Sequence[str] = ()):
-        out = RawPipe.as_dict(self, args)
+    def _as_dict(self, args: Sequence[str] = ()):
+        out = RawPipe._as_dict(self, args)
         out.update(self._kwargs)
         if self.reader != mne.io.read_raw_fif:
             out['reader'] = self.reader.__name__
@@ -360,8 +360,8 @@ class CachedRawPipe(RawPipe):
         out.source = pipes[self._source_name]
         return out
 
-    def as_dict(self, args: Sequence[str] = ()):
-        out = RawPipe.as_dict(self, args)
+    def _as_dict(self, args: Sequence[str] = ()):
+        out = RawPipe._as_dict(self, args)
         out['source'] = self._source_name
         return out
 
@@ -379,7 +379,7 @@ class CachedRawPipe(RawPipe):
         with CaptureLog(path[:-3] + 'log') as logger:
             logger.info(f"eelbrain {__version__}")
             logger.info(f"mne {mne.__version__}")
-            logger.info(repr(self.as_dict()))
+            logger.info(repr(self._as_dict()))
             raw = self._make(subject, recording)
         # save
         try:
@@ -472,8 +472,8 @@ class RawFilter(CachedRawPipe):
         else:
             self._use_kwargs = kwargs
 
-    def as_dict(self, args: Sequence[str] = ()):
-        return CachedRawPipe.as_dict(self, [*args, 'args', 'kwargs'])
+    def _as_dict(self, args: Sequence[str] = ()):
+        return CachedRawPipe._as_dict(self, [*args, 'args', 'kwargs'])
 
     def filter_ndvar(self, ndvar, **kwargs):
         return filter_data(ndvar, *self.args, **self._use_kwargs, **kwargs)
@@ -491,8 +491,8 @@ class RawFilterElliptic(CachedRawPipe):
         CachedRawPipe.__init__(self, source)
         self.args = (low_stop, low_pass, high_pass, high_stop, gpass, gstop)
 
-    def as_dict(self, args: Sequence[str] = ()):
-        return CachedRawPipe.as_dict(self, [*args, 'args'])
+    def _as_dict(self, args: Sequence[str] = ()):
+        return CachedRawPipe._as_dict(self, [*args, 'args'])
 
     def _sos(self, sfreq):
         nyq = sfreq / 2.
@@ -612,8 +612,8 @@ class RawICA(CachedRawPipe):
         out.ica_path = join(raw_dir, f'{{subject_visit}} {name}-ica.fif')
         return out
 
-    def as_dict(self, args: Sequence[str] = ()):
-        return CachedRawPipe.as_dict(self, [*args, 'session', 'kwargs'])
+    def _as_dict(self, args: Sequence[str] = ()):
+        return CachedRawPipe._as_dict(self, [*args, 'session', 'kwargs'])
 
     def load_bad_channels(self, subject, recording):
         visit = _visit(recording)
@@ -784,8 +784,8 @@ class RawApplyICA(CachedRawPipe):
         out.ica_source = pipes[self._ica_source]
         return out
 
-    def as_dict(self, args: Sequence[str] = ()):
-        out = CachedRawPipe.as_dict(self, args)
+    def _as_dict(self, args: Sequence[str] = ()):
+        out = CachedRawPipe._as_dict(self, args)
         out['ica_source'] = self._ica_source
         return out
 
@@ -837,8 +837,8 @@ class RawMaxwell(CachedRawPipe):
         self.kwargs = kwargs
         self.bad_condition = bad_condition
 
-    def as_dict(self, args: Sequence[str] = ()):
-        return CachedRawPipe.as_dict(self, [*args, 'kwargs'])
+    def _as_dict(self, args: Sequence[str] = ()):
+        return CachedRawPipe._as_dict(self, [*args, 'kwargs'])
 
     def _make(self, subject, recording):
         raw = self.source.load(subject, recording)
@@ -859,8 +859,8 @@ class RawOversampledTemporalProjection(CachedRawPipe):
         CachedRawPipe.__init__(self, source, cache)
         self.duration = duration
 
-    def as_dict(self, args: Sequence[str] = ()):
-        return CachedRawPipe.as_dict(self, [*args, 'duration'])
+    def _as_dict(self, args: Sequence[str] = ()):
+        return CachedRawPipe._as_dict(self, [*args, 'duration'])
 
     def _make(self, subject, recording):
         raw = self.source.load(subject, recording)
@@ -900,8 +900,8 @@ class RawReReference(CachedRawPipe):
         self.add = add
         self.drop = drop
 
-    def as_dict(self, args: Sequence[str] = ()):
-        out = CachedRawPipe.as_dict(self, [*args, 'reference'])
+    def _as_dict(self, args: Sequence[str] = ()):
+        out = CachedRawPipe._as_dict(self, [*args, 'reference'])
         if self.add is not None:
             out['add'] = self.add
         if self.drop:

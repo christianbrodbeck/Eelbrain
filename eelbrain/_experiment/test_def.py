@@ -184,8 +184,8 @@ class TTestIndependent(Test):
         self.c0 = c0
         self.tail = tail
 
-    def as_dict(self):
-        return {**Test.as_dict(self), 'model': self.between_model}
+    def _as_dict(self):
+        return {**Test._as_dict(self), 'model': self.between_model}
 
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.TTestIndependent(y, self.between_model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)

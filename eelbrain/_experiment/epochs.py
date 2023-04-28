@@ -139,9 +139,9 @@ class Epoch(EpochBase):
         self.post_baseline_trigger_shift_min = post_baseline_trigger_shift_min
         self.post_baseline_trigger_shift_max = post_baseline_trigger_shift_max
 
-    def as_dict_24(self):
+    def _as_dict_24(self):
         "Dict to be compared with Eelbrain 0.24 cache"
-        out = {k: v for k, v in self.as_dict().items() if v is not None}
+        out = {k: v for k, v in self._as_dict().items() if v is not None}
         if isinstance(self, (SecondaryEpoch, SuperEpoch)):
             out['_rej_file_epochs'] = self.rej_file_epochs
         if isinstance(self, PrimaryEpoch) and self.n_cases:

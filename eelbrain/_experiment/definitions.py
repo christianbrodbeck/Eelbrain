@@ -98,14 +98,14 @@ class CodeError(Exception):
 class Definition:
     DICT_ATTRS = None
 
-    def as_dict(self):
+    def _as_dict(self):
         return {k: getattr(self, k) for k in self.DICT_ATTRS}
 
     def __eq__(self, other):
         if isinstance(other, dict):
-            return self.as_dict() == other
+            return self._as_dict() == other
         elif isinstance(other, Definition):
-            return self.as_dict() == other.as_dict()
+            return self._as_dict() == other._as_dict()
         else:
             return False
 

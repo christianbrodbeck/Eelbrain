@@ -897,11 +897,11 @@ class MneExperiment(FileTree):
             'version': CACHE_STATE_VERSION,
             'stim_channel': self._stim_channel,
             'merge_triggers': self.merge_triggers,
-            'raw': {k: v.as_dict() for k, v in self._raw.items()},
+            'raw': {k: v._as_dict() for k, v in self._raw.items()},
             'groups': self._groups,
-            'epochs': {k: v.as_dict() for k, v in self._epochs.items()},
-            'tests': {k: v.as_dict() for k, v in self._tests.items()},
-            'parcs': {k: v.as_dict() for k, v in self._parcs.items()},
+            'epochs': {k: v._as_dict() for k, v in self._epochs.items()},
+            'tests': {k: v._as_dict() for k, v in self._tests.items()},
+            'parcs': {k: v._as_dict() for k, v in self._parcs.items()},
             'events': events,
         }
         cache_state_path = join(cache_dir, 'cache-state.pickle')
@@ -1030,7 +1030,7 @@ class MneExperiment(FileTree):
         # epochs
         if cache_state_v < 3:
             # Epochs represented as dict up to Eelbrain 0.24
-            new_state['epochs'] = {k: v.as_dict_24() for k, v in self._epochs.items()}
+            new_state['epochs'] = {k: v._as_dict_24() for k, v in self._epochs.items()}
             for e in cache_state['epochs'].values():
                 e.pop('base', None)
                 if 'sel_epoch' in e:
@@ -1047,7 +1047,7 @@ class MneExperiment(FileTree):
         # raw pipeline
         if cache_state_v < 5:
             legacy_raw = assemble_pipeline(LEGACY_RAW, '', '', '', '', self._sessions, self._log)
-            cache_state['raw'] = {k: v.as_dict() for k, v in legacy_raw.items()}
+            cache_state['raw'] = {k: v._as_dict() for k, v in legacy_raw.items()}
 
         # parcellations represented as dicts
         if cache_state_v < 6:
@@ -1061,7 +1061,7 @@ class MneExperiment(FileTree):
             for params in cache_state['tests'].values():
                 if 'desc' in params:
                     del params['desc']
-            cache_state['tests'] = {k: v.as_dict() for k, v in assemble_tests(cache_state['tests']).items()}
+            cache_state['tests'] = {k: v._as_dict() for k, v in assemble_tests(cache_state['tests']).items()}
         elif cache_state_v == 7:  # 'kind' key missing
             for name, params in cache_state['tests'].items():
                 if name in new_state['tests']:
