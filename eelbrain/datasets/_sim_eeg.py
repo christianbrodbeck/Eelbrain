@@ -71,7 +71,7 @@ def simulate_erp(
     rng.shuffle(cloze_x)
     cloze = Var(cloze_x)
     # Word complexity (number of characters)
-    n_chars = Var(np.round(rng.normal(4, 1.5, n_trials)).astype(int))
+    n_chars = Var(np.round(rng.uniform(3, 7, n_trials)).astype(int))
 
     # Generate topography
     n400_topo = -2.0 * _topo(sensor, 'Cz')
