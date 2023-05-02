@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Statistical tests for univariate variables"""
-from functools import partial
+from functools import cached_property
 import itertools
 import math
 from typing import Dict, Literal, Sequence, Union
@@ -17,7 +17,7 @@ from .._data_obj import (
     combine,
     cellname, dataobj_repr, nice_label,
 )
-from functools import cached_property
+from .._utils import deprecate_ds_arg
 from .permutation import resample
 from . import stats
 
@@ -56,7 +56,7 @@ class Correlation:
         Second variable. Needs to have same type/shape as ``y``.
     sub : index
         Use only a subset of the data
-    ds : Dataset
+    data : Dataset
         If a Dataset is given, all data-objects can be specified as names of
         Dataset variables.
 
@@ -71,16 +71,17 @@ class Correlation:
     """
     _statistic = 'r'
 
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NumericArg,
             x: NumericArg,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
     ):
-        sub, n = assub(sub, ds, return_n=True)
-        y, n = asnumeric(y, sub, ds, n, return_n=True, array=True)
-        x = asnumeric(x, sub, ds, n, array=True)
+        sub, n = assub(sub, data, return_n=True)
+        y, n = asnumeric(y, sub, data, n, return_n=True, array=True)
+        x = asnumeric(x, sub, data, n, array=True)
         if type(y) is not type(x):
             raise TypeError(f"y and x must be same type; got type(y)={type(y)}, type(x)={type(x)}")
         elif isinstance(y, Var):
@@ -397,7 +398,7 @@ def _independent_measures_args(y, x, c1, c0, match, ds, sub, nd_data=False):
         c0_name = y0.name if c0 is None else c0
         x_name = y0.name
     else:
-        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=coerce, dtype=np.float64)
+        ct = Celltable(y, x, match, sub, cat=(c1, c0), data=ds, coercion=coerce, dtype=np.float64)
         c1, c0 = ct.cat
         c1_name = c1
         c0_name = c0
@@ -434,7 +435,7 @@ def _related_measures_args(y, x, c1, c0, match, ds, sub, nd_data=False):
     elif match is None:
         raise TypeError("The `match` argument needs to be specified for related measures tests")
     else:
-        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=coerce, dtype=np.float64)
+        ct = Celltable(y, x, match, sub, cat=(c1, c0), data=ds, coercion=coerce, dtype=np.float64)
         c1, c0 = ct.cat
         c1_name = c1
         c0_name = c0
@@ -448,6 +449,7 @@ def _related_measures_args(y, x, c1, c0, match, ds, sub, nd_data=False):
     return y1, y0, c1, c0, match, n, x_name, c1_name, c0_name
 
 
+@deprecate_ds_arg
 def ttest(
         y: VarArg,
         x: CategorialArg = None,
@@ -456,7 +458,7 @@ def ttest(
         sub: IndexArg = None,
         corr: MCCArg = 'Hochberg',
         title: str = '{desc}',
-        ds: Dataset = None,
+        data: Dataset = None,
         tail: Literal[-1, 0, 1] = 0,
 ) -> fmtxt.Table:
     """T-tests for one or more samples
@@ -477,7 +479,7 @@ def ttest(
         Method for multiple comparison correction (default 'hochberg').
     title
         Title for the table.
-    ds
+    data
         If a Dataset is given, all data-objects can be specified as names of
         Dataset variables
     tail
@@ -488,7 +490,7 @@ def ttest(
     table : FMText Table
         Table with results.
     """
-    ct = Celltable(y, x, match, sub, ds=ds, coercion=asvar)
+    ct = Celltable(y, x, match, sub, data=data, coercion=asvar)
 
     par = True
     if par:
@@ -611,7 +613,7 @@ class TTestOneSample(TTest):
         within-subject comparison).
     sub : index-array
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     popmean : float
@@ -639,16 +641,17 @@ class TTestOneSample(TTest):
     full : FMText
         Full description of the test result.
     """
+    @deprecate_ds_arg
     def __init__(
             self,
             y: VarArg,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             popmean: float = 0,
             tail: int = 0,
     ):
-        ct = Celltable(y, None, match, sub, ds=ds, coercion=asvar)
+        ct = Celltable(y, None, match, sub, data=data, coercion=asvar)
         n = len(ct.y)
         if n <= 2:
             raise ValueError(f"Not enough observations for t-test ({n=})")
@@ -698,7 +701,7 @@ class TTestIndependent(TTest):
         (e.g. 'subject' in a between-group comparison).
     sub : index-array
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -720,6 +723,7 @@ class TTestIndependent(TTest):
     full : FMText
         Full description of the test result.
     """
+    @deprecate_ds_arg
     def __init__(
             self,
             y: VarArg,
@@ -728,10 +732,10 @@ class TTestIndependent(TTest):
             c0: CellArg = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             tail: int = 0,
     ):
-        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub)
+        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, data, sub)
 
         n1, n0 = len(y1), len(y0)
         n = n1 + n0
@@ -798,7 +802,7 @@ class MannWhitneyU:
         ``y`` and ``x`` are two measurements with matched cases.
     sub : index-array
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -828,6 +832,7 @@ class MannWhitneyU:
     """
     _statistic = 'U'
 
+    @deprecate_ds_arg
     def __init__(
             self,
             y: VarArg,
@@ -836,11 +841,11 @@ class MannWhitneyU:
             c0: CellArg = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             tail: int = 0,
             continuity: bool = True,
     ):
-        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub)
+        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, data, sub)
         if tail == 0:
             alternative = 'two-sided'
         elif tail == 1:
@@ -904,7 +909,7 @@ class TTestRelated(TTest):
         ``y`` and ``x`` are two measurements with matched cases.
     sub : index-array
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -938,6 +943,7 @@ class TTestRelated(TTest):
     --------
     WilcoxonSignedRank : non-parametric alternative
     """
+    @deprecate_ds_arg
     def __init__(
             self,
             y: VarArg,
@@ -946,10 +952,10 @@ class TTestRelated(TTest):
             c0: CellArg = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             tail: int = 0,
     ):
-        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
+        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, data, sub)
         if n <= 2:
             raise ValueError("Not enough observations for t-test (n=%i)" % n)
         self._y = dataobj_repr(y1)
@@ -1013,7 +1019,7 @@ class WilcoxonSignedRank:
         ``y`` and ``x`` are two measurements with matched cases.
     sub : index-array
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -1051,6 +1057,7 @@ class WilcoxonSignedRank:
     """
     _statistic = 'W'
 
+    @deprecate_ds_arg
     def __init__(
             self,
             y: VarArg,
@@ -1059,12 +1066,12 @@ class WilcoxonSignedRank:
             c0: CellArg = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             tail: int = 0,
             zero_method: str = 'wilcox',
             correction: bool = False,
     ):
-        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
+        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, data, sub)
         if tail == 0:
             alternative = 'two-sided'
         elif tail == 1:
@@ -1102,12 +1109,13 @@ class WilcoxonSignedRank:
         return fmtxt.Stars.from_p(self.p)
 
 
+@deprecate_ds_arg
 def pairwise(
         y: VarArg,
         x: CategorialArg,
         match: CategorialArg = None,
         sub: IndexArg = None,
-        ds: Dataset = None,
+        data: Dataset = None,
         par: bool = True,
         corr: MCCArg = 'Hochberg',
         trend: Union[bool, str] = False,
@@ -1127,7 +1135,7 @@ def pairwise(
         Repeated measures factor.
     sub : index-array
         Perform tests with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is given, all data-objects can be specified as names of
         Dataset variables.
     par : bool
@@ -1149,7 +1157,7 @@ def pairwise(
     table : FMText Table
         Table with results.
     """
-    ct = Celltable(y, x, match=match, sub=sub, ds=ds, coercion=asvar)
+    ct = Celltable(y, x, match=match, sub=sub, data=data, coercion=asvar)
     tests = _pairwise(ct, par, corr, trend)
 
     # extract test results
@@ -1276,10 +1284,11 @@ def _pairwise(
     }
 
 
+@deprecate_ds_arg
 def pairwise_correlations(
         xs: Sequence[Union[str, Var, NDVar]],
         sub: IndexArg = None,
-        ds: Dataset = None,
+        data: Dataset = None,
         labels: Dict[CellArg, str] = None,
 ):
     """Pairwise correlation table
@@ -1290,7 +1299,7 @@ def pairwise_correlations(
         Variables to correlate.
     sub : index
         Use only a subset of the data
-    ds : Dataset
+    data : Dataset
         If a Dataset is given, all data-objects can be specified as names of
         Dataset variables.
     labels : {str: str} dict
@@ -1301,8 +1310,8 @@ def pairwise_correlations(
     pairwise_table : fmtxt.Table
         Table with pairwise correlations.
     """
-    sub = assub(sub, ds)
-    xs_ = [asnumeric(x, sub, ds) for x in xs]
+    sub = assub(sub, data)
+    xs_ = [asnumeric(x, sub, data) for x in xs]
     n_vars = len(xs_)
     x_labels = [nice_label(x, labels) for x in xs_]
 

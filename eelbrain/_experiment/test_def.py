@@ -121,15 +121,15 @@ class TTestOneSample(Test):
         self.tail = tail
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.TTestOneSample(y, match='subject', ds=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
+        return testnd.TTestOneSample(y, match='subject', data=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
 
     def make_vec(self, y, ds, force_permutation, kwargs):
         if self.tail:
             raise ValueError("Vector-tests cannot be tailed")
-        return testnd.Vector(y, match='subject', ds=ds, **kwargs)
+        return testnd.Vector(y, match='subject', data=ds, **kwargs)
 
     def make_uv(self, y, ds):
-        return test.TTestOneSample(y, match='subject', ds=ds, tail=self.tail)
+        return test.TTestOneSample(y, match='subject', data=ds, tail=self.tail)
 
 
 class TTestIndependent(Test):
@@ -188,10 +188,10 @@ class TTestIndependent(Test):
         return {**Test._as_dict(self), 'model': self.between_model}
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.TTestIndependent(y, self.between_model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
+        return testnd.TTestIndependent(y, self.between_model, self.c1, self.c0, 'subject', data=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
 
     def make_uv(self, y, ds):
-        return test.TTestIndependent(y, self.between_model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail)
+        return test.TTestIndependent(y, self.between_model, self.c1, self.c0, 'subject', data=ds, tail=self.tail)
 
 
 class TTestRelated(Test):
@@ -243,15 +243,15 @@ class TTestRelated(Test):
         self.tail = tail
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.TTestRelated(y, self.model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
+        return testnd.TTestRelated(y, self.model, self.c1, self.c0, 'subject', data=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
 
     def make_vec(self, y, ds, force_permutation, kwargs):
         if self.tail:
             raise ValueError("Vector-tests cannot be tailed")
-        return testnd.VectorDifferenceRelated(y, self.model, self.c1, self.c0, 'subject', ds=ds, force_permutation=force_permutation, **kwargs)
+        return testnd.VectorDifferenceRelated(y, self.model, self.c1, self.c0, 'subject', data=ds, force_permutation=force_permutation, **kwargs)
 
     def make_uv(self, y, ds):
-        return test.TTestRelated(y, self.model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail)
+        return test.TTestRelated(y, self.model, self.c1, self.c0, 'subject', data=ds, tail=self.tail)
 
 
 class TContrastRelated(Test):
@@ -293,7 +293,7 @@ class TContrastRelated(Test):
         self.tail = tail
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.TContrastRelated(y, self.model, self.contrast, 'subject', ds=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
+        return testnd.TContrastRelated(y, self.model, self.contrast, 'subject', data=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
 
 
 class ANOVA(Test):
@@ -353,10 +353,10 @@ class ANOVA(Test):
         self.x = '*'.join(x_items)
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.ANOVA(y, self.x, ds=ds, force_permutation=force_permutation, **kwargs)
+        return testnd.ANOVA(y, self.x, data=ds, force_permutation=force_permutation, **kwargs)
 
     def make_uv(self, y, ds):
-        return test.ANOVA(y, self.x, ds=ds)
+        return test.ANOVA(y, self.x, data=ds)
 
 
 class TwoStageTest(Test):

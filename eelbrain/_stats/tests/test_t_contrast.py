@@ -51,7 +51,7 @@ def test_t_contrast_parsing():
 def test_t_contrasts():
     "Test computation of various t-contrasts"
     ds = datasets.get_uts()
-    ct = Celltable('uts', 'A % B', 'rm', ds=ds)
+    ct = Celltable('uts', 'A % B', 'rm', data=ds)
     y = ct.y.x
     out = np.empty(y.shape[1:])
     perm = np.arange(ds.n_cases)
@@ -107,9 +107,9 @@ def test_t_contrast_testnd():
     ds = datasets.get_uts()
 
     # binary function
-    res = testnd.TContrastRelated('uts', 'A', "a1>a0 - a0>a1", 'rm', ds=ds, tmin=4, samples=10)
+    res = testnd.TContrastRelated('uts', 'A', "a1>a0 - a0>a1", 'rm', data=ds, tmin=4, samples=10)
     assert_equal(res.find_clusters()['p'], np.array([1, 1, 0.9, 0, 0.2, 1, 1, 0]))
-    res_t = testnd.TTestRelated('uts', 'A', 'a1', 'a0', match='rm', ds=ds, tmin=2, samples=10)
+    res_t = testnd.TTestRelated('uts', 'A', 'a1', 'a0', match='rm', data=ds, tmin=2, samples=10)
     assert_array_equal(res.t.x, res_t.t.x * 2)
     assert_array_equal(res.clusters['tstart'], res_t.clusters['tstart'])
     assert_array_equal(res.clusters['tstop'], res_t.clusters['tstop'])

@@ -140,9 +140,9 @@ Events are represented as :class:`Dataset` objects and can be inspected with
 corresponding methods and functions, for example::
 
     >>> e = WordExperiment("/files")
-    >>> ds = e.load_events()
-    >>> ds.head()
-    >>> print(table.frequencies('trigger', ds=ds))
+    >>> data = e.load_events()
+    >>> data.head()
+    >>> print(table.frequencies('trigger', data=data))
 
 
 For more complex designs and variables, you can override methods that provide
@@ -170,8 +170,8 @@ selection strings. The epoch selection is determined by
 ``selection = event_ds.eval(epoch['sel'])``. Thus, a specific setting could be
 tested with::
 
-    >>> ds = e.load_events()
-    >>> print(ds.sub("event == 'value'"))
+    >>> data = e.load_events()
+    >>> print(data.sub("event == 'value'"))
 
 
 Bad channels
@@ -188,12 +188,12 @@ Another good check for bad channels is plotting the average evoked response,
 and looking for channels which are uncorrelated with neighboring
 channels. To plot the average before trial rejection, use::
 
-    >>> ds = e.load_epochs(epoch='epoch', reject=False)
-    >>> plot.TopoButterfly('meg', ds=ds)
+    >>> data = e.load_epochs(epoch='epoch', reject=False)
+    >>> plot.TopoButterfly('meg', data=data)
 
 The neighbor correlation can also be quantified, using::
 
-    >>> nc = neighbor_correlation(concatenate(ds['meg']))
+    >>> nc = neighbor_correlation(concatenate(data['meg']))
     >>> nc.sensor.names[nc < 0.3]
     Datalist(['MEG 099'])
 
@@ -306,8 +306,8 @@ The following is a complete example for an experiment class definition file
 The event structure is illustrated by looking at the first few events::
 
     >>> from mouse import *
-    >>> ds = e.load_events()
-    >>> ds.head()
+    >>> data = e.load_events()
+    >>> data.head()
     trigger   i_start   T        SOA     subject   stimulus   prediction
     --------------------------------------------------------------------
     182       104273    104.27   12.04   S0001

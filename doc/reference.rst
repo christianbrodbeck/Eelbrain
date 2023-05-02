@@ -397,11 +397,11 @@ If a categorial data object is specified for ``xax``, ``y`` is split into the
 categories in ``xax``, and for every cell in ``xax`` a separate subplot is
 shown. For example, while
 
-    >>> plot.Butterfly('meg', ds=ds)
+    >>> plot.Butterfly('meg', data=data)
 
 will create a single Butterfly plot of the average response,
 
-    >>> plot.Butterfly('meg', 'subject', ds=ds)
+    >>> plot.Butterfly('meg', 'subject', data=data)
 
 where ``'subject'`` is the ``xax`` parameter, will create a separate subplot
 for every subject with its average response.
@@ -409,7 +409,7 @@ for every subject with its average response.
 A dimension on ``y`` can be specified through a string starting with ``.``.
 For example, to plot each case of ``meg`` separately, use::
 
-   >>> plot.Butterfly('meg', '.case', ds=ds)
+   >>> plot.Butterfly('meg', '.case', data=data)
 
 
 .. _general-layout-parameters:
@@ -641,20 +641,20 @@ The :mod:`fmtxt` submodule provides elements and tools for reports. Most eelbrai
 functions and methods that print tables in fact return :mod:`fmtxt` objects,
 which can be exported in different formats, for example::
 
-    >>> ds = datasets.get_uts()
-    >>> table.stats('Y', 'A', 'B', ds=ds)
+    >>> data = datasets.get_uts()
+    >>> table.stats('Y', 'A', 'B', data=data)
                B
          ---------------
          b0       b1
     --------------------
     a0   0.8857   0.4525
     a1   0.3425   1.377
-    >>> type(table.stats('Y', 'A', 'B', ds=ds))
+    >>> type(table.stats('Y', 'A', 'B', data=data))
     eelbrain.fmtxt.Table
 
 This means that the result can be exported as formatted text, for example::
 
-    >>> fmtxt.save_pdf(table.stats('Y', 'A', 'B', ds=ds))
+    >>> fmtxt.save_pdf(table.stats('Y', 'A', 'B', data=data))
 
 See available export functions and the module documentation for details:
 

@@ -39,17 +39,17 @@ ds = datasets.get_uv()
 # ^^^^^^
 # Matplotlib offers several styles
 
-p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, w=2)
+p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, w=2)
 
 # Apply a style
 matplotlib.style.use('ggplot')
-p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, w=2)
+p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, w=2)
 
 matplotlib.style.use('bmh')
-p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, w=2)
+p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, w=2)
 
 matplotlib.style.use('seaborn')
-p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, w=2)
+p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, w=2)
 
 ###############################################################################
 # ``rcParams``
@@ -58,7 +58,7 @@ p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, w=2)
 
 matplotlib.rcParams['font.family'] = 'serif'
 matplotlib.rcParams['font.size'] = 8
-p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, w=2)
+p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, w=2)
 
 # revert back to the default style
 matplotlib.style.use('default')
@@ -70,9 +70,9 @@ matplotlib.style.use('default')
 # the underlying :class:`matplotlib.figure.Figure` object through the plot's
 # :attr:`.figure` aatribute.
 
-p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, w=2)
+p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, w=2)
 
-p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, w=2, h=3, xlabel=False)
+p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, w=2, h=3, xlabel=False)
 ax = p.figure.axes[0]
 ax.set_xticklabels(['A long label', 'An even longer label', 'Another label', 'And yet another one'], rotation=45, ha='right')
 ax.grid(axis='y')

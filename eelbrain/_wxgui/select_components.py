@@ -492,7 +492,7 @@ class SharedToolsMenu:  # Frame mixin
         ds_clean[:, 'data'] = 'Cleaned'
         ds = combine((ds_original, ds_clean))
         colors = {'Source': 'red', 'Cleaned': 'blue'}
-        plot.UTSStat('psd', 'data', ds=ds, error=np.std, w=8, title="Spectrum (±1 STD)", colors=colors)
+        plot.UTSStat('psd', 'data', data=ds, error=np.std, w=8, title="Spectrum (±1 STD)", colors=colors)
 
 
 class Frame(SharedToolsMenu, FileFrame):

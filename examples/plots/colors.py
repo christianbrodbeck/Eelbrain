@@ -28,7 +28,7 @@ ds = datasets.get_uv()
 
 
 colors = {'a1': (1, 0, 0), 'a2': (0, 0, 1)}
-p = plot.Barplot('fltvar', 'A', ds=ds, w=2, colors=colors)
+p = plot.Barplot('fltvar', 'A', data=ds, w=2, colors=colors)
 
 colors = {
     ('a1', 'b1'): 'red', 
@@ -36,7 +36,7 @@ colors = {
     ('a2', 'b1'): (0, 0, 1),
     ('a2', 'b2'): (0, 1, 1),
 }
-p = plot.Barplot('fltvar - 0.5', 'A % B', ds=ds, w=2, colors=colors)
+p = plot.Barplot('fltvar - 0.5', 'A % B', data=ds, w=2, colors=colors)
 
 ###############################################################################
 # Unambiguous colors
@@ -47,11 +47,11 @@ p = plot.Barplot('fltvar - 0.5', 'A % B', ds=ds, w=2, colors=colors)
 ds['AB'] = ds.eval('A%B').as_factor()
 
 colors = plot.colors_for_oneway(ds['AB'].cells, unambiguous=True)
-p = plot.Barplot('fltvar - 0.5', 'AB', ds=ds, w=2, xticks=False, colors=colors)
+p = plot.Barplot('fltvar - 0.5', 'AB', data=ds, w=2, xticks=False, colors=colors)
 p_colors = plot.ColorList(colors)
 
 colors = plot.colors_for_oneway(ds['AB'].cells, unambiguous=[2, 5, 3, 6])
-p = plot.Barplot('fltvar - 0.5', 'AB', ds=ds, w=2, xticks=False, colors=colors)
+p = plot.Barplot('fltvar - 0.5', 'AB', data=ds, w=2, xticks=False, colors=colors)
 p_colors = plot.ColorList(colors)
 
 ###############################################################################

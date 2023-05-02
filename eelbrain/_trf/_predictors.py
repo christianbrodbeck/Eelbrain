@@ -6,14 +6,16 @@ from typing import Sequence, Tuple, Union
 import numpy as np
 
 from .._data_obj import NDVarArg, NDVar, Case, Dataset, UTS, asndvar, asarray
+from .._utils import deprecate_ds_arg
 
 
+@deprecate_ds_arg
 def epoch_impulse_predictor(
         shape: Union[NDVarArg, Tuple[int, UTS]],
         value: Union[float, Sequence[float], str] = 1,
         latency: Union[float, Sequence[float], str] = 0,
         name: str = None,
-        ds: Dataset = None,
+        data: Dataset = None,
 ) -> NDVar:
     """Time series with one impulse for each of ``n`` epochs
 
@@ -30,9 +32,9 @@ def epoch_impulse_predictor(
         each impulse (default 0).
     name
         Name for the output :class:`NDVar`.
-    ds
+    data
         If specified, input items (``shape``, ``value`` and ``latency``) can be
-        strings to be evaluated in ``ds``.
+        strings to be evaluated in ``data``.
 
     See Also
     --------
@@ -43,11 +45,11 @@ def epoch_impulse_predictor(
     See :ref:`exa-impulse` example.
     """
     if isinstance(shape, str):
-        shape = asndvar(shape, data=ds)
+        shape = asndvar(shape, data=data)
     if isinstance(value, str):
-        value = asarray(value, ds=ds)
+        value = asarray(value, data=data)
     if isinstance(latency, str):
-        latency = asarray(latency, ds=ds)
+        latency = asarray(latency, data=data)
 
     if isinstance(shape, NDVar):
         if not shape.has_case:
@@ -68,13 +70,14 @@ def epoch_impulse_predictor(
     return NDVar(x, (Case, time), name)
 
 
+@deprecate_ds_arg
 def event_impulse_predictor(
         shape: Union[NDVarArg, UTS],
         time: Union[str, Sequence[float]] = 'time',
         value: Union[float, Sequence[float], str] = 1,
         latency: Union[float, Sequence[float], str] = 0,
         name: str = None,
-        ds: Dataset = None,
+        data: Dataset = None,
 ) -> NDVar:
     """Time series with multiple impulses
 
@@ -91,9 +94,9 @@ def event_impulse_predictor(
         Latency of each impulse relative to ``time`` (default 0).
     name
         Name for the output :class:`NDVar`.
-    ds
+    data
         If specified, input items (``time``, ``value`` and ``latency``) can be
-        strings to be evaluated in ``ds``.
+        strings to be evaluated in ``data``.
 
     See Also
     --------
@@ -106,7 +109,7 @@ def event_impulse_predictor(
     else:
         raise TypeError(f'shape={shape!r}')
 
-    time, n = asarray(time, ds=ds, return_n=True)
+    time, n = asarray(time, data=data, return_n=True)
     dt = uts.tstep / 2
     index = (time > uts.tmin - dt) & (time < uts.tstop - dt)
     if index.all():
@@ -115,12 +118,12 @@ def event_impulse_predictor(
         time = time[index]
 
     if isinstance(value, str) or not np.isscalar(value):
-        value = asarray(value, sub=index, ds=ds, n=n)
+        value = asarray(value, sub=index, data=data, n=n)
     else:
         value = repeat(value)
 
     if isinstance(latency, str) or not np.isscalar(latency):
-        latency = asarray(latency, sub=index, ds=ds, n=n)
+        latency = asarray(latency, sub=index, data=data, n=n)
     else:
         latency = repeat(latency)
 

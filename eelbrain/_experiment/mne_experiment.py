@@ -4729,11 +4729,11 @@ class MneExperiment(FileTree):
         # compute t-maps
         if c0:
             if group:
-                res = testnd.TTestRelated(y, model, c1, c0, match='subject', ds=ds, **state)
+                res = testnd.TTestRelated(y, model, c1, c0, match='subject', data=ds, **state)
             else:
-                res = testnd.TTestIndependent(y, model, c1, c0, ds=ds, **state)
+                res = testnd.TTestIndependent(y, model, c1, c0, data=ds, **state)
         else:
-            res = testnd.TTestOneSample(y, ds=ds, **state)
+            res = testnd.TTestOneSample(y, data=ds, **state)
 
         # select cluster-corrected t-map
         if state:
@@ -5446,7 +5446,7 @@ class MneExperiment(FileTree):
         s_ds = self.show_subjects(asds=True)
         if 'n' in ds:
             if model:
-                n_ds = table.repmeas('n', model, 'subject', ds=ds)
+                n_ds = table.repmeas('n', model, 'subject', data=ds)
             else:
                 n_ds = ds
             n_ds_aligned = align1(n_ds, s_ds['subject'], 'subject')
@@ -6055,7 +6055,7 @@ class MneExperiment(FileTree):
                 ds = self.load_evoked(baseline=baseline)
                 y = guess_y(ds)
                 title = f"{subject} {epoch} {model_name}"
-                p = plot.TopoButterfly(y, model, ds=ds, axh=h, name=title, run=False)
+                p = plot.TopoButterfly(y, model, data=ds, axh=h, name=title, run=False)
                 plots.append(p)
                 vlim.append(p.get_vlim())
 
@@ -6100,7 +6100,7 @@ class MneExperiment(FileTree):
             right_of = None
         if sns:
             key = 'meg' if 'meg' in ds else 'eeg'
-            p = plot.TopoButterfly(key, model, ds=ds, axh=h, w=2.5*h, name=title, right_of=right_of, run=run)
+            p = plot.TopoButterfly(key, model, data=ds, axh=h, w=2.5 * h, name=title, right_of=right_of, run=run)
             if right_of:
                 p.link_time_axis(right_of)
             out.append(p)

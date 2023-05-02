@@ -23,8 +23,8 @@ print(ds.summary())
 # ---------------
 # Computing a TRF for an impulse at trial onset is very similar to averaging:
 
-any_trial = epoch_impulse_predictor('eeg', 1, ds=ds)
-fit = boosting('eeg', any_trial, -0.100, 0.600, basis=0.050, ds=ds, partitions=2, delta=0.01)
+any_trial = epoch_impulse_predictor('eeg', 1, data=ds)
+fit = boosting('eeg', any_trial, -0.100, 0.600, basis=0.050, data=ds, partitions=2, delta=0.01)
 average = ds['eeg'].mean('case')
 trf = fit.h.sub(time=(average.time.tmin, average.time.tstop))
 p = plot.TopoButterfly([fit.h_scaled, average], xlim=(-0.100, 0.600), axtitle=['Impulse response', 'Average'], t=0.400)
@@ -36,10 +36,10 @@ p = plot.TopoButterfly([fit.h_scaled, average], xlim=(-0.100, 0.600), axtitle=['
 # Use one impulse to code for occurrence of any word (``any_word``), and a
 # second impulse to code for unpredictable words only (``cloze``):
 
-any_word = epoch_impulse_predictor('eeg', 1, ds=ds, name='any_word')
+any_word = epoch_impulse_predictor('eeg', 1, data=ds, name='any_word')
 # effect code for cloze (1 for low cloze, -1 for high cloze)
 cloze_code = Var.from_dict(ds['cloze_cat'], {'high': 0, 'low': 1})
-low_cloze = epoch_impulse_predictor('eeg', cloze_code, ds=ds, name='low_cloze')
+low_cloze = epoch_impulse_predictor('eeg', cloze_code, data=ds, name='low_cloze')
 
 # plot the predictors for each trial
 p = plot.UTS([any_word, low_cloze], '.case', stem=True)
@@ -49,7 +49,7 @@ p = plot.UTS([any_word, low_cloze], '.case', stem=True)
 # ``any_word`` reflects the response to predictable words, and ``low_cloze``
 # reflects how unpredictable words differ from predictable words:
 
-fit = boosting('eeg', [any_word, low_cloze], 0, 0.5, basis=0.050, model='cloze_cat', ds=ds, partitions=2, delta=0.01)
+fit = boosting('eeg', [any_word, low_cloze], 0, 0.5, basis=0.050, model='cloze_cat', data=ds, partitions=2, delta=0.01)
 p = plot.TopoButterfly(fit.h, xlim=(-0.100, 0.600), t=0.400)
 
 ###############################################################################
@@ -58,8 +58,8 @@ p = plot.TopoButterfly(fit.h, xlim=(-0.100, 0.600), t=0.400)
 # Impulse predictors can similarly accommodate continuous variables:
 
 # effect code for cloze (1 for low cloze, -1 for high cloze)
-n_chars = epoch_impulse_predictor('eeg', 'n_chars', ds=ds, name='n_chars')
-surprisal = epoch_impulse_predictor('eeg', '-numpy.log2(cloze)', ds=ds, name='surprisal')
+n_chars = epoch_impulse_predictor('eeg', 'n_chars', data=ds, name='n_chars')
+surprisal = epoch_impulse_predictor('eeg', '-numpy.log2(cloze)', data=ds, name='surprisal')
 
 # plot the predictors for each trial
 p = plot.UTS([n_chars, surprisal, any_word], '.case', stem=True)
@@ -70,6 +70,6 @@ p = plot.UTS([n_chars, surprisal, any_word], '.case', stem=True)
 # the two other predictors reflect the change in response by ``n_chars`` and
 # surprisal:
 
-fit = boosting('eeg', [any_word, n_chars, surprisal], 0, 0.5, basis=0.050, model='cloze_cat', ds=ds, partitions=2, delta=0.01)
+fit = boosting('eeg', [any_word, n_chars, surprisal], 0, 0.5, basis=0.050, model='cloze_cat', data=ds, partitions=2, delta=0.01)
 p = plot.TopoButterfly(fit.h, xlim=(-0.100, 0.600), t=0.400)
 

@@ -191,7 +191,7 @@ class Document(FileDocument):
             ds[data] = epochs
             ds['trigger'] = Var(epochs.events[:, 2])
 
-        data = asndvar(data, ds=ds)
+        data = asndvar(data, data=ds)
         self.n_epochs = n = len(data)
 
         if not isinstance(accept, str):

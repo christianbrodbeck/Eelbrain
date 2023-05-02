@@ -1113,7 +1113,7 @@ class PlotData:
             y: Union[NDVarArg, Sequence[NDVarArg]],
             dims: Union[int, Tuple[Optional[str], ...]],
             xax: CategorialArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             sub: IndexArg = None,
     ):
         """Unpack the first argument to top-level NDVar plotting functions
@@ -1129,7 +1129,7 @@ class PlotData:
             A model to divide ``y`` into different axes. ``xax`` is currently
             applied on the first level, i.e., it assumes that ``y``'s first
             dimension is cases.
-        ds
+        data
             Dataset containing data objects which are provided as :class:`str`.
         sub
             Index selecting a subset of cases.
@@ -1150,7 +1150,7 @@ class PlotData:
             for layer in y.layers:
                 dims = find_data_dims(layer.y, dims)
             return PlotData([y], dims)
-        sub = assub(sub, ds)
+        sub = assub(sub, data)
         if hasattr(y, '_default_plot_obj'):
             ys = getattr(y, '_default_plot_obj')()
         elif isinstance(y, (tuple, list)):
@@ -1169,14 +1169,14 @@ class PlotData:
                 if ax is None:
                     axes.append(None)
                 elif isinstance(ax, NDVarTypes):
-                    ax = asndvar(ax, sub, ds)
+                    ax = asndvar(ax, sub, data)
                     agg, dims = find_data_dims(ax, dims)
                     layer = aggregate(ax, agg)
                     axes.append([layer])
                 else:
                     layers = []
                     for layer in ax:
-                        layer = asndvar(layer, sub, ds)
+                        layer = asndvar(layer, sub, data)
                         agg, dims = find_data_dims(layer, dims)
                         layers.append(aggregate(layer, agg))
                     axes.append(layers)
@@ -1190,7 +1190,7 @@ class PlotData:
                     if layer.name and layer.name not in y_names:
                         y_names.append(layer.name)
         elif all(ax is None or isinstance(ax, NDVarTypes) for ax in ys):
-            ys = [asndvar(layer, sub, ds) for layer in ys]
+            ys = [asndvar(layer, sub, data) for layer in ys]
             y_names = [layer.name for layer in ys]
             layers = []
             if isinstance(xax, str) and xax.startswith('.'):
@@ -1220,7 +1220,7 @@ class PlotData:
                 x_name = xax
             else:
                 # y=[y1, y2], xax=categorial
-                xax = ascategorial(xax, sub, ds)
+                xax = ascategorial(xax, sub, data)
                 xax_indexes = [xax == cell for cell in xax.cells]
                 for layer in ys:
                     agg, dims = find_data_dims(layer, dims)
@@ -1293,19 +1293,19 @@ class PlotData:
             y = ds.info['varname']
             xax = combine_x_args(xax, xax_dim)
         x_full = combine_x_args(x, xax)
-        ct = Celltable(y, x_full, match, sub, ds=ds)
+        ct = Celltable(y, x_full, match, sub, data=ds)
         # data dimensions
         agg, dims = find_data_dims(ct.y, dims, 'case')
         if agg:
             raise NotImplementedError
         # reconstruct x/xax
         if x is not None:
-            x = ct._align(x, ds=ds, coerce=ascategorial)
+            x = ct._align(x, data=ds, coerce=ascategorial)
         if xax is None:
             default_color_cells = None
             ax_cells = [None]
         else:
-            xax = ct._align(xax, ds=ds, coerce=ascategorial)
+            xax = ct._align(xax, data=ds, coerce=ascategorial)
             ax_cells = xax.cells
             if x is None:
                 default_color_cells = None

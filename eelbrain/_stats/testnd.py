@@ -49,7 +49,7 @@ from .._data_obj import (
     ascategorial, asmodel, asndvar, asvar, assub,
     cellname, combine, dataobj_repr, longname)
 from .._exceptions import OldVersionError, WrongDimension, ZeroVariance
-from .._utils import user_activity, restore_main_spec
+from .._utils import deprecate_ds_arg, user_activity, restore_main_spec
 from .._utils.numpy_utils import FULL_AXIS_SLICE
 from .._utils.notebooks import trange
 from . import opt, stats, vector
@@ -448,7 +448,7 @@ class TContrastRelated(NDTest):
         Match cases for a repeated measures test.
     sub : index
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -526,6 +526,7 @@ class TContrastRelated(NDTest):
     _statistic = 't'
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
@@ -533,7 +534,7 @@ class TContrastRelated(NDTest):
             contrast: str,
             match: CategorialArg = None,
             sub: CategorialArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             tail: int = 0,
             samples: int = 10000,
             pmin: float = None,
@@ -546,7 +547,7 @@ class TContrastRelated(NDTest):
             **criteria):
         if match is None:
             raise TypeError("The `match` parameter needs to be specified for TContrastRelated")
-        ct = Celltable(y, x, match, sub, ds=ds, coercion=asndvar, dtype=np.float64)
+        ct = Celltable(y, x, match, sub, data=data, coercion=asndvar, dtype=np.float64)
         check_for_vector_dim(ct.y)
         check_variance(ct.y.x)
 
@@ -625,7 +626,7 @@ class Correlation(NDTest):
         Categories in which to normalize (z-score) x.
     sub : index
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     samples : int
@@ -680,13 +681,14 @@ class Correlation(NDTest):
     _statistic = 'r'
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
             x: VarArg,
             norm: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             samples: int = 10000,
             pmin: float = None,
             rmin: float = None,
@@ -696,16 +698,16 @@ class Correlation(NDTest):
             match: CategorialArg = None,
             parc: str = None,
             **criteria):
-        sub, n = assub(sub, ds, True)
-        y, n = asndvar(y, sub, ds, n, np.float64, True)
+        sub, n = assub(sub, data, True)
+        y, n = asndvar(y, sub, data, n, np.float64, True)
         check_for_vector_dim(y)
         if not y.has_case:
             raise ValueError("Dependent variable needs case dimension")
-        x = asvar(x, sub, ds, n)
+        x = asvar(x, sub, data, n)
         if norm is not None:
-            norm = ascategorial(norm, sub, ds, n)
+            norm = ascategorial(norm, sub, data, n)
         if match is not None:
-            match = ascategorial(match, sub, ds, n)
+            match = ascategorial(match, sub, data, n)
 
         self.x = x.name
         name = f"{longname(y)} ~ {longname(x)}"
@@ -864,7 +866,7 @@ class TTestOneSample(NDDifferenceTest):
         Combine data for these categories before testing.
     sub : index
         Perform test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     tail : 0 | 1 | -1
@@ -931,13 +933,14 @@ class TTestOneSample(NDDifferenceTest):
     _statistic = 't'
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
             popmean: float = 0,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             tail: int = 0,
             samples: int = 10000,
             pmin: float = None,
@@ -948,7 +951,7 @@ class TTestOneSample(NDDifferenceTest):
             parc: str = None,
             force_permutation: bool = False,
             **criteria):
-        ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar, dtype=np.float64)
+        ct = Celltable(y, match=match, sub=sub, data=data, coercion=asndvar, dtype=np.float64)
         check_for_vector_dim(ct.y)
 
         n = len(ct.y)
@@ -1071,7 +1074,7 @@ class TTestIndependent(NDDifferenceTest):
         Combine cases with the same cell on ``x % match``.
     sub : index
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -1141,6 +1144,7 @@ class TTestIndependent(NDDifferenceTest):
     _statistic = 't'
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
@@ -1149,7 +1153,7 @@ class TTestIndependent(NDDifferenceTest):
             c0: CellArg = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             tail: int = 0,
             samples: int = 10000,
             pmin: float = None,
@@ -1160,7 +1164,7 @@ class TTestIndependent(NDDifferenceTest):
             parc: str = None,
             force_permutation: bool = False,
             **criteria):
-        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub, True)
+        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, data, sub, True)
         check_for_vector_dim(y)
 
         n1 = len(y1)
@@ -1290,7 +1294,7 @@ class TTestRelated(NDMaskedC1Mixin, NDDifferenceTest):
         within-subject comparison).
     sub : index
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -1365,6 +1369,7 @@ class TTestRelated(NDMaskedC1Mixin, NDDifferenceTest):
     _statistic = 't'
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
@@ -1373,7 +1378,7 @@ class TTestRelated(NDMaskedC1Mixin, NDDifferenceTest):
             c0: CellArg = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             tail: int = 0,
             samples: int = 10000,
             pmin: float = None,
@@ -1384,7 +1389,7 @@ class TTestRelated(NDMaskedC1Mixin, NDDifferenceTest):
             parc: str = None,
             force_permutation: bool = False,
             **criteria):
-        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub, True)
+        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, data, sub, True)
         check_for_vector_dim(y1)
 
         if n <= 2:
@@ -1711,7 +1716,7 @@ class ANOVA(MultiEffectNDTest):
         Independent variables.
     sub : index
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     samples : int
@@ -1777,12 +1782,13 @@ class ANOVA(MultiEffectNDTest):
     _statistic_tail = 1
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
             x: ModelArg,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             samples: int = 10000,
             pmin: float = None,
             fmin: float = None,
@@ -1795,10 +1801,10 @@ class ANOVA(MultiEffectNDTest):
             **criteria):
         x_arg = x
         sub_arg = sub
-        sub, n = assub(sub, ds, True)
-        y, n = asndvar(y, sub, ds, n, np.float64, True)
+        sub, n = assub(sub, data, True)
+        y, n = asndvar(y, sub, data, n, np.float64, True)
         check_for_vector_dim(y)
-        x = asmodel(x, sub, ds, n, require_names=True)
+        x = asmodel(x, sub, data, n, require_names=True)
         if match is None:
             random_effects = [e for e in x.effects if e.random]
             if not random_effects:
@@ -1808,7 +1814,7 @@ class ANOVA(MultiEffectNDTest):
             else:
                 match = random_effects[0]
         elif match is not False:
-            match = ascategorial(match, sub, ds, n)
+            match = ascategorial(match, sub, data, n)
 
         lm = _nd_anova(x)
         effects = lm.effects
@@ -1994,7 +2000,7 @@ class Vector(NDDifferenceTest):
         Combine data for these categories before testing.
     sub : index
         Perform test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     samples : int
@@ -2060,12 +2066,13 @@ class Vector(NDDifferenceTest):
     _state_specific = ('difference', 'n', '_v_dim', 't2')
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             samples: int = 10000,
             tmin: float = None,
             tfce: Union[float, bool] = False,
@@ -2076,7 +2083,7 @@ class Vector(NDDifferenceTest):
             norm: bool = False,
             **criteria):
         use_norm = bool(norm)
-        ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar, dtype=np.float64)
+        ct = Celltable(y, match=match, sub=sub, data=data, coercion=asndvar, dtype=np.float64)
 
         n = len(ct.y)
         cdist = NDPermutationDistribution(ct.y, samples, tmin, tfce, 1, 'norm', 'Vector test', tstart, tstop, criteria, parc, force_permutation)
@@ -2174,7 +2181,7 @@ class VectorDifferenceIndependent(Vector):
         Combine cases with the same cell on ``x % match``.
     sub : index
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     samples : int
@@ -2238,6 +2245,7 @@ class VectorDifferenceIndependent(Vector):
     _statistic = 'norm'
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
@@ -2246,7 +2254,7 @@ class VectorDifferenceIndependent(Vector):
             c0: str = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             samples: int = 10000,
             tmin: float = None,
             tfce: bool = False,
@@ -2257,7 +2265,7 @@ class VectorDifferenceIndependent(Vector):
             norm: bool = False,
             **criteria):
         use_norm = bool(norm)
-        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub, True)
+        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, data, sub, True)
         self.n1 = len(y1)
         self.n0 = len(y0)
         self.n = len(y)
@@ -2340,7 +2348,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
         within-subject comparison).
     sub : index
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     samples : int
@@ -2400,6 +2408,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
     _state_specific = ('x', 'c1', 'c0', 'difference', 'c1_mean', 'c0_mean', 'n', '_v_dim', 't2')
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
@@ -2408,7 +2417,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
             c0: str = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             samples: int = 10000,
             tmin: float = None,
             tfce: bool = False,
@@ -2419,7 +2428,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
             norm: bool = False,
             **criteria):
         use_norm = bool(norm)
-        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub, True)
+        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, data, sub, True)
         difference = y1 - y0
         difference.name = 'difference'
 

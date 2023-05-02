@@ -215,21 +215,21 @@ def test_normalize_in_cells():
     ab = ds.eval("A % B")
     indices = [ab == cell for cell in ab.cells]
     # z-score
-    ds['utsnd_n'] = normalize_in_cells('utsnd', 'sensor', ds=ds)
+    ds['utsnd_n'] = normalize_in_cells('utsnd', 'sensor', data=ds)
     y_mean = ds['utsnd_n'].mean('case')
     assert_allclose(y_mean.mean('sensor'), 0, atol=1e-10)
     assert_allclose(y_mean.std('sensor'), 1)
-    ds['utsnd_n'] = normalize_in_cells('utsnd', 'sensor', 'A % B', ds=ds)
+    ds['utsnd_n'] = normalize_in_cells('utsnd', 'sensor', 'A % B', data=ds)
     for index in indices:
         y_mean = ds[index, 'utsnd_n'].mean('case')
         assert_allclose(y_mean.mean('sensor'), 0, atol=1e-10)
         assert_allclose(y_mean.std('sensor'), 1)
     # range
-    ds['utsnd_n'] = normalize_in_cells('utsnd', 'sensor', ds=ds, method='range')
+    ds['utsnd_n'] = normalize_in_cells('utsnd', 'sensor', data=ds, method='range')
     y_mean = ds['utsnd_n'].mean('case')
     assert_allclose(y_mean.min('sensor'), 0, atol=1e-10)
     assert_allclose(y_mean.max('sensor'), 1)
-    ds['utsnd_n'] = normalize_in_cells('utsnd', 'sensor', 'A % B', ds=ds, method='range')
+    ds['utsnd_n'] = normalize_in_cells('utsnd', 'sensor', 'A % B', data=ds, method='range')
     for index in indices:
         y_mean = ds[index, 'utsnd_n'].mean('case')
         assert_allclose(y_mean.min('sensor'), 0, atol=1e-10)

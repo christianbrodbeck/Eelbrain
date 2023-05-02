@@ -12,9 +12,9 @@ from eelbrain.testing import hide_plots
 def test_plot_butterfly():
     "Test plot.Butterfly"
     ds = datasets.get_uts(utsnd=True)
-    p = plot.Butterfly('utsnd', ds=ds)
+    p = plot.Butterfly('utsnd', data=ds)
     p.close()
-    p = plot.Butterfly('utsnd', 'A%B', ds=ds)
+    p = plot.Butterfly('utsnd', 'A%B', data=ds)
     p.close()
 
     # other y-dim
@@ -39,13 +39,13 @@ def test_plot_butterfly():
 def test_plot_array():
     "Test plot.Array"
     ds = datasets.get_uts(utsnd=True)
-    p = plot.Array('utsnd', ds=ds)
+    p = plot.Array('utsnd', data=ds)
     p.close()
-    p = plot.Array('utsnd', 'A%B', ds=ds)
+    p = plot.Array('utsnd', 'A%B', data=ds)
     assert p._layout.nax == 4
     assert (p._layout.nrow, p._layout.ncol) == (2, 2)
     p.close()
-    p = plot.Array('utsnd', 'A', sub='B=="b1"', ds=ds)
+    p = plot.Array('utsnd', 'A', sub='B=="b1"', data=ds)
     assert p._layout.nax == 2
     p.close()
 
@@ -63,8 +63,8 @@ def test_plot_array():
     p.close()
 
     # From test results
-    res1 = testnd.TTestIndependent('utsnd', 'A', 'a1', 'a0', ds=ds, tstart=0, samples=10)
-    res2 = testnd.TTestIndependent('utsnd', 'B', 'b1', 'b0', ds=ds, tstart=0, samples=10)
+    res1 = testnd.TTestIndependent('utsnd', 'A', 'a1', 'a0', data=ds, tstart=0, samples=10)
+    res2 = testnd.TTestIndependent('utsnd', 'B', 'b1', 'b0', data=ds, tstart=0, samples=10)
     plot.TopoArray([res1, res2])
 
     # Categorial dimension
@@ -103,17 +103,17 @@ def test_plot_results():
     ds = datasets.get_uts(True)
 
     # ANOVA
-    res = testnd.ANOVA('utsnd', 'A*B*rm', ds=ds, samples=0, pmin=0.05)
+    res = testnd.ANOVA('utsnd', 'A*B*rm', data=ds, samples=0, pmin=0.05)
     p = plot.Array(res)
     p.close()
-    res = testnd.ANOVA('utsnd', 'A*B*rm', ds=ds, samples=2, pmin=0.05)
+    res = testnd.ANOVA('utsnd', 'A*B*rm', data=ds, samples=2, pmin=0.05)
     p = plot.Array(res)
     p.close()
 
     # Correlation
-    res = testnd.Correlation('utsnd', 'Y', 'rm', ds=ds)
+    res = testnd.Correlation('utsnd', 'Y', 'rm', data=ds)
     p = plot.Array(res)
     p.close()
-    res = testnd.Correlation('utsnd', 'Y', 'rm', ds=ds, samples=10, pmin=0.05)
+    res = testnd.Correlation('utsnd', 'Y', 'rm', data=ds, samples=10, pmin=0.05)
     p = plot.Array(res)
     p.close()

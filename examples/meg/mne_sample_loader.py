@@ -57,12 +57,12 @@ if __name__ == '__main__':
                             'sample_audvis_filt-0-40_raw.fif')
 
     ds = load_evts(raw_path)
-    print(eel.table.frequencies('condition', ds=ds))
+    print(eel.table.frequencies('condition', data=ds))
     ds = ds.sub('modality == "A"')
 
     ds = eel.load.fiff.add_epochs(ds, tmin=-0.1, tmax=0.3, baseline=(None, 0),
                                   proj=False, data='mag', reject=2e-12,
                                   name='meg', sysname='neuromag306mag')
 
-    p = plot.TopoButterfly('meg', 'side', ds=ds)
+    p = plot.TopoButterfly('meg', 'side', data=ds)
     p.set_vlim(1e-12)

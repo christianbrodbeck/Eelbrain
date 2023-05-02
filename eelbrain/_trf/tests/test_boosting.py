@@ -113,8 +113,8 @@ def test_boosting():
     assert res.r == approx(0.992, abs=0.001)
 
     # 2d-y
-    res_cv = boosting('ynd', ['x1', 'x2'], 0, 1, ds=ds, test=1, partitions=4, partition_results=True)
-    y_pred = res_cv.cross_predict(ds=ds)
+    res_cv = boosting('ynd', ['x1', 'x2'], 0, 1, data=ds, test=1, partitions=4, partition_results=True)
+    y_pred = res_cv.cross_predict(data=ds)
     assert_dataobj_equal(correlation_coefficient(y_pred, ynd, 'time'), res_cv.r, 2, name=False)
 
 
@@ -124,12 +124,12 @@ def test_boosting_cross_predict(error):
     ds = datasets._get_continuous()
 
     # Without scaling
-    trf = boosting('y', 'x1', 0, 1, ds=ds, error=error, partitions=3, test=1, partition_results=True, debug=True, scale_data=False)
+    trf = boosting('y', 'x1', 0, 1, data=ds, error=error, partitions=3, test=1, partition_results=True, debug=True, scale_data=False)
     y_pred = trf.cross_predict('x1', ds)
     assert_array_equal(y_pred, trf.y_pred)
 
     # With scaling: normalized
-    trf = boosting('y', 'x1', 0, 1, ds=ds, error=error, partitions=3, test=1, partition_results=True, debug=True)
+    trf = boosting('y', 'x1', 0, 1, data=ds, error=error, partitions=3, test=1, partition_results=True, debug=True)
     y_pred = trf.cross_predict('x1', ds, scale='normalized')
     assert_array_equal(y_pred, trf.y_pred)
     # Proportion explained
@@ -150,14 +150,14 @@ def test_boosting_cross_predict(error):
 def test_boosting_epochs():
     """Test boosting with epoched data"""
     ds = datasets.get_uts(True, vector3d=True)
-    p1 = epoch_impulse_predictor('uts', 'A=="a1"', name='a1', ds=ds)
-    p0 = epoch_impulse_predictor('uts', 'A=="a0"', name='a0', ds=ds)
+    p1 = epoch_impulse_predictor('uts', 'A=="a1"', name='a1', data=ds)
+    p0 = epoch_impulse_predictor('uts', 'A=="a0"', name='a0', data=ds)
     p1 = p1.smooth('time', .05, 'hamming')
     p0 = p0.smooth('time', .05, 'hamming')
     # 1d
     for tstart, basis in product((-0.1, 0.1, 0), (0, 0.05)):
         print(f"tstart={tstart}, basis={basis}")
-        res = boosting('uts', [p0, p1], tstart, 0.6, model='A', ds=ds, basis=basis, partitions=3, debug=True)
+        res = boosting('uts', [p0, p1], tstart, 0.6, model='A', data=ds, basis=basis, partitions=3, debug=True)
         assert res.r == approx(0.238, abs=2e-3)
         y = convolve(res.h_scaled, [p0, p1], name='predicted')
         assert correlation_coefficient(y, res.y_pred) > .999
@@ -166,7 +166,7 @@ def test_boosting_epochs():
         assert res.r == approx(r, abs=1e-3)
         assert res.splits.n_partitions == 3
     # 2d
-    res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', ds=ds, partitions=3)
+    res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', data=ds, partitions=3)
     assert len(res.h) == 2
     assert res.h[0].shape == (5, 60)
     assert res.h[1].shape == (5, 60)
@@ -174,11 +174,11 @@ def test_boosting_epochs():
     r = correlation_coefficient(y, ds['utsnd'], ('case', 'time'))
     assert_dataobj_equal(res.r, r, decimal=3, name=False)
     # cross-validation
-    res_cv = boosting('utsnd', [p0, p1], 0, 0.6, error='l1', ds=ds, partitions=3, test=1, partition_results=True, debug=True)
+    res_cv = boosting('utsnd', [p0, p1], 0, 0.6, error='l1', data=ds, partitions=3, test=1, partition_results=True, debug=True)
     y_pred = res_cv.cross_predict([p0, p1], scale='normalized')
     assert_array_equal(y_pred, res_cv.y_pred)
     # vector
-    res = boosting('v3d', [p0, p1], 0, 0.6, error='l1', model='A', ds=ds, partitions=3)
+    res = boosting('v3d', [p0, p1], 0, 0.6, error='l1', model='A', data=ds, partitions=3)
     assert res.residual.ndim == 0
 
 
@@ -192,7 +192,7 @@ def test_boosting_oo():
     model.fit(0, 1, selective_stopping=1, error='l1')
     res_oo = model.evaluate_fit()
 
-    res_func = boosting('y', 'x2', 0, 1, ds=ds, error='l1', basis=0.2, partitions=4, test=1, selective_stopping=1)
+    res_func = boosting('y', 'x2', 0, 1, data=ds, error='l1', basis=0.2, partitions=4, test=1, selective_stopping=1)
     assert res_oo.r == res_func.r
 
     res_part = model.evaluate_fit(partition_results=True)

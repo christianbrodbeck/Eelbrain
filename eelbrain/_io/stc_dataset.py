@@ -40,7 +40,7 @@ class DatasetSTCLoader:
     --------
     >>> loader = DatasetSTCLoader("path/to/exported/stcs")
     >>> loader.set_factor_names(["factor1", "factor2"])
-    >>> ds = loader.make_dataset(subjects_dir="mri/")
+    >>> data = loader.make_dataset(subjects_dir="mri/")
 
     See Also
     --------
@@ -137,17 +137,17 @@ class DatasetSTCLoader:
 
         Returns
         -------
-        ds : eelbrain.Dataset
+        data : eelbrain.Dataset
             Dataset with columns 'subject' (random factor), 'src' (NDVar of stc data),
             and one Factor for each item in ``self.factors``.
         """
         rows = itertools.product(self.subjects, *self.levels)
         columns = map(Factor, zip(*rows))
         col_names = ["subject"] + list(self.factors)
-        ds = Dataset(zip(col_names, columns))
-        ds["subject"].random = True
+        data = Dataset(zip(col_names, columns))
+        data["subject"].random = True
         stc_fnames = []
-        for c in ds.itercases():
+        for c in data.itercases():
             folder = "_".join(c[i] for i in self.factors)
             exp = "{}/{}/{}*-lh.stc".format(
                 self.data_dir, folder, c["subject"])
@@ -156,5 +156,5 @@ class DatasetSTCLoader:
             stc_fnames.append(fnames[0])
         if load_stcs:
             stcs = list(map(read_source_estimate, stc_fnames))
-            ds["src"] = stc_ndvar(stcs, subject=subject, src=src, **stc_kwargs)
-        return ds
+            data["src"] = stc_ndvar(stcs, subject=subject, src=src, **stc_kwargs)
+        return data

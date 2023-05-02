@@ -26,7 +26,7 @@ print(ds.summary())
 
 ###############################################################################
 # A singe trial of data:
-p = plot.TopoButterfly('eeg[0]', ds=ds)
+p = plot.TopoButterfly('eeg[0]', data=ds)
 p.set_time(0.400)
 
 ###############################################################################
@@ -74,7 +74,7 @@ p = plot.SensorMap(ds['eeg'], connectivity=True)
 # With the correct connectivity, we can now compute a cluster-based permutation test
 # for a related measures *t*-test:
 res = testnd.TTestRelated(
-    'eeg', 'cloze_cat', 'low', 'high', match='subject', ds=ds, 
+    'eeg', 'cloze_cat', 'low', 'high', match='subject', data=ds,
     pmin=0.05,  # Use uncorrected p = 0.05 as threshold for forming clusters
     tstart=0.100,  # Find clusters in the time window from 100 ...
     tstop=0.600,  # ... to 600 ms
@@ -119,7 +119,7 @@ p.set_topo_ts(.350, 0.400, 0.450)
 # the :meth:`NDVar.mean` method collapses across these dimensions and 
 # returns a scalar for each case (i.e., for each condition/subject).
 ds['cluster_mean'] = ds['eeg'].mean(mask)
-p = plot.Barplot('cluster_mean', 'cloze_cat', match='subject', ds=ds, test=False)
+p = plot.Barplot('cluster_mean', 'cloze_cat', match='subject', data=ds, test=False)
 
 ###############################################################################
 # Similarly, a mask consisting of a cluster of sensors can be used to 
@@ -134,7 +134,7 @@ p = plot.Topomap(roi, cmap='Wistia')
 # :meth:`NDVar.mean` collapses across sensors and returns a value for each time
 # point, i.e. the time course in sensors involved in the cluster:
 ds['cluster_timecourse'] = ds['eeg'].mean(roi)
-p = plot.UTSStat('cluster_timecourse', 'cloze_cat', match='subject', ds=ds, frame='t')
+p = plot.UTSStat('cluster_timecourse', 'cloze_cat', match='subject', data=ds, frame='t')
 # mark the duration of the spatio-temporal cluster
 p.set_clusters(clusters, y=0.25e-6)
 
@@ -155,7 +155,7 @@ p.mark_sensors(roi, -1)
 # example, the N400 is typically expected to be strong at sensor ``Cz``:
 ds['eeg_cz'] = ds['eeg'].sub(sensor='Cz')
 res_timecoure = testnd.TTestRelated(
-    'eeg_cz', 'cloze_cat', 'low', 'high', match='subject', ds=ds,
+    'eeg_cz', 'cloze_cat', 'low', 'high', match='subject', data=ds,
     pmin=0.05,  # Use uncorrected p = 0.05 as threshold for forming clusters
     tstart=0.100,  # Find clusters in the time window from 100 ...
     tstop=0.600,  # ... to 600 ms
@@ -163,5 +163,5 @@ res_timecoure = testnd.TTestRelated(
 clusters = res_timecoure.find_clusters(0.05)
 print(clusters)
 
-p = plot.UTSStat('eeg_cz', 'cloze_cat', match='subject', ds=ds, frame='t')
+p = plot.UTSStat('eeg_cz', 'cloze_cat', match='subject', data=ds, frame='t')
 p.set_clusters(clusters, y=0.25e-6)

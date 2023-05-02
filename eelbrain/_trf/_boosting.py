@@ -33,7 +33,7 @@ from .._config import CONFIG
 from .._data_obj import Case, Dataset, Dimension, SourceSpaceBase, NDVar, CategorialArg, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
 from .._ndvar.ndvar import _concatenate_values, convolve_jit, set_connectivity, set_parc
-from .._utils import PickleableDataClass, user_activity
+from .._utils import PickleableDataClass, deprecate_ds_arg, user_activity
 from .shared import PredictorData, DeconvolutionData, Split, Splits, merge_segments
 from ._fit_metrics import get_evaluators
 from . import _boosting_opt as opt
@@ -229,7 +229,7 @@ class BoostingResult(PickleableDataClass):
             items.append(f'{self.tstart:g} - {self.tstop:g}')
         items.insert(0, f'boosting {self.y} ~ {x}')
         for name, param in inspect.signature(boosting).parameters.items():
-            if param.default is inspect.Signature.empty or name == 'ds':
+            if param.default is inspect.Signature.empty or name == 'data':
                 continue
             elif name == 'debug':
                 continue
@@ -306,10 +306,11 @@ class BoostingResult(PickleableDataClass):
             # Due to the normalization:
             return self.n_samples
 
+    @deprecate_ds_arg
     def cross_predict(
             self,
             x: Union[NDVarArg, Sequence[NDVarArg]] = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             scale: Literal['original', 'normalized'] = 'original',
             name: str = None,
     ) -> NDVar:
@@ -321,7 +322,7 @@ class BoostingResult(PickleableDataClass):
             Predictors used in the original model fit, or a subset thereof.
             In order for cross-prediction to be accurate, ``x`` needs to match the ``x``
             used in the original fit exactly in cases and time.
-        ds
+        data
             Dataset with predictors. If ``ds`` is specified, ``x`` can be omitted.
         scale
             Return predictions at the scale of the original data (the ``y``
@@ -358,7 +359,7 @@ class BoostingResult(PickleableDataClass):
             raise ValueError("BoostingResult does not contain partition-specific models; fit with partition_results=True")
         # predictors
         x_ = self.x if x is None else x
-        x_data = PredictorData(x_, ds, copy=True)
+        x_data = PredictorData(x_, data, copy=True)
         # check predictors match h
         if x_data.x_name == self.x:
             x_use = None
@@ -862,6 +863,7 @@ class Boosting:
 
 
 @user_activity
+@deprecate_ds_arg
 def boosting(
         y: NDVarArg,
         x: Union[NDVarArg, Sequence[NDVarArg]],
@@ -877,7 +879,7 @@ def boosting(
         model: CategorialArg = None,
         validate: int = 1,  # Number of segments in validation set
         test: int = 0,  # Number of segments in test set
-        ds: Dataset = None,
+        data: Dataset = None,
         selective_stopping: int = 0,
         partition_results: bool = False,
         debug: bool = False,
@@ -944,7 +946,7 @@ def boosting(
     model
         If data has cases, divide cases into different categories (division
         for crossvalidation is done separately for each cell).
-    ds
+    data
         If provided, other parameters can be specified as string for items in
         ``ds``.
     validate
@@ -981,11 +983,11 @@ def boosting(
     In order to predict data, use the :func:`convolve` function::
 
     >>> ds = datasets.get_uts()
-    >>> ds['a1'] = epoch_impulse_predictor('uts', 'A=="a1"', ds=ds)
-    >>> ds['a0'] = epoch_impulse_predictor('uts', 'A=="a0"', ds=ds)
-    >>> res = boosting('uts', ['a0', 'a1'], 0, 0.5, partitions=10, model='A', ds=ds)
-    >>> y_pred = convolve(res.h_scaled, ['a0', 'a1'], ds=ds)
-    >>> y = ds['uts']
+    >>> data['a1'] = epoch_impulse_predictor('uts', 'A=="a1"', ds=data)
+    >>> data['a0'] = epoch_impulse_predictor('uts', 'A=="a0"', ds=data)
+    >>> res = boosting('uts', ['a0', 'a1'], 0, 0.5, partitions=10, model='A', data=data)
+    >>> y_pred = convolve(res.h_scaled, ['a0', 'a1'], ds=data)
+    >>> y = data['uts']
     >>> plot.UTS([y-y.mean('time'), y_pred], '.case')
 
     References
@@ -1010,13 +1012,13 @@ def boosting(
     if selective_stopping < 0:
         raise ValueError(f"{selective_stopping=}")
 
-    data = DeconvolutionData(y, x, ds, scale_in_place)
-    data.apply_basis(basis, basis_window)
+    dec_data = DeconvolutionData(y, x, data, scale_in_place)
+    dec_data.apply_basis(basis, basis_window)
     if scale_data:
-        data.normalize(error)
-    data.initialize_cross_validation(partitions, model, ds, validate, test)
+        dec_data.normalize(error)
+    dec_data.initialize_cross_validation(partitions, model, data, validate, test)
 
-    fit = Boosting(data)
+    fit = Boosting(dec_data)
     fit.fit(tstart, tstop, selective_stopping, error, delta, mindelta)
     return fit.evaluate_fit(debug=debug, partition_results=partition_results)
 

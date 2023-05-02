@@ -25,7 +25,7 @@ save.pickle((todss, fromdss), 'DATA/R2290_HAYO_P3H_DSS.pickle')
 # High amplitude artifacts can exert a bias on DSS components. A simple way to
 # exclude the largest artifacts is using a simple threshold. First, confirm the
 # presence of an artifact in the first trial:
-p = plot.TopoButterfly('meg', '.case', ds=ds, xlim=(0, 10))
+p = plot.TopoButterfly('meg', '.case', data=ds, xlim=(0, 10))
 p.set_time(11.62)
 # find all time points where data does not exced 1000 fT
 good_times = ds['meg'].abs().max(('case', 'sensor')) < 1e-12

@@ -101,7 +101,7 @@ def split_data(
         segments: np.ndarray,  # (n, 2) array of [start, stop] indices
         partitions: int = None,  # Number of segments to split the data
         model: CategorialArg = None,  # sample evenly from cells
-        ds: Dataset = None,
+        data: Dataset = None,
         validate: int = 1,  # Number of segments in validation set
         test: int = 0,  # Number of segments in test set
 ):
@@ -132,7 +132,7 @@ def split_data(
             categories = [None]
             cell_size = n_segments
         else:
-            model = ascategorial(model, ds=ds, n=n_segments)
+            model = ascategorial(model, data=data, n=n_segments)
             categories = [np.flatnonzero(model == cell) for cell in model.cells]
             cell_sizes = [len(i) for i in categories]
             cell_size = min(cell_sizes)
@@ -210,16 +210,16 @@ class PredictorData:
     def __init__(
             self,
             x: Union[NDVarArg, Sequence[NDVarArg]],
-            ds: Dataset = None,
+            data: Dataset = None,
             copy: bool = False,
     ):
         if isinstance(x, (NDVar, str)):
             multiple_x = False
-            xs = [asndvar(x, ds=ds)]
+            xs = [asndvar(x, data=data)]
             x_name = xs[0].name
         else:
             multiple_x = True
-            xs = [asndvar(x_, ds=ds) for x_ in x]
+            xs = [asndvar(x_, data=data) for x_ in x]
             if len(xs) == 0:
                 raise ValueError(f"{x=} of length 0")
             x_name = [x_.name for x_ in xs]
@@ -263,18 +263,18 @@ class PredictorData:
                 dimnames = xi.get_dimnames(last='time')
                 xdims = xi.get_dims(dimnames[:-1])
                 shape = (-1, n_times)
-            data = xi.get_data(dimnames).reshape(shape)
+            xi_data = xi.get_data(dimnames).reshape(shape)
             x_repr = dataobj_repr(xi)
             if ndim == 1:
                 index = n_x
                 x_names.append(x_repr)
             else:
-                index = slice(n_x, n_x + len(data))
+                index = slice(n_x, n_x + len(xi_data))
                 for v in product(*xdims):
                     x_names.append("-".join((x_repr, *map(str, v))))
-            x_data.append(data)
+            x_data.append(xi_data)
             x_meta.append((xi.name, xdims, index))
-            n_x += len(data)
+            n_x += len(xi_data)
 
         if len(x_data) == 1 and not copy:
             x_data = x_data[0]
@@ -329,13 +329,13 @@ class DeconvolutionData:
             self,
             y: NDVarArg,
             x: Union[NDVarArg, Sequence[NDVarArg]],
-            ds: Dataset = None,
+            data: Dataset = None,
             in_place: bool = False,
     ):
-        x_data = PredictorData(x, ds)
+        x_data = PredictorData(x, data)
 
         # check y
-        y = asndvar(y, ds=ds)
+        y = asndvar(y, data=data)
         if y.get_dim('time') != x_data.time_dim:
             raise ValueError("y does not have the same time dimension as x")
         if y.has_case ^ x_data.has_case:
@@ -501,7 +501,7 @@ class DeconvolutionData:
             self,
             partitions: int = None,  # Number of segments to split the data
             model: CategorialArg = None,  # sample evenly from cells
-            ds: Dataset = None,
+            data: Dataset = None,
             validate: int = 1,  # Number of segments in validation set
             test: int = 0,  # Number of segments in test set
     ):
@@ -516,7 +516,7 @@ class DeconvolutionData:
          - create splits
          - merge segments at soft boundaries
         """
-        self.splits = split_data(self.segments, partitions, model, ds, validate, test)
+        self.splits = split_data(self.segments, partitions, model, data, validate, test)
 
     def data_scale_ndvars(self):
         if self.scale_data:

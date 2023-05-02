@@ -93,7 +93,7 @@ def test_time_slicer():
     ds = datasets.get_uts(True)
 
     p1 = plot.Butterfly(ds['utsnd'])
-    p2 = plot.Array('utsnd', 'A', ds=ds)
+    p2 = plot.Array('utsnd', 'A', data=ds)
     p1.link_time_axis(p2)
 
     p1._set_time(.1, True)
@@ -104,7 +104,7 @@ def test_time_slicer():
     assert p1._time_fixed == False
 
     p1 = plot.TopoButterfly(ds['utsnd'])
-    p2 = plot.Array('utsnd', 'A', ds=ds)
+    p2 = plot.Array('utsnd', 'A', data=ds)
     p2.link_time_axis(p1)
 
     p1._set_time(.1, True)
@@ -170,5 +170,5 @@ def test_vlims():
 def test_eelfigure():
     ds = datasets.get_uts()
 
-    p = plot.UTSStat('uts', 'A', ds=ds, h=2, w=50)
+    p = plot.UTSStat('uts', 'A', data=ds, h=2, w=50)
     assert tuple(p.figure.get_size_inches()) == (50, 2)

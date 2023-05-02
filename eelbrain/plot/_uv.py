@@ -15,6 +15,7 @@ import matplotlib as mpl
 from .._celltable import Celltable
 from .._data_obj import VarArg, CategorialArg, UVArg, IndexArg, CellArg, Dataset, Var, asuv, asvar, ascategorial, assub, cellname
 from .._stats import test, stats
+from .._utils import deprecate_ds_arg
 from ._base import EelFigure, Layout, LegendArg, LegendMixin, CategorialAxisMixin, ColorBarMixin, XAxisMixin, YLimMixin, frame_title
 from ._styles import ColorsArg, find_cell_styles
 
@@ -241,7 +242,7 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     colors : bool | sequence | dict of matplitlib colors
         Matplotlib colors to use for boxes (True to use the module default;
         default is False, i.e. no colors).
-    ds
+    data
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     label_fliers
@@ -251,6 +252,7 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         Also accepts :ref:`general-layout-parameters` and
         :meth:`~matplotlib.axes.Axes.boxplot` parameters.
     """
+    @deprecate_ds_arg
     def __init__(
             self,
             y: VarArg,
@@ -273,12 +275,12 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
             xtick_delim: str = '\n',
             xtick_rotation: Union[float, str] = None,
             colors: ColorsArg = False,
-            ds: Dataset = None,
+            data: Dataset = None,
             label_fliers: bool = False,
             **kwargs,
     ):
         # get data
-        ct = Celltable(y, x, match, sub, cells, ds, asvar)
+        ct = Celltable(y, x, match, sub, cells, data, asvar)
         if colors is False:
             styles = False
         else:
@@ -378,12 +380,13 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         Bar color (ignored if ``colors`` is specified).
     edgec : matplotlib color
         Barplot edge color.
-    ds
+    data
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
+    @deprecate_ds_arg
     def __init__(
             self,
             y: VarArg,
@@ -414,10 +417,10 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
             width: Union[float, Sequence[float]] = 0.5,
             color: Any = '#0099FF',
             edgec: Any = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             **kwargs,
     ):
-        ct = Celltable(y, x, match, sub, cells, ds, asvar)
+        ct = Celltable(y, x, match, sub, cells, data, asvar)
         if colors is False:
             styles = False
         else:
@@ -514,12 +517,13 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
         Bar color (ignored if colors is specified).
     edgec : matplotlib color
         Barplot edge color.
-    ds
+    data
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
+    @deprecate_ds_arg
     def __init__(
             self,
             y: VarArg,
@@ -550,13 +554,13 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
             width: Union[float, Sequence[float]] = 0.5,
             c: Any = '#0099FF',
             edgec: Any = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             **kwargs,
     ):
         if test is not False:
             raise NotImplementedError("Horizontal barplot with pairwise significance")
 
-        ct = Celltable(y, x, match, sub, cells, ds, asvar)
+        ct = Celltable(y, x, match, sub, cells, data, asvar)
         if colors is False:
             styles = False
         else:
@@ -770,7 +774,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         Match cases for a repeated measures design.
     sub
         Use a subset of the data.
-    ds
+    data
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     main : numpy function
@@ -816,6 +820,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
+    @deprecate_ds_arg
     def __init__(
             self,
             y: VarArg,
@@ -823,7 +828,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
             categories: CategorialArg = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             # data plotting
             main: Callable = np.mean,
             error: str = 'sem',
@@ -839,17 +844,17 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
             colors: ColorsArg = None,
             **kwargs,
     ):
-        sub, n = assub(sub, ds, return_n=True)
-        y, n = asvar(y, sub, ds, n, return_n=True)
-        x = asuv(time, sub, ds, n)
+        sub, n = assub(sub, data, return_n=True)
+        y, n = asvar(y, sub, data, n, return_n=True)
+        x = asuv(time, sub, data, n)
         if categories is None:
             legend = False
             cells = None
         else:
-            categories = ascategorial(categories, sub, ds, n)
+            categories = ascategorial(categories, sub, data, n)
             cells = categories.cells
         if match is not None:
-            match = ascategorial(match, sub, ds, n)
+            match = ascategorial(match, sub, data, n)
 
         # transform to 3 kwargs:
         # - local_plot ('bar' or 'box')
@@ -1027,7 +1032,7 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
         Size of the markers.
     sub
         Use a subset of the data.
-    ds
+    data
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     colors
@@ -1054,6 +1059,7 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
+    @deprecate_ds_arg
     def __init__(
             self,
             y: VarArg,
@@ -1061,7 +1067,7 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
             color: Union[CategorialArg, Var] = None,
             size: Union[VarArg, float] = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             colors: Union[dict, str] = None,
             vmin: str = None,
             vmax: str = None,
@@ -1073,14 +1079,14 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
             ylabel: Union[bool, str] = True,
             aspect: Union[float, Literal['auto', 'equal']] = 'auto',
             **kwargs):
-        sub, n = assub(sub, ds, return_n=True)
-        y, n = asvar(y, sub, ds, n, return_n=True)
-        x = asvar(x, sub, ds, n)
+        sub, n = assub(sub, data, return_n=True)
+        y, n = asvar(y, sub, data, n, return_n=True)
+        x = asvar(x, sub, data, n)
 
         # colors
         cmap = color_obj = color_data = cat = styles = None
         if color is not None:
-            color = asuv(color, sub, ds, n, interaction=True)
+            color = asuv(color, sub, data, n, interaction=True)
             if isinstance(color, Var) and not isinstance(colors, dict):
                 color_obj = color
                 color_data = color.x
@@ -1091,7 +1097,7 @@ class Scatter(EelFigure, LegendMixin, ColorBarMixin):
 
         # size
         if size is not None:
-            size = asvar(size, sub, ds, n).x
+            size = asvar(size, sub, data, n).x
 
         # figure
         layout = Layout(1, 1, 5, autoscale=True, **kwargs)
@@ -1155,7 +1161,7 @@ class Regression(EelFigure, LegendMixin):
         Match cases for a repeated measures design.
     sub
         Use a subset of the data.
-    ds
+    data
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     xlabel
@@ -1179,6 +1185,7 @@ class Regression(EelFigure, LegendMixin):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
+    @deprecate_ds_arg
     def __init__(
             self,
             y: VarArg,
@@ -1186,7 +1193,7 @@ class Regression(EelFigure, LegendMixin):
             cat: CategorialArg = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             xlabel: Union[bool, str] = True,
             ylabel: Union[bool, str] = True,
             alpha: float = .2,
@@ -1194,11 +1201,11 @@ class Regression(EelFigure, LegendMixin):
             labels: dict = None,
             c: Any = ('#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'),
             **kwargs):
-        sub, n = assub(sub, ds, return_n=True)
-        y, n = asvar(y, sub, ds, n, return_n=True)
-        x = asvar(x, sub, ds, n)
+        sub, n = assub(sub, data, return_n=True)
+        y, n = asvar(y, sub, data, n, return_n=True)
+        x = asvar(x, sub, data, n)
         if cat is not None:
-            cat = ascategorial(cat, sub, ds, n)
+            cat = ascategorial(cat, sub, data, n)
         if match is not None:
             raise NotImplementedError("match kwarg")
 
@@ -1323,7 +1330,7 @@ class Histogram(EelFigure):
     def __init__(self, y, x=None, match=None, sub=None, ds=None, pooled=True,
                  density=False, test=False, tight=True, title=None, xlabel=True,
                  bins=None, **kwargs):
-        ct = Celltable(y, x, match=match, sub=sub, ds=ds, coercion=asvar)
+        ct = Celltable(y, x, match=match, sub=sub, data=ds, coercion=asvar)
 
         # layout
         if x is None:

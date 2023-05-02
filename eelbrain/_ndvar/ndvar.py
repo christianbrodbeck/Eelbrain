@@ -29,6 +29,7 @@ from .._mne import complete_source_space
 from .._stats.connectivity import Connectivity
 from .._stats.connectivity import find_peaks as _find_peaks
 from .._trf._fit_metrics import error_for_indexes
+from .._utils import deprecate_ds_arg
 from .._utils.numpy_utils import aslice, newaxis
 
 
@@ -214,12 +215,12 @@ def convolve(h, x, ds=None, name=None):
         Convolution, with same time dimension as ``x``.
     """
     if isinstance(x, str):
-        x = asndvar(x, ds=ds)
+        x = asndvar(x, data=ds)
         is_single = True
     elif isinstance(x, NDVar):
         is_single = True
     else:
-        x = [asndvar(xi, ds=ds) for xi in x]
+        x = [asndvar(xi, data=ds) for xi in x]
         is_single = False
 
     if isinstance(h, NDVar) != is_single:
@@ -911,11 +912,12 @@ def neighbor_correlation(
     return NDVar(ncs, (dim_obj,), name, info)
 
 
+@deprecate_ds_arg
 def normalize_in_cells(
         y: NDVarArg,
         for_dim: str,
         in_cells: CategorialArg = None,
-        ds: Dataset = None,
+        data: Dataset = None,
         method: str = 'z-score',
 ) -> NDVar:
     """Normalize data in cells to make it appropriate for ANOVA [1]_
@@ -930,7 +932,7 @@ def normalize_in_cells(
     in_cells
         Model defining the cells within which to normalize (normally the factors
         that will be used as fixed effects in the ANOVA).
-    ds
+    data
         Dataset containing the data.
     method : 'z-score' | 'range'
         Method used for normalizing the data:
@@ -958,11 +960,11 @@ def normalize_in_cells(
     ----------
     .. [1] McCarthy, G., & Wood, C. C. (1985). Scalp Distributions of Event-Related Potentials—An Ambiguity Associated with Analysis of Variance Models. Electroencephalography and Clinical Neurophysiology, 61, S226–S227. `10.1016/0013-4694(85)90858-2 <https://doi.org/10.1016/0013-4694(85)90858-2>`_
     """
-    y, n = asndvar(y, ds=ds, return_n=True)
+    y, n = asndvar(y, data=data, return_n=True)
     if in_cells is None:
         cells = [slice(None)]
     else:
-        x = ascategorial(in_cells, ds=ds, n=n)
+        x = ascategorial(in_cells, data=data, n=n)
         cells = [x == cell for cell in x.cells]
 
     y = y.copy()

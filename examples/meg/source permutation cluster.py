@@ -32,7 +32,7 @@ dataset. Load only auditory data.
 ds = e.datasets.get_mne_sample(-0.1, 0.2, src='ico', sub="modality == 'A'")
 
 # Add a table with trial numbers to the report
-freqs = e.table.frequencies('side', ds=ds)
+freqs = e.table.frequencies('side', data=ds)
 freq_table = freqs.as_table()
 section.add_figure("Number of trials in each condition", freq_table)
 
@@ -41,7 +41,7 @@ section.add_figure("Number of trials in each condition", freq_table)
 perform t-test for side of stimulation (for a more reliable test set samples=10000).
 '''
 res = e.testnd.TTestIndependent(
-    'src', 'side', 'L', 'R', ds=ds,
+    'src', 'side', 'L', 'R', data=ds,
     samples=n_samples,  # number of permutations
     pmin=0.05,  # threshold for clusters (uncorrected p-value)
     tstart=0.05,  # start of the time window of interest
@@ -84,8 +84,8 @@ for i in range(clusters.n_cases):
     c_value = ds['src'].sum(index)
     # index is a boolean NDVar over space and time, so here we are summing in the
     # whole spatio-temporal cluster
-    plt_box = e.plot.Boxplot(c_value, 'side', ds=ds)
-    pw_table = e.test.pairwise(c_value, 'side', ds=ds)
+    plt_box = e.plot.Boxplot(c_value, 'side', data=ds)
+    pw_table = e.test.pairwise(c_value, 'side', data=ds)
     # add to report (create an image from an eelbrain matplotlib plot with .image())
     # use PNG because SVG boxplots do not render correctly in Safari
     image = plt_box.image('image.png')
@@ -96,7 +96,7 @@ for i in range(clusters.n_cases):
     c_timecourse = ds['src'].sum(index)
     # c_extent is a boolean NDVar over space only, so here we are summing over the
     # spatial extent of the cluster for every time point but keep the time dimension
-    plt_tc = e.plot.UTSStat(c_timecourse, 'side', ds=ds)
+    plt_tc = e.plot.UTSStat(c_timecourse, 'side', data=ds)
     # add to report
     image = plt_tc.image()
     section.add_figure("Time course of the average in the largest cluster "

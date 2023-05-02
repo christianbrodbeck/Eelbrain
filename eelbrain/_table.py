@@ -4,7 +4,6 @@ from itertools import zip_longest
 from operator import itemgetter
 import re
 from typing import Callable, Sequence, Union
-from warnings import warn
 
 import numpy as np
 
@@ -16,8 +15,10 @@ from ._data_obj import (
     Categorial, Dataset, Factor, Interaction, NDVar, Scalar, UTS,
     Var, ascategorial, as_legal_dataset_key, asndvar, asvar, assub, asuv,
     cellname, combine, isuv)
+from ._utils import deprecate_ds_arg
 
 
+@deprecate_ds_arg
 def difference(
         y: Union[NDVar, VarArg, Sequence[Union[NDVar, VarArg]]],
         x: CategorialArg,
@@ -25,7 +26,7 @@ def difference(
         c0: CellArg,
         match: CategorialArg,
         sub: IndexArg = None,
-        ds: Dataset = None,
+        data: Dataset = None,
 ) -> Dataset:
     """Subtract data in one cell from another
 
@@ -45,9 +46,9 @@ def difference(
         or ``"subject % condition"``).
     sub
         Only include a subset of the data.
-    ds
+    data
         If a Dataset is specified other arguments can be str instead of
-        data-objects and will be retrieved from ``ds``.
+        data-objects and will be retrieved from ``data``.
 
     Returns
     -------
@@ -56,26 +57,26 @@ def difference(
 
     Examples
     --------
-    ERP difference wave: assuming a dataset ``ds`` with EEG data
-    (``ds['eeg']``), a variable named ``'condition'`` with levels ``'expected'``
+    ERP difference wave: assuming a dataset ``data`` with EEG data
+    (``data['eeg']``), a variable named ``'condition'`` with levels ``'expected'``
     and ``'unexpected'``, and multiple subjects, the following will generate the
     ``unexpected - expected`` difference waves::
 
         >>> diff = table.difference('eeg', 'condition', 'unexpected', 'expected',
-        ... 'subject', ds=ds)
+        ... 'subject', data=data)
 
-    If ``ds`` also contains a different factor crossed with ``condition``,
+    If ``data`` also contains a different factor crossed with ``condition``,
     called ``'word'`` with levels ``'verb'`` abd ``'adjective'``, then separate
     difference waves for verbs and adjectives can be computed with::
 
         >>> diff = table.difference('eeg', 'condition', 'unexpected', 'expected',
-        ... 'subject % word', ds=ds)
+        ... 'subject % word', data=data)
 
     Given the latter, the difference of the difference waves could be computed
     with::
 
         >>> diffdiff = table.difference('eeg', 'word', 'verb', 'adjective',
-        ... 'subject', ds=diff)
+        ... 'subject', data=diff)
 
     """
     if isinstance(y, (str, Var, NDVar)):
@@ -87,7 +88,7 @@ def difference(
 
     out = None
     for yi in ys:
-        ct = Celltable(yi, x, match, sub, (c1, c0), ds=ds)
+        ct = Celltable(yi, x, match, sub, (c1, c0), data=data)
         if not ct.all_within:
             raise ValueError("Design is not fully balanced")
         if out is None:
@@ -99,18 +100,19 @@ def difference(
             else:
                 out.add(groups)
         out[ct.y.name] = ct.data[c1] - ct.data[c0]  # use ct.y.name because yi can be expression
-    # Transfer other variables in ds that are compatible with the rm-structure
-    if ds is not None:
-        out.update(ct._align_ds(ds, True, out.keys(), isuv))
+    # Transfer other variables in data that are compatible with the rm-structure
+    if data is not None:
+        out.update(ct._align_ds(data, True, out.keys(), isuv))
     return out
 
 
+@deprecate_ds_arg
 def frequencies(
         y: UVArg,
         x: CategorialArg = None,
         of: CategorialArg = None,
         sub: IndexArg = None,
-        ds: Dataset = None,
+        data: Dataset = None,
 ):
     """Calculate frequency of occurrence of the categories in ``y``
 
@@ -126,9 +128,9 @@ def frequencies(
         in ``of`` once. (Compress y and x before calculating frequencies.)
     sub : index
         Only use a subset of the data.
-    ds : Dataset
-        If ds is specified, other parameters can be strings naming for
-        variables in ``ds``.
+    data : Dataset
+        If data is specified, other parameters can be strings naming for
+        variables in ``data``.
 
     Returns
     -------
@@ -139,13 +141,13 @@ def frequencies(
     --------
     A simple sample dataset::
 
-        >>> ds = Dataset()
-        >>> ds['a'] = Factor('aabbcc')
-        >>> ds['x'] = Factor('xxxyyy')
+        >>> data = Dataset()
+        >>> data['a'] = Factor('aabbcc')
+        >>> data['x'] = Factor('xxxyyy')
 
     Display frequency of a single factor's cells::
 
-        >>> print(table.frequencies('a', ds=ds))
+        >>> print(table.frequencies('a', data=data))
         cell   n
         --------
         a      2
@@ -154,19 +156,19 @@ def frequencies(
 
     Display frequency of interaction cells::
 
-        >>> print(table.frequencies('a', 'x', ds=ds))
+        >>> print(table.frequencies('a', 'x', data=data))
         x   a   b   c
         -------------
         x   2   1   0
         y   0   1   2
 
     """
-    sub = assub(sub, ds)
-    y = asuv(y, sub, ds, interaction=True)
+    sub = assub(sub, data)
+    y = asuv(y, sub, data, interaction=True)
     if x is not None:
-        x = ascategorial(x, sub, ds)
+        x = ascategorial(x, sub, data)
     if of is not None:
-        of = ascategorial(of, sub, ds)
+        of = ascategorial(of, sub, data)
         y = y.aggregate(of)
         if x is not None:
             x = x.aggregate(of)
@@ -224,7 +226,7 @@ def melt(
         name: str,
         cells: CellArg,
         cell_var_name: str,
-        ds: Dataset,
+        data: Dataset,
         labels: Union[dict, Sequence[str]] = None,
 ) -> Dataset:
     """
@@ -246,8 +248,8 @@ def melt(
         implicitly as a str containing '%i' for an integer.
     cell_var_name
         Name of the variable to contain the cell identifier.
-    ds
-        Input Dataset.
+    data
+        Input data.
     labels
         Labels for the keys in ``cells``. Can be specified either as a
         ``{key: label}`` dictionary or as a list of :class:`str` corresponding
@@ -257,16 +259,16 @@ def melt(
     --------
     Simple example data::
 
-        >>> ds = Dataset()
-        >>> ds['y1'] = Var([1, 2, 3])
-        >>> ds['y2'] = Var([4, 5, 6])
-        >>> print(ds)
+        >>> data = Dataset()
+        >>> data['y1'] = Var([1, 2, 3])
+        >>> data['y2'] = Var([4, 5, 6])
+        >>> print(data)
         y1   y2
         -------
         1    4
         2    5
         3    6
-        >>> print(table.melt('y', ['y1', 'y2'], 'id', ds))
+        >>> print(table.melt('y', ['y1', 'y2'], 'id', data))
         y   id
         ------
         1   y1
@@ -278,14 +280,14 @@ def melt(
 
     Additional variables are automatically included::
 
-        >>> ds['rm'] = Factor('abc')
-        >>> print(ds)
+        >>> data['rm'] = Factor('abc')
+        >>> print(data)
         y1   y2   rm
         ------------
         1    4    a
         2    5    b
         3    6    c
-        >>> print(table.melt('y', ['y1', 'y2'], 'id', ds))
+        >>> print(table.melt('y', ['y1', 'y2'], 'id', data))
         rm   y   id
         -----------
         a    1   y1
@@ -303,7 +305,7 @@ def melt(
         cell_values = []
         if '%i' in cell_expression:
             pattern = cell_expression.replace('%i', r'(\d+)')
-            for key in ds:
+            for key in data:
                 m = re.match(pattern, key)
                 if m:
                     cells.append(key)
@@ -323,13 +325,13 @@ def melt(
         cell_labels = labels
 
     # melt the Dataset
-    keep = [k for k, v in ds.items() if isuv(v)]
+    keep = [k for k, v in data.items() if isuv(v)]
     if keep:
-        out = ds[tuple(keep)].tile(len(cells))
+        out = data[tuple(keep)].tile(len(cells))
     else:
-        out = Dataset(info=ds.info)
-    out[name] = combine(ds[cell] for cell in cells)
-    out[cell_var_name] = Factor(cell_labels, repeat=ds.n_cases)
+        out = Dataset(info=data.info)
+    out[name] = combine(data[cell] for cell in cells)
+    out[cell_var_name] = Factor(cell_labels, repeat=data.n_cases)
     return out
 
 
@@ -375,7 +377,7 @@ def melt_ndvar(
     --------
     See :ref:`exa-compare-topographies`.
     """
-    ndvar = asndvar(ndvar, ds=ds)
+    ndvar = asndvar(ndvar, data=ds)
     if dim is None:
         if ndvar.ndim == ndvar.has_case + 1:
             dim = ndvar.dims[-1]
@@ -432,12 +434,13 @@ def melt_ndvar(
     return out
 
 
+@deprecate_ds_arg
 def cast_to_ndvar(
-        data: Union[VarArg, Sequence[VarArg]],
+        y: Union[VarArg, Sequence[VarArg]],
         dim_values: Union[VarArg, Factor],
         match: CategorialArg,
         sub: IndexArg = None,
-        ds: Dataset = None,
+        data: Dataset = None,
         dim: str = None,
         unit: str = 's',
         name: str = None,
@@ -446,7 +449,7 @@ def cast_to_ndvar(
     
     Parameters
     ----------
-    data
+    y
         Data to be cast.
     dim_values
         Location on the new dimension.
@@ -454,7 +457,7 @@ def cast_to_ndvar(
         Indicating rows which belong the the same case in the NDvar.
     sub
         Use a subset of the data.
-    ds
+    data
         Dataset with data for operation.
     dim
         Name for the new dimension. Use ``dim='uts'`` to create :class:`UTS` 
@@ -479,15 +482,15 @@ def cast_to_ndvar(
     --------
     melt_ndvar
     """
-    sub, n = assub(sub, ds, return_n=True)
-    if isinstance(data, (str, Var)):
-        data, n = asvar(data, sub, ds, n, return_n=True)
-        data_vars = [data]
+    sub, n = assub(sub, data, return_n=True)
+    if isinstance(y, (str, Var)):
+        y, n = asvar(y, sub, data, n, return_n=True)
+        data_vars = [y]
         names = [name]
     else:
         data_vars = []
-        for data_i in data:
-            data_var, n = asvar(data_i, sub, ds, n, return_n=True)
+        for data_i in y:
+            data_var, n = asvar(data_i, sub, data, n, return_n=True)
             data_vars.append(data_var)
         if name is None:
             names = [None for _ in range(len(data_vars))]
@@ -495,8 +498,8 @@ def cast_to_ndvar(
             raise TypeError(f"name={name!r}: single name for multiple variables")
         else:
             names = name
-    dim_values, n = asuv(dim_values, sub, ds, n, return_n=True)
-    match, n = ascategorial(match, sub, ds, n, return_n=True)
+    dim_values, n = asuv(dim_values, sub, data, n, return_n=True)
+    match, n = ascategorial(match, sub, data, n, return_n=True)
 
     # determine NDVar dimension
     if isinstance(dim_values, Factor):
@@ -535,16 +538,17 @@ def cast_to_ndvar(
                 raise ValueError(f"Case {match.cells[i]!r} is missing some values")
 
     # package output dataset
-    if ds is None:
+    if data is None:
         out = Dataset()
     else:
-        out = ds if sub is None else ds.sub(sub)
+        out = data if sub is None else data.sub(sub)
         out = out.aggregate(match, drop_bad=True, count=False)
     for x, data_var, name in zip_longest(xs, data_vars, names):
         out[name or data_var.name] = NDVar(x, ('case', dim))
     return out
 
 
+@deprecate_ds_arg
 def stats(
         y: Var,
         row: CategorialArg,
@@ -553,7 +557,7 @@ def stats(
         sub: IndexArg = None,
         fmt: str = '%.4g',
         funcs: Sequence[Union[str, Callable]] = ('mean',),
-        ds: Dataset = None,
+        data: Dataset = None,
         title: fmtxt.FMTextArg = None,
         caption: fmtxt.FMTextArg = None,
         format: bool = True,
@@ -579,7 +583,7 @@ def stats(
         A list of statistics functions to show (all functions must take an
         array argument and return a scalar; strings are interpreted as
         :mod:`numpy` functions).
-    ds
+    data
         If a Dataset is provided, ``y``, ``row``, and ``col`` can be strings
         specifying members.
     title
@@ -597,8 +601,8 @@ def stats(
 
     Examples
     --------
-    >>> ds = datasets.get_uts()
-    >>> table.stats('Y', 'A', 'B', ds=ds)
+    >>> data = datasets.get_uts()
+    >>> table.stats('Y', 'A', 'B', data=data)
                 B
          -----------------
          b0        b1
@@ -606,18 +610,18 @@ def stats(
     a0   0.1668    -0.3646
     a1   -0.4897   0.8746
 
-    >>> table.stats('Y', 'A', ds=ds, funcs=['mean', 'std'])
+    >>> table.stats('Y', 'A', data=data, funcs=['mean', 'std'])
     Condition   Mean     Std
     --------------------------
     a0          0.6691   1.37
     a1          0.8596   1.192
 
     """
-    sub = assub(sub, ds)
-    y = asvar(y, sub, ds)
-    row = ascategorial(row, sub, ds)
+    sub = assub(sub, data)
+    y = asvar(y, sub, data)
+    row = ascategorial(row, sub, data)
     if match is not None:
-        match = ascategorial(match, sub, ds)
+        match = ascategorial(match, sub, data)
 
     if isinstance(funcs, str):
         funcs = [funcs]
@@ -654,7 +658,7 @@ def stats(
             for func in funcs:
                 table.cell(fmt % func(data.x))
     else:
-        col = ascategorial(col, sub, ds)
+        col = ascategorial(col, sub, data)
         ct = Celltable(y, row % col, match=match)
 
         N = len(col.cells)
@@ -713,7 +717,7 @@ def repmeas(
         x: CategorialArg,
         match: CategorialArg,
         sub: IndexArg = None,
-        ds: Dataset = None,
+        data: Dataset = None,
 ) -> Dataset:
     """Create a repeated-measures table
 
@@ -729,7 +733,7 @@ def repmeas(
     sub
         boolean array specifying which values to include (generate e.g.
         with 'sub=T==[1,2]')
-    ds
+    data
         If a Dataset is specified other arguments can be str instead of
         data-objects and will be retrieved from ds.
 
@@ -745,10 +749,10 @@ def repmeas(
     Generate test data in long format::
 
         >>> ds = Dataset()
-        >>> ds['y'] = Var([1,2,3,5,6,4])
-        >>> ds['x'] = Factor('aaabbb')
-        >>> ds['rm'] = Factor('123231', random=True)
-        >>> print(ds)
+        >>> data['y'] = Var([1,2,3,5,6,4])
+        >>> data['x'] = Factor('aaabbb')
+        >>> data['rm'] = Factor('123231', random=True)
+        >>> print(data)
         y   x   rm
         ----------
         1   a   1
@@ -760,7 +764,7 @@ def repmeas(
 
     Compute difference between two conditions::
 
-        >>> ds_rm = table.repmeas('y', 'x', 'rm', ds=ds)
+        >>> ds_rm = table.repmeas('y', 'x', 'rm', data=data)
         >>> print(ds_rm)
         rm   a   b
         ----------
@@ -776,7 +780,7 @@ def repmeas(
         3    3   6   3
 
     """
-    ct = Celltable(y, x, match, sub, ds=ds)
+    ct = Celltable(y, x, match, sub, data=data)
     if not ct.all_within:
         raise ValueError("Incomplete data")
 
@@ -794,7 +798,7 @@ def repmeas(
             out[key] = ct.data[cell]
 
     # Transfer other variables in ds that are compatible with the rm-structure
-    if ds is not None:
-        out.update(ct._align_ds(ds, True, out.keys(), isuv))
+    if data is not None:
+        out.update(ct._align_ds(data, True, out.keys(), isuv))
 
     return out

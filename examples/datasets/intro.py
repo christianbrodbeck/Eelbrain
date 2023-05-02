@@ -273,13 +273,13 @@ ds = Dataset({
 })
 print(ds)
 ###############################################################################
-print(table.frequencies('a', ds=ds))
+print(table.frequencies('a', data=ds))
 ###############################################################################
-print(test.ANOVA('y', 'a', ds=ds))
+print(test.ANOVA('y', 'a', data=ds))
 ###############################################################################
-print(test.pairwise('y', 'a', ds=ds, corr='Hochberg'))
+print(test.pairwise('y', 'a', data=ds, corr='Hochberg'))
 ###############################################################################
-t = test.pairwise('y', 'a', ds=ds, corr='Hochberg')
+t = test.pairwise('y', 'a', data=ds, corr='Hochberg')
 print(t.get_tex())
 ###############################################################################
-plot.Boxplot('y', 'a', ds=ds, title="My Boxplot", ylabel="value", corr='Hochberg')
+plot.Boxplot('y', 'a', data=ds, title="My Boxplot", ylabel="value", corr='Hochberg')

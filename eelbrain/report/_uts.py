@@ -8,7 +8,7 @@ from ..fmtxt import Section
 
 def time_results(
         res: NDTest,
-        ds: Dataset,
+        data: Dataset,
         colors: dict,
         title: str = 'Results',
         caption: str = "Timecourse",
@@ -21,7 +21,7 @@ def time_results(
     ----------
     res
         Result of the temporal cluster test.
-    ds
+    data
         Data.
     colors
         Cell colors.
@@ -60,7 +60,7 @@ def time_results(
     sub = res._plot_sub()
 
     # add UTSStat plot
-    p = plot.UTSStat(res.y, model, None, res.match, sub, ds, colors=colors, legend=False, clusters=clusters, show=False)
+    p = plot.UTSStat(res.y, model, None, res.match, sub, data, colors=colors, legend=False, clusters=clusters, show=False)
     ax = p.axes[0]
     if res.tstart is not None:
         ax.axvline(res.tstart, color='k')
@@ -96,8 +96,8 @@ def time_results(
                 colors_ = colors if model_ == model else None
             else:
                 title = "Cluster %s%s: %s" % (cid, cluster['sig'], tw_str)
-            y_ = ds[res.y].summary(time=(c_tstart, c_tstop))
-            p = plot.Barplot(y_, model_, res.match, sub, ds=ds, corr=None, show=False, colors=colors_, title=title)
+            y_ = data[res.y].summary(time=(c_tstart, c_tstop))
+            p = plot.Barplot(y_, model_, res.match, sub, data=data, corr=None, show=False, colors=colors_, title=title)
             plots.append(p.image())
             p.close()
 

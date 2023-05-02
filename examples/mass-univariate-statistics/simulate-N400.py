@@ -73,19 +73,19 @@ ds['cloze_cat'] = Factor(cloze_x > 0.5, labels={True: 'high', False: 'low'})
 
 ###############################################################################
 # Plot the average simulated response
-p = plot.TopoButterfly('eeg', ds=ds, vmax=1.5, clip='circle', frame='t', axh=3)
+p = plot.TopoButterfly('eeg', data=ds, vmax=1.5, clip='circle', frame='t', axh=3)
 p.set_time(0.400)
 
 ###############################################################################
 # Plot averages separately for high and low cloze
-p = plot.TopoButterfly('eeg', 'cloze_cat', ds=ds, vmax=1.5, clip='circle', frame='t', axh=3)
+p = plot.TopoButterfly('eeg', 'cloze_cat', data=ds, vmax=1.5, clip='circle', frame='t', axh=3)
 p.set_time(0.400)
 
 ###############################################################################
 # Average over time in the N400 time window
-p = plot.Topomap('eeg.mean(time=(0.300, 0.500))', 'cloze_cat', ds=ds, vmax=1, clip='circle')
+p = plot.Topomap('eeg.mean(time=(0.300, 0.500))', 'cloze_cat', data=ds, vmax=1, clip='circle')
 
 ###############################################################################
 # Plot the first 20 trials, labeled with cloze propability
 labels = [f'{i} ({c:.2f})' for i, c in enumerate(cloze[:20])]
-p = plot.Butterfly('eeg[:20]', '.case', ds=ds, axtitle=labels)
+p = plot.Butterfly('eeg[:20]', '.case', data=ds, axtitle=labels)

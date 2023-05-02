@@ -7,68 +7,68 @@ from eelbrain.testing import hide_plots
 def test_uts_stat():
     "test plot.UTSStat plotting function"
     ds = datasets.get_uts(utsnd=True)
-    p = plot.UTSStat('uts', ds=ds)
+    p = plot.UTSStat('uts', data=ds)
     p.close()
-    p = plot.UTSStat('uts', 'A%B', ds=ds)
+    p = plot.UTSStat('uts', 'A%B', data=ds)
     p.plot_legend('lower right')
     p.plot_legend(False)
     pl = p.plot_legend('fig')
     p.plot_legend('center')
     pl.close()
     p.close()
-    p = plot.UTSStat('uts', 'A', xax='B', ds=ds)
+    p = plot.UTSStat('uts', 'A', xax='B', data=ds)
     p.close()
-    p = plot.UTSStat('uts', 'A', 'B', match='rm', ds=ds)
+    p = plot.UTSStat('uts', 'A', 'B', match='rm', data=ds)
     assert [len(pl.stat_plots) for pl in p._plots] == [2, 2]
     assert p.figure.axes[0].get_title() == 'b0'
     assert p.figure.axes[1].get_title() == 'b1'
     assert set(p._LegendMixin__handles) == {'a0', 'a1'}
     p.close()
-    p = plot.UTSStat('uts', 'A', 'B', match='rm', ds=ds, pool_error=False, colors={'a0': 'red', 'a1': 'k'})
+    p = plot.UTSStat('uts', 'A', 'B', match='rm', data=ds, pool_error=False, colors={'a0': 'red', 'a1': 'k'})
     assert [len(pl.stat_plots) for pl in p._plots] == [2, 2]
     p.close()
 
     # error
-    p = plot.UTSStat('uts', 'A', match='rm', ds=ds, error='none')
+    p = plot.UTSStat('uts', 'A', match='rm', data=ds, error='none')
     p.close()
-    p = plot.UTSStat('uts', 'A', match='rm', ds=ds, error='all')
+    p = plot.UTSStat('uts', 'A', match='rm', data=ds, error='all')
     p.close()
 
     # clusters
     sds = ds.sub("B == 'b0'")
-    res = testnd.TTestRelated('uts', 'A', 'a1', 'a0', match='rm', ds=sds, samples=0, pmin=0.05, mintime=0.02)
-    p = plot.UTSStat('uts', 'A', ds=ds)
+    res = testnd.TTestRelated('uts', 'A', 'a1', 'a0', match='rm', data=sds, samples=0, pmin=0.05, mintime=0.02)
+    p = plot.UTSStat('uts', 'A', data=ds)
     p.set_clusters(res.clusters)
     p.close()
-    p = plot.UTSStat('uts', 'A', ds=ds, clusters=res.clusters)
+    p = plot.UTSStat('uts', 'A', data=ds, clusters=res.clusters)
     p.close()
-    res = testnd.TTestRelated('uts', 'A', 'a1', 'a0', match='rm', ds=sds, samples=100, pmin=0.05, mintime=0.02)
-    res_sub = testnd.TTestRelated('uts', 'A', 'a1', 'a0', match='rm', ds=sds, tstart=0.100, samples=100, pmin=0.05, mintime=0.02)
-    p = plot.UTSStat('uts', 'A', ds=ds, clusters=res.clusters)
+    res = testnd.TTestRelated('uts', 'A', 'a1', 'a0', match='rm', data=sds, samples=100, pmin=0.05, mintime=0.02)
+    res_sub = testnd.TTestRelated('uts', 'A', 'a1', 'a0', match='rm', data=sds, tstart=0.100, samples=100, pmin=0.05, mintime=0.02)
+    p = plot.UTSStat('uts', 'A', data=ds, clusters=res.clusters)
     p.close()
-    p = plot.UTSStat('uts', 'A', 'B', ds=ds, clusters=res_sub.clusters)
+    p = plot.UTSStat('uts', 'A', 'B', data=ds, clusters=res_sub.clusters)
     p.set_clusters(None)
     p.set_clusters(res.clusters, ax=0)
     p.close()
-    p = plot.UTSStat('uts', 'A', 'B', ds=ds)
+    p = plot.UTSStat('uts', 'A', 'B', data=ds)
     p.set_clusters(res.clusters)
     p.set_clusters(None, ax=1)
     p.close()
 
     # mask
-    p = plot.UTSStat('uts', 'A', ds=ds, mask=res.p > 0.05)
+    p = plot.UTSStat('uts', 'A', data=ds, mask=res.p > 0.05)
     p.close()
-    p = plot.UTSStat('uts', 'A', ds=ds, mask=res_sub.p > 0.05)
+    p = plot.UTSStat('uts', 'A', data=ds, mask=res_sub.p > 0.05)
     p.close()
 
     # x-axis other than time
-    p = plot.UTSStat("utsnd.sub(time=0)", 'A', ds=ds)
+    p = plot.UTSStat("utsnd.sub(time=0)", 'A', data=ds)
     assert p.figure.axes[0].get_xlim() == (0, 4)
     p.close()
 
     # y as nested list
-    rm_ds = table.repmeas('uts', 'A%B', 'rm', ds=ds)
-    p = plot.UTSStat([['a0_b0', 'a0_b1', 'a1_b0', 'a1_b1']], ds=rm_ds)
+    rm_ds = table.repmeas('uts', 'A%B', 'rm', data=ds)
+    p = plot.UTSStat([['a0_b0', 'a0_b1', 'a1_b0', 'a1_b1']], data=rm_ds)
     p.close()
 
 
@@ -78,9 +78,9 @@ def test_uts():
     ds = datasets.get_uts()
     x_long = set_tmin(concatenate(ds[:10, 'uts']), -1)
 
-    p = plot.UTS('uts', ds=ds)
+    p = plot.UTS('uts', data=ds)
     p.close()
-    p = plot.UTS('uts', 'A%B', ds=ds)
+    p = plot.UTS('uts', 'A%B', data=ds)
     p.set_ylim(1)
     p.set_ylim(0, 1)
     assert p.get_ylim() == (0, 1)
@@ -116,7 +116,7 @@ def test_uts():
 
     # axtitle from Factor
     ds1 = ds[:3]
-    p = plot.UTS('uts', xax='.case', axtitle=ds1['rm'], ds=ds1, ncol=1, w=2)
+    p = plot.UTS('uts', xax='.case', axtitle=ds1['rm'], data=ds1, ncol=1, w=2)
     p.close()
 
 

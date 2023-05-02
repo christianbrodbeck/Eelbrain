@@ -8,6 +8,7 @@ import numpy as np
 from .._data_obj import NDVarArg, CategorialArg, IndexArg, Datalist, Dataset, NDVar
 from .._stats.testnd import NDTest
 from .._names import INTERPOLATE_CHANNELS
+from .._utils import deprecate_ds_arg
 from . import _base
 from ._base import (
     PlotType,
@@ -200,7 +201,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         Specify which axes should be annotated with y-axis tick labels.
         Use ``int`` for a single axis, a sequence of ``int`` for multiple
         specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
-    ds : Dataset
+    data : Dataset
         If a Dataset is provided, ``epochs`` and ``xax`` can be specified
         as strings.
     sub : str | array
@@ -240,6 +241,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
      - ``f``: zoom in (reduce x axis range)
      - ``d``: zoom out (increase x axis range)
     """
+    @deprecate_ds_arg
     def __init__(
             self,
             y,
@@ -249,7 +251,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
             xticklabels: Union[str, int, Sequence[int]] = 'bottom',
             yticklabels: Union[str, int, Sequence[int]] = 'left',
             sub=None,
-            ds: Dataset = None,
+            data: Dataset = None,
             x: str = 'time',
             vmax: float = None,
             vmin: float = None,
@@ -258,23 +260,23 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
             interpolation=None,
             xlim=None,
             **kwargs):
-        data = PlotData.from_args(y, (x, None), xax, ds, sub).for_plot(PlotType.IMAGE)
-        xdim, ydim = data.dims
+        plot_data = PlotData.from_args(y, (x, None), xax, data, sub).for_plot(PlotType.IMAGE)
+        xdim, ydim = plot_data.dims
         self.plots = []
-        ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, None, self.plots)
+        ColorMapMixin.__init__(self, plot_data.data, cmap, vmax, vmin, None, self.plots)
 
-        layout = Layout(data.plot_used, 1.5, 3, **kwargs)
-        EelFigure.__init__(self, data.frame_title, layout)
-        self._set_axtitle(axtitle, data)
+        layout = Layout(plot_data.plot_used, 1.5, 3, **kwargs)
+        EelFigure.__init__(self, plot_data.frame_title, layout)
+        self._set_axtitle(axtitle, plot_data)
 
-        for ax, layers in zip(self.axes, data):
+        for ax, layers in zip(self.axes, plot_data):
             p = _ax_im_array(ax, layers, x, interpolation, self._vlims, self._cmaps, self._contours)
             self.plots.append(p)
 
-        self._configure_axis_dim('x', xdim, xlabel, xticklabels, data=data.data)
-        self._configure_axis_dim('y', ydim, ylabel, yticklabels, scalar=False, data=data.data)
-        XAxisMixin._init_with_data(self, data.data, xdim, xlim, im=True)
-        TimeSlicerEF.__init__(self, xdim, data.time_dim)
+        self._configure_axis_dim('x', xdim, xlabel, xticklabels, data=plot_data.data)
+        self._configure_axis_dim('y', ydim, ylabel, yticklabels, scalar=False, data=plot_data.data)
+        XAxisMixin._init_with_data(self, plot_data.data, xdim, xlim, im=True)
+        TimeSlicerEF.__init__(self, xdim, plot_data.time_dim)
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -414,7 +416,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
         ``color=True`` to use the matplotlib default.
     linewidth : scalar
         Linewidth for plots (defult is to use ``matplotlib.rcParams``).
-    ds : Dataset
+    data : Dataset
         If a Dataset is provided, ``epochs`` and ``xax`` can be specified
         as strings.
     sub : str | array
@@ -461,6 +463,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
     # keep track of open butterfly combo plots to optimally position new plots on screen
     _OPEN_PLOTS = []
 
+    @deprecate_ds_arg
     def __init__(
             self,
             y: Union[NDVarArg, Sequence, NDTest],
@@ -473,7 +476,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
             yticklabels: Union[str, int, Sequence[int]] = 'left',
             color: Any = None,
             linewidth: float = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             sub: IndexArg = None,
             x: str = 'time',
             vmax: float = None,
@@ -482,31 +485,31 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
             clip: bool = None,
             **kwargs,
     ):
-        data = PlotData.from_args(y, (x, None), xax, ds, sub).for_plot(PlotType.LINE)
-        xdim, linedim = data.dims
-        layout = Layout(data.plot_used, 2, 4, **kwargs)
-        EelFigure.__init__(self, data.frame_title, layout)
-        self._set_axtitle(axtitle, data)
-        self._configure_axis_dim('x', xdim, xlabel, xticklabels, data=data.data)
-        self._configure_axis_data('y', data.y0, ylabel, yticklabels)
+        plot_data = PlotData.from_args(y, (x, None), xax, data, sub).for_plot(PlotType.LINE)
+        xdim, linedim = plot_data.dims
+        layout = Layout(plot_data.plot_used, 2, 4, **kwargs)
+        EelFigure.__init__(self, plot_data.frame_title, layout)
+        self._set_axtitle(axtitle, plot_data)
+        self._configure_axis_dim('x', xdim, xlabel, xticklabels, data=plot_data.data)
+        self._configure_axis_data('y', plot_data.y0, ylabel, yticklabels)
 
         if clip is None:
             clip = layout.frame is True
 
         self.plots = []
-        self._vlims = _base.find_fig_vlims(data.data, vmax, vmin)
+        self._vlims = _base.find_fig_vlims(plot_data.data, vmax, vmin)
         legend_handles = {}
-        for ax, layers in zip(self.axes, data):
+        for ax, layers in zip(self.axes, plot_data):
             h = _ax_butterfly(ax, layers, xdim, linedim, sensors, color, linewidth, self._vlims, clip)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
-        XAxisMixin._init_with_data(self, data.data, xdim, xlim)
+        XAxisMixin._init_with_data(self, plot_data.data, xdim, xlim)
         YLimMixin.__init__(self, self.plots)
         if linedim == 'sensor':
             TopoMapKey.__init__(self, self._topo_data)
         LegendMixin.__init__(self, 'invisible', legend_handles)
-        TimeSlicerEF.__init__(self, xdim, data.time_dim)
+        TimeSlicerEF.__init__(self, xdim, plot_data.time_dim)
         self._show()
 
     def _auto_position(self, p2=None):

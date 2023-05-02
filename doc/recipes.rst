@@ -71,11 +71,11 @@ Various
 If a script produces several plots and there is no need to show them on the
 screen, they can be kept hidden through the ``show=False`` argument::
 
-    p = plot.UTSStat('uts', 'A', ds=ds, w=5, tight=False, show=False)
+    p = plot.UTSStat('uts', 'A', data=data, w=5, tight=False, show=False)
 
 When working on more complex figures, it is often desirable to save the legend
 separately and combine it in a layout application::
 
-    p = plot.UTSStat('uts', 'A', ds=ds, w=5, tight=False, show=False, legend=False)
+    p = plot.UTSStat('uts', 'A', data=data, w=5, tight=False, show=False, legend=False)
     p.save('plot.pdf', facecolor="none")
     p.save_legend('legend.pdf', facecolor="none")

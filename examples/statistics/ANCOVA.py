@@ -81,7 +81,7 @@ print(ds.summary())
 ds2 = ds[ds['type'] != 'NA']
 
 # ANOVA
-print(test.ANOVA('prestige', '(income + education) * type', ds=ds2))
+print(test.ANOVA('prestige', '(income + education) * type', data=ds2))
 
 
 ###############################################################################

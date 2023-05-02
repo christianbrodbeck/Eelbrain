@@ -78,7 +78,7 @@ def run_as_ndanova(y, x, ds):
     yt = ds.eval(y).x[:, None]
     y2 = np.concatenate((yt, yt * 2), 1)
     ndvar = NDVar(y2, ('case', UTS(0, 0.1, 2)))
-    res = testnd.ANOVA(ndvar, x, ds=ds)
+    res = testnd.ANOVA(ndvar, x, data=ds)
     f1 = [fmap.x[0] for fmap in res.f]
     f2 = [fmap.x[1] for fmap in res.f]
     for f1_, f2_ in zip(f1, f2):
@@ -94,7 +94,7 @@ def test_anova():
     ds.to_r('ds')
 
     # fixed effects
-    aov = test.ANOVA('fltvar', 'A*B', ds=ds)
+    aov = test.ANOVA('fltvar', 'A*B', data=ds)
     assert f'\n{aov}\n' == """
                 SS   df      MS          F        p
 ---------------------------------------------------
@@ -111,7 +111,7 @@ Total       114.74   79
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'Anova')
 
     # random effect
-    aov = test.ANOVA('fltvar', 'A*B*rm', ds=ds)
+    aov = test.ANOVA('fltvar', 'A*B*rm', data=ds)
     assert f'\n{aov}\n' == """
             SS   df      MS   MS(denom)   df(denom)          F        p
 -----------------------------------------------------------------------
@@ -130,7 +130,7 @@ Total   114.74   79
 
     # Factor.name = None
     with pytest.raises(ValueError):
-        test.ANOVA('fltvar', ds['A'] * Factor(ds['B'] == 'b1'), ds=ds)
+        test.ANOVA('fltvar', ds['A'] * Factor(ds['B'] == 'b1'), data=ds)
 
 
 @requires_r_ez
@@ -142,8 +142,8 @@ def test_anova_eq():
     ds.to_r('ds')
 
     # nested random effect
-    aov_explicit = test.ANOVA('fltvar', 'A + B + A%B + nrm(B) + A%nrm(B)', ds=ds)
-    aov = test.ANOVA('fltvar', 'A * B * nrm(B)', ds=ds)
+    aov_explicit = test.ANOVA('fltvar', 'A + B + A%B + nrm(B) + A%nrm(B)', data=ds)
+    aov = test.ANOVA('fltvar', 'A * B * nrm(B)', data=ds)
     assert str(aov_explicit) == str(aov)
     print(aov)
     fs = run_on_lm_fitter('fltvar', 'A * B * nrm(B)', ds)
@@ -152,18 +152,18 @@ def test_anova_eq():
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'ez')
 
     # sub parameter
-    r1 = test.ANOVA('fltvar', 'B * rm', ds=ds.sub('A == "a1"'))
-    r2 = test.ANOVA('fltvar', 'B * rm', sub='A == "a1"', ds=ds)
+    r1 = test.ANOVA('fltvar', 'B * rm', data=ds.sub('A == "a1"'))
+    r2 = test.ANOVA('fltvar', 'B * rm', sub='A == "a1"', data=ds)
     assert str(r2) == str(r1)
 
     # not fully specified model with random effects
     with pytest.raises(IncompleteModel):
-        test.ANOVA('fltvar', 'A*rm', ds=ds)
+        test.ANOVA('fltvar', 'A*rm', data=ds)
 
     # unequal group size, 1-way
     sds = ds.sub("A == 'a1'").sub("nrm.isnotin(('s037', 's038', 's039'))")
     sds.to_r('sds')
-    aov = test.ANOVA('fltvar', 'B * nrm(B)', ds=sds)
+    aov = test.ANOVA('fltvar', 'B * nrm(B)', data=sds)
     print(aov)
     fs = run_on_lm_fitter('fltvar', 'B * nrm(B)', sds)
     fnds = run_as_ndanova('fltvar', 'B * nrm(B)', sds)
@@ -174,7 +174,7 @@ def test_anova_eq():
     # unequal group size, 2-way
     sds = ds.sub("nrm.isnotin(('s037', 's038', 's039'))")
     sds.to_r('sds')
-    aov = test.ANOVA('fltvar', 'A * B * nrm(B)', ds=sds)
+    aov = test.ANOVA('fltvar', 'A * B * nrm(B)', data=sds)
     print(aov)
     fs = run_on_lm_fitter('fltvar', 'A * B * nrm(B)', sds)
     fnds = run_as_ndanova('fltvar', 'A * B * nrm(B)', sds)
@@ -185,12 +185,12 @@ def test_anova_eq():
     # empty cells
     dss = ds.sub("A%B != ('a2', 'b2')")
     with pytest.raises(NotImplementedError):
-        test.ANOVA('fltvar', 'A*B', ds=dss)
+        test.ANOVA('fltvar', 'A*B', data=dss)
     with pytest.raises(NotImplementedError):
         run_on_lm_fitter('fltvar', 'A*B', ds=dss)
     dss = ds.sub("A%B != ('a1', 'b1')")
     with pytest.raises(NotImplementedError):
-        test.ANOVA('fltvar', 'A*B', ds=dss)
+        test.ANOVA('fltvar', 'A*B', data=dss)
     with pytest.raises(NotImplementedError):
         run_on_lm_fitter('fltvar', 'A*B', ds=dss)
 
@@ -200,10 +200,10 @@ def test_ndanova():
     ds['An'] = ds['A'].as_var({'a0': 0, 'a1': 1})
 
     with pytest.raises(NotImplementedError):
-        testnd.ANOVA('uts', 'An*B*rm', ds=ds)
+        testnd.ANOVA('uts', 'An*B*rm', data=ds)
 
     # nested random effect
-    res = testnd.ANOVA('uts', 'A + A%B + B * nrm(A)', ds=ds, match='nrm', samples=100, pmin=0.05)
+    res = testnd.ANOVA('uts', 'A + A%B + B * nrm(A)', data=ds, match='nrm', samples=100, pmin=0.05)
     assert len(res.find_clusters(0.05)) == 8
 
 
@@ -273,7 +273,7 @@ def test_anova_fox():
     data_path = file_path('fox-prestige')
     ds = load.txt.tsv(data_path, delimiter=' ', skipinitialspace=True)
     ds = ds.sub("type != 'NA'")
-    aov = test.ANOVA('prestige', '(income + education) * type', ds=ds)
+    aov = test.ANOVA('prestige', '(income + education) * type', data=ds)
     assert f'\n{aov}\n' == """
                          SS   df        MS          F        p
 --------------------------------------------------------------
@@ -402,7 +402,7 @@ def test_anova_r_adler():
     # with balanced data
     dsb = ds.equalize_counts('expectation % instruction')
     dsb.to_r('AdlerB')
-    aov = test.ANOVA('rating', 'instruction * expectation', ds=dsb)
+    aov = test.ANOVA('rating', 'instruction * expectation', data=dsb)
     fs = run_on_lm_fitter('rating', 'instruction * expectation', dsb)
     fnds = run_as_ndanova('rating', 'instruction * expectation', dsb)
     print(r('a.aov <- aov(rating ~ instruction * expectation, AdlerB)'))
@@ -411,14 +411,14 @@ def test_anova_r_adler():
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds)
 
     # with unbalanced data; for Type II SS use car package
-    aov = test.ANOVA('rating', 'instruction * expectation', ds=ds)
+    aov = test.ANOVA('rating', 'instruction * expectation', data=ds)
     fs = run_on_lm_fitter('rating', 'instruction * expectation', ds)
     fnds = run_as_ndanova('rating', 'instruction * expectation', ds)
     r_res = r("Anova(lm(rating ~ instruction * expectation, Adler, type=2))")
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'Anova')
 
     # single predictor
-    aov = test.ANOVA('rating', 'instruction', ds=ds)
+    aov = test.ANOVA('rating', 'instruction', data=ds)
     fs = run_on_lm_fitter('rating', 'instruction', ds)
     fnds = run_as_ndanova('rating', 'instruction', ds)
     r_res = r("Anova(lm(rating ~ instruction, Adler, type=2))")
@@ -435,7 +435,7 @@ def test_anova_r_sleep():
     ds['ID'].random = True
 
     # independent measures
-    aov = test.ANOVA('extra', 'group', ds=ds)
+    aov = test.ANOVA('extra', 'group', data=ds)
     fs = run_on_lm_fitter('extra', 'group', ds)
     fnds = run_as_ndanova('extra', 'group', ds)
     print(r('sleep.aov <- aov(extra ~ group, sleep)'))
@@ -444,7 +444,7 @@ def test_anova_r_sleep():
     assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0], fnds[0])
 
     # repeated measures
-    aov = test.ANOVA('extra', 'group * ID', ds=ds)
+    aov = test.ANOVA('extra', 'group * ID', data=ds)
     fs = run_on_lm_fitter('extra', 'group * ID', ds)
     fnds = run_as_ndanova('extra', 'group * ID', ds)
     print(r('sleep.aov <- aov(extra ~ group + Error(ID / group), sleep)'))
@@ -455,7 +455,7 @@ def test_anova_r_sleep():
     # unbalanced (independent measures)
     ds2 = ds[1:]
     print(r('sleep2 <- subset(sleep, (group == 2) | (ID != 1))'))
-    aov = test.ANOVA('extra', 'group', ds=ds2)
+    aov = test.ANOVA('extra', 'group', data=ds2)
     fs = run_on_lm_fitter('extra', 'group', ds2)
     fnds = run_as_ndanova('extra', 'group', ds2)
     print(r('sleep2.aov <- aov(extra ~ group, sleep2)'))
