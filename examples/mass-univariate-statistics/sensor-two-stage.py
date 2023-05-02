@@ -32,7 +32,7 @@ for subject in range(10):
     # Re-reference EEG data
     ds['eeg'] -= ds['eeg'].mean(sensor=['M1', 'M2'])
     # Fit stage 1 model
-    lm = testnd.LM('eeg', 'cloze', ds)
+    lm = testnd.LM('eeg', 'cloze', data=ds, samples=0)
     lms.append(lm)
 
 # Collect single-subject models for group analysis

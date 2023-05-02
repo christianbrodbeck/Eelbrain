@@ -3736,7 +3736,7 @@ class MneExperiment(FileTree):
         if not isinstance(test_obj, TwoStageTest):
             raise NotImplementedError("Test kind %r" % test_obj.__class__.__name__)
         ds = self.load_epochs_stc(subject, baseline, src_baseline, mask=True, vardef=test_obj.vars)
-        return testnd.LM('src', test_obj.stage_1, ds, subject=subject)
+        return testnd.LM('src', test_obj.stage_1, data=ds, samples=0, subject=subject)
 
     def load_src(self, add_geom=False, ndvar=False, **state):
         """Load the current source space

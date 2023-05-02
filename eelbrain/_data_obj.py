@@ -7799,6 +7799,21 @@ class Parametrization:
         return out
 
 
+class PermutedParametrization:
+
+    def __init__(self, parametrization: Parametrization, g: bool = False):
+        self.parametrization = parametrization
+        self.x = np.empty_like(parametrization.x)
+        self.projector = np.empty_like(parametrization.projector)
+        self.g = g
+
+    def permute(self, perm: np.ndarray):
+        self.parametrization.x.take(perm, 0, self.x)
+        self.parametrization.projector.take(perm, 1, self.projector)
+        if self.g is not False:
+            self.g = inv(self.x.T.dot(self.x), True)
+
+
 # ---NDVar dimensions---
 
 def _subgraph_edges(connectivity, int_index):

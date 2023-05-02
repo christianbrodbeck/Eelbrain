@@ -420,9 +420,9 @@ class TwoStageTest(Test):
         Test.__init__(self, stage_1, model, vars=vars, depend_on=find_variables(stage_1))
         self.stage_1 = stage_1
 
-    def make_stage_1(self, y, ds, subject, sub=None):
+    def make_stage_1(self, y, data, subject, sub=None):
         """Assumes that model has already been applied"""
-        return testnd.LM(y, self.stage_1, ds, subject=subject, sub=sub)
+        return testnd.LM(y, self.stage_1, sub=sub, data=data, samples=0, subject=subject)
 
     @staticmethod
     def make_stage_2(lms, kwargs):

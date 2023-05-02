@@ -18,11 +18,13 @@ Major changes
 New in 0.39
 -----------
 
+* :class:`testnd.LM` now supports permutation-based significance testing.
 * New :class:`NDVar` functions for time series and an auditory model: :func:`pad`, :func:`gammatone_bank`, :func:`edge_detector`
 * API:
 
    - The common ``ds`` parameter has been renamed to ``data`` to be more consistent with other packages.
    - The evaluation context for :class:`Dataset` does not include ``from numpy import *`` anymore, to avoid overwriting builtins like :func:`abs`; instead, NumPy is accessible as ``numpy``.
+   - :class:`testnd.LM`: The default number of permutations is now 10000 and the argument order has changed slightly to be consistent with other :mod:`testnd` tests. To use :class:`testnd.LM` for two-stage tests, set ``samples=0``.
    - :class:`plot.Barplot` parameter ``c`` renamed to ``color``.
 
 

@@ -32,7 +32,7 @@ import re
 import socket
 from threading import Thread
 from time import time as current_time
-from typing import Union
+from typing import Iterable, List, Union
 
 import numpy as np
 import scipy.stats
@@ -55,7 +55,7 @@ from .._utils.notebooks import trange
 from . import opt, stats, vector
 from .connectivity import Connectivity, find_peaks
 from .connectivity_opt import merge_labels, tfce_increment
-from .glm import _nd_anova
+from .glm import MPTestMapper, _nd_anova
 from .permutation import (
     _resample_params, permute_order, permute_sign_flip, random_seeds,
     rand_rotation_matrices)
@@ -1504,6 +1504,18 @@ class TTestRelated(NDMaskedC1Mixin, NDDifferenceTest):
 
 class MultiEffectNDTest(NDTest):
 
+    _state_common = ('x', 'effects', *NDTest._state_common)
+
+    def __init__(
+            self,
+            x: str,
+            effects: Iterable[str],
+            *args,
+    ):
+        NDTest.__init__(self, *args)
+        self.x = x
+        self.effects = tuple(effects)
+
     def _repr_test_args(self):
         args = [repr(self.y), repr(self.x)]
         if self.match is not None:
@@ -1533,8 +1545,6 @@ class MultiEffectNDTest(NDTest):
         return table
 
     def _expand_state(self):
-        self.effects = tuple([e.name for e in self._effects])
-
         # clusters
         cdists = self._cdist
         if cdists is None:
@@ -1777,7 +1787,7 @@ class ANOVA(MultiEffectNDTest):
     For information on model specification see the univariate
     :class:`~eelbrain.test.ANOVA` examples.
     """
-    _state_specific = ('x', 'pmin', '_effects', '_dfs_denom', 'f')
+    _state_specific = ('pmin', '_effects', '_dfs_denom', 'f')
     _statistic = 'f'
     _statistic_tail = 1
 
@@ -1856,8 +1866,9 @@ class ANOVA(MultiEffectNDTest):
             f.append(NDVar(fmap, dims, e.name, info))
 
         # store attributes
-        MultiEffectNDTest.__init__(self, y, match, sub_arg, samples, tfce, pmin, cdists, tstart, tstop)
-        self.x = x_arg if isinstance(x_arg, str) else x.name
+        x_desc = x_arg if isinstance(x_arg, str) else x.name  # TODO: x.name should use * when appropriate
+        effect_names = (e.name for e in effects)
+        MultiEffectNDTest.__init__(self, x_desc, effect_names, y, match, sub_arg, samples, tfce, pmin, cdists, tstart, tstop)
         self._effects = effects
         self._dfs_denom = dfs_denom
         self.f = f
@@ -1866,8 +1877,11 @@ class ANOVA(MultiEffectNDTest):
 
     def _expand_state(self):
         # backwards compatibility
-        if hasattr(self, 'effects'):
+        if hasattr(self, 'effects') and not isinstance(self.effects[0], str):
             self._effects = self.effects
+            del self.effects
+        if not hasattr(self, 'effects'):
+            self.effects = tuple([e.name for e in self._effects])
 
         MultiEffectNDTest._expand_state(self)
 
@@ -3836,8 +3850,11 @@ def setup_workers(test_func, dist, func_args):
     return workers, permutation_queue, kill_beacon, shared_memory  # return shared_memory so that it does not get garbage collected
 
 
-def run_permutation_me(test, dists, iterator):
-    "Perform multi-effect permutation test"
+def run_permutation_me(
+        test: MPTestMapper,
+        dists: List[NDPermutationDistribution],
+        iterator: Iterable[np.ndarray],
+):
     dist = dists[0]
     if dist.kind == 'cluster':
         thresholds = tuple(d.threshold for d in dists)
@@ -3870,9 +3887,9 @@ def run_permutation_me(test, dists, iterator):
 
         stat_maps = test.preallocate(dist.shape)
         if thresholds:
-            stat_maps_iter = zip(stat_maps, thresholds, dists)
+            stat_maps_iter = tuple(zip(stat_maps, thresholds, dists))
         else:
-            stat_maps_iter = zip(stat_maps, dists)
+            stat_maps_iter = tuple(zip(stat_maps, dists))
 
         for i, perm in enumerate(iterator):
             test.map(y, perm)

@@ -9,6 +9,8 @@ Hopkins, K. D. (1976). A Simplified Method for Determining Expected Mean
     Squares and Error Terms in the Analysis of Variance. Journal of
     Experimental Education, 45(2), 13--18.
 """
+from typing import Sequence
+
 import numpy as np
 from scipy.linalg import lstsq
 import scipy.stats
@@ -321,7 +323,23 @@ def _nd_anova(x):
     return _IncrementalNDANOVA(x)
 
 
-class _NDANOVA:
+class MPTestMapper:
+    "Baseclass for a test to be run with multiprocessing"
+
+    def preallocate(self, y_shape: Sequence[int]) -> np.ndarray:  #
+        "Pre-allocate an output array container"
+        raise NotImplementedError()
+
+    def map(
+            self,
+            y: np.ndarray,  # (n_cases, ...)
+            perm: np.ndarray = None,  # (n_cases,) permutation index
+    ) -> None:
+        "Process y and pu result into output array container"
+        raise NotImplementedError()
+
+
+class _NDANOVA(MPTestMapper):
     """Efficiently fit a model to multiple dependent variables."""
     def __init__(self, x, effects, dfs_denom):
         self.x = x
