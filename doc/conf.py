@@ -42,7 +42,6 @@ extensions = [
     'sphinx.ext.todo', 'sphinx.ext.imgmath',  # default
     'sphinx.ext.intersphinx',  # http://sphinx.pocoo.org/ext/intersphinx.html
     'sphinx.ext.napoleon',  # https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html
-    'sphinx_autodoc_typehints',  # https://github.com/agronholm/sphinx-autodoc-typehints
     'sphinxcontrib.bibtex',  # https://sphinxcontrib-bibtex.readthedocs.io
     'sphinx_gallery.gen_gallery',  # https://sphinx-gallery.github.io
     # 'scanpydoc',  # https://github.com/theislab/scanpydoc
@@ -51,6 +50,7 @@ extensions = [
 # enable to have all methods documented on the same page as a class:
 # autodoc_default_flags=['inherited-members']
 autosummary_generate = True
+autodoc_typehints = "description"
 
 # Napoleon settings
 napoleon_google_docstring = False

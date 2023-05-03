@@ -39,7 +39,6 @@ dependencies:
 - cython >= 0.21
 # docs
 - sphinx >= 3
-- sphinx-autodoc-typehints
 - sphinx-gallery
 - sphinx_rtd_theme
 - sphinxcontrib-bibtex
