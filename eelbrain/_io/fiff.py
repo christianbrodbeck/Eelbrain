@@ -816,6 +816,8 @@ def sensor_dim(
                     names = [f'{n[:3]} {n[3:]}' for n in names]
             elif connectivity == 'ctf275':
                 ch_names = [name[:5] for name in ch_names]
+            elif connectivity.startswith('bti'):
+                names = [f'MEG {name[1:]:0>3}' for name in names]
 
         # fix channel order
         if names != ch_names:
