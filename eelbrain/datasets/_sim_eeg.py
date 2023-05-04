@@ -50,7 +50,7 @@ def simulate_erp(
         ys -= ys.mean(sensor=['M1', 'M2'])
         import mne
         path = mne.datasets.kiloword.data_path()
-        y = load.fiff.epochs_ndvar(path + '/kword_metadata-epo.fif')
+        y = load.mne.epochs_ndvar(path + '/kword_metadata-epo.fif')
         plot.TopoButterfly([y, ys])
 
     """

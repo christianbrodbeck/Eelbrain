@@ -588,7 +588,7 @@ def add_mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, target='epochs', **k
     ----------
     ds : Dataset
         Dataset with events from a raw fiff file (i.e., created by
-        load.fiff.events).
+        load.mne.events).
     tmin : scalar
         First sample to include in the epochs in seconds (Default is -0.1).
     tmax : scalar
@@ -602,7 +602,7 @@ def add_mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, target='epochs', **k
     target : str
         Name for the Epochs object in the Dataset.
     ...
-        See :func:`~eelbrain.load.fiff.mne_epochs`.
+        See :func:`~eelbrain.load.mne.mne_epochs`.
     """
     epochs_ = mne_epochs(ds, tmin, tmax, baseline, **kwargs)
     ds = _trim_ds(ds, epochs_)

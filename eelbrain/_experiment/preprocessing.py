@@ -301,7 +301,7 @@ class RawSource(RawPipe):
         if isinstance(bad_chs, (str, int)):
             bad_chs = (bad_chs,)
         raw = self.load(subject, recording, add_bads=False)
-        sensor = load.fiff.sensor_dim(raw)
+        sensor = load.mne.sensor_dim(raw)
         new_bads = sensor._normalize_sensor_names(bad_chs)
         # update with old bad channels
         if old_bads is not None and not redo:
@@ -324,7 +324,7 @@ class RawSource(RawPipe):
                 flat = 1e-14
         if flat:
             sysname = self.get_sysname(raw.info, subject, None)
-            raw = load.fiff.raw_ndvar(raw, sysname=sysname, connectivity=self.connectivity)
+            raw = load.mne.raw_ndvar(raw, sysname=sysname, connectivity=self.connectivity)
             bad_chs.extend(raw.sensor.names[raw.std('time') < flat])
         self.make_bad_channels(subject, recording, bad_chs, redo)
 

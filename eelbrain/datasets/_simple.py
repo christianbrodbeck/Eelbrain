@@ -140,7 +140,7 @@ def get_mne_evoked(ndvar=False):
                                'sample_audvis-ave.fif')
     evoked = mne.Evoked(evoked_path, "Left Auditory")
     if ndvar:
-        return load.fiff.evoked_ndvar(evoked)
+        return load.mne.evoked_ndvar(evoked)
     else:
         return evoked
 
@@ -183,7 +183,7 @@ def get_mne_stc(ndvar=False, src='ico-5', subject='sample'):
         elif subject != 'sample':
             raise ValueError(f"subject={subject!r}")
         if ndvar:
-            return load.fiff.stc_ndvar(stc, subject, 'vol-7', subjects_dir, 'MNE', sss_filename='{subject}-volume-7mm-src.fif')
+            return load.mne.stc_ndvar(stc, subject, 'vol-7', subjects_dir, 'MNE', sss_filename='{subject}-volume-7mm-src.fif')
         else:
             return stc
     elif src == 'oct-4':
@@ -200,7 +200,7 @@ def get_mne_stc(ndvar=False, src='ico-5', subject='sample'):
         raise ValueError(f"src={src!r}")
 
     if ndvar:
-        return load.fiff.stc_ndvar(stc, subject, src, subjects_dir)
+        return load.mne.stc_ndvar(stc, subject, src, subjects_dir)
     else:
         return stc
 
@@ -320,7 +320,7 @@ def get_mne_sample(
         raw = mne.io.Raw(raw_file)
         events = mne.find_events(raw, stim_channel='STI 014')
         mne.write_events(event_file, events)
-    ds = load.fiff.events(raw_file, events=event_file)
+    ds = load.mne.events(raw_file, events=event_file)
     if hpf:
         ds.info['raw'].load_data()
         ds.info['raw'].filter(hpf, None, n_jobs=1)
@@ -346,10 +346,10 @@ def get_mne_sample(
     if sub:
         ds = ds.sub(sub)
 
-    load.fiff.add_mne_epochs(ds, tmin, tmax, baseline)
+    load.mne.add_mne_epochs(ds, tmin, tmax, baseline)
     if sns:
         data_arg = 'mag' if sns is True else sns
-        ds['meg'] = load.fiff.epochs_ndvar(ds['epochs'], data=data_arg, sysname='neuromag306', proj=proj)
+        ds['meg'] = load.mne.epochs_ndvar(ds['epochs'], data=data_arg, sysname='neuromag306', proj=proj)
 
     if not src:
         return ds
@@ -387,7 +387,7 @@ def get_mne_sample(
 
     stcs = mn.apply_inverse_epochs(epochs, inv, 1. / (snr ** 2), method,
                                    pick_ori=pick_ori)
-    ds['src'] = load.fiff.stc_ndvar(stcs, subject, src_tag, subjects_dir,
+    ds['src'] = load.mne.stc_ndvar(stcs, subject, src_tag, subjects_dir,
                                     method, fixed)
     if stc:
         ds['stc'] = stcs

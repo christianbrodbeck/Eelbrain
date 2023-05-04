@@ -1865,7 +1865,7 @@ class MneExperiment(FileTree):
         ----------
         ds : Dataset
             A Dataset containing events (with variables as returned by
-            :func:`load.fiff.events`).
+            :func:`load.mne.events`).
 
         Returns
         -------
@@ -1909,7 +1909,7 @@ class MneExperiment(FileTree):
         ----------
         ds : Dataset
             A Dataset containing events (with variables as returned by
-            :func:`load.fiff.events`).
+            :func:`load.mne.events`).
 
         Returns
         -------
@@ -2297,11 +2297,11 @@ class MneExperiment(FileTree):
         decim = decim_param(samplingrate, decim, epoch, ds.info['sfreq'])
 
         if variable_tmax:
-            ds['epochs'] = load.fiff.variable_length_mne_epochs(ds, tmin, tmax, baseline, allow_truncation=True, decim=decim, reject_by_annotation=False)
+            ds['epochs'] = load.mne.variable_length_mne_epochs(ds, tmin, tmax, baseline, allow_truncation=True, decim=decim, reject_by_annotation=False)
             epochs_list = ds['epochs']
         else:
             n = ds.n_cases
-            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim, drop_bad_chs=False, tstop=tstop, reject_by_annotation=False)
+            ds = load.mne.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim, drop_bad_chs=False, tstop=tstop, reject_by_annotation=False)
             if ds.n_cases != n:
                 self._log.warning(f"{n_of(n - ds.n_cases, 'epoch')} missing for {subject}/{epoch_name}")
 
@@ -2364,11 +2364,11 @@ class MneExperiment(FileTree):
                 else:
                     name = data_kind
                 if variable_tmax:
-                    ys = [load.fiff.epochs_ndvar(e, data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude, name=data_kind)[0] for e in ds['epochs']]
+                    ys = [load.mne.epochs_ndvar(e, data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude, name=data_kind)[0] for e in ds['epochs']]
                     if isinstance(data.sensor, str):
                         ys = [getattr(y, data.sensor)('sensor') for y in ys]
                 else:
-                    ys = load.fiff.epochs_ndvar(ds['epochs'], data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude)
+                    ys = load.mne.epochs_ndvar(ds['epochs'], data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude)
                     if add_bads_to_info:
                         ys.info[BAD_CHANNELS] = ds['epochs'].info['bads']
                     if isinstance(data.sensor, str):
@@ -2523,7 +2523,7 @@ class MneExperiment(FileTree):
 
         if ndvar:
             src = self.get('src')
-            ndvar_list = [load.fiff.stc_ndvar(stc, mrisubject, src, mri_sdir, method, make_kw.get('fixed', False), parc=parc, connectivity=self.get('connectivity')) for stc in stc_list]
+            ndvar_list = [load.mne.stc_ndvar(stc, mrisubject, src, mri_sdir, method, make_kw.get('fixed', False), parc=parc, connectivity=self.get('connectivity')) for stc in stc_list]
             if src_baseline:
                 for v in ndvar_list:
                     v -= v.summary(time=src_baseline)
@@ -2595,7 +2595,7 @@ class MneExperiment(FileTree):
         if ds is None:
             self._log.debug("Extracting events for %s %s %s", self.get('raw'), subject, self.get('recording'))
             raw = self.load_raw(add_bads)
-            ds = load.fiff.events(raw, self.merge_triggers, stim_channel=self._stim_channel)
+            ds = load.mne.events(raw, self.merge_triggers, stim_channel=self._stim_channel)
             del ds.info['raw']
             ds.info['sfreq'] = raw.info['sfreq']
             ds.info['raw-mtime'] = self._raw_mtime(bad_chs=False, subject=subject)
@@ -2763,7 +2763,7 @@ class MneExperiment(FileTree):
                 sysname = pipe.get_sysname(info, subject, data_kind)
                 connectivity = pipe.get_connectivity(data_kind)
                 name = 'meg' if data_kind == 'mag' else data_kind
-                ds[name] = load.fiff.evoked_ndvar(evoked, data=data_kind, sysname=sysname, connectivity=connectivity)
+                ds[name] = load.mne.evoked_ndvar(evoked, data=data_kind, sysname=sysname, connectivity=connectivity)
                 if data_kind != 'eog' and isinstance(data.sensor, str):
                     ds[name] = getattr(ds[name], data.sensor)('sensor')
 
@@ -3009,7 +3009,7 @@ class MneExperiment(FileTree):
             mri_sdir = self.get('mri-sdir')
             fixed = make_kw.get('fixed', False)
             parc = self.get('parc') or None
-            stcs = load.fiff.stc_ndvar(stcs, subject, src, mri_sdir, method, fixed, parc=parc, connectivity=self.get('connectivity'))
+            stcs = load.mne.stc_ndvar(stcs, subject, src, mri_sdir, method, fixed, parc=parc, connectivity=self.get('connectivity'))
             if mask:
                 stcs = _mask_ndvar(stcs)
         else:
@@ -3157,7 +3157,7 @@ class MneExperiment(FileTree):
             else:
                 self.make_annot()
                 parc = self.get('parc')
-            fwd = load.fiff.forward_operator(fwd_file, src, self.get('mri-sdir'), parc, connectivity=False)
+            fwd = load.mne.forward_operator(fwd_file, src, self.get('mri-sdir'), parc, connectivity=False)
             if mask:
                 fwd = fwd.sub(source=np.invert(
                     fwd.source.parc.startswith('unknown')))
@@ -3268,7 +3268,7 @@ class MneExperiment(FileTree):
                 inv = mne.minimum_norm.read_inverse_operator(dst)
 
         if ndvar:
-            inv = load.fiff.inverse_operator(inv, self.get('src'), self.get('mri-sdir'), self.get('parc'))
+            inv = load.mne.inverse_operator(inv, self.get('src'), self.get('mri-sdir'), self.get('parc'))
             if mask:
                 inv = inv.sub(source=~inv.source.parc.startswith('unknown'))
         elif mask:
@@ -3469,7 +3469,7 @@ class MneExperiment(FileTree):
             data_kind = data.data_to_ndvar(raw.info)[0]
             sysname = pipe.get_sysname(raw.info, self.get('subject'), data_kind)
             connectivity = pipe.get_connectivity(data_kind)
-            raw = load.fiff.raw_ndvar(raw, sysname=sysname, connectivity=connectivity)
+            raw = load.mne.raw_ndvar(raw, sysname=sysname, connectivity=connectivity)
 
         return raw
 
@@ -3516,7 +3516,7 @@ class MneExperiment(FileTree):
 
         if ndvar:
             src = self.get('src')
-            return load.fiff.stc_ndvar(stc, mrisubject, src, mri_sdir, method, make_kw.get('fixed', False), parc=parc, connectivity=self.get('connectivity'))
+            return load.mne.stc_ndvar(stc, mrisubject, src, mri_sdir, method, make_kw.get('fixed', False), parc=parc, connectivity=self.get('connectivity'))
         else:
             return stc
 
@@ -4981,7 +4981,7 @@ class MneExperiment(FileTree):
             raise NotImplementedError("Epoch selection for vector data; use data='planar1' and data='planar2'")
         else:
             y_name = data
-            ds[data] = load.fiff.epochs_ndvar(ds['epochs'], data=data)
+            ds[data] = load.mne.epochs_ndvar(ds['epochs'], data=data)
 
         if auto is not None:
             if isinstance(auto, dict):

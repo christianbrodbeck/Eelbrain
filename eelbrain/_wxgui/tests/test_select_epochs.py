@@ -19,8 +19,8 @@ def test_select_epochs():
     data_path = mne.datasets.testing.data_path()
     raw_path = join(data_path, 'MEG', 'sample', 'sample_audvis_trunc_raw.fif')
     raw = mne.io.Raw(raw_path, preload=True).pick_types('mag', stim=True)
-    ds = load.fiff.events(raw, stim_channel='STI 014')
-    ds['meg'] = load.fiff.epochs(ds, tmax=0.1)
+    ds = load.mne.events(raw, stim_channel='STI 014')
+    ds['meg'] = load.mne.epochs(ds, tmax=0.1)
     # 25 cases
     arange = np.arange(25)
     false_at = lambda index: np.isin(arange, index, invert=True)

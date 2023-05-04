@@ -119,7 +119,7 @@ print(y.x)
 # description of the dimensions along with the data. :class:`NDVar` objects are
 # often not constructed from scratch but imported from existing data. For
 # example, :mod:`mne` source estimates can be imported with
-# :func:`load.fiff.stc_ndvar`. As an example, consider data from a simulated EEG
+# :func:`load.mne.stc_ndvar`. As an example, consider data from a simulated EEG
 # experiment:
 
 ds = datasets.simulate_erp()

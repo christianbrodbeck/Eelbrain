@@ -145,7 +145,7 @@ def load_stcs():
 
     See Also
     --------
-    eelbrain.load.fiff.DatasetSTCLoader : programmatic access
+    eelbrain.load.mne.DatasetSTCLoader : programmatic access
         to this functionality
     """
     from ._wxgui.app import get_app

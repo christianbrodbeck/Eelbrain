@@ -680,17 +680,17 @@ def asndvar(
     if isinstance(x, NDVar):
         pass
     elif isinstance(x, MNE_EPOCHS):
-        from .load.fiff import epochs_ndvar
+        from .load.mne import epochs_ndvar
         x = epochs_ndvar(x)
     elif isinstance(x, MNE_EVOKED):
-        from .load.fiff import evoked_ndvar
+        from .load.mne import evoked_ndvar
         x = evoked_ndvar(x)
     elif isinstance(x, MNE_RAW):
-        from .load.fiff import raw_ndvar
+        from .load.mne import raw_ndvar
         x = raw_ndvar(x)
     elif isinstance(x, list):
         if isinstance(x[0], MNE_EVOKED):
-            from .load.fiff import evoked_ndvar
+            from .load.mne import evoked_ndvar
             x = evoked_ndvar(x)
         else:
             x = combine(map(asndvar, x))
@@ -9612,7 +9612,7 @@ def as_sensor(obj) -> Sensor:
     elif isinstance(obj, NDVar):
         return obj.get_dim('sensor')
     elif isinstance(obj, (mne.Info, mne.channels.channels.UpdateChannelsMixin)):
-        from .load.fiff import sensor_dim
+        from .load.mne import sensor_dim
         return sensor_dim(obj)
     else:
         raise TypeError(f"Can't get sensors from {obj}")

@@ -20,7 +20,7 @@ raw_path = os.path.join(datapath, 'MEG', 'sample',
                         'sample_audvis_filt-0-40_raw.fif')
 
 # Load the events from the samepl data file
-ds = load.fiff.events(raw_path)
+ds = load.mne.events(raw_path)
 
 # print the first 10 events to check what we loaded
 print(ds[:10])
@@ -54,7 +54,7 @@ ds_sub = ds.sub("modality != 'None'")
 # Load epochs for our selection. Baseline correct from the beginning of the
 # epoch to the trigger i.e., t=0). Reject trials with peak to peak values larger
 # than 3 pico tesla.
-ds_sub = load.fiff.add_epochs(ds_sub, -0.1, 0.6, baseline=(None, 0),
+ds_sub = load.mne.add_epochs(ds_sub, -0.1, 0.6, baseline=(None, 0),
                               reject=3e-12, sysname='neuromag306mag')
 # check how many events are left
 print(table.frequencies('modality', data=ds_sub))

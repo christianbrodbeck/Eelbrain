@@ -38,7 +38,7 @@ New in 0.37
 -----------
 
 * ICA-GUI (:func:`gui.select_components`): Sort noisy epochs by dominant components - makes it easier to find components that capture specific artifacts.
-* API: :func:`load.fiff.events` now loads events from all stim-channels. To use a subset, use the ``stim_channel`` parameter.
+* API: :func:`load.mne.events` now loads events from all stim-channels. To use a subset, use the ``stim_channel`` parameter.
 * New plot: :class:`plot.SensorMap3d`.
 * :func:`plot.styles_for_twoway` to quickly generate different color and line-style combinations.
 * New function :func:`set_connectivity` to set the neighborhood structure of an :class:`NDVar`.
@@ -88,7 +88,7 @@ New in 0.34
 New in 0.33
 -----------
 
-* API :func:`load.fiff.events`:  The merge parameter is now by default inferred based on the raw data.
+* API :func:`load.mne.events`:  The merge parameter is now by default inferred based on the raw data.
 * Boosting: plot data partitioning scheme (``BoostingResult.splits.plot()``).
 * .. currentmodule:: eelbrain.pipeline
   Experiment :mod:`pipeline`:
@@ -285,7 +285,7 @@ New in 0.26
 
 * ANOVAs now support mixed models with between- and within-subjects factors
   (see examples at :class:`test.ANOVA`).
-* :mod:`load.fiff`: when generating epochs from raw data, a new ``tstop``
+* :mod:`load.mne`: when generating epochs from raw data, a new ``tstop``
   argument allows specifying the time interval exclusive of the last sample.
 * New functions:
 

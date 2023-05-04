@@ -32,7 +32,7 @@ def load_evts(path):
         Events from the raw file as dataset.
     """
     # load the events in the raw file as a dataset
-    ds = eel.load.fiff.events(path, stim_channel='STI 014')
+    ds = eel.load.mne.events(path, stim_channel='STI 014')
 
     # get the trigger variable form the dataset for eaier access
     trigger = ds['trigger']
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     print(eel.table.frequencies('condition', data=ds))
     ds = ds.sub('modality == "A"')
 
-    ds = eel.load.fiff.add_epochs(ds, tmin=-0.1, tmax=0.3, baseline=(None, 0),
+    ds = eel.load.mne.add_epochs(ds, tmin=-0.1, tmax=0.3, baseline=(None, 0),
                                   proj=False, data='mag', reject=2e-12,
                                   name='meg', sysname='neuromag306mag')
 

@@ -84,10 +84,10 @@ Functions and modules for loading specific file formats as Eelbrain object:
    load.sphere_audio
    load.tsv
    load.eyelink
-   load.fiff
    load.txt
    load.cnd
    load.besa
+   load.mne
 
 
 Export

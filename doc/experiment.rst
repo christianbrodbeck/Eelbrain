@@ -409,7 +409,7 @@ By default, events are loaded from all stim channels; use this parameter to rest
 
 .. py:attribute:: MneExperiment.merge_triggers : int
 
-Use a non-default ``merge`` parameter for :func:`.load.fiff.events`.
+Use a non-default ``merge`` parameter for :func:`.load.mne.events`.
 
 .. py:attribute:: MneExperiment.trigger_shift : float | Dict[str, float]
 
@@ -417,7 +417,7 @@ Set this attribute to shift all trigger times by a constant (in seconds). For ex
 
 .. py:attribute:: MneExperiment.meg_system : str
 
-Specify the MEG system used to acquire the data so that the right sensor neighborhood graph can be loaded. This is usually automatic, but is needed for KIT files convert with with :mod:`mne` < 0.13. Equivalent to the ``sysname`` parameter in :func:`.load.fiff.epochs_ndvar` etc. For example, for data from NYU New York, the correct value is ``meg_system="KIT-157"``.
+Specify the MEG system used to acquire the data so that the right sensor neighborhood graph can be loaded. This is usually automatic, but is needed for KIT files convert with with :mod:`mne` < 0.13. Equivalent to the ``sysname`` parameter in :func:`.load.mne.epochs_ndvar` etc. For example, for data from NYU New York, the correct value is ``meg_system="KIT-157"``.
 
 
 Pre-processing (raw)
