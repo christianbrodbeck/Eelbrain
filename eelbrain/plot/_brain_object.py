@@ -47,7 +47,9 @@ try:
 except ImportError as exception:
     from . import _mock_surfer as surfer
     warn(f"Error importing PySurfer: {exception}")
+    SURFER_IMPORTED = False
 else:
+    SURFER_IMPORTED = True
     if first_import:
         reset_logger(surfer.utils.logger)
 del first_import
@@ -170,6 +172,9 @@ class Brain(TimeSlicer, surfer.Brain):
                  offset=True, show_toolbar=False, offscreen=False,
                  interaction='trackball', w=None, h=None, axw=None, axh=None,
                  name=None, pos=None, source_space=None, show=True, run=None):
+        if not SURFER_IMPORTED:
+            raise RuntimeError("PySurfer import failed. You should have seen a warning 'Error importing PySurfer' earlier.")
+
         from ._wx_brain import BrainFrame
 
         self.__data = []
