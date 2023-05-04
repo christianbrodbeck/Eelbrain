@@ -5692,13 +5692,12 @@ class Datalist(list):
                 self[i] = sorted(set(self[i]).union(other[i]))
 
 
-legal_dataset_key_re = re.compile("[_A-Za-z][_a-zA-Z0-9]*$")
-
-
 def assert_is_legal_dataset_key(key):
     if iskeyword(key):
         raise ValueError(f"{key!r} is a reserved keyword and can not be used as variable name in a Dataset")
-    elif not legal_dataset_key_re.match(key):
+    elif key.isidentifier():
+        return
+    else:
         raise ValueError(f"{key!r} is not a valid keyword and can not be used as variable name in a Dataset")
 
 
@@ -5706,7 +5705,7 @@ def as_legal_dataset_key(key):
     "Convert str to a legal dataset key"
     if iskeyword(key):
         return "%s_" % key
-    elif legal_dataset_key_re.match(key):
+    elif key.isidentifier():
         return key
     else:
         if ' ' in key:
@@ -5720,7 +5719,7 @@ def as_legal_dataset_key(key):
         elif key[0].isdigit():
             key = "_%s" % key
 
-        if legal_dataset_key_re.match(key):
+        if key.isidentifier():
             return key
         else:
             raise RuntimeError(f"Could not convert {key!r} to legal dataset key")
