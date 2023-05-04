@@ -821,8 +821,20 @@ def sensor_dim(
 
         # fix channel order
         if names != ch_names:
-            index = np.array([names.index(name) for name in ch_names])
-            c_matrix = c_matrix[index][:, index]
+            try:
+                index = np.array([names.index(name) for name in ch_names])
+                c_matrix = c_matrix[index][:, index]
+            except IndexError:
+                missing = [name for name in ch_names if name not in names]
+                raise IndexError(f"{connectivity=} is missing channels {', '.join(missing)}")
+            # Add superfluous channels as unconnected nodes?
+            # if len(names) < len(ch_names):
+            #     # Add zeros (no connectivity) at index -1
+            #     n = c_matrix.shape[0] + 1
+            #     indptr = np.append(c_matrix.indptr, c_matrix.indptr[-1])
+            #     c_matrix = scipy.sparse.csr_matrix((c_matrix.data, c_matrix.indices, indptr), (n, n), c_matrix.dtype)
+            #     index = [names.index(name) if name in names else -1 for name in ch_names]
+            #     c_matrix = c_matrix[index][:, index]
 
         connectivity = _matrix_graph(c_matrix)
     elif connectivity in (None, False):
