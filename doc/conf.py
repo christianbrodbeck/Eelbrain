@@ -110,6 +110,7 @@ example_order = NameOrder({
     'mass-univariate-statistics': [
         'simulate-N400.py',
         'sensor-cluster-based-ttest.py',
+        'sensor-lm.py',
         'sensor-two-stage.py',
         'compare-topographies.py',
     ],
