@@ -80,14 +80,13 @@ Functions and modules for loading specific file formats as Eelbrain object:
 .. autosummary::
    :toctree: generated
 
-   load.wav
+   load.cnd
    load.sphere_audio
    load.tsv
-   load.eyelink
-   load.txt
-   load.cnd
+   load.wav
    load.besa
    load.mne
+   load.txt
 
 
 Export

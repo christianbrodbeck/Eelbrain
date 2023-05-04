@@ -13,7 +13,7 @@ from .._data_obj import Dataset, Datalist, Var
 from .._utils import ui
 from .._utils.subp import get_bin
 
-__all__ = ('Edf', 'read_edf', 'read_edf_events', 'read_edf_samples')
+__all__ = ('Edf', 'read_edf')
 
 
 class Edf:
@@ -492,7 +492,6 @@ def artifact_epochs(ds, tmin=-0.2, tmax=0.6, crop=True, esacc='sacc',
             blink.append(epoch)
 
     return sacc, blink
-
 
 
 def add_artifact_epochs(ds, tmin=-0.2, tmax=0.6, crop=True, esacc='sacc',
