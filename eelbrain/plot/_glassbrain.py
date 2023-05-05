@@ -41,7 +41,7 @@ import warnings
 import nibabel
 import numpy as np
 
-from .._data_obj import NDVarArg, VolumeSourceSpace
+from .._data_obj import NDVarArg, Dataset, VolumeSourceSpace
 from .._utils.numpy_utils import newaxis
 from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, brain_data, butterfly_data, use_inline_backend
 from ._utsnd import Butterfly
@@ -203,6 +203,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             symmetric_cbar: Union[bool, Literal['auto']] = 'auto',
             interpolation: str = 'nearest',
             show_time: bool = False,
+            data: Dataset = None,
             **kwargs):
         # Give wxPython a chance to initialize the menu before pyplot
         if not use_inline_backend():
@@ -232,7 +233,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             source = ndvar
             ndvar = time = None
         else:
-            ndvar = brain_data(ndvar)
+            ndvar = brain_data(ndvar, data)
             source = ndvar.get_dim('source')
             if not isinstance(source, VolumeSourceSpace):
                 raise ValueError(f"ndvar={ndvar!r}:  need volume source space data")

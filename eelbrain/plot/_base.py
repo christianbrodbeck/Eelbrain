@@ -679,12 +679,13 @@ def find_labels(
 
 def brain_data(
         data: Union[NDVar, testnd.NDTest],
+        dataset: Dataset = None,
 ):
     # for GlassBrain and surfer brain
     if isinstance(data, testnd.NDDifferenceTest):
         return data.masked_difference()
     else:
-        return asndvar(data)
+        return asndvar(data, data=dataset)
 
 
 def butterfly_data(
