@@ -5922,15 +5922,25 @@ class MneExperiment(FileTree):
 
         return Brain(mrisubject, **brain_args)
 
-    def plot_coreg(self, dig=True, parallel=True, **state):
+    def plot_coregistration(
+            self,
+            surfaces: Union[str, list, dict] = 'auto',
+            meg: Tuple[str, ...] = ('helmet', 'sensors'),
+            dig: bool = True,
+            parallel: bool = True,
+            **state):
         """Plot the coregistration (Head shape and MEG helmet)
 
         Parameters
         ----------
-        dig : bool
+        surfaces
+            :func:`mne.viz.plot_alignment` parameter.
+        meg
+            :func:`mne.viz.plot_alignment` parameter.
+        dig
             Plot the digitization points (default True; 'fiducials' to plot
             fiducial points only).
-        parallel : bool
+        parallel
             Set parallel view.
         ...
             State parameters.
@@ -5942,16 +5952,9 @@ class MneExperiment(FileTree):
         self.set(**state)
         with self._temporary_state:
             raw = self.load_raw(raw='raw')
-        fig = mne.viz.plot_alignment(
-            raw.info, self.get('trans-file'), self.get('mrisubject'),
-            self.get('mri-sdir'), meg=('helmet', 'sensors'), dig=dig,
-            interaction='terrain')
+        fig = mne.viz.plot_alignment(raw.info, self.get('trans-file'), self.get('mrisubject'), self.get('mri-sdir'), surfaces, meg=meg, dig=dig, interaction='terrain')
         if parallel:
-            fig.scene.camera.parallel_projection = True
-            fig.scene.camera.parallel_scale = .2
-            fig.scene.camera.position = [0, .5, .04]
-            fig.scene.camera.focal_point = [0, 0, .04]
-            fig.render()
+            fig.plotter.enable_parallel_projection()
         return fig
 
     def plot_whitened_gfp(self, s_start=None, s_stop=None, run=None):
