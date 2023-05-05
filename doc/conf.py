@@ -100,6 +100,7 @@ example_order = NameOrder({
     'datasets': [
         'intro.py',
         'basic.py',
+        'ndvar.py',
         'align.py',
     ],
     'statistics': [
@@ -108,7 +109,6 @@ example_order = NameOrder({
         'ANCOVA.py',
     ],
     'mass-univariate-statistics': [
-        'simulate-N400.py',
         'sensor-cluster-based-ttest.py',
         'sensor-lm.py',
         'sensor-two-stage.py',

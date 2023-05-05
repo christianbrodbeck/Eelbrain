@@ -2,8 +2,8 @@
 """
 .. _exa-generate-ndvar:
 
-Generate NDVar (with artificial data)
-=====================================
+NDVars
+======
 
 .. currentmodule:: eelbrain
 
@@ -19,12 +19,18 @@ from eelbrain import *
 
 
 ###############################################################################
-# Create a Sensor dimension from an actual montage
+# NDVars associate data arrays with Dimension objects that describe what the
+# different data axes mean, and provide meta information thay is used, for
+# example for plotting.
+# Start by create a Sensor dimension from an actual montage:
 sensor = Sensor.from_montage('standard_alphabetic')
 p = plot.SensorMap(sensor)
 
 ###############################################################################
-# Generate N400-like topography
+# Using information from the Sensor descriptoin about sensor coordinates, we
+# can now generate an N400-like topography. After associating the data array
+# with the Sensor description in an NDVar, the topography can be plotted
+# without any further information:
 i_cz = sensor.names.index('Cz')
 cz_loc = sensor.locs[i_cz]
 dists = scipy.spatial.distance.cdist([cz_loc], sensor.locs)[0]
@@ -34,7 +40,9 @@ n400_topo = NDVar(topo, sensor)
 p = plot.Topomap(n400_topo, clip='circle')
 
 ###############################################################################
-# Generate N400-like timing
+# The time axis is specified using a :class:`UTS` ("uniform time series")
+# object. As with the topography, the UTS object allows the NDVar to
+# automatically format the time axis of a figure:
 window = scipy.signal.windows.gaussian(200, 12)[:140]
 time = UTS(-0.100, 0.005, 140)
 n400_timecourse = NDVar(window, time)
@@ -45,17 +53,19 @@ p = plot.UTS(n400_timecourse)
 # probability")
 rng = np.random.RandomState(0)
 n_trials = 100
-cloze_x = np.concatenate([
+cloze = np.concatenate([
     rng.uniform(0, 0.3, n_trials // 2),
     rng.uniform(0.8, 1.0, n_trials // 2),
 ])
-rng.shuffle(cloze_x)
-cloze = Var(cloze_x)
+rng.shuffle(cloze)
 p = plot.Histogram(cloze)
 
 ###############################################################################
-# Put all the dimensions together to simulate the EEG signal
-signal = (1 - cloze) * n400_timecourse * n400_topo
+# Put all the dimensions together to simulate the EEG signal. On the first
+# line, turn cloze into Var to make clear that cloze represents a Case
+# dimension, i.e. different trials (rather than data on the time dimension in
+# ``n400_timecourse``):
+signal = Var(1 - cloze) * n400_timecourse * n400_topo  
 
 # Add noise
 noise = powerlaw_noise(signal, 1)
@@ -66,10 +76,11 @@ signal += noise
 signal -= signal.mean(sensor=['M1', 'M2'])
 
 # Store EEG data in a Dataset with trial information
-ds = Dataset()
-ds['eeg'] = signal
-ds['cloze'] = Var(cloze_x)
-ds['cloze_cat'] = Factor(cloze_x > 0.5, labels={True: 'high', False: 'low'})
+ds = Dataset({
+    'eeg': signal,
+    'cloze': Var(cloze),
+    'cloze_cat': Factor(cloze > 0.5, labels={True: 'high', False: 'low'}),
+})
 
 ###############################################################################
 # Plot the average simulated response
