@@ -4394,7 +4394,12 @@ class MneExperiment(FileTree):
         else:
             bem = self._load_bem()
             bemsol = mne.make_bem_solution(bem)
-        fwd = mne.make_forward_solution(raw.info, trans, src, bemsol, ignore_ref=True)
+        # ignore_ref should be True for KIT
+        if 'kit_system_id' in raw.info:
+            is_kit = raw.info['kit_system_id'] is not None
+        else:
+            raise RuntimeError("Unclear how to set ignor_ref for legacy file without kit_system_id")
+        fwd = mne.make_forward_solution(raw.info, trans, src, bemsol, ignore_ref=is_kit)
         for s, s0 in zip(fwd['src'], src):
             if s['nuse'] != s0['nuse']:
                 raise RuntimeError(f"The forward solution {basename(dst)} contains fewer sources than the source space. This could be due to a corrupted bem file with sources outside of the inner skull surface.")
