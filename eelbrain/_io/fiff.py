@@ -947,8 +947,8 @@ def variable_length_mne_epochs(
         the data from the beginning of the epoch up to ``t = 0``). Set to
         ``None`` for no baseline correction (default).
     allow_truncation
-        If a ``tmax`` value falls outside the data available in ``raw``,
-        automatically truncate the epoch (by default this raises a
+        If a ``tmin`` or ``tmax`` value falls outside the data available in
+        ``raw``, automatically truncate the epoch (by default this raises a
         ``ValueError``).
     tstop
         Alternative to ``tmax``. While ``tmax`` specifies the last samples to
@@ -983,8 +983,16 @@ def variable_length_mne_epochs(
     if picks is None and raw.info['bads']:
         picks = mne.pick_types(raw.info, meg=True, eeg=True, eog=True, ref_meg=False, exclude=[])
     events = _mne_events(ds)
+    # Load epochs
     out = []
     for i, (tmin_i, tmax_i) in enumerate(zip(tmin, tmax)):
+        i_min = events[i, 0] + floor(tmin_i * raw.info['sfreq'])
+        if raw.first_samp > i_min:
+            if allow_truncation:
+                tmin_i = (raw.first_samp - events[i, 0]) / raw.info['sfreq']
+            else:
+                missing = (i_min - raw.first_samp) / raw.info['sfreq']
+                raise ValueError(f"{tmin[i]=} is outside of data range by {missing:g} s")
         i_max = events[i, 0] + floor(tmax_i * raw.info['sfreq'])
         if raw.last_samp < i_max:
             if allow_truncation:
