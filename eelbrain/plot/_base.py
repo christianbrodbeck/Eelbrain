@@ -179,15 +179,6 @@ UNIT_FORMAT = {
     'normalized': 1,
     int: int,
 }
-SCALE_FORMATTERS = {
-    1: None,
-    1e3: FuncFormatter(lambda x, pos: '%g' % (1e3 * x)),
-    1e6: FuncFormatter(lambda x, pos: '%g' % (1e6 * x)),
-    1e9: FuncFormatter(lambda x, pos: '%g' % (1e9 * x)),
-    1e12: FuncFormatter(lambda x, pos: '%g' % (1e12 * x)),
-    1e15: FuncFormatter(lambda x, pos: '%g' % (1e15 * x)),
-    int: FuncFormatter(lambda x, pos: '%i' % round(x)),
-}
 DEFAULT_CMAPS = {
     'B': 'xpolar',
     'V': 'xpolar',
@@ -231,7 +222,7 @@ class AxisScale:
             data_unit = None
             meas = None
             unit = None
-            scale = v
+            scale = 1 / v
         else:
             if isnumeric(v):
                 meas = v.info.get('meas')
@@ -252,10 +243,12 @@ class AxisScale:
                 unit = data_unit
         self.data_unit = data_unit  # None | str
         self.display_unit = unit
-        # ScalarFormatter: disabled because it always used e notation in status bar
-        # (needs separate instance because it adapts to data)
-        # fmt = ScalarFormatter() if scale == 1 else scale_formatters[scale]
-        self.formatter = SCALE_FORMATTERS[scale]  # Matplotlib tick formatter
+        if scale == 1:
+            self.formatter = None
+        elif scale is int:
+            self.formatter = FuncFormatter(lambda x, pos: f'{x:.0f}')
+        else:
+            self.formatter = FuncFormatter(lambda x, pos: f'{scale * x:g}')
 
         if label is True:
             if meas and unit and meas not in unit:
@@ -2857,6 +2850,7 @@ class ColorBarMixin:
             clipmin: float = None,
             clipmax: float = None,
             orientation: Literal['horizontal', 'vertical'] = 'horizontal',
+            unit: Union[str, float] = None,
             **kwargs,
     ):
         """Plot a colorbar corresponding to the displayed data
@@ -2877,6 +2871,9 @@ class ColorBarMixin:
             Clip the color-bar above this value.
         orientation
             Orientation of the bar (default is horizontal).
+        unit
+            Unit for the axis to determine tick labels (for example, ``'µV'`` to
+            label 0.000001 as '1') or multiplier (e.g., ``1e-6``).
         ...
             More parameters for :class:`plot.ColorBar`.
 
@@ -2895,7 +2892,9 @@ class ColorBarMixin:
             cmap, vmin, vmax = self.__get_params()
         else:
             raise RuntimeError(f"No colormap on {self}")
-        return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation, clipmin, clipmax, orientation, self.__scale, **kwargs)
+        if unit is None:
+            unit = self.__scale
+        return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation, clipmin, clipmax, orientation, unit, **kwargs)
 
 
 class ColorMapMixin(ColorBarMixin):
