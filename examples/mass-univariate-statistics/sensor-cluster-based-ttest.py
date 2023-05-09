@@ -2,8 +2,8 @@
 """
 .. _exa-cluster-based-mu:
 
-Cluster-based permutation t-test
-================================
+T-test
+======
 
 .. currentmodule:: eelbrain
 

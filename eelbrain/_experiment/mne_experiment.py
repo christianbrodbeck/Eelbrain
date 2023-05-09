@@ -5590,7 +5590,7 @@ class MneExperiment(FileTree):
         report = fmtxt.Report(title)
         for subject in self:
             mrisubject = self.get('mrisubject')
-            fig = self.plot_coreg()
+            fig = self.plot_coregistration()
             fig.scene.camera.parallel_projection = True
             fig.scene.camera.parallel_scale = .175
             mlab.draw(fig)

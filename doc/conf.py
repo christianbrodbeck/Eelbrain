@@ -109,6 +109,7 @@ example_order = NameOrder({
         'ANCOVA.py',
     ],
     'mass-univariate-statistics': [
+        'permutation-statistics.py',
         'sensor-cluster-based-ttest.py',
         'sensor-lm.py',
         'sensor-two-stage.py',
