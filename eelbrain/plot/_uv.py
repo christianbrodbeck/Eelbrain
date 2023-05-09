@@ -1333,13 +1333,14 @@ class Histogram(EelFigure):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
+    @deprecate_ds_arg
     def __init__(
             self,
             y: Union[VarArg, Sequence[float]],
             x: CategorialArg = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             pooled: bool = True,
             density: bool = False,
             test: bool = False,
@@ -1349,7 +1350,7 @@ class Histogram(EelFigure):
             ylabel: Union[bool, str] = None,
             bins: Union[str, int, np.ndarray] = None,
             **kwargs):
-        ct = Celltable(y, x, match=match, sub=sub, data=ds, coercion=asvar)
+        ct = Celltable(y, x, match=match, sub=sub, data=data, coercion=asvar)
 
         # layout
         if x is None:
