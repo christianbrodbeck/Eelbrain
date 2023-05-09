@@ -207,6 +207,11 @@ class NDTest:
     def _first_cdist(self):
         return self._cdist
 
+    @property
+    def permutation_distribution(self):
+        if self._cdist is not None:
+            return self._cdist.dist
+
     def _plot_model(self):
         "Determine x for plotting categories"
         return None
@@ -1570,6 +1575,11 @@ class MultiEffectNDTest(NDTest):
             return None
         else:
             return self._cdist[0]
+
+    @property
+    def permutation_distribution(self):
+        if self._first_cdist is not None:
+            return [cdist.dist for cdist in self._cdist]
 
     def _max_statistic(
             self,
