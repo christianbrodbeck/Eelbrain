@@ -3503,14 +3503,7 @@ class NDPermutationDistribution:
         else:
             p_map = self.compute_probability_map(**sub)
             bin_map = np.less_equal(p_map.x, pmin)
-
-            # threshold for maps
-            if maps:
-                values = np.abs(param_map.x)[bin_map]
-                if len(values):
-                    threshold = values.min() / 2
-                else:
-                    threshold = 1.
+            threshold = None
 
             # find clusters (reshape to internal shape for labelling)
             if self._nad_ax:
@@ -3544,10 +3537,11 @@ class NDPermutationDistribution:
             # package ndvar
             dims = ('case',) + param_map.dims
             param_contours = {}
-            if self.tail >= 0:
-                param_contours[threshold] = (0.7, 0.7, 0)
-            if self.tail <= 0:
-                param_contours[-threshold] = (0.7, 0, 0.7)
+            if threshold:
+                if self.tail >= 0:
+                    param_contours[threshold] = (0.7, 0.7, 0)
+                if self.tail <= 0:
+                    param_contours[-threshold] = (0.7, 0, 0.7)
             info = _info.for_stat_map(self.meas, contours=param_contours)
             info['summary_func'] = np.sum
             ds['cluster'] = NDVar(c_maps, dims, info=info)
