@@ -1321,15 +1321,34 @@ class Histogram(EelFigure):
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
+    title
+        Figure title.
+    xlabel
+        X axis label.
+    ylabel
+        Y axis label.
     bins : str | int | array
         Histogram bins, specified either as arry of bin edges or as ``bins``
         parameter for :func:`numpy.histogram_bin_edges`).
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, y, x=None, match=None, sub=None, ds=None, pooled=True,
-                 density=False, test=False, tight=True, title=None, xlabel=True,
-                 bins=None, **kwargs):
+    def __init__(
+            self,
+            y: Union[VarArg, Sequence[float]],
+            x: CategorialArg = None,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            pooled: bool = True,
+            density: bool = False,
+            test: bool = False,
+            tight: bool = True,
+            title: str = None,
+            xlabel: Union[bool, str] = True,
+            ylabel: Union[bool, str] = None,
+            bins: Union[str, int, np.ndarray] = None,
+            **kwargs):
         ct = Celltable(y, x, match=match, sub=sub, data=ds, coercion=asvar)
 
         # layout
@@ -1409,8 +1428,12 @@ class Histogram(EelFigure):
             xlabel = False  # xlabel is used for test result
 
         if density:
-            self._configure_axis_data('y', 'p', 'probability density')
+            if ylabel is None:
+                ylabel = 'Probability density'
+            self._configure_axis_data('y', 'p', ylabel)
         else:
-            self._configure_axis_data('y', 'n', 'count')
+            if ylabel is None:
+                ylabel = 'Count'
+            self._configure_axis_data('y', 'n', ylabel)
         self._configure_axis_data('x', ct.y, xlabel)
         self._show()
