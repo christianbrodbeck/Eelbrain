@@ -2,5 +2,5 @@
 Mass-Univariate Statistics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-:class:`NDVar`, n-dimensional variables, allow mass-univariate statistics
-analogous to univariate statistics.
+With :class:`NDVar` ("n-dimensional variables"), mass-univariate statistics
+can be evaluated analogous to univariate statistics.

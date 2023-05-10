@@ -19,16 +19,16 @@ ds['y'] = Var(np.random.normal(0, 1, 6))
 # categorical data as represented in Factors:
 ds['a'] = Factor(['a', 'b', 'c'], repeat=2)
 # check the result:
-print(ds)
+ds
 
 ###############################################################################
 # For larger datasets it can be more convenient to print only the first few
 # cases...
-print(ds.head())
+ds.head()
 
 ###############################################################################
 # ... or a summary of variables:
-print(ds.summary())
+ds.summary()
 
 ###############################################################################
 # An alternative way of constructing a dataset is case by case (i.e., row by
@@ -41,4 +41,4 @@ for i in range(6):
     a = 'abc'[i % 3]
     rows.append([subject, y, a])
 ds = Dataset.from_caselist(['subject', 'y', 'a'], rows, random='subject')
-print(ds)
+ds

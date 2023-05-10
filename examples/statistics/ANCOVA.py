@@ -2,6 +2,9 @@
 ANCOVA
 ======
 
+Analysis of covariance for univariate data.
+
+
 Example 1
 ---------
 Based on [1]_, `Exercises
@@ -27,12 +30,12 @@ hours = Var([8, 12, 16, 24], tile=6, name="Hours")
 print(hours * genotype)
 
 ###############################################################################
-# ANCOVA
-print(test.ANOVA(y, hours * genotype, title="ANOVA"))
+# Estimate the ANCOVA:
+test.ANOVA(y, hours * genotype)
 
 ###############################################################################
-# Plot the slopes
-plot.Regression(y, hours, genotype)
+# Plot the slopes:
+p = plot.Regression(y, hours, genotype)
 
 
 ###############################################################################
@@ -52,13 +55,13 @@ a = Factor([1, 2, 3], repeat=8, name='A')
 
 ###############################################################################
 # Full model, with interaction
-print(test.ANOVA(y, cov * a))
 plot.Regression(y, cov, a)
+test.ANOVA(y, cov * a)
 
 ###############################################################################
 # Drop interaction term
-print(test.ANOVA(y, a + cov))
 plot.Regression(y, cov)
+test.ANOVA(y, a + cov)
 
 
 ###############################################################################
@@ -68,12 +71,12 @@ plot.Regression(y, cov)
 
 # Load data form a text file
 ds = load.txt.tsv('Fox_Prestige_data.txt', delimiter=' ', skipinitialspace=True)
-print(ds.head())
+ds.head()
 
 ###############################################################################
 
 # Variable summary
-print(ds.summary())
+ds.summary()
 
 ###############################################################################
 
@@ -81,7 +84,7 @@ print(ds.summary())
 ds2 = ds[ds['type'] != 'NA']
 
 # ANOVA
-print(test.ANOVA('prestige', '(income + education) * type', data=ds2))
+test.ANOVA('prestige', '(income + education) * type', data=ds2)
 
 
 ###############################################################################

@@ -23,9 +23,12 @@ ds.index()
 # Generate two shuffled copies of the dataset (and print them to confirm that
 # they are shuffled)
 ds1 = ds[random.sample(range(ds.n_cases), 15)]
-print(ds1.head())
+ds1.head()
+
+
+###############################################################################
 ds2 = ds[random.sample(range(ds.n_cases), 16)]
-print(ds2.head())
+ds2.head()
 
 
 ###############################################################################
@@ -40,4 +43,4 @@ ds1_aligned, ds2_aligned = align(ds1, ds2, 'index')
 # show the ascii sequences for the two datasets next to each other to
 # demonstrate that they are aligned
 ds1_aligned['ascii_ds2'] = ds2_aligned['ascii']
-print(ds1_aligned)
+ds1_aligned

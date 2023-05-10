@@ -28,56 +28,66 @@ case is described by a string label. The most obvious way to initialize a
 from eelbrain import *
 
 a = Factor(['a', 'a', 'a', 'a', 'b', 'b', 'b', 'b'], name='A')
-print(a)
+a
 
 ###############################################################################
 # Since Factor initialization simply iterates over the given data, the
 # same Factor could be initialized with:
 
 a = Factor('aaaabbbb', name='A')
-print(a)
+a
 
 ###############################################################################
 # There are other shortcuts to initialize factors  (see also
 # the :class:`Factor` class documentation):
 
 a = Factor(['a', 'b', 'c'], repeat=4, name='A')
-print(a)
+a
 
 ###############################################################################
 # Indexing works like for arrays:
 
-print(a[0])
-print(a[0:6])
+a[0]
+
+###############################################################################
+a[0:6]
 
 ###############################################################################
 # All values present in a :class:`Factor` are accessible in its
 # :attr:`Factor.cells` attribute:
 
-print(a.cells)
+a.cells
 
 ###############################################################################
 # Based on the Factor's cell values, boolean indexes can be generated:
 
-print(a == 'a')
-print(a.isany('a', 'b'))
-print(a.isnot('a', 'b'))
+a == 'a'
+
+###############################################################################
+a.isany('a', 'b')
+
+###############################################################################
+a.isnot('a', 'b')
 
 ###############################################################################
 # Interaction effects can be constructed from multiple factors with the ``%``
 # operator:
 
 b = Factor(['d', 'e'], repeat=2, tile=3, name='B')
-print(b)
+b
+
+###############################################################################
 i = a % b
-print(i)
+i
 
 ###############################################################################
 # Interaction effects are in many ways interchangeable with factors in places
 # where a categorial model is required:
 
-print(i.cells)
-print(i == ('a', 'd'))
+i.cells
+
+###############################################################################
+i == ('a', 'd')
 
 ###############################################################################
 # Var
@@ -87,24 +97,26 @@ print(i == ('a', 'd'))
 # :py:class:`numpy.ndarray`:
 
 y = Var([1, 2, 3, 4, 5, 6])
-print(y)
+y
 
 ###############################################################################
 # Indexing works as for factors
 
-print(y[5])
-print(y[2:])
+y[5]
+
+###############################################################################
+y[2:]
 
 ###############################################################################
 # Many array operations can be performed on the object directly
 
-print(y + 1)
+y + 1
 
 ###############################################################################
 # For any more complex operations the corresponding :py:class:`numpy.ndarray`
 # can be retrieved in the :attr:`Var.x` attribute:
 
-print(y.x)
+y.x
 
 ###############################################################################
 # .. Note::
@@ -124,7 +136,7 @@ print(y.x)
 
 ds = datasets.simulate_erp()
 eeg = ds['eeg']
-print(eeg)
+eeg
 
 ###############################################################################
 # This representation shows that ``eeg`` contains 80 trials of data (cases),
@@ -148,14 +160,14 @@ plot.Topomap(eeg_400)
 # Several methods allow aggregating data, for example an RMS over sensor:
 
 eeg_rms = eeg.rms('sensor')
-print(eeg_rms)
 plot.UTSStat(eeg_rms)
+eeg_rms
 
 ###############################################################################
 # Or a mean in a time window:
 
 eeg_400 = eeg.mean(time=(0.350, 0.450))
-plot.Topomap(eeg_400)
+p = plot.Topomap(eeg_400)
 
 ###############################################################################
 # As with a :class:`Var`, the corresponding :class:`numpy.ndarray` can always be
@@ -163,7 +175,7 @@ plot.Topomap(eeg_400)
 # data while being explicit about which axis represents which dimension:
 
 array = eeg_400.get_data(('case', 'sensor'))
-print(array.shape)
+array.shape
 
 ###############################################################################
 # :class:`NDVar` objects can be constructed directly from an array and
@@ -175,14 +187,14 @@ frequency = Scalar('frequency', [1, 2, 3, 4])
 time = UTS(0, 0.01, 50)
 data = numpy.random.normal(0, 1, (4, 50))
 ndvar = NDVar(data, (frequency, time))
-print(ndvar)
+ndvar
 
 ###############################################################################
 # A case dimension can be added by including the bare :class:`Case` class:
 #
 data = numpy.random.normal(0, 1, (10, 4, 50))
 ndvar = NDVar(data, (Case, frequency, time))
-print(ndvar)
+ndvar
 
 ###############################################################################
 # Dataset
@@ -197,7 +209,7 @@ print(ndvar)
 ds = Dataset()
 ds['x'] = Factor('aaabbb')
 ds['y'] = Var([5, 4, 6, 2, 1, 3])
-print(ds)
+ds
 
 ###############################################################################
 # A variable that's equal in all cases can be assigned quickly:
@@ -209,7 +221,7 @@ ds[:, 'z'] = 0.
 # on the variables stored in it:
 
 # in an interactive shell this would be the output of just typing ``ds``
-print(repr(ds))
+repr(ds)
 
 ###############################################################################
 # ``n_cases=6`` indicates that the Dataset contains 6 cases (rows). The
@@ -220,28 +232,28 @@ print(repr(ds))
 # A more extensive summary can be printed with the :meth:`Dataset.summary`
 # method:
 
-print(ds.summary())
+ds.summary()
 
 ###############################################################################
 # Indexing a Dataset with strings returns the corresponding data-objects:
 
-print(ds['x'])
+ds['x']
 
 ###############################################################################
 # :class:`numpy.ndarray`-like indexing on the Dataset can be used to access a
 # subset of cases:
 
-print(ds[2:])
+ds[2:]
 
 ###############################################################################
 # Row and column can be indexed simultaneously (in row, column order):
 
-print(ds[2, 'x'])
+ds[2, 'x']
 
 ###############################################################################
 # Arry-based indexing also allows indexing based on the Dataset's variables:
 
-print(ds[ds['x'] == 'a'])
+ds[ds['x'] == 'a']
 
 ###############################################################################
 # Since the dataset acts as container for variable, there is a
@@ -249,13 +261,13 @@ print(ds[ds['x'] == 'a'])
 # defined by the dataset, which means that dataset variables can be invoked
 # with just their name:
 
-print(ds.eval("x == 'a'"))
+ds.eval("x == 'a'")
 
 ###############################################################################
 # Many dataset methods allow using code strings as shortcuts for expressions
 # involving dataset variables, for example indexing:
 
-print(ds.sub("x == 'a'"))
+ds.sub("x == 'a'")
 
 ###############################################################################
 # Example
@@ -271,15 +283,20 @@ ds = Dataset({
     'a': Factor('abc', 'A', repeat=7),
     'y': Var(y, 'Y'),
 })
-print(ds)
+ds
+
 ###############################################################################
-print(table.frequencies('a', data=ds))
+table.frequencies('a', data=ds)
+
 ###############################################################################
-print(test.ANOVA('y', 'a', data=ds))
+test.ANOVA('y', 'a', data=ds)
+
 ###############################################################################
-print(test.pairwise('y', 'a', data=ds, corr='Hochberg'))
+test.pairwise('y', 'a', data=ds, corr='Hochberg')
+
 ###############################################################################
 t = test.pairwise('y', 'a', data=ds, corr='Hochberg')
 print(t.get_tex())
+
 ###############################################################################
-plot.Boxplot('y', 'a', data=ds, title="My Boxplot", ylabel="value", corr='Hochberg')
+p = plot.Boxplot('y', 'a', data=ds, title="My Boxplot", ylabel="value", corr='Hochberg')
