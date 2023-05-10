@@ -222,7 +222,7 @@ class LM(MultiEffectNDTest):
         else:
             return [self.t(term) for term in self.column_names]
 
-    def _index(self, term):
+    def _index(self, term: str) -> int:
         if term in self.column_names:
             return self.column_names.index(term)
         elif term in self._parametrization.terms:
@@ -231,11 +231,11 @@ class LM(MultiEffectNDTest):
                 raise NotImplementedError("Term has more than one column")
             return index.start
         else:
-            raise KeyError(f"Unknown term: {term!r}")
+            raise KeyError(f"{term=}")
 
     def coefficient(self, term):
-        ":class:`NDVar` with regression coefficient for a given term"
-        return NDVar(self._coefficient(term)[0], self.dims, name=term)
+        ":class:`NDVar` with regression coefficient for a given term (or ``'intercept'``)"
+        return NDVar(self._coefficient(term)[0], self.dims, term, self._y_info)
 
     def predict(
             self,
@@ -280,10 +280,10 @@ class LM(MultiEffectNDTest):
         # Add intercept
         x = np.append(1, x_in)
         y = x.dot(self._coeffs_flat)
-        return NDVar(y.reshape(self._shape), self.dims, self._y_info, name)
+        return NDVar(y.reshape(self._shape), self.dims, name, self._y_info)
 
-    def t(self, term):
-        ":class:`NDVar` with t-values for a given term"
+    def t(self, term: str) -> NDVar:
+        ":class:`NDVar` with t-values for a given term (or ``'intercept'``)."
         index = self._index(term)
         se = self._se_flat[index]
         flat_index = se == 0.
@@ -297,7 +297,7 @@ class LM(MultiEffectNDTest):
             t[np.logical_and(flat_index, t != 0)] *= np.inf
         info = _info.for_stat_map('t')
         info['term'] = term
-        return NDVar(t.reshape(self._shape), self.dims, info, term)
+        return NDVar(t.reshape(self._shape), self.dims, term, info)
 
     def _n_columns(self):
         return {term: s.stop - s.start for term, s in self._parametrization.terms.items()}
