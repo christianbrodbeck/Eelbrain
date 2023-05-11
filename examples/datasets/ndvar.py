@@ -12,7 +12,7 @@ Shows how to initialize an :class:`NDVar` with the structure of EEG data from
 analysis techniques and meant to vaguely resemble data from an N400 experiment,
 but it is not meant to be a physiologically realistic simulation.
 """
-# sphinx_gallery_thumbnail_number = 2
+# sphinx_gallery_thumbnail_number = 3
 import numpy as np
 import scipy.spatial
 from eelbrain import *
@@ -25,6 +25,15 @@ from eelbrain import *
 # Start by create a Sensor dimension from an actual montage:
 sensor = Sensor.from_montage('standard_alphabetic')
 p = plot.SensorMap(sensor)
+
+###############################################################################
+# The dimenson also contains information about the connectivity of its elements
+# (i.e., specifying which elements are adjacent), which is used, for example,
+# for cluster-based analysis. This information is imported automatically from
+# mne-python when available; otherwise it can be defined manually when creating
+# the sensor object, or based on distance as here:
+sensor.set_connectivity(connect_dist=1.66)
+p = plot.SensorMap(sensor, connectivity=True)
 
 ###############################################################################
 # Using information from the :class:`Sensor` description about sensor coordinates, we
