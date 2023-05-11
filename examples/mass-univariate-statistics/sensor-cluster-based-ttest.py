@@ -11,6 +11,10 @@ This example show a cluster-based permutation test for a simple design (two
 conditions). The example uses simulated data meant to vaguely resemble data
 from an N400 experiment (not intended as a physiologically realistic
 simulation).
+
+.. contents:: Contents
+   :local:
+
 """
 # sphinx_gallery_thumbnail_number = 3
 from eelbrain import *
@@ -97,9 +101,13 @@ clusters
 # extent of the cluster:
 cluster_id = clusters[0, 'id']
 cluster = res.cluster(cluster_id)
-p = plot.TopoArray(cluster, interpolation='nearest', t=[0.350, 0.400, 0.450])
+p = plot.TopoArray(cluster, interpolation='nearest', t=[0.350, 0.400, 0.450, None])
+# plot the colorbar next to the right-most sensor plot
+p_cb = p.plot_colorbar(right_of=p.axes[3])
 
 ###############################################################################
+# Using a cluster as functional ROI
+# ---------------------------------
 # Often it is desirable to summarize values in a cluster. This is especially useful
 # in more complex designs. For example, after finding a signficant interaction effect 
 # in an ANOVA, one might want to follow up with a pairwise test of the value in the 

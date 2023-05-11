@@ -15,9 +15,12 @@ Data are represented with there primary data-objects:
 Multiple variables belonging to the same dataset can be grouped in a
 :class:`Dataset` object.
 
+.. contents:: Contents
+   :local:
+
 
 Factor
-======
+------
 
 A :class:`Factor` is a container for one-dimensional, categorial data: Each
 case is described by a string label. The most obvious way to initialize a
@@ -91,7 +94,7 @@ i == ('a', 'd')
 
 ###############################################################################
 # Var
-# ===
+# ---
 #
 # The :class:`Var` class is a container for one-dimensional
 # :py:class:`numpy.ndarray`:
@@ -125,7 +128,7 @@ y.x
 #
 #
 # NDVar
-# =====
+# -----
 #
 # :class:`NDVar` objects are containers for multidimensional data, and manage the
 # description of the dimensions along with the data. :class:`NDVar` objects are
@@ -193,14 +196,19 @@ p = plot.Topomap(eeg_average)
 
 ###############################################################################
 # Dataset
-# =======
+# -------
 #
 # A :class:`Dataset` is a container for multiple variables
 # (:class:`Factor`, :class:`Var` and :class:`NDVar`) that describe the same
 # cases. It can be thought of as a data table with columns corresponding to 
 # different variables and rows to different cases.
-# Consider the dataset containing the simulated EEG data used above (the
-# :meth:`Dataset.head` method only shows the first couple of rows):
+# Consider the dataset containing the simulated EEG data used above:
+
+data
+
+###############################################################################
+# Because this can be more output than needed, the
+# :meth:`Dataset.head` method only shows the first couple of rows:
 
 data.head()
 
