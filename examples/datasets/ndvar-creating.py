@@ -2,8 +2,8 @@
 """
 .. _exa-generate-ndvar:
 
-NDVars
-======
+Creating NDVars
+===============
 
 .. currentmodule:: eelbrain
 

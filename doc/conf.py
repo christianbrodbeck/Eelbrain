@@ -99,9 +99,9 @@ example_order = NameOrder({
     'examples': [],
     'datasets': [
         'intro.py',
-        'basic.py',
-        'ndvar.py',
+        'dataset-basics.py',
         'align.py',
+        'ndvar-creating.py',
     ],
     'statistics': [
         'models.py',

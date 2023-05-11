@@ -24,7 +24,7 @@ case is described by a string label. The most obvious way to initialize a
 :class:`Factor` is a list of strings:
 
 """
-# sphinx_gallery_thumbnail_number = 5
+# sphinx_gallery_thumbnail_number = 3
 from eelbrain import *
 
 a = Factor(['a', 'a', 'a', 'a', 'b', 'b', 'b', 'b'], name='A')
@@ -129,72 +129,67 @@ y.x
 #
 # :class:`NDVar` objects are containers for multidimensional data, and manage the
 # description of the dimensions along with the data. :class:`NDVar` objects are
-# often not constructed from scratch but imported from existing data. For
-# example, :mod:`mne` source estimates can be imported with
-# :func:`load.mne.stc_ndvar`. As an example, consider data from a simulated EEG
-# experiment:
+# usually constructed automatically by an importer function (see
+# :ref:`reference-io`), for example by importing data from MNE-Python through
+# :mod:`load.mne`.
+#
+# Here we use data from a simulated EEG experiment as example:
 
-ds = datasets.simulate_erp()
-eeg = ds['eeg']
+data = datasets.simulate_erp(snr=0.5)
+eeg = data['eeg']
 eeg
 
 ###############################################################################
 # This representation shows that ``eeg`` contains 80 trials of data (cases),
-# with 140 time points and 35 EEG sensors. Since ``eeg`` contains information
-# on the dimensions like sensor locations, plotting functions can take
-# advantage of that:
+# with 140 time points and 35 EEG sensors.
+#
+# The object provides access to the underlying array...
 
-p = plot.TopoButterfly(eeg)
-p.set_time(0.400)
+eeg.x
+
+###############################################################################
+# ... and dimension descriptions:
+
+eeg.sensor
+
+###############################################################################
+eeg.time
+
+###############################################################################
+# Eelbrain functions take advantage of the dimensions descriptions (such as
+# sensor locations), for example for plotting:
+
+p = plot.TopoButterfly(eeg, t=0.130)
 
 ###############################################################################
 # :class:`NDVar` offer functionality similar to :class:`numpy.ndarray`, but
 # take into account the properties of the dimensions. For example, through the
 # :meth:`NDVar.sub` method, indexing can be done using meaningful descriptions,
-# such as indexing a time slice in seconds:
+# such as indexing a time slice in seconds ...
 
-eeg_400 = eeg.sub(time=0.400)
-plot.Topomap(eeg_400)
+eeg_130 = eeg.sub(time=0.130)
+p = plot.Topomap(eeg_130)
+eeg_130
 
 ###############################################################################
-# Several methods allow aggregating data, for example an RMS over sensor:
+# ... or extracting data from a specific sensor:
+
+eeg_fz = eeg.sub(sensor='Fz')
+p = plot.UTSStat(eeg_fz)
+eeg_fz
+
+###############################################################################
+# Other methods allow aggregating data, for example an RMS over sensor ...
 
 eeg_rms = eeg.rms('sensor')
 plot.UTSStat(eeg_rms)
 eeg_rms
 
 ###############################################################################
-# Or a mean in a time window:
+# ... or a mean in a time window:
 
-eeg_400 = eeg.mean(time=(0.350, 0.450))
-p = plot.Topomap(eeg_400)
-
-###############################################################################
-# As with a :class:`Var`, the corresponding :class:`numpy.ndarray` can always be
-# accessed as array. The :meth:`NDVar.get_data` method allows retrieving the
-# data while being explicit about which axis represents which dimension:
-
-array = eeg_400.get_data(('case', 'sensor'))
-array.shape
-
-###############################################################################
-# :class:`NDVar` objects can be constructed directly from an array and
-# corresponding dimension objects, for example:
-
-import numpy
-
-frequency = Scalar('frequency', [1, 2, 3, 4])
-time = UTS(0, 0.01, 50)
-data = numpy.random.normal(0, 1, (4, 50))
-ndvar = NDVar(data, (frequency, time))
-ndvar
-
-###############################################################################
-# A case dimension can be added by including the bare :class:`Case` class:
-#
-data = numpy.random.normal(0, 1, (10, 4, 50))
-ndvar = NDVar(data, (Case, frequency, time))
-ndvar
+eeg_average = eeg.mean(time=(0.100, 0.150))
+p = plot.Topomap(eeg_average)
 
 ###############################################################################
 # Dataset
@@ -203,100 +198,96 @@ ndvar
 # A :class:`Dataset` is a container for multiple variables
 # (:class:`Factor`, :class:`Var` and :class:`NDVar`) that describe the same
 # cases. It can be thought of as a data table with columns corresponding to 
-# different variables and rows to different cases. Variables can be assigned
-# as to a dictionary:
+# different variables and rows to different cases.
+# Consider the dataset containing the simulated EEG data used above (the
+# :meth:`Dataset.head` method only shows the first couple of rows):
 
-ds = Dataset()
-ds['x'] = Factor('aaabbb')
-ds['y'] = Var([5, 4, 6, 2, 1, 3])
-ds
+data.head()
 
 ###############################################################################
-# A variable that's equal in all cases can be assigned quickly:
+# This dataset containes severeal univariate columns: ``cloze``, ``cloze_cat``, and ``n_chars``.
+# The last line also indicates that the dataset contains an :class:`NDVar` called ``eeg``.
+# The :class:`NDVar` is not displayed as column because it contains many values per row. 
+# In the :class:`NDVar`, the :class:`Case` dimension corresponds to the row in the dataset
+# (which here corresponds to simulated trial number):
 
-ds[:, 'z'] = 0.
-
-###############################################################################
-# The string representation of a :class:`Dataset` contains information
-# on the variables stored in it:
-
-# in an interactive shell this would be the output of just typing ``ds``
-repr(ds)
+data['eeg']
 
 ###############################################################################
-# ``n_cases=6`` indicates that the Dataset contains 6 cases (rows). The
+# The type and value range of each entry in the :class:`Dataset` can be shown using the :meth:`Dataset.summary` method:
+
+data.summary()
+
+###############################################################################
+# An even shorter summary can be generated by the string representation:
+
+repr(data)
+
+###############################################################################
+# Here, ``80 cases`` indicates that the Dataset contains 80 rows. The
 # subsequent dictionary-like representation shows the keys and the types of the
-# corresponding values (``F``:   :class:`Factor`, ``V``:   :class:`Var`,
-# ``Vnd``: :class:`NDVar`).
+# corresponding values (``F``: :class:`Factor`, ``V``: :class:`Var`, ``Vnd``: :class:`NDVar`).
 #
-# A more extensive summary can be printed with the :meth:`Dataset.summary`
-# method:
+# Datasets can be indexed with columnn names, ...
 
-ds.summary()
-
-###############################################################################
-# Indexing a Dataset with strings returns the corresponding data-objects:
-
-ds['x']
+data['cloze']
 
 ###############################################################################
-# :class:`numpy.ndarray`-like indexing on the Dataset can be used to access a
-# subset of cases:
+# ... row numbers, ...
 
-ds[2:]
-
-###############################################################################
-# Row and column can be indexed simultaneously (in row, column order):
-
-ds[2, 'x']
+data[2:5]
 
 ###############################################################################
-# Arry-based indexing also allows indexing based on the Dataset's variables:
+# ... or both, in wich case row comes before column:
 
-ds[ds['x'] == 'a']
+data[2:5, 'n_chars']
 
 ###############################################################################
-# Since the dataset acts as container for variable, there is a
-# :meth:`Dataset.eval` method for evaluatuing code strings in the namespace
+# Array-based indexing also allows indexing based on the Dataset's variables:
+
+data['n_chars'] == 3
+
+###############################################################################
+data[data['n_chars'] == 3]
+
+###############################################################################
+# :meth:`Dataset.eval` allows evaluatuing code strings in the namespace
 # defined by the dataset, which means that dataset variables can be invoked
 # with just their name:
 
-ds.eval("x == 'a'")
+data.eval("cloze_cat == 'high'")
 
 ###############################################################################
 # Many dataset methods allow using code strings as shortcuts for expressions
 # involving dataset variables, for example indexing:
 
-ds.sub("x == 'a'")
+data.sub("cloze_cat == 'high'").head()
 
 ###############################################################################
-# Example
-# =======
-#
-# Below is a simple example using data objects (for more, see the
-# :ref:`examples`):
+# Columns in the :class:`Dataset` can be used to define models, for statistics,
+# aggregating and plotting.
+# Any string specified as argument in those functions will be evaluated in the
+# dataset, thuse, because we can use:
 
-y = numpy.empty(21)
-y[:14] = numpy.random.normal(0, 1, 14)
-y[14:] = numpy.random.normal(2, 1, 7)
-ds = Dataset({
-    'a': Factor('abc', 'A', repeat=7),
-    'y': Var(y, 'Y'),
-})
-ds
+data.eval("eeg.sub(sensor='Cz')")
 
 ###############################################################################
-table.frequencies('a', data=ds)
+# ... we can quickly plot the time course of a sensor by condition:
+
+p = plot.UTSStat("eeg.sub(sensor='Cz')", "cloze_cat", data=data)
 
 ###############################################################################
-test.ANOVA('y', 'a', data=ds)
+p = plot.UTSStat("eeg.sub(sensor='Fz')", "n_chars", data=data, colors='viridis')
 
 ###############################################################################
-test.pairwise('y', 'a', data=ds, corr='Hochberg')
+# Or calculate a difference wave:
+
+data_average = data.aggregate('cloze_cat')
+data_average
 
 ###############################################################################
-t = test.pairwise('y', 'a', data=ds, corr='Hochberg')
-print(t.get_tex())
+difference = data_average[1, 'eeg'] - data_average[0, 'eeg']
+p = plot.TopoArray(difference, t=[None, None, 0.400])
 
 ###############################################################################
-p = plot.Boxplot('y', 'a', data=ds, title="My Boxplot", ylabel="value", corr='Hochberg')
+# For examples of how to construct datasets from scratch see :ref:`exa-dataset`.

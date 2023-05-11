@@ -33,26 +33,31 @@ p = plot.TopoButterfly(eeg, t=0.13, head_radius=0.35)
 result = testnd.TTestOneSample(eeg, samples=1000)
 
 ###############################################################################
-# Visualize the permutation distribution:
+# Visualize the permutation distribution.
+# We consider values significant if they are larger than 95% of the permutation
+# distribution, so we look for the 95th percentile:
 
 significance_threshold = scipy.stats.scoreatpercentile(result.permutation_distribution, 95)
-p = plot.Histogram(result.permutation_distribution, title='Distribution of $max(t)$', xlabel='max(t)', ylabel='Number of permutations')
+p = plot.Histogram(
+    result.permutation_distribution, title='Distribution of $max(t)$',
+    xlabel='max(t)', ylabel='Number of permutations')
 p.add_vline(significance_threshold, color='red', linestyle='--')
 _ = p.axes[0].text(significance_threshold, 40, ' 95%', color='red')
 
 ###############################################################################
-# In the actual comparison, any data point with a *t*-value that is more extreme than 95% of the permutation distribution is considered signifiacant:
+# In the actual comparison, any data point with a *t*-value that is more extreme
+# than 95% of the permutation distribution is considered signifiacant:
 
 p = plot.TopoButterfly(result, t=0.13, head_radius=0.35)
 
 ###############################################################################
 # Significant regions can be retrieved as :class:`Dataset` of :class:`NDVar` for further analysis (e.g., for defining ROIs).
-# This function will find all contiguous regions in which *p*≤.05:
+# This function will find all contiguous regions in which *p* ≤ .05:
 
 significan_regions = result.find_clusters(0.05, maps=True)
 significan_regions
 
-""
+###############################################################################
 p = plot.TopoButterfly(significan_regions[0, 'cluster'], t=0.13, head_radius=0.35)
 
 ###############################################################################
@@ -60,7 +65,7 @@ p = plot.TopoButterfly(significan_regions[0, 'cluster'], t=0.13, head_radius=0.3
 # -------------------
 # In cluster-based tests, a first steps consists in finding contiguous regions of "meaningful" effect, so-called clusters.
 # "Meaningful" can be defined based on a value of the statistic (e.g., a *t*-value). 
-# It is commonly set to a *t* value equivalent to uncorrected *p*=.05.
+# It is commonly set to a *t* value equivalent to uncorrected *p* = .05.
 # This is specified with the ``pmin=.05`` argument.
 #
 # A summary statistic is then computed for each cluster. In Eelbrain this is the *cluster-mass* statistic:
@@ -74,9 +79,9 @@ result = testnd.TTestOneSample(eeg, samples=1000, pmin=.05)
 p = plot.TopoButterfly(result, t=0.13, head_radius=0.35)
 
 ###############################################################################
-# Compared to the $max(t)$ approach above:
+# Compared to the ``max(t)`` approach above:
 #
-# 1) Clusters tend to be larger, because an uncorrected *p*=.05 (the cluster forming threshold) usually corresponds to a lower *t*-value than a corrected *p*=.05.
+# 1) Clusters tend to be larger, because an uncorrected *p* = .05 (the cluster forming threshold) usually corresponds to a lower *t*-value than a corrected *p* = .05.
 # 2) A second, later cluster emerged, showing that this test can be more powerful when effects are temporally and spatially extended.
 #
 # Because clusters are formed before computing the permutation distribution, there are usually many non-significant clusters (we don not want to list them all here):
