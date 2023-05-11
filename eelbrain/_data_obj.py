@@ -110,7 +110,7 @@ import operator
 import os
 import re
 import string
-from typing import Any, Callable, Collection, Dict, Iterable, Iterator, Literal, Optional, Type, Union, Sequence, Tuple
+from typing import Any, Callable, Collection, Dict, Iterable, Iterator, List, Literal, Optional, Type, Union, Sequence, Tuple
 from warnings import warn
 
 import numpy
@@ -7521,6 +7521,11 @@ class Model:
 
     def __str__(self):
         return str(self.as_table())
+
+    def array(self, coding: Literal['effect', 'dummy']) -> (numpy.ndarray, List[str]):
+        "Model matrix as numpy array and column names"
+        p = Parametrization(self, coding)
+        return p.x, p.column_names
 
     def info(self):
         """A :class:`fmtxt.Table` with information about the model"""
