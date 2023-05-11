@@ -9,14 +9,13 @@ from .._ndvar import gaussian, powerlaw_noise
 from .. import _info
 
 
-def _topo(sensor, center, falloff=1):
+def _topo(sensor, center):
     i = sensor.names.index(center)
     loc = sensor.locs[i]
     dists = scipy.spatial.distance.cdist([loc], sensor.locs)[0]
     radius = sensor._sphere_fit[1].mean()
     dists /= radius
     topo = 1.0 - dists
-    # topo **= falloff
     return NDVar(topo, (sensor,))
 
 
