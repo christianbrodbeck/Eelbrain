@@ -27,9 +27,9 @@ sensor = Sensor.from_montage('standard_alphabetic')
 p = plot.SensorMap(sensor)
 
 ###############################################################################
-# Using information from the Sensor descriptoin about sensor coordinates, we
+# Using information from the :class:`Sensor` description about sensor coordinates, we
 # can now generate an N400-like topography. After associating the data array
-# with the Sensor description in an NDVar, the topography can be plotted
+# with the Sensor description by creating an :class:`NDVar`, the topography can be plotted
 # without any further information:
 i_cz = sensor.names.index('Cz')
 cz_loc = sensor.locs[i_cz]
