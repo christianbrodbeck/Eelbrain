@@ -66,8 +66,8 @@ objects:
 
    save.pickle
    load.unpickle
-   load.arrow
    save.arrow
+   load.arrow
    load.update_subjects_dir
    load.convert_pickle_protocol
 
@@ -86,7 +86,6 @@ Functions and modules for loading specific file formats as Eelbrain object:
    load.wav
    load.besa
    load.mne
-   load.txt
 
 
 Export
@@ -655,19 +654,12 @@ This means that the result can be exported as formatted text, for example::
 
     >>> fmtxt.save_pdf(table.stats('Y', 'A', 'B', data=data))
 
-See available export functions and the module documentation for details:
+See available export functions in the module documentation:
 
 .. autosummary::
    :toctree: generated
 
    fmtxt
-   fmtxt.copy_pdf
-   fmtxt.copy_tex
-   fmtxt.display
-   fmtxt.save_html
-   fmtxt.save_pdf
-   fmtxt.save_rtf
-   fmtxt.save_tex
 
 
 ^^^^^^^^^^^^^^^^^^^

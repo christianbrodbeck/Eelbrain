@@ -195,7 +195,7 @@ class Brain(TimeSlicer, surfer.Brain):
         elif hemi in ('lh', 'rh', 'both'):
             n_columns = 1
         else:
-            raise ValueError("hemi=%r" % (hemi,))
+            raise ValueError(f"{hemi=}")
 
         # layout
         if w is None and axw is None:
@@ -223,9 +223,9 @@ class Brain(TimeSlicer, surfer.Brain):
             elif isinstance(name, str):
                 title = name
             else:
-                raise TypeError("name=%r (str required)" % (name,))
+                raise TypeError(f"{name=} (str required)")
         elif not isinstance(title, str):
-            raise TypeError("title=%r (str required)" % (title,))
+            raise TypeError(f"{title=} (str required)")
 
         if foreground is None:
             foreground = 'black'

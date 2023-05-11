@@ -7720,9 +7720,9 @@ class Parametrization:
 
     Parameters
     ----------
-    model : Model
+    model
         Model to be parametrized.
-    method : 'effect' | 'dummy'
+    method
         Coding scheme: effect coding or dummy coding.
 
     Attributes
@@ -7741,7 +7741,11 @@ class Parametrization:
     A :class:`Model` is a list of effects. A :class:`Parametrization` contains
     a realization of those effects in a model matrix with named columns.
     """
-    def __init__(self, model, method):
+    def __init__(
+            self,
+            model: Model,
+            method: Literal['effect', 'dummy'],
+    ):
         model = asmodel(model)
         x = np.empty((model.df_total, model.df))
         x[:, 0] = 1
