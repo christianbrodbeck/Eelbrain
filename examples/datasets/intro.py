@@ -205,7 +205,7 @@ p = plot.Topomap(eeg_average)
 data.head()
 
 ###############################################################################
-# This dataset containes severeal univariate columns: ``cloze``, ``cloze_cat``, and ``n_chars``.
+# This dataset containes severeal univariate columns: ``cloze``, ``predictability``, and ``n_chars``.
 # The last line also indicates that the dataset contains an :class:`NDVar` called ``eeg``.
 # The :class:`NDVar` is not displayed as column because it contains many values per row. 
 # In the :class:`NDVar`, the :class:`Case` dimension corresponds to the row in the dataset
@@ -255,13 +255,13 @@ data[data['n_chars'] == 3]
 # defined by the dataset, which means that dataset variables can be invoked
 # with just their name:
 
-data.eval("cloze_cat == 'high'")
+data.eval("predictability == 'high'")
 
 ###############################################################################
 # Many dataset methods allow using code strings as shortcuts for expressions
 # involving dataset variables, for example indexing:
 
-data.sub("cloze_cat == 'high'").head()
+data.sub("predictability == 'high'").head()
 
 ###############################################################################
 # Columns in the :class:`Dataset` can be used to define models, for statistics,
@@ -274,7 +274,7 @@ data.eval("eeg.sub(sensor='Cz')")
 ###############################################################################
 # ... we can quickly plot the time course of a sensor by condition:
 
-p = plot.UTSStat("eeg.sub(sensor='Cz')", "cloze_cat", data=data)
+p = plot.UTSStat("eeg.sub(sensor='Cz')", "predictability", data=data)
 
 ###############################################################################
 p = plot.UTSStat("eeg.sub(sensor='Fz')", "n_chars", data=data, colors='viridis')
@@ -282,7 +282,7 @@ p = plot.UTSStat("eeg.sub(sensor='Fz')", "n_chars", data=data, colors='viridis')
 ###############################################################################
 # Or calculate a difference wave:
 
-data_average = data.aggregate('cloze_cat')
+data_average = data.aggregate('predictability')
 data_average
 
 ###############################################################################

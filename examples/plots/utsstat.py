@@ -32,18 +32,18 @@ ds['cz'] = ds["eeg"].sub(sensor='Cz').smooth('time', 0.05)
 ###############################################################################
 # Plot the mean and SEM by condition:
 
-p = plot.UTSStat('cz', 'cloze_cat', data=ds, axh=3)
+p = plot.UTSStat('cz', 'predictability', data=ds, axh=3)
 
 ###############################################################################
 # Split between different axes and use a ``t``-frame:
 
-p = plot.UTSStat('cz', 'cloze_cat', 'length', data=ds, frame='t', axh=2)
+p = plot.UTSStat('cz', 'predictability', 'length', data=ds, frame='t', axh=2)
 
 ###############################################################################
 # Colors can also be set using the within-plot category only:
 
 colors = plot.colors_for_oneway(['high', 'low'])
-p = plot.UTSStat("cz", 'cloze_cat', 'length', data=ds, colors=colors, frame='t', legend=False, axh=2)
+p = plot.UTSStat("cz", 'predictability', 'length', data=ds, colors=colors, frame='t', legend=False, axh=2)
 legend = plot.ColorList(colors)
 
 ###############################################################################
@@ -56,4 +56,4 @@ colors = {
     ('low', 'short'): plot.Style((0.5, 0.5, 1), linestyle='--'),
 }
 
-p = plot.UTSStat("cz", 'cloze_cat % length', data=ds, colors=colors, frame='t', top=1e-6, axh=3)
+p = plot.UTSStat("cz", 'predictability % length', data=ds, colors=colors, frame='t', top=1e-6, axh=3)

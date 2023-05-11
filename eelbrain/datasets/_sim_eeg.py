@@ -120,6 +120,6 @@ def simulate_erp(
     ds = Dataset()
     ds['eeg'] = signal
     ds['cloze'] = Var(cloze_x)
-    ds['cloze_cat'] = Factor(cloze_x > 0.5, labels={True: 'high', False: 'low'})
+    ds['predictability'] = Factor(cloze_x > 0.5, labels={True: 'high', False: 'low'})
     ds['n_chars'] = Var(n_chars)
     return ds

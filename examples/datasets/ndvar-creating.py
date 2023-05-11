@@ -88,7 +88,7 @@ signal -= signal.mean(sensor=['M1', 'M2'])
 ds = Dataset({
     'eeg': signal,
     'cloze': Var(cloze),
-    'cloze_cat': Factor(cloze > 0.5, labels={True: 'high', False: 'low'}),
+    'predictability': Factor(cloze > 0.5, labels={True: 'high', False: 'low'}),
 })
 
 ###############################################################################
@@ -98,12 +98,12 @@ p.set_time(0.400)
 
 ###############################################################################
 # Plot averages separately for high and low cloze
-p = plot.TopoButterfly('eeg', 'cloze_cat', data=ds, vmax=1.5, clip='circle', frame='t', axh=3)
+p = plot.TopoButterfly('eeg', 'predictability', data=ds, vmax=1.5, clip='circle', frame='t', axh=3)
 p.set_time(0.400)
 
 ###############################################################################
 # Average over time in the N400 time window
-p = plot.Topomap('eeg.mean(time=(0.300, 0.500))', 'cloze_cat', data=ds, vmax=1, clip='circle')
+p = plot.Topomap('eeg.mean(time=(0.300, 0.500))', 'predictability', data=ds, vmax=1, clip='circle')
 
 ###############################################################################
 # Plot the first 20 trials, labeled with cloze propability

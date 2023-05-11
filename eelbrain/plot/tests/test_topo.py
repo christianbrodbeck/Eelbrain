@@ -30,13 +30,13 @@ def test_plot_topomap():
 
     p = plot.Topomap('topo', data=ds, vmax=0.5e-6, w=2)
     p.close()
-    p = plot.Topomap('topo', 'cloze_cat', data=ds, axw=2)
+    p = plot.Topomap('topo', 'predictability', data=ds, axw=2)
     assert_titles_visible(p)
     p.close()
-    p = plot.Topomap('topo', 'cloze_cat % long', data=ds, axw=2, ncol=2)
+    p = plot.Topomap('topo', 'predictability % long', data=ds, axw=2, ncol=2)
     assert_titles_visible(p)
     p.close()
-    p = plot.Topomap('topo', 'cloze_cat % long', data=ds, axw=2, ncol=2, title='Topomap Plot Title')
+    p = plot.Topomap('topo', 'predictability % long', data=ds, axw=2, ncol=2, title='Topomap Plot Title')
     assert_titles_visible(p)
     p.close()
 

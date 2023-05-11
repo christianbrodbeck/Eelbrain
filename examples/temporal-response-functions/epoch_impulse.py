@@ -38,7 +38,7 @@ p = plot.TopoButterfly([fit.h_scaled, average], xlim=(-0.100, 0.600), axtitle=['
 
 any_word = epoch_impulse_predictor('eeg', 1, data=ds, name='any_word')
 # effect code for cloze (1 for low cloze, -1 for high cloze)
-cloze_code = Var.from_dict(ds['cloze_cat'], {'high': 0, 'low': 1})
+cloze_code = Var.from_dict(ds['predictability'], {'high': 0, 'low': 1})
 low_cloze = epoch_impulse_predictor('eeg', cloze_code, data=ds, name='low_cloze')
 
 # plot the predictors for each trial
@@ -49,7 +49,7 @@ p = plot.UTS([any_word, low_cloze], '.case', stem=True)
 # ``any_word`` reflects the response to predictable words, and ``low_cloze``
 # reflects how unpredictable words differ from predictable words:
 
-fit = boosting('eeg', [any_word, low_cloze], 0, 0.5, basis=0.050, model='cloze_cat', data=ds, partitions=2, delta=0.01)
+fit = boosting('eeg', [any_word, low_cloze], 0, 0.5, basis=0.050, model='predictability', data=ds, partitions=2, delta=0.01)
 p = plot.TopoButterfly(fit.h, xlim=(-0.100, 0.600), t=0.400)
 
 ###############################################################################
@@ -70,6 +70,6 @@ p = plot.UTS([n_chars, surprisal, any_word], '.case', stem=True)
 # the two other predictors reflect the change in response by ``n_chars`` and
 # surprisal:
 
-fit = boosting('eeg', [any_word, n_chars, surprisal], 0, 0.5, basis=0.050, model='cloze_cat', data=ds, partitions=2, delta=0.01)
+fit = boosting('eeg', [any_word, n_chars, surprisal], 0, 0.5, basis=0.050, model='predictability', data=ds, partitions=2, delta=0.01)
 p = plot.TopoButterfly(fit.h, xlim=(-0.100, 0.600), t=0.400)
 
