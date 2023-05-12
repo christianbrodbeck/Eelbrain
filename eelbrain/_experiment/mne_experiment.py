@@ -2431,7 +2431,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``False``.
         data_raw
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
@@ -2792,7 +2792,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``True``.
         morph
             Morph the source estimates to the common brain
@@ -2839,7 +2839,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``True``.
         morph
             Morph the source estimates to the common brain
@@ -2905,7 +2905,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``False``.
         data_raw
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
@@ -3060,7 +3060,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``False``.
         vardef
             Name of a test defining additional variables.
@@ -3133,7 +3133,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``False``.
         ...
             State parameters.
@@ -3217,7 +3217,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``False``.
         ...
             Applicable :ref:`state-parameters`:
@@ -3490,7 +3490,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``False``.
         morph
             Morph the source estimates to the common_brain (default False).
@@ -4197,7 +4197,7 @@ class MneExperiment(FileTree):
         save
             Save the bad channels to the bad channel specification file. Set
             ``save=False`` to examine the result without actually changing the
-             bad channels.
+            bad channels.
         ...
             State parameters.
 

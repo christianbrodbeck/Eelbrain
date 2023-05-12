@@ -351,7 +351,6 @@ class BoostingResult(PickleableDataClass):
             proportion_explained_l1 = 1 - (y_residual.abs().sum('time') / y_normalized.abs().sum('time'))
             proportion_explained_l2 = 1 - ((y_residual ** 2).sum('time') / (y_normalized ** 2).sum('time'))
 
-        ```
         """
         if scale not in ('original', 'normalized'):
             raise ValueError(f"{scale=}")

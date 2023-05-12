@@ -213,16 +213,12 @@ class NDTest:
 
     def _plot_sub(self):
         if isinstance(self.sub, str) and self.sub == "<unsaved array>":
-            raise RuntimeError("The sub parameter was not saved for previous "
-                               "versions of Eelbrain. Please recompute this "
-                               "result with the current version.")
+            raise RuntimeError("The sub parameter was not saved for previous versions of Eelbrain. Please recompute this result with the current version.")
         return self.sub
 
     def _assert_has_cdist(self):
         if self._cdist is None:
-            raise RuntimeError("This method only applies to results of tests "
-                               "with threshold-based clustering and tests with "
-                               "a permutation distribution (samples > 0)")
+            raise RuntimeError("This method only applies to results of tests with threshold-based clustering and tests with a permutation distribution (samples > 0)")
 
     def masked_parameter_map(self, pmin: float = 0.05, **sub) -> NDVar:
         """Statistical parameter map masked by significance
@@ -242,17 +238,17 @@ class NDTest:
         self._assert_has_cdist()
         return self._cdist.masked_parameter_map(pmin, **sub)
 
-    def cluster(self, cluster_id):
+    def cluster(self, cluster_id: int) -> NDVar:
         """Retrieve a specific cluster as NDVar
 
         Parameters
         ----------
-        cluster_id : int
+        cluster_id
             Cluster id.
 
         Returns
         -------
-        cluster : NDVar
+        cluster
             NDVar of the cluster, 0 outside the cluster.
 
         Notes
@@ -269,52 +265,57 @@ class NDTest:
         else:
             return self.find_clusters(None, True)
 
-    def find_clusters(self, pmin=None, maps=False, **sub):
+    def find_clusters(
+            self,
+            pmin: float = None,
+            maps: bool = False,
+            **sub,
+    ) -> Dataset:
         """Find significant regions or clusters
 
         Parameters
         ----------
-        pmin : None | scalar, 1 >= p  >= 0
+        pmin
             Threshold p-value. For threshold-based tests, all clusters with a
             p-value smaller than ``pmin`` are included (default 1);
             for other tests, find contiguous regions with ``p ≤ pmin`` (default
             0.05).
-        maps : bool
+        maps
             Include in the output a map of every cluster (can be memory
             intensive if there are large statistical maps and/or many
             clusters; default ``False``).
 
         Returns
         -------
-        ds : Dataset
+        Dataset
             Dataset with information about the clusters.
         """
         self._assert_has_cdist()
         return self._cdist.clusters(pmin, maps, **sub)
 
-    def find_peaks(self):
+    def find_peaks(self) -> Dataset:
         """Find peaks in a threshold-free cluster distribution
 
         Returns
         -------
-        ds : Dataset
+        Dataset
             Dataset with information about the peaks.
         """
         self._assert_has_cdist()
         return self._cdist.find_peaks()
 
-    def compute_probability_map(self, **sub):
+    def compute_probability_map(self, **sub) -> NDVar:
         """Compute a probability map
 
         Returns
         -------
-        probability : NDVar
+        NDVar
             Map of p-values.
         """
         self._assert_has_cdist()
         return self._cdist.compute_probability_map(**sub)
 
-    def info_list(self, computation=True):
+    def info_list(self, computation: bool = True) -> fmtxt.List:
         "List with information about the test"
         out = fmtxt.List("Mass-univariate statistics:")
         out.add_item(self._name())
@@ -1637,27 +1638,33 @@ class MultiEffectNDTest(NDTest):
         i = self._effect_index(effect)
         return self._cdist[i].masked_parameter_map(pmin, **sub)
 
-    def find_clusters(self, pmin=None, maps=False, effect=None, **sub):
+    def find_clusters(
+            self,
+            pmin: float = None,
+            maps: bool = False,
+            effect: Union[int, str] = None,
+            **sub,
+    ) -> Dataset:
         """Find significant regions or clusters
 
         Parameters
         ----------
-        pmin : None | scalar, 1 >= p  >= 0
+        pmin
             Threshold p-value. For threshold-based tests, all clusters with a
             p-value smaller than ``pmin`` are included (default 1);
             for other tests, find contiguous regions with ``p ≤ pmin`` (default
             0.05).
-        maps : bool
+        maps
             Include in the output a map of every cluster (can be memory
             intensive if there are large statistical maps and/or many
             clusters; default ``False``).
-        effect : int | str
+        effect
             Index or name of the effect from which to find clusters (default is
             all effects).
 
         Returns
         -------
-        ds : Dataset
+        Dataset
             Dataset with information about the clusters.
         """
         self._assert_has_cdist()
@@ -1676,12 +1683,12 @@ class MultiEffectNDTest(NDTest):
         out.info.update(info)
         return out
 
-    def find_peaks(self):
+    def find_peaks(self) -> Dataset:
         """Find peaks in a TFCE distribution
 
         Returns
         -------
-        ds : Dataset
+        Dataset
             Dataset with information about the peaks.
         """
         self._assert_has_cdist()
@@ -2768,10 +2775,7 @@ class ClusterProcessor(StatMapProcessor):
         if threshold is None:
             threshold = self.threshold
         cmap = self._cmap
-        cids = _label_clusters(stat_map, threshold, self.tail, self.connectivity,
-                               self.criteria, cmap, self._cmap_flat,
-                               self._bin_buff, self._int_buff,
-                               self._int_buff_flat)
+        cids = _label_clusters(stat_map, threshold, self.tail, self.connectivity, self.criteria, cmap, self._cmap_flat, self._bin_buff, self._int_buff, self._int_buff_flat)
         if self.parc is not None:
             v = []
             for idx in self.parc:
@@ -2857,8 +2861,7 @@ class NDPermutationDistribution:
     dist = None
     tfce_warning = None
 
-    def __init__(self, y, samples, threshold, tfce=False, tail=0, meas='?', name=None,
-                 tstart=None, tstop=None, criteria={}, parc=None, force_permutation=False):
+    def __init__(self, y, samples, threshold, tfce=False, tail=0, meas='?', name=None, tstart=None, tstop=None, criteria={}, parc=None, force_permutation=False):
         assert y.has_case
         assert parc is None or isinstance(parc, str)
         if tfce and threshold:
@@ -2924,18 +2927,15 @@ class NDPermutationDistribution:
                 raise ValueError("Can not use cluster size criteria when doing threshold free cluster evaluation")
             criteria_ = []
             for k, v in criteria.items():
-                m = re.match(r'min(\w+)', k)
-                if m:
+                if m := re.match(r'min(\w+)', k):
                     dimname = m.group(1)
                     if not y.has_dim(dimname):
-                        raise TypeError(
-                            "%r is an invalid keyword argument for this testnd "
-                            "function (no dimension named %r)" % (k, dimname))
+                        raise TypeError(f"{k}={v!r}: invalid keyword argument (no dimension named {dimname})")
                     ax = y.get_axis(dimname) - 1
                     if dimname == 'time':
                         v = int(ceil(v / y.time.tstep))
                 else:
-                    raise TypeError("%r is an invalid keyword argument for this testnd function" % (k,))
+                    raise TypeError(f"{k}={v!r}: invalid keyword argument")
 
                 if nad_ax:
                     if ax == 0:
@@ -3356,17 +3356,17 @@ class NDPermutationDistribution:
     def _cluster_property_labels(self):
         return [l for dim in self.dims for l in dim._cluster_property_labels()]
 
-    def cluster(self, cluster_id):
+    def cluster(self, cluster_id: int) -> NDVar:
         """Retrieve a specific cluster as NDVar
 
         Parameters
         ----------
-        cluster_id : int
+        cluster_id
             Cluster id.
 
         Returns
         -------
-        cluster : NDVar
+        NDVar
             NDVar of the cluster, 0 outside the cluster.
 
         Notes
@@ -3387,15 +3387,20 @@ class NDPermutationDistribution:
             out.info[k] = properties[0, k]
         return out
 
-    def clusters(self, pmin=None, maps=True, **sub):
+    def clusters(
+            self,
+            pmin: float = None,
+            maps: bool = True,
+            **sub,
+    ) -> Dataset:
         """Find significant clusters
 
         Parameters
         ----------
-        pmin : None | scalar, 1 >= p  >= 0
+        pmin
             Threshold p-value for clusters (for thresholded cluster tests the
             default is 1, for others 0.05).
-        maps : bool
+        maps
             Include in the output a map of every cluster (can be memory
             intensive if there are large statistical maps and/or many
             clusters; default True).
@@ -3411,7 +3416,7 @@ class NDPermutationDistribution:
             if self.samples > 0 and self.kind != 'cluster':
                 pmin = 0.05
         elif self.samples == 0:
-            raise ValueError(f"pmin={pmin!r}: Can not determine p values in distribution without permutations")
+            raise ValueError(f"{pmin=}: Can not determine p values in distribution without permutations")
 
         if sub:
             param_map = self.parameter_map.sub(**sub)
@@ -3856,9 +3861,9 @@ def run_permutation_me(test, dists, iterator):
 
         stat_maps = test.preallocate(dist.shape)
         if thresholds:
-            stat_maps_iter = tuple(zip(stat_maps, thresholds, dists))
+            stat_maps_iter = zip(stat_maps, thresholds, dists)
         else:
-            stat_maps_iter = tuple(zip(stat_maps, dists))
+            stat_maps_iter = zip(stat_maps, dists)
 
         for i, perm in enumerate(iterator):
             test.map(y, perm)

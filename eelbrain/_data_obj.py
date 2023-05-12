@@ -6660,9 +6660,9 @@ class Dataset(dict):
             New name for the data-object.
         """
         if old not in self:
-            raise KeyError("No item named %r" % old)
+            raise KeyError(f"No item named {old!r}")
         if new in self:
-            raise ValueError("Dataset already has variable named %r" % new)
+            raise ValueError(f"Dataset already has variable named {new!r}")
         assert_is_legal_dataset_key(new)
         self[new] = self.pop(old)
 

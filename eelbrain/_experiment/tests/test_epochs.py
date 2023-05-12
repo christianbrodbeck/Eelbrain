@@ -12,4 +12,4 @@ def test_epoch_repr():
     epoch_collection = EpochCollection(('e1', 'e2'))
     assert repr(epoch_collection) == "EpochCollection(('e1', 'e2'))"
     continuous_epoch = ContinuousEpoch('session', 'stim == 1')
-    assert repr(continuous_epoch) == "ContinuousEpoch('session', 'stim == 1')"
+    assert repr(continuous_epoch) == "ContinuousEpoch('session', sel='stim == 1')"

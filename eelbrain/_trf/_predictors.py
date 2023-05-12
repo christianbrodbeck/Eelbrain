@@ -1,29 +1,36 @@
 """Predictors for continuous data"""
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import repeat
+from typing import Sequence, Tuple, Union
 
 import numpy as np
 
-from .._data_obj import NDVar, Case, UTS, asndvar, asarray
+from .._data_obj import NDVarArg, NDVar, Case, Dataset, UTS, asndvar, asarray
 
 
-def epoch_impulse_predictor(shape, value=1, latency=0, name=None, ds=None):
+def epoch_impulse_predictor(
+        shape: Union[NDVarArg, Tuple[int, UTS]],
+        value: Union[float, Sequence[float], str] = 1,
+        latency: Union[float, Sequence[float], str] = 0,
+        name: str = None,
+        ds: Dataset = None,
+) -> NDVar:
     """Time series with one impulse for each of ``n`` epochs
 
     Parameters
     ----------
-    shape : NDVar | (int, UTS) | str
+    shape
         Shape of the output. Can be specified as the :class:`NDVar` with the
         data to predict, or an ``(n_cases, time_dimension)`` tuple.
-    value : scalar | sequence | str
+    value
         Scalar or length ``n`` sequence of scalars specifying the value of each
         impulse (default 1).
-    latency : scalar | sequence | str
+    latency
         Scalar or length ``n`` sequence of scalars specifying the latency of
         each impulse (default 0).
-    name : str
+    name
         Name for the output :class:`NDVar`.
-    ds : Dataset
+    ds
         If specified, input items (``shape``, ``value`` and ``latency``) can be
         strings to be evaluated in ``ds``.
 
@@ -36,7 +43,7 @@ def epoch_impulse_predictor(shape, value=1, latency=0, name=None, ds=None):
     See :ref:`exa-impulse` example.
     """
     if isinstance(shape, str):
-        shape = asndvar(shape, ds=ds)
+        shape = asndvar(shape, data=ds)
     if isinstance(value, str):
         value = asarray(value, ds=ds)
     if isinstance(latency, str):
@@ -61,23 +68,30 @@ def epoch_impulse_predictor(shape, value=1, latency=0, name=None, ds=None):
     return NDVar(x, (Case, time), name)
 
 
-def event_impulse_predictor(shape, time='time', value=1, latency=0, name=None, ds=None):
+def event_impulse_predictor(
+        shape: Union[NDVarArg, UTS],
+        time: Union[str, Sequence[float]] = 'time',
+        value: Union[float, Sequence[float], str] = 1,
+        latency: Union[float, Sequence[float], str] = 0,
+        name: str = None,
+        ds: Dataset = None,
+) -> NDVar:
     """Time series with multiple impulses
 
     Parameters
     ----------
-    shape : NDVar | UTS
+    shape
         Shape of the output. Can be specified as the :class:`NDVar` with the
         data to predict, or an ``(n_cases, time_dimension)`` tuple.
-    time : sequence of scalar
+    time
         Time points at which impulses occur.
-    value : scalar | sequence
+    value
         Magnitude of each impulse (default 1).
-    latency : scalar | sequence
+    latency
         Latency of each impulse relative to ``time`` (default 0).
-    name : str
+    name
         Name for the output :class:`NDVar`.
-    ds : Dataset
+    ds
         If specified, input items (``time``, ``value`` and ``latency``) can be
         strings to be evaluated in ``ds``.
 

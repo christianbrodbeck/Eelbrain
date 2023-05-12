@@ -12,7 +12,9 @@ Documentation
 -------------
 
 For an introduction to Eelbrain, see :ref:`exa-intro` and the other :ref:`examples`.
-For details see the API :ref:`reference`.
+For a tutorial on using Eelbrain for analyzing an experiment with temporal response function, see
+`this preprint <https://doi.org/10.1101/2021.08.01.454687>`_.
+For details of all the functionality see the API :ref:`reference`.
 
 
 Interacting with other Python libraries

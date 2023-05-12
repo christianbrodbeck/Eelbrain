@@ -543,8 +543,9 @@ Tests
 
 .. py:attribute:: MneExperiment.tests
 
-Statistical tests are defined as ``{name: test_definition}`` dictionary. Test-
-definitions are defined from the following:
+Statistical tests are defined as ``{name: test_definition}`` dictionary.
+This allows automatic caching of permutation test results when using :meth:`MneExperiment.load_test`.
+Tests are defined using the following classes:
 
 .. autosummary::
    :toctree: generated

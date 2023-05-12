@@ -12,7 +12,7 @@ from . import fmtxt
 from ._celltable import Celltable
 from ._exceptions import KeysMissing
 from ._data_obj import (
-    CategorialArg, CellArg, IndexArg, VarArg,
+    CategorialArg, CellArg, IndexArg, ModelArg, NDVarArg, UVArg, VarArg,
     Categorial, Dataset, Factor, Interaction, NDVar, Scalar, UTS,
     Var, ascategorial, as_legal_dataset_key, asndvar, asvar, assub, asuv,
     cellname, combine, isuv)
@@ -105,7 +105,13 @@ def difference(
     return out
 
 
-def frequencies(y, x=None, of=None, sub=None, ds=None):
+def frequencies(
+        y: UVArg,
+        x: CategorialArg = None,
+        of: CategorialArg = None,
+        sub: IndexArg = None,
+        ds: Dataset = None,
+):
     """Calculate frequency of occurrence of the categories in ``y``
 
     Parameters
@@ -214,7 +220,13 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
     return out
 
 
-def melt(name, cells, cell_var_name, ds, labels=None):
+def melt(
+        name: str,
+        cells: CellArg,
+        cell_var_name: str,
+        ds: Dataset,
+        labels: Union[dict, Sequence[str]] = None,
+) -> Dataset:
     """
     Restructure a Dataset such that a measured variable is in a single column
 
@@ -226,17 +238,17 @@ def melt(name, cells, cell_var_name, ds, labels=None):
 
     Parameters
     ----------
-    name : str
+    name
         Name of the variable in the new Dataset.
-    cells : sequence of str | str
+    cells
         Names of the columns representing the variable in the input Dataset.
         Names can either pe specified explicitly as a sequence of str, or
         implicitly as a str containing '%i' for an integer.
-    cell_var_name : str
+    cell_var_name
         Name of the variable to contain the cell identifier.
-    ds : Dataset
+    ds
         Input Dataset.
-    labels : dict | sequence of str
+    labels
         Labels for the keys in ``cells``. Can be specified either as a
         ``{key: label}`` dictionary or as a list of :class:`str` corresponding
         to ``cells``.
@@ -321,26 +333,33 @@ def melt(name, cells, cell_var_name, ds, labels=None):
     return out
 
 
-def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None, labels=None):
+def melt_ndvar(
+        ndvar: NDVarArg,
+        dim: str = None,
+        cells: Sequence = None,
+        ds: Dataset = None,
+        varname: str = None,
+        labels: Union[dict, Callable] = None,
+) -> Dataset:
     """
     Transform data to long format by converting an NDVar dimension into a variable
 
     Parameters
     ----------
-    ndvar : NDVar | str
+    ndvar
         The NDVar (or name of the NDVar in ``ds``).
-    dim : str
+    dim
         The name of the dimension that should be unwrapped (optional if
         ``ndvar`` has only one non-case dimension).
-    cells : sequence
+    cells
         The values on ``dim`` that should be included in the output Dataset
         (default is to include all values).
-    ds : Dataset
+    ds
         Dataset with additional variables that should be included in the long
         table.
-    varname : str
+    varname
         Name for the transformed ``ndvar`` (default is ``ndvar.name``).
-    labels: dict | callable
+    labels
         Mapping or function to create labels for ``dim`` levels.
 
     Returns
@@ -689,22 +708,28 @@ def stats(
     return table
 
 
-def repmeas(y, x, match, sub=None, ds=None):
+def repmeas(
+        y: Union[NDVarArg, ModelArg],
+        x: CategorialArg,
+        match: CategorialArg,
+        sub: IndexArg = None,
+        ds: Dataset = None,
+) -> Dataset:
     """Create a repeated-measures table
 
     Parameters
     ----------
-    y :
+    y
         Dependent variable (can be model with several dependents).
-    x : categorial
+    x
         Model defining the cells that should be restructured into variables.
     match : categorial
         Model identifying the source of the measurement across repetitions,
         i.e. the model that should be retained.
-    sub :
+    sub
         boolean array specifying which values to include (generate e.g.
         with 'sub=T==[1,2]')
-    ds : Dataset
+    ds
         If a Dataset is specified other arguments can be str instead of
         data-objects and will be retrieved from ds.
 
