@@ -74,8 +74,8 @@ Current implementation:
 Examples of other potentially desirable API:
 
 ```
-ds['std'] = ds['sgram'].std('frequency', name='Standard deviation')
-plot.UTSStat('std', ds=ds)
+data['std'] = data['sgram'].std('frequency', name='Standard deviation')
+plot.UTSStat('std', data=data)
 ```
 
 Possible implementation: when ``name`` is explicitly set, ``info['longname']``
@@ -83,12 +83,12 @@ is added. Should it survive only one dataset assignment? Would need another
 variable like ``autoname``: 0 -> keep but augment; 1 -> replace
 
 ```
-ds['y'] = Var(y, name='Cluster value')
-plot.Scatter('y', ..., ds=ds)  # -> 'Cluster value'
-plot.Scatter('y.log()', ..., ds=ds)  # -> 'log(Cluster value)'
+data['y'] = Var(y, name='Cluster value')
+plot.Scatter('y', ..., data=data)  # -> 'Cluster value'
+plot.Scatter('y.log()', ..., data=data)  # -> 'log(Cluster value)'
 
 # This situation is ambiguous / could go either way
-ds['ydiv'] = 1 / ds['y']
+data['ydiv'] = 1 / data['y']
 plot.Scatter('ydiv', ..., ds=ds)  # -> '1 / Cluster value'
 # This is probably more conservative:
 ds['Realname'] = 1 / ds['y']
@@ -110,7 +110,7 @@ import operator
 import os
 import re
 import string
-from typing import Any, Callable, Collection, Dict, Iterable, Iterator, Literal, Optional, Type, Union, Sequence, Tuple
+from typing import Any, Callable, Collection, Dict, Iterable, Iterator, List, Literal, Optional, Type, Union, Sequence, Tuple
 from warnings import warn
 
 import numpy
@@ -511,14 +511,14 @@ def hasrandom(x):
 
 def as_case_identifier(
         x: Union[str, Var, Factor, Interaction],
-        ds: Dataset = None,
+        data: Dataset = None,
         allow_nonunique: bool = False,
 ):
     "Coerce input to a variable that can identify each of its cases"
     if isinstance(x, str):
-        if ds is None:
+        if data is None:
             raise TypeError(f"{x!r}: Parameter was specified as string, but no Dataset was specified")
-        x = ds.eval(x)
+        x = data.eval(x)
 
     if not isinstance(x, (Var, Factor, Interaction)):
         raise TypeError(f"Need a Var, Factor or Interaction to identify cases, got {x!r}")
@@ -539,12 +539,12 @@ def as_case_identifier(
     return x
 
 
-def asarray(x, kind=None, sub=None, ds=None, n=None, return_n=False) -> numpy.ndarray:
+def asarray(x, kind=None, sub=None, data=None, n=None, return_n=False) -> numpy.ndarray:
     "Coerce input to array"
     if isinstance(x, str):
-        if ds is None:
+        if data is None:
             raise TypeError(f"{x!r} Array parameter was specified as string, but no Dataset was specified")
-        x = ds.eval(x)
+        x = data.eval(x)
 
     if isinstance(x, Var):
         x = x.x
@@ -572,11 +572,11 @@ def _apply_sub(x, sub, n, return_n):
     return (x, n) if return_n else x
 
 
-def ascategorial(x, sub=None, ds=None, n=None, return_n=False):
+def ascategorial(x, sub=None, data=None, n=None, return_n=False):
     if isinstance(x, str):
-        if ds is None:
+        if data is None:
             raise TypeError(f"{x!r}: Parameter was specified as string, but no Dataset was specified")
-        x = ds.eval(x)
+        x = data.eval(x)
 
     if iscategorial(x):
         pass
@@ -589,12 +589,12 @@ def ascategorial(x, sub=None, ds=None, n=None, return_n=False):
     return _apply_sub(x, sub, n, return_n)
 
 
-def asdataobject(x, sub=None, ds=None, n=None, return_n=False):
+def asdataobject(x, sub=None, data=None, n=None, return_n=False):
     "Convert to any data object or numpy array."
     if isinstance(x, str):
-        if ds is None:
+        if data is None:
             raise TypeError(f"{x!r}: Data object was specified as string, but no Dataset was specified")
-        x = ds.eval(x)
+        x = data.eval(x)
 
     if isdataobject(x):
         pass
@@ -606,12 +606,12 @@ def asdataobject(x, sub=None, ds=None, n=None, return_n=False):
     return _apply_sub(x, sub, n, return_n)
 
 
-def asepochs(x, sub=None, ds=None, n=None, return_n=False) -> mne.BaseEpochs:
+def asepochs(x, sub=None, data=None, n=None, return_n=False) -> mne.BaseEpochs:
     "Convert to mne Epochs object"
     if isinstance(x, str):
-        if ds is None:
+        if data is None:
             raise TypeError(f"{x!r}: Epochs object was specified as string, but no Dataset was specified")
-        x = ds.eval(x)
+        x = data.eval(x)
 
     if isinstance(x, MNE_EPOCHS):
         pass
@@ -621,11 +621,11 @@ def asepochs(x, sub=None, ds=None, n=None, return_n=False) -> mne.BaseEpochs:
     return _apply_sub(x, sub, n, return_n)
 
 
-def asfactor(x, sub=None, ds=None, n=None, return_n=False) -> Factor:
+def asfactor(x, sub=None, data=None, n=None, return_n=False) -> Factor:
     if isinstance(x, str):
-        if ds is None:
+        if data is None:
             raise TypeError(f"{x!r}: Factor was specified as string, but no Dataset was specified")
-        x = ds.eval(x)
+        x = data.eval(x)
 
     if isinstance(x, Factor):
         pass
@@ -646,11 +646,11 @@ def asindex(x) -> numpy.ndarray:
         return x
 
 
-def asmodel(x, sub=None, ds=None, n=None, return_n=False, require_names=False) -> Model:
+def asmodel(x, sub=None, data=None, n=None, return_n=False, require_names=False) -> Model:
     if isinstance(x, str):
-        if ds is None:
+        if data is None:
             raise TypeError(f"{x!r}: Model was specified as string, but no Dataset was specified")
-        x = ds.eval(x)
+        x = data.eval(x)
 
     if isinstance(x, Model):
         pass
@@ -666,31 +666,31 @@ def asmodel(x, sub=None, ds=None, n=None, return_n=False, require_names=False) -
 def asndvar(
         x: NDVarArg,
         sub: IndexArg = None,
-        ds: Dataset = None,
+        data: Dataset = None,
         n: int = None,
         dtype: np.dtype = None,
         return_n: bool = False,
 ) -> NDVar:
     if isinstance(x, str):
-        if ds is None:
+        if data is None:
             raise TypeError(f"{x!r}: Ndvar was specified as string, but no Dataset was specified")
-        x = ds.eval(x)
+        x = data.eval(x)
 
     # convert MNE objects
     if isinstance(x, NDVar):
         pass
     elif isinstance(x, MNE_EPOCHS):
-        from .load.fiff import epochs_ndvar
+        from .load.mne import epochs_ndvar
         x = epochs_ndvar(x)
     elif isinstance(x, MNE_EVOKED):
-        from .load.fiff import evoked_ndvar
+        from .load.mne import evoked_ndvar
         x = evoked_ndvar(x)
     elif isinstance(x, MNE_RAW):
-        from .load.fiff import raw_ndvar
+        from .load.mne import raw_ndvar
         x = raw_ndvar(x)
     elif isinstance(x, list):
         if isinstance(x[0], MNE_EVOKED):
-            from .load.fiff import evoked_ndvar
+            from .load.mne import evoked_ndvar
             x = evoked_ndvar(x)
         else:
             x = combine(map(asndvar, x))
@@ -705,12 +705,12 @@ def asndvar(
     return (x, n) if return_n else x
 
 
-def asnumeric(x, sub=None, ds=None, n=None, return_n=False, array=False):
+def asnumeric(x, sub=None, data=None, n=None, return_n=False, array=False):
     "Var, NDVar"
     if isinstance(x, str):
-        if ds is None:
+        if data is None:
             raise TypeError(f"{x!r}: Numeric argument was specified as string, but no Dataset was specified")
-        x = ds.eval(x)
+        x = data.eval(x)
 
     if isnumeric(x):
         pass
@@ -722,14 +722,14 @@ def asnumeric(x, sub=None, ds=None, n=None, return_n=False, array=False):
     return _apply_sub(x, sub, n, return_n)
 
 
-def assub(sub, ds=None, return_n=False):
+def assub(sub, data=None, return_n=False):
     "Interpret the sub argument."
     if sub is None:
         return (None, None) if return_n else None
     elif isinstance(sub, str):
-        if ds is None:
+        if data is None:
             raise TypeError(f"sub={sub!r}: parameter was specified as string, but no Dataset was specified")
-        sub = ds.eval(sub)
+        sub = data.eval(sub)
 
     if isinstance(sub, Var):
         sub = sub.x
@@ -743,12 +743,12 @@ def assub(sub, ds=None, return_n=False):
         return sub
 
 
-def asuv(x, sub=None, ds=None, n=None, return_n=False, interaction=False):
+def asuv(x, sub=None, data=None, n=None, return_n=False, interaction=False):
     "Coerce to Var or Factor"
     if isinstance(x, str):
-        if ds is None:
+        if data is None:
             raise TypeError(f"{x!r}: Parameter was specified as string, but no Dataset was specified")
-        x = ds.eval(x)
+        x = data.eval(x)
 
     if isuv(x, interaction):
         pass
@@ -760,12 +760,12 @@ def asuv(x, sub=None, ds=None, n=None, return_n=False, interaction=False):
     return _apply_sub(x, sub, n, return_n)
 
 
-def asvar(x, sub=None, ds=None, n=None, return_n=False) -> Var:
+def asvar(x, sub=None, data=None, n=None, return_n=False) -> Var:
     "Coerce to Var"
     if isinstance(x, str):
-        if ds is None:
+        if data is None:
             raise TypeError(f"{x!r}: Var was specified as string, but no Dataset was specified")
-        x = ds.eval(x)
+        x = data.eval(x)
 
     if not isinstance(x, Var):
         x = Var(x)
@@ -899,8 +899,8 @@ def align(d1, d2, i1='index', i2=None, out='data'):
     """
     if i2 is None and isinstance(i1, str):
         i2 = i1
-    i1 = as_case_identifier(i1, ds=d1, allow_nonunique=True)
-    i2 = as_case_identifier(i2, ds=d2)
+    i1 = as_case_identifier(i1, data=d1, allow_nonunique=True)
+    i2 = as_case_identifier(i2, data=d2)
     if type(i1) is not type(i2):
         raise TypeError(f"i1 and i2 need to be of the same type, got:\n{i1=}\n{i2=}")
 
@@ -951,7 +951,7 @@ def align1(d, to, by='index', out='data'):
     if isinstance(to, Dataset):
         if not isinstance(by, str):
             raise TypeError(f"by={by}: needs to be a str if to is a Dataset")
-        to = asuv(by, ds=to, interaction=True)
+        to = asuv(by, data=to, interaction=True)
     else:
         to = asuv(to, interaction=True)
     if not isinstance(by, str):
@@ -961,7 +961,7 @@ def align1(d, to, by='index', out='data'):
                 raise ValueError(f"by={by}: does not have the same number of cases as d (by: {len(by)}, d: {d.n_cases})")
         elif len(by) != len(d):
             raise ValueError(f"by={by}: does not have the same number of cases as d (d_idx: {len(by)}, d: {len(d)})")
-    by = asuv(by, ds=d, interaction=True)
+    by = asuv(by, data=d, interaction=True)
 
     align_idx = np.empty(len(to), int)
     for i, v in enumerate(to):
@@ -5692,13 +5692,12 @@ class Datalist(list):
                 self[i] = sorted(set(self[i]).union(other[i]))
 
 
-legal_dataset_key_re = re.compile("[_A-Za-z][_a-zA-Z0-9]*$")
-
-
 def assert_is_legal_dataset_key(key):
     if iskeyword(key):
         raise ValueError(f"{key!r} is a reserved keyword and can not be used as variable name in a Dataset")
-    elif not legal_dataset_key_re.match(key):
+    elif key.isidentifier():
+        return
+    else:
         raise ValueError(f"{key!r} is not a valid keyword and can not be used as variable name in a Dataset")
 
 
@@ -5706,7 +5705,7 @@ def as_legal_dataset_key(key):
     "Convert str to a legal dataset key"
     if iskeyword(key):
         return "%s_" % key
-    elif legal_dataset_key_re.match(key):
+    elif key.isidentifier():
         return key
     else:
         if ' ' in key:
@@ -5720,7 +5719,7 @@ def as_legal_dataset_key(key):
         elif key[0].isdigit():
             key = "_%s" % key
 
-        if legal_dataset_key_re.match(key):
+        if key.isidentifier():
             return key
         else:
             raise RuntimeError(f"Could not convert {key!r} to legal dataset key")
@@ -6527,7 +6526,7 @@ class Dataset(dict):
             raise NotImplementedError('For equal_count, x needs to be specified as str')
 
         if x is not None:
-            x = ascategorial(x, ds=self)
+            x = ascategorial(x, data=self)
 
         ds = Dataset(name=name.format(name=self.name), info=self.info)
 
@@ -6593,7 +6592,7 @@ class Dataset(dict):
         cells are ignored). Then, for each cell, rows beyond that number are
         dropped.
         """
-        x = ascategorial(x, ds=self)
+        x = ascategorial(x, data=self)
         self._check_n_cases(x, empty_ok=False)
         indexes = np.array([x == cell for cell in x.cells])
         n_by_cell = indexes.sum(1)
@@ -6660,9 +6659,9 @@ class Dataset(dict):
             New name for the data-object.
         """
         if old not in self:
-            raise KeyError("No item named %r" % old)
+            raise KeyError(f"No item named {old!r}")
         if new in self:
-            raise ValueError("Dataset already has variable named %r" % new)
+            raise ValueError(f"Dataset already has variable named {new!r}")
         assert_is_legal_dataset_key(new)
         self[new] = self.pop(old)
 
@@ -7523,6 +7522,11 @@ class Model:
     def __str__(self):
         return str(self.as_table())
 
+    def array(self, coding: Literal['effect', 'dummy']) -> (numpy.ndarray, List[str]):
+        "Model matrix as numpy array and column names"
+        p = Parametrization(self, coding)
+        return p.x, p.column_names
+
     def info(self):
         """A :class:`fmtxt.Table` with information about the model"""
         table = fmtxt.Table('rl')
@@ -7721,9 +7725,9 @@ class Parametrization:
 
     Parameters
     ----------
-    model : Model
+    model
         Model to be parametrized.
-    method : 'effect' | 'dummy'
+    method
         Coding scheme: effect coding or dummy coding.
 
     Attributes
@@ -7742,7 +7746,11 @@ class Parametrization:
     A :class:`Model` is a list of effects. A :class:`Parametrization` contains
     a realization of those effects in a model matrix with named columns.
     """
-    def __init__(self, model, method):
+    def __init__(
+            self,
+            model: Model,
+            method: Literal['effect', 'dummy'],
+    ):
         model = asmodel(model)
         x = np.empty((model.df_total, model.df))
         x[:, 0] = 1
@@ -7797,6 +7805,21 @@ class Parametrization:
         for e in self._higher_level_effects[term]:
             out[self.terms[e.name]] = False
         return out
+
+
+class PermutedParametrization:
+
+    def __init__(self, parametrization: Parametrization, g: bool = False):
+        self.parametrization = parametrization
+        self.x = np.empty_like(parametrization.x)
+        self.projector = np.empty_like(parametrization.projector)
+        self.g = g
+
+    def permute(self, perm: np.ndarray):
+        self.parametrization.x.take(perm, 0, self.x)
+        self.parametrization.projector.take(perm, 1, self.projector)
+        if self.g is not False:
+            self.g = inv(self.x.T.dot(self.x), True)
 
 
 # ---NDVar dimensions---
@@ -9597,7 +9620,7 @@ def as_sensor(obj) -> Sensor:
     elif isinstance(obj, NDVar):
         return obj.get_dim('sensor')
     elif isinstance(obj, (mne.Info, mne.channels.channels.UpdateChannelsMixin)):
-        from .load.fiff import sensor_dim
+        from .load.mne import sensor_dim
         return sensor_dim(obj)
     else:
         raise TypeError(f"Can't get sensors from {obj}")

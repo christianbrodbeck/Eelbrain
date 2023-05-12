@@ -355,8 +355,8 @@ class ColorBar(EelFigure):
     orientation
         Orientation of the bar (default is horizontal).
     unit
-        Unit for the axis to determine tick labels (for example, ``u'µV'`` to
-        label 0.000001 as '1').
+        Unit for the axis to determine tick labels (for example, ``'µV'`` to
+        label 0.000001 as '1') or multiplier (e.g., ``1e-6``).
     contours
         Plot contour lines at these values.
     width
@@ -396,7 +396,7 @@ class ColorBar(EelFigure):
             clipmin: float = None,
             clipmax: float = None,
             orientation: Literal['horizontal', 'vertical'] = 'horizontal',
-            unit: str = None,
+            unit: Union[str, float] = None,
             contours: Sequence[float] = (),
             width: float = None,
             ticks: Union[int, Dict[float, str], Sequence[float]] = None,

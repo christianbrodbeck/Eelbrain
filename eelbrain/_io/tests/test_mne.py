@@ -18,7 +18,7 @@ def test_load_fiff_ctf():
     path = Path(mne.datasets.testing.data_path())
     raw_path = path / 'CTF' / 'testdata_ctf.ds'
     raw = mne.io.read_raw_ctf(raw_path)
-    y = load.fiff.raw_ndvar(raw)
+    y = load.mne.raw_ndvar(raw)
     assert_array_equal(y.sensor.connectivity()[:3], [[0, 1], [0, 16], [0, 44]])
 
 
@@ -46,12 +46,12 @@ def test_load_fiff_mne():
 
     mne_stc = mne.minimum_norm.apply_inverse(mne_evoked, mne_inv, 1., 'MNE')
 
-    meg = load.fiff.evoked_ndvar(mne_evoked)
-    inv = load.fiff.inverse_operator(mne_inv, 'ico-4', mri_sdir)
+    meg = load.mne.evoked_ndvar(mne_evoked)
+    inv = load.mne.inverse_operator(mne_inv, 'ico-4', mri_sdir)
     stc = inv.dot(meg)
     assert_array_almost_equal(stc.get_data(('source', 'time')), mne_stc.data)
 
-    fwd = load.fiff.forward_operator(mne_fwd, 'ico-4', mri_sdir)
+    fwd = load.mne.forward_operator(mne_fwd, 'ico-4', mri_sdir)
     reconstruct = fwd.dot(stc)
     mne_reconstruct = mne.apply_forward(mne_fwd, mne_stc, mne_evoked.info)
     assert_array_almost_equal(reconstruct.get_data(('sensor', 'time')), mne_reconstruct.data)
@@ -61,7 +61,7 @@ def test_load_fiff_sensor():
     umd_sqd_path = file_path('test_umd-raw.sqd')
     raw = mne.io.read_raw_kit(umd_sqd_path)
 
-    sensor = load.fiff.sensor_dim(raw)
+    sensor = load.mne.sensor_dim(raw)
     assert sensor.sysname == 'KIT-UMD-3'
 
 
@@ -75,22 +75,22 @@ def test_load_fiff_from_raw():
     evt_path = os.path.join(meg_path, 'sample_audvis_filt-0-40_raw-eve.fif')
 
     # load events
-    ds = load.fiff.events(raw_path, merge=-1, stim_channel='STI 014')
+    ds = load.mne.events(raw_path, merge=-1, stim_channel='STI 014')
     assert ds['i_start'].x.dtype.kind == 'i'
     # compare with mne
-    ds_evt = load.fiff.events(events=evt_path)
+    ds_evt = load.mne.events(events=evt_path)
     ds = ds[np.arange(ds.n_cases) != 289]  # mne is missing an event
     assert_dataobj_equal(ds, ds_evt, name=False)
 
     # add epochs as ndvar
     ds = ds.sub('trigger == 32')
-    ds_ndvar = load.fiff.add_epochs(ds, -0.1, 0.3, decim=10, data='mag', proj=False, reject=2e-12)
+    ds_ndvar = load.mne.add_epochs(ds, -0.1, 0.3, decim=10, data='mag', proj=False, reject=2e-12)
     meg = ds_ndvar['meg']
     assert meg.ndim == 3
     data = meg.get_data(('case', 'sensor', 'time'))
 
     # compare with mne epochs
-    ds_mne = load.fiff.add_mne_epochs(ds, -0.1, 0.3, decim=10, proj=False, reject={'mag': 2e-12})
+    ds_mne = load.mne.add_mne_epochs(ds, -0.1, 0.3, decim=10, proj=False, reject={'mag': 2e-12})
     epochs = ds_mne['epochs']
     # events
     assert_array_equal(epochs.events[:, 1], 0)
@@ -103,8 +103,8 @@ def test_load_fiff_from_raw():
     assert_array_almost_equal(meg.time, epochs.times)
 
     # with proj
-    meg = load.fiff.epochs(ds, -0.1, 0.3, decim=10, data='mag', proj=True, reject=2e-12)
-    epochs = load.fiff.mne_epochs(ds, -0.1, 0.3, decim=10, proj=True, reject={'mag': 2e-12})
+    meg = load.mne.epochs(ds, -0.1, 0.3, decim=10, data='mag', proj=True, reject=2e-12)
+    epochs = load.mne.mne_epochs(ds, -0.1, 0.3, decim=10, proj=True, reject={'mag': 2e-12})
     picks = pick_types(epochs.info, meg='mag')
     mne_data = epochs.get_data()[:, picks]
     assert_array_almost_equal(meg.x, mne_data, 10)

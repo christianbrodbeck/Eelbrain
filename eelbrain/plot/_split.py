@@ -8,6 +8,7 @@ import numpy
 
 from .._trf.shared import Splits, split_data
 from .._data_obj import Dataset, CategorialArg, NDVarArg, asndvar
+from .._utils import deprecate_ds_arg
 from ._base import EelFigure, Layout, LegendMixin, LegendArg
 from ._styles import colors_for_oneway
 
@@ -82,13 +83,14 @@ class DataSplit(EelFigure, LegendMixin):
         LegendMixin._fill_toolbar(self, tb)
 
 
+@deprecate_ds_arg
 def preview_partitions(
     cases: Union[int, NDVarArg] = 0,
     partitions: int = None,
     model: CategorialArg = None,
     validate: int = 1,
     test: int = 0,
-    ds: Dataset = None,
+    data: Dataset = None,
     **kwargs,
 ) -> DataSplit:
     """Preview how data will be partitioned for the boosting function
@@ -119,7 +121,7 @@ def preview_partitions(
                 raise NotImplementedError('Automatic partitions with trials')
             ns = [1] * cases
     else:
-        y = asndvar(cases, ds=ds)
+        y = asndvar(cases, data=data)
         has_case = y.has_case
         if y.has_case:
             n_cases = len(y)
@@ -128,6 +130,6 @@ def preview_partitions(
         ns = [len(y.get_dim('time'))] * n_cases
     index = numpy.cumsum([0] + ns)
     segments = numpy.hstack([index[:-1, None], index[1:, None]])
-    splits = split_data(segments, partitions, model, ds, validate, test)
+    splits = split_data(segments, partitions, model, data, validate, test)
     kwargs.setdefault('xlabel', 'Case' if has_case else 'Segment')
     return DataSplit(splits, **kwargs)

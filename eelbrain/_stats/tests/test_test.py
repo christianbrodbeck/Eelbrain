@@ -19,7 +19,7 @@ def test_correlations():
     assert str(res[2][0]).strip() == '.398'
     res = test.correlations('fltvar', 'fltvar2', ds=ds, asds=True)
     assert res[0, 'r'] == pytest.approx(.398, abs=1e-3)
-    res = test.Correlation('fltvar', 'fltvar2', ds=ds)
+    res = test.Correlation('fltvar', 'fltvar2', data=ds)
     assert res.r == pytest.approx(.398, abs=1e-3)
 
     res = test.correlations('fltvar', 'fltvar2', 'A', ds=ds)
@@ -51,7 +51,7 @@ def test_correlations():
     assert res.r == pytest.approx(0.315, abs=1e-3)
 
     # pairwise correlation
-    doc = test.pairwise_correlations(['intvar', 'fltvar', 'fltvar2'], ds=ds)
+    doc = test.pairwise_correlations(['intvar', 'fltvar', 'fltvar2'], data=ds)
 
 
 def test_mann_whitney():
@@ -62,7 +62,7 @@ def test_mann_whitney():
     a, b = ds_agg[:n, 'fltvar'], ds_agg[n:, 'fltvar']
     u, p = scipy.stats.mannwhitneyu(a.x, b.x, alternative='two-sided')
 
-    res = test.MannWhitneyU('fltvar', 'A', 'a1', 'a2', 'rm', ds=ds)
+    res = test.MannWhitneyU('fltvar', 'A', 'a1', 'a2', 'rm', data=ds)
     assert res.u == u
     assert res.p == p
 
@@ -81,12 +81,12 @@ def test_ttest():
     """Test univariate t-test functions"""
     ds = datasets.get_uv()
 
-    print(test.ttest('fltvar', ds=ds))
-    print(test.ttest('fltvar', 'A', ds=ds))
-    print(test.ttest('fltvar', 'A%B', ds=ds))
-    print(test.ttest('fltvar', 'A', match='rm', ds=ds))
-    print(test.ttest('fltvar', 'A', 'a1', match='rm', ds=ds))
-    print(test.ttest('fltvar', 'A%B', ('a1', 'b1'), match='rm', ds=ds))
+    print(test.ttest('fltvar', data=ds))
+    print(test.ttest('fltvar', 'A', data=ds))
+    print(test.ttest('fltvar', 'A%B', data=ds))
+    print(test.ttest('fltvar', 'A', match='rm', data=ds))
+    print(test.ttest('fltvar', 'A', 'a1', match='rm', data=ds))
+    print(test.ttest('fltvar', 'A%B', ('a1', 'b1'), match='rm', data=ds))
 
     # Prepare data for scipy
     a1_index = ds.eval("A == 'a1'")
@@ -101,13 +101,13 @@ def test_ttest():
 
     # TTest1Samp
     standard = pingouin.ttest(ds['fltvar'], 0)
-    res = test.TTestOneSample('fltvar', ds=ds)
+    res = test.TTestOneSample('fltvar', data=ds)
     t, p = scipy.stats.ttest_1samp(ds['fltvar'], 0)
     assert res.t == pytest.approx(t, 10)
     assert res.p == pytest.approx(p, 10)
     assert res.d == pytest.approx(standard['cohen-d'][0], 10)
     assert str(res.full) == 'M = 0.40, SD = 1.20, t(79) = 2.96, p = .004'
-    res = test.TTestOneSample('fltvar', ds=ds, tail=1)
+    res = test.TTestOneSample('fltvar', data=ds, tail=1)
     assert res.t == pytest.approx(t, 10)
     assert res.p == pytest.approx(p / 2., 10)
     assert res.d == pytest.approx(standard['cohen-d'][0], 10)
@@ -115,7 +115,7 @@ def test_ttest():
 
     # TTestIndependent
     cohens_d = pingouin.compute_effsize(a1, a2)
-    res = test.TTestIndependent('fltvar', 'A', 'a1', 'a2', ds=ds)
+    res = test.TTestIndependent('fltvar', 'A', 'a1', 'a2', data=ds)
     t, p = scipy.stats.ttest_ind(ds[a1_index, 'fltvar'], ds[a2_index, 'fltvar'])
     assert res.t == pytest.approx(t, 10)
     assert res.p == pytest.approx(p, 10)
@@ -177,6 +177,6 @@ def test_wilcoxon():
     n = ds_agg.n_cases // 2
     w, p = scipy.stats.wilcoxon(ds_agg[:n, 'fltvar'].x, ds_agg[n:, 'fltvar'].x, alternative='two-sided')
 
-    res = test.WilcoxonSignedRank('fltvar', 'A', 'a1', 'a2', 'rm', ds=ds)
+    res = test.WilcoxonSignedRank('fltvar', 'A', 'a1', 'a2', 'rm', data=ds)
     assert res.w == w
     assert res.p == p

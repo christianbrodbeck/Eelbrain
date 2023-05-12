@@ -9,6 +9,8 @@ Hopkins, K. D. (1976). A Simplified Method for Determining Expected Mean
     Squares and Error Terms in the Analysis of Variance. Journal of
     Experimental Education, 45(2), 13--18.
 """
+from typing import Sequence
+
 import numpy as np
 from scipy.linalg import lstsq
 import scipy.stats
@@ -19,6 +21,7 @@ from .._data_obj import (
     ModelArg, IndexArg, VarArg,
     Dataset, Model, asmodel, assub, asvar, assert_has_no_empty_cells, find_factors,
     hasrandom, is_higher_order_effect, isbalanced, iscategorial, isnestedin)
+from .._utils import deprecate_ds_arg
 from .opt import anova_fmaps, anova_full_fmaps, lm_res_ss, ss
 from .stats import ftest_p
 from . import test
@@ -98,28 +101,34 @@ def _find_hopkins_ems(e, x):
 class LM:
     """Fit a linear model to a dependent variable
 
+    Parameters
+    ----------
+    y
+        Dependent variable.
+    x
+        Model.
+    sub
+        Only use part of the data
+    data
+        Dataset to use data from.
+
     Attributes
     ----------
     F, p : scalar
         Test of the null-hypothesis that the model does not explain a
         significant amount of the variance in the dependent variable.
     """
-    def __init__(self, y, x, sub=None, ds=None):
-        """Fit the model x to the dependent variable y
-
-        Parameters
-        ----------
-        y : Var
-            Dependent variable.
-        x : Model
-            Model.
-        sub : None | index
-            Only use part of the data
-        """
+    def __init__(
+            self,
+            y: VarArg,
+            x: ModelArg,
+            sub: IndexArg = None,
+            data: Dataset = None,
+    ):
         # prepare input
-        sub = assub(sub, ds)
-        y = asvar(y, sub, ds)
-        x = asmodel(x, sub, ds)
+        sub = assub(sub, data)
+        y = asvar(y, sub, data)
+        x = asmodel(x, sub, data)
 
         assert len(y) == len(x)
         assert x.df_error > 0
@@ -314,7 +323,23 @@ def _nd_anova(x):
     return _IncrementalNDANOVA(x)
 
 
-class _NDANOVA:
+class MPTestMapper:
+    "Baseclass for a test to be run with multiprocessing"
+
+    def preallocate(self, y_shape: Sequence[int]) -> np.ndarray:  #
+        "Pre-allocate an output array container"
+        raise NotImplementedError()
+
+    def map(
+            self,
+            y: np.ndarray,  # (n_cases, ...)
+            perm: np.ndarray = None,  # (n_cases,) permutation index
+    ) -> None:
+        "Process y and pu result into output array container"
+        raise NotImplementedError()
+
+
+class _NDANOVA(MPTestMapper):
     """Efficiently fit a model to multiple dependent variables."""
     def __init__(self, x, effects, dfs_denom):
         self.x = x
@@ -773,6 +798,7 @@ class IncrementalFTest:
         return f"<{self.__class__.__name__}{name}: {self._asfmtext()}"
 
 
+@deprecate_ds_arg
 class ANOVA:
     """Univariate ANOVA.
 
@@ -784,7 +810,7 @@ class ANOVA:
         Model to fit to y
     sub
         Only use part of the data.
-    ds
+    data
         Dataset to use data from.
     title
         Title for the results table.
@@ -811,7 +837,7 @@ class ANOVA:
     Simple n-way between subjects ANOVA::
 
         >>> ds = datasets.get_uv(nrm=True)
-        >>> print(test.ANOVA('fltvar', 'A*B', ds=ds))
+        >>> print(test.ANOVA('fltvar', 'A*B', data=ds))
                         SS   df      MS          F        p
         ---------------------------------------------------
         A            28.69    1   28.69   25.69***   < .001
@@ -832,7 +858,7 @@ class ANOVA:
     within-subject design), the ``A*B`` model can be fitted as repeated measures
     design::
 
-        >>> print(test.ANOVA('fltvar', 'A*B*rm', ds=ds))
+        >>> print(test.ANOVA('fltvar', 'A*B*rm', data=ds))
                     SS   df      MS   MS(denom)   df(denom)          F        p
         -----------------------------------------------------------------------
         A        28.69    1   28.69        1.21          19   23.67***   < .001
@@ -846,7 +872,7 @@ class ANOVA:
     a between-subjects factor), ``subject`` is nested in ``B``, which is specified
     as ``subject(B)``::
 
-        >>> print(test.ANOVA('fltvar', 'A * B * nrm(B)', ds=ds))
+        >>> print(test.ANOVA('fltvar', 'A * B * nrm(B)', data=ds))
                     SS   df      MS   MS(denom)   df(denom)          F        p
         -----------------------------------------------------------------------
         A        28.69    1   28.69        1.11          38   25.80***   < .001
@@ -858,7 +884,7 @@ class ANOVA:
     Numerical variables can be coerced to categorial factors in the model::
 
         >>> ds = datasets.get_loftus_masson_1994()
-        >>> print=(test.ANOVA('n_recalled', 'exposure.as_factor()*subject', ds=ds))
+        >>> print=(test.ANOVA('n_recalled', 'exposure.as_factor()*subject', data=ds))
                     SS       df   MS         F         p
         ---------------------------------------------------
         exposure     52.27    2   26.13   42.51***   < .001
@@ -870,14 +896,14 @@ class ANOVA:
             y: VarArg,
             x: ModelArg,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             title: fmtxt.FMTextLike = None,
             caption: fmtxt.FMTextLike = None,
     ):
         # prepare kwargs
-        sub, n = assub(sub, ds, return_n=True)
-        y, n = asvar(y, sub, ds, n, return_n=True)
-        x = asmodel(x, sub, ds, n, require_names=True)
+        sub, n = assub(sub, data, return_n=True)
+        y, n = asvar(y, sub, data, n, return_n=True)
+        x = asmodel(x, sub, data, n, require_names=True)
         assert_has_no_empty_cells(x)
 
         # save args

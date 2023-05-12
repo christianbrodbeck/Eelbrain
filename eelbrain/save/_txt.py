@@ -26,5 +26,5 @@ def txt(iterator: Iterable, fmt: str = '%s', delim: str = '\n', dest: PathArg = 
         dest = ui.ask_saveas(msg, msg, [("Plain Text File", '*.txt')])
 
     if dest:
-        with open(dest, 'w') as FILE:
-            FILE.write(delim.join(fmt % v for v in iterator))
+        with open(dest, 'w') as file:
+            file.write(delim.join(fmt % v for v in iterator))

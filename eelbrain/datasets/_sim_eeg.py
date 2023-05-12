@@ -9,14 +9,13 @@ from .._ndvar import gaussian, powerlaw_noise
 from .. import _info
 
 
-def _topo(sensor, center, falloff=1):
+def _topo(sensor, center):
     i = sensor.names.index(center)
     loc = sensor.locs[i]
     dists = scipy.spatial.distance.cdist([loc], sensor.locs)[0]
     radius = sensor._sphere_fit[1].mean()
     dists /= radius
     topo = 1.0 - dists
-    # topo **= falloff
     return NDVar(topo, (sensor,))
 
 
@@ -50,7 +49,7 @@ def simulate_erp(
         ys -= ys.mean(sensor=['M1', 'M2'])
         import mne
         path = mne.datasets.kiloword.data_path()
-        y = load.fiff.epochs_ndvar(path + '/kword_metadata-epo.fif')
+        y = load.mne.epochs_ndvar(path + '/kword_metadata-epo.fif')
         plot.TopoButterfly([y, ys])
 
     """
@@ -71,7 +70,7 @@ def simulate_erp(
     rng.shuffle(cloze_x)
     cloze = Var(cloze_x)
     # Word complexity (number of characters)
-    n_chars = Var(np.round(rng.normal(4, 1.5, n_trials)).astype(int))
+    n_chars = Var(np.round(rng.uniform(3, 7, n_trials)).astype(int))
 
     # Generate topography
     n400_topo = -2.0 * _topo(sensor, 'Cz')
@@ -121,6 +120,6 @@ def simulate_erp(
     ds = Dataset()
     ds['eeg'] = signal
     ds['cloze'] = Var(cloze_x)
-    ds['cloze_cat'] = Factor(cloze_x > 0.5, labels={True: 'high', False: 'low'})
+    ds['predictability'] = Factor(cloze_x > 0.5, labels={True: 'high', False: 'low'})
     ds['n_chars'] = Var(n_chars)
     return ds

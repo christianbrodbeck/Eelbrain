@@ -21,19 +21,19 @@ def test_anova():
     "Test testnd.ANOVA()"
     ds = datasets.get_uts(True, nrm=True)
 
-    testnd.ANOVA('utsnd', 'A*B', ds=ds)
+    testnd.ANOVA('utsnd', 'A*B', data=ds)
     for samples in (0, 2):
         logging.info("TEST:  samples=%r" % samples)
-        testnd.ANOVA('utsnd', 'A*B', ds=ds, samples=samples)
-        testnd.ANOVA('utsnd', 'A*B', ds=ds, samples=samples, pmin=0.05)
-        res = testnd.ANOVA('utsnd', 'A*B', ds=ds, samples=samples, tfce=True)
+        testnd.ANOVA('utsnd', 'A*B', data=ds, samples=samples)
+        testnd.ANOVA('utsnd', 'A*B', data=ds, samples=samples, pmin=0.05)
+        res = testnd.ANOVA('utsnd', 'A*B', data=ds, samples=samples, tfce=True)
         assert res._plot_model() == 'A%B'
     asfmtext(res)
 
-    res = testnd.ANOVA('utsnd', 'A*B*rm', match=False, ds=ds, samples=0, pmin=0.05)
+    res = testnd.ANOVA('utsnd', 'A*B*rm', match=False, data=ds, samples=0, pmin=0.05)
     assert repr(res) == "<ANOVA 'utsnd', 'A*B*rm', match=False, samples=0, pmin=0.05, 'A': 17 clusters, 'B': 20 clusters, 'A x B': 22 clusters>"
     assert res._plot_model() == 'A%B'
-    res = testnd.ANOVA('utsnd', 'A*B*rm', ds=ds, samples=2, pmin=0.05)
+    res = testnd.ANOVA('utsnd', 'A*B*rm', data=ds, samples=2, pmin=0.05)
     assert res.match == 'rm'
     assert repr(res) == "<ANOVA 'utsnd', 'A*B*rm', match='rm', samples=2, pmin=0.05, 'A': 17 clusters, p < .001, 'B': 20 clusters, p < .001, 'A x B': 22 clusters, p < .001>"
     assert res._plot_model() == 'A%B'
@@ -45,7 +45,7 @@ def test_anova():
     assert res_._plot_model() == 'A%B'
 
     # threshold-free
-    res = testnd.ANOVA('utsnd', 'A*B*rm', ds=ds, samples=10)
+    res = testnd.ANOVA('utsnd', 'A*B*rm', data=ds, samples=10)
     assert res.match == 'rm'
     assert repr(res) == "<ANOVA 'utsnd', 'A*B*rm', match='rm', samples=10, 'A': p < .001, 'B': p < .001, 'A x B': p < .001>"
     assert 'A clusters' in res.clusters.info
@@ -53,18 +53,18 @@ def test_anova():
     assert 'A x B clusters' in res.clusters.info
 
     # no clusters
-    res = testnd.ANOVA('uts', 'B', sub="A=='a1'", ds=ds, samples=5, pmin=0.05, mintime=0.02)
+    res = testnd.ANOVA('uts', 'B', sub="A=='a1'", data=ds, samples=5, pmin=0.05, mintime=0.02)
     repr(res)
     assert 'v' in res.clusters
     assert 'p' in res.clusters
     assert res._plot_model() == 'B'
 
     # all effects with clusters
-    res = testnd.ANOVA('uts', 'A*B*rm', match=False, ds=ds, samples=5, pmin=0.05, tstart=0.1, mintime=0.02)
+    res = testnd.ANOVA('uts', 'A*B*rm', match=False, data=ds, samples=5, pmin=0.05, tstart=0.1, mintime=0.02)
     assert set(res.clusters['effect'].cells) == set(res.effects)
 
     # some effects with clusters, some without
-    res = testnd.ANOVA('uts', 'A*B*rm', ds=ds, samples=5, pmin=0.05, tstart=0.37, mintime=0.02)
+    res = testnd.ANOVA('uts', 'A*B*rm', data=ds, samples=5, pmin=0.05, tstart=0.37, mintime=0.02)
     assert res.match == 'rm'
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
@@ -72,7 +72,7 @@ def test_anova():
 
     # test multi-effect results (with persistence)
     # UTS
-    res = testnd.ANOVA('uts', 'A*B*rm', ds=ds, samples=5)
+    res = testnd.ANOVA('uts', 'A*B*rm', data=ds, samples=5)
     assert res.match == 'rm'
     repr(res)
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
@@ -88,11 +88,11 @@ def test_anova():
 
     # reproducibility
     decimal = 12 if IS_WINDOWS else None  # FIXME: why is Windows sometimes different???
-    res0 = testnd.ANOVA('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
-    res = testnd.ANOVA('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
+    res0 = testnd.ANOVA('utsnd', 'A*B*rm', data=ds, pmin=0.05, samples=5)
+    res = testnd.ANOVA('utsnd', 'A*B*rm', data=ds, pmin=0.05, samples=5)
     assert_dataset_equal(res.clusters, res0.clusters, decimal=decimal)
     configure(n_workers=0)
-    res = testnd.ANOVA('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
+    res = testnd.ANOVA('utsnd', 'A*B*rm', data=ds, pmin=0.05, samples=5)
     assert_dataset_equal(res.clusters, res0.clusters, decimal=decimal)
     configure(n_workers=True)
 
@@ -100,17 +100,17 @@ def test_anova():
     eelbrain._stats.permutation._YIELD_ORIGINAL = 1
     samples = 4
     # raw
-    res = testnd.ANOVA('utsnd', 'A*B*rm', ds=ds, samples=samples)
+    res = testnd.ANOVA('utsnd', 'A*B*rm', data=ds, samples=samples)
     for dist in res._cdist:
         assert len(dist.dist) == samples
         assert_array_equal(dist.dist, dist.parameter_map.abs().max())
     # TFCE
-    res = testnd.ANOVA('utsnd', 'A*B*rm', ds=ds, tfce=True, samples=samples)
+    res = testnd.ANOVA('utsnd', 'A*B*rm', data=ds, tfce=True, samples=samples)
     for dist in res._cdist:
         assert len(dist.dist) == samples
         assert_array_equal(dist.dist, dist.tfce_map.abs().max())
     # thresholded
-    res1 = testnd.ANOVA('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=samples)
+    res1 = testnd.ANOVA('utsnd', 'A*B*rm', data=ds, pmin=0.05, samples=samples)
     clusters = res1.find_clusters()
     for dist, effect in zip(res1._cdist, res1.effects):
         effect_idx = clusters.eval("effect == %r" % effect)
@@ -121,16 +121,16 @@ def test_anova():
 
     # 1d TFCE
     configure(n_workers=0)
-    res = testnd.ANOVA('utsnd.rms(time=(0.1, 0.3))', 'A*B*rm', ds=ds, tfce=True, samples=samples)
+    res = testnd.ANOVA('utsnd.rms(time=(0.1, 0.3))', 'A*B*rm', data=ds, tfce=True, samples=samples)
     configure(n_workers=True)
 
     # zero variance
-    res2 = testnd.ANOVA('utsnd', 'A', ds=ds)
+    res2 = testnd.ANOVA('utsnd', 'A', data=ds)
     ds['utsnd'].x[:, 1, 10] = 0.
     zero_var = ds['utsnd'].var('case') == 0
     zv_index = tuple(i[0] for i in zero_var.nonzero())
-    res1_zv = testnd.ANOVA('utsnd', 'A*B*rm', ds=ds)
-    res2_zv = testnd.ANOVA('utsnd', 'A', ds=ds)
+    res1_zv = testnd.ANOVA('utsnd', 'A*B*rm', data=ds)
+    res2_zv = testnd.ANOVA('utsnd', 'A', data=ds)
     for res, res_zv in ((res1, res1_zv), (res2, res2_zv)):
         for f, f_zv in zip(res.f, res_zv.f):
             assert_array_equal((f_zv == 0).x, zero_var.x)
@@ -139,21 +139,21 @@ def test_anova():
             assert_dataobj_equal(f_zv, f, decimal=decimal)
 
     # nested random effect
-    res = testnd.ANOVA('uts', 'A * B * nrm(A)', ds=ds, samples=10, tstart=.4)
+    res = testnd.ANOVA('uts', 'A * B * nrm(A)', data=ds, samples=10, tstart=.4)
     assert res.match == 'nrm(A)'
     assert [p.min() for p in res.p] == [0.0, 0.6, 0.9]
 
     # unequal argument length
     with pytest.raises(ValueError):
-        testnd.ANOVA('uts', 'A[:-1]', ds=ds)
+        testnd.ANOVA('uts', 'A[:-1]', data=ds)
     with pytest.raises(ValueError):
-        testnd.ANOVA('uts[:-1]', 'A * B * nrm(A)', ds=ds)
+        testnd.ANOVA('uts[:-1]', 'A * B * nrm(A)', data=ds)
 
 
 def test_anova_incremental():
     "Test testnd.ANOVA() with incremental f-tests"
     ds = datasets.get_uts()
-    testnd.ANOVA('uts', 'A*B', ds=ds[3:], pmin=0.05, samples=10)
+    testnd.ANOVA('uts', 'A*B', data=ds[3:], pmin=0.05, samples=10)
 
 
 @requires_mne_sample_data
@@ -261,16 +261,16 @@ def test_clusterdist():
 
     # criteria
     ds = datasets.get_uts(True)
-    res = testnd.TTestRelated('utsnd', 'A', match='rm', ds=ds, samples=0, pmin=0.05)
+    res = testnd.TTestRelated('utsnd', 'A', match='rm', data=ds, samples=0, pmin=0.05)
     assert res.clusters['duration'].min() < 0.01
     assert res.clusters['n_sensors'].min() == 1
-    res = testnd.TTestRelated('utsnd', 'A', match='rm', ds=ds, samples=0, pmin=0.05,
+    res = testnd.TTestRelated('utsnd', 'A', match='rm', data=ds, samples=0, pmin=0.05,
                               mintime=0.02, minsensor=2)
     assert res.clusters['duration'].min() >= 0.02
     assert res.clusters['n_sensors'].min() == 2
 
     # 1d
-    res1d = testnd.TTestRelated('utsnd.sub(time=0.1)', 'A', match='rm', ds=ds,
+    res1d = testnd.TTestRelated('utsnd.sub(time=0.1)', 'A', match='rm', data=ds,
                                 samples=0, pmin=0.05)
     assert_dataobj_equal(res1d.p_uncorrected, res.p_uncorrected.sub(time=0.1))
 
@@ -369,16 +369,16 @@ def test_corr():
     utsnd = ds['utsnd']
     utsnd.x[:, 3:5, 50:65] += Y.x[:, None, None]
 
-    res = testnd.Correlation('utsnd', 'Y', ds=ds, samples=0)
+    res = testnd.Correlation('utsnd', 'Y', data=ds, samples=0)
     assert repr(res) == "<Correlation 'utsnd', 'Y', samples=0>"
     for s, t in product('01234', (0.1, 0.2, 0.35)):
         target = test.Correlation(utsnd.sub(sensor=s, time=t), Y).r
         assert res.r.sub(sensor=s, time=t) == pytest.approx(target)
-    res = testnd.Correlation('utsnd', 'Y', 'rm', ds=ds, samples=0)
+    res = testnd.Correlation('utsnd', 'Y', 'rm', data=ds, samples=0)
     repr(res)
-    res = testnd.Correlation('utsnd', 'Y', ds=ds, samples=10, pmin=0.05)
+    res = testnd.Correlation('utsnd', 'Y', data=ds, samples=10, pmin=0.05)
     repr(res)
-    res = testnd.Correlation('utsnd', 'Y', ds=ds, samples=10, tfce=True)
+    res = testnd.Correlation('utsnd', 'Y', data=ds, samples=10, tfce=True)
     repr(res)
 
     # persistence
@@ -393,15 +393,15 @@ def test_t_contrast():
     ds = datasets.get_uts()
 
     # simple contrast
-    res = testnd.TContrastRelated('uts', 'A', 'a1>a0', 'rm', ds=ds, samples=10, pmin=0.05)
+    res = testnd.TContrastRelated('uts', 'A', 'a1>a0', 'rm', data=ds, samples=10, pmin=0.05)
     assert repr(res) == "<TContrastRelated 'uts', 'A', 'a1>a0', match='rm', samples=10, pmin=0.05, 7 clusters, p < .001>"
-    res_ = testnd.TTestRelated('uts', 'A', 'a1', 'a0', 'rm', ds=ds)
+    res_ = testnd.TTestRelated('uts', 'A', 'a1', 'a0', 'rm', data=ds)
     assert_array_equal(res.t.x, res_.t.x)
 
     # complex contrast
-    res = testnd.TContrastRelated('uts', 'A%B', 'min(a0|b0>a1|b0, a0|b1>a1|b1)', 'rm', ds=ds, samples=10, pmin=0.05)
-    res_b0 = testnd.TTestRelated('uts', 'A%B', ('a0', 'b0'), ('a1', 'b0'), 'rm', ds=ds)
-    res_b1 = testnd.TTestRelated('uts', 'A%B', ('a0', 'b1'), ('a1', 'b1'), 'rm', ds=ds)
+    res = testnd.TContrastRelated('uts', 'A%B', 'min(a0|b0>a1|b0, a0|b1>a1|b1)', 'rm', data=ds, samples=10, pmin=0.05)
+    res_b0 = testnd.TTestRelated('uts', 'A%B', ('a0', 'b0'), ('a1', 'b0'), 'rm', data=ds)
+    res_b1 = testnd.TTestRelated('uts', 'A%B', ('a0', 'b1'), ('a1', 'b1'), 'rm', data=ds)
     assert_array_equal(res.t.x, np.min([res_b0.t.x, res_b1.t.x], axis=0))
 
     # persistence
@@ -411,12 +411,12 @@ def test_t_contrast():
     assert_dataobj_equal(res.p, res_.p)
 
     # contrast with "*"
-    res = testnd.TContrastRelated('uts', 'A%B', 'min(a1|b0>a0|b0, a1|b1>a0|b1)', 'rm', ds=ds, tail=1, samples=0)
+    res = testnd.TContrastRelated('uts', 'A%B', 'min(a1|b0>a0|b0, a1|b1>a0|b1)', 'rm', data=ds, tail=1, samples=0)
 
     # zero variance
     ds['uts'].x[:, 10] = 0.
     with pytest.raises(ZeroVariance):
-        testnd.TContrastRelated('uts', 'A%B', 'min(a1|b0>a0|b0, a1|b1>a0|b1)', 'rm', tail=1, ds=ds, samples=0)
+        testnd.TContrastRelated('uts', 'A%B', 'min(a1|b0>a0|b0, a1|b1>a0|b1)', 'rm', tail=1, data=ds, samples=0)
 
 
 def test_labeling():
@@ -453,16 +453,16 @@ def test_ttest_1samp():
     ds = datasets.get_uts(True)
 
     # no clusters
-    res0 = testnd.TTestOneSample('uts', sub="A == 'a0'", ds=ds, samples=0)
+    res0 = testnd.TTestOneSample('uts', sub="A == 'a0'", data=ds, samples=0)
     assert res0.p_uncorrected.min() < 0.05
     assert repr(res0) == "<TTestOneSample 'uts', sub=\"A == 'a0'\", samples=0>"
 
     # sub as array
-    res1 = testnd.TTestOneSample('uts', sub=ds.eval("A == 'a0'"), ds=ds, samples=0)
+    res1 = testnd.TTestOneSample('uts', sub=ds.eval("A == 'a0'"), data=ds, samples=0)
     assert repr(res1) == "<TTestOneSample 'uts', sub=<array>, samples=0>"
 
     # clusters without resampling
-    res1 = testnd.TTestOneSample('uts', sub="A == 'a0'", ds=ds, samples=0, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
+    res1 = testnd.TTestOneSample('uts', sub="A == 'a0'", data=ds, samples=0, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
     assert res1.clusters.n_cases == 1
     assert 'p' not in res1.clusters
     assert repr(res1) == "<TTestOneSample 'uts', sub=\"A == 'a0'\", samples=0, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05, 1 clusters>"
@@ -474,7 +474,7 @@ def test_ttest_1samp():
     assert_dataobj_equal(res1.p_uncorrected, res1_.p_uncorrected)
 
     # clusters with resampling
-    res2 = testnd.TTestOneSample('uts', sub="A == 'a0'", ds=ds, samples=10, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
+    res2 = testnd.TTestOneSample('uts', sub="A == 'a0'", data=ds, samples=10, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
     assert res2.clusters.n_cases == 1
     assert res2.samples == 10
     assert 'p' in res2.clusters
@@ -482,7 +482,7 @@ def test_ttest_1samp():
 
     # clusters with permutations
     dss = ds.sub("numpy.logical_and(A=='a0', B=='b0')")[:8]
-    res3 = testnd.TTestOneSample('uts', sub="A == 'a0'", ds=dss, samples=10000, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
+    res3 = testnd.TTestOneSample('uts', sub="A == 'a0'", data=dss, samples=10000, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
     assert repr(res3) == "<TTestOneSample 'uts', sub=\"A == 'a0'\", samples=255, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05, 2 clusters, p = .020>"
     assert res3.clusters.n_cases == 2
     assert res3.samples == -1
@@ -496,12 +496,12 @@ def test_ttest_1samp():
 
     # nd
     dss = ds.sub("A == 'a0'")
-    res = testnd.TTestOneSample('utsnd', ds=dss, samples=1)
-    res = testnd.TTestOneSample('utsnd', ds=dss, pmin=0.05, samples=1)
-    res = testnd.TTestOneSample('utsnd', ds=dss, tfce=True, samples=1)
+    res = testnd.TTestOneSample('utsnd', data=dss, samples=1)
+    res = testnd.TTestOneSample('utsnd', data=dss, pmin=0.05, samples=1)
+    res = testnd.TTestOneSample('utsnd', data=dss, tfce=True, samples=1)
 
     # TFCE properties
-    res = testnd.TTestOneSample('utsnd', sub="A == 'a0'", ds=ds, samples=1)
+    res = testnd.TTestOneSample('utsnd', sub="A == 'a0'", data=ds, samples=1)
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res = pickle.loads(string)
     tfce_clusters = res.find_clusters(pmin=0.05)
@@ -513,13 +513,13 @@ def test_ttest_1samp():
     # zero variance
     ds['utsnd'].x[:, 1, 10] = 0.
     ds['utsnd'].x[:, 2, 10] = 0.1
-    res = testnd.TTestOneSample('utsnd', ds=ds, samples=0)
+    res = testnd.TTestOneSample('utsnd', data=ds, samples=0)
     assert res.t.x[1, 10] == 0.
     assert res.t.x[2, 10] > 1e10
 
     # argument length
     with pytest.raises(ValueError):
-        testnd.TTestOneSample('utsnd', sub="A[:-1] == 'a0'", ds=ds, samples=0)
+        testnd.TTestOneSample('utsnd', sub="A[:-1] == 'a0'", data=ds, samples=0)
 
 
 def test_ttest_ind():
@@ -527,7 +527,7 @@ def test_ttest_ind():
     ds = datasets.get_uts(True)
 
     # basic
-    res = testnd.TTestIndependent('uts', 'A', 'a1', 'a0', ds=ds, samples=0)
+    res = testnd.TTestIndependent('uts', 'A', 'a1', 'a0', data=ds, samples=0)
     assert repr(res) == "<TTestIndependent 'uts', 'A', 'a1' (n=30), 'a0' (n=30), samples=0>"
     assert res.p_uncorrected.min() < 0.05
     # persistence
@@ -536,12 +536,12 @@ def test_ttest_ind():
     assert repr(res_) == "<TTestIndependent 'uts', 'A', 'a1' (n=30), 'a0' (n=30), samples=0>"
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
     # alternate argspec
-    res_ = testnd.TTestIndependent("uts[A == 'a1']", "uts[A == 'a0']", ds=ds, samples=0)
+    res_ = testnd.TTestIndependent("uts[A == 'a1']", "uts[A == 'a0']", data=ds, samples=0)
     assert repr(res_) == "<TTestIndependent 'uts' (n=30), 'uts' (n=30), samples=0>"
     assert_dataobj_equal(res_.t, res.t)
 
     # cluster
-    res = testnd.TTestIndependent('uts', 'A', 'a1', 'a0', ds=ds, tail=1, samples=1)
+    res = testnd.TTestIndependent('uts', 'A', 'a1', 'a0', data=ds, tail=1, samples=1)
     # persistence
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
@@ -549,12 +549,12 @@ def test_ttest_ind():
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
 
     # nd
-    res = testnd.TTestIndependent('utsnd', 'A', 'a1', 'a0', ds=ds, pmin=0.05, samples=2)
+    res = testnd.TTestIndependent('utsnd', 'A', 'a1', 'a0', data=ds, pmin=0.05, samples=2)
     assert res._cdist.n_clusters == 10
 
     # zero variance
     ds['utsnd'].x[:, 1, 10] = 0.
-    res_zv = testnd.TTestIndependent('utsnd', 'A', 'a1', 'a0', ds=ds, samples=0)
+    res_zv = testnd.TTestIndependent('utsnd', 'A', 'a1', 'a0', data=ds, samples=0)
     assert_array_equal(res_zv.t.x[0], res.t.x[0])
     assert res_zv.t.x[1, 10] == 0.
     # argument mismatch
@@ -563,9 +563,9 @@ def test_ttest_ind():
 
     # large array (#52)
     ds = datasets.simulate_erp(60, time=UTS(-0.1, 0.001, 601), snr=0.7)
-    res = testnd.TTestIndependent('eeg', 'cloze_cat', 'low', 'high', ds=ds, pmin=0.05, tstart=0.100, mintime=0.020, samples=20)
+    res = testnd.TTestIndependent('eeg', 'predictability', 'low', 'high', data=ds, pmin=0.05, tstart=0.100, mintime=0.020, samples=20)
     clusters = res.find_clusters()
-    assert_array_equal(clusters['p'], [0, 0.15, 0])
+    assert_array_equal(clusters['p'], [0.4, 0.15, 0.15, 0.3, 0., 0.2])
 
 
 def test_ttest_rel():
@@ -573,7 +573,7 @@ def test_ttest_rel():
     ds = datasets.get_uts(True)
 
     # basic
-    res = testnd.TTestRelated('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm', ds=ds, samples=100)
+    res = testnd.TTestRelated('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm', data=ds, samples=100)
     assert repr(res) == "<TTestRelated 'uts', 'A x B', ('a1', 'b1'), ('a0', 'b0'), 'rm' (n=15), samples=100, p < .001>"
     difference = res.masked_difference()
     assert difference.x.mask.sum() == 84
@@ -582,14 +582,14 @@ def test_ttest_rel():
     assert_array_equal(c1.x.data, res.c1_mean.x)
 
     # alternate argspec
-    res_ = testnd.TTestRelated("uts[A%B == ('a1', 'b1')]", "uts[A%B == ('a0', 'b0')]", ds=ds, samples=100)
+    res_ = testnd.TTestRelated("uts[A%B == ('a1', 'b1')]", "uts[A%B == ('a0', 'b0')]", data=ds, samples=100)
     assert repr(res_) == "<TTestRelated 'uts', 'uts' (n=15), samples=100, p < .001>"
     assert_dataobj_equal(res_.t, res.t)
     # alternate argspec 2
     ds1 = Dataset()
     ds1['a1b1'] = ds.eval("uts[A%B == ('a1', 'b1')]")
     ds1['a0b0'] = ds.eval("uts[A%B == ('a0', 'b0')]")
-    res1 = testnd.TTestRelated('a1b1', 'a0b0', ds=ds1, samples=100)
+    res1 = testnd.TTestRelated('a1b1', 'a0b0', data=ds1, samples=100)
     assert_dataobj_equal(res1.t, res.t)
     assert repr(res1) == "<TTestRelated 'a1b1', 'a0b0' (n=15), samples=100, p < .001>"
 
@@ -600,80 +600,80 @@ def test_ttest_rel():
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
 
     # collapsing cells
-    res2 = testnd.TTestRelated('uts', 'A', 'a1', 'a0', 'rm', ds=ds, samples=0)
+    res2 = testnd.TTestRelated('uts', 'A', 'a1', 'a0', 'rm', data=ds, samples=0)
     assert res2.p_uncorrected.min() < 0.05
     assert res2.n == res.n
 
     # reproducibility
-    res3 = testnd.TTestRelated('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm', ds=ds, samples=100)
+    res3 = testnd.TTestRelated('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm', data=ds, samples=100)
     assert_dataset_equal(res3.find_clusters(maps=True), res.clusters)
     configure(n_workers=0)
-    res4 = testnd.TTestRelated('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm', ds=ds, samples=100)
+    res4 = testnd.TTestRelated('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm', data=ds, samples=100)
     assert_dataset_equal(res4.find_clusters(maps=True), res.clusters)
     configure(n_workers=True)
     sds = ds.sub("B=='b0'")
     # thresholded, UTS
     configure(n_workers=0)
-    res0 = testnd.TTestRelated('uts', 'A', 'a1', 'a0', 'rm', ds=sds, pmin=0.1, samples=100)
+    res0 = testnd.TTestRelated('uts', 'A', 'a1', 'a0', 'rm', data=sds, pmin=0.1, samples=100)
     tgt = res0.find_clusters()
     configure(n_workers=True)
-    res1 = testnd.TTestRelated('uts', 'A', 'a1', 'a0', 'rm', ds=sds, pmin=0.1, samples=100)
+    res1 = testnd.TTestRelated('uts', 'A', 'a1', 'a0', 'rm', data=sds, pmin=0.1, samples=100)
     assert_dataset_equal(res1.find_clusters(), tgt)
     # thresholded, UTSND
     configure(n_workers=0)
-    res0 = testnd.TTestRelated('utsnd', 'A', 'a1', 'a0', 'rm', ds=sds, pmin=0.1, samples=100)
+    res0 = testnd.TTestRelated('utsnd', 'A', 'a1', 'a0', 'rm', data=sds, pmin=0.1, samples=100)
     tgt = res0.find_clusters()
     configure(n_workers=True)
-    res1 = testnd.TTestRelated('utsnd', 'A', 'a1', 'a0', 'rm', ds=sds, pmin=0.1, samples=100)
+    res1 = testnd.TTestRelated('utsnd', 'A', 'a1', 'a0', 'rm', data=sds, pmin=0.1, samples=100)
     assert_dataset_equal(res1.find_clusters(), tgt)
     # TFCE, UTS
     configure(n_workers=0)
-    res0 = testnd.TTestRelated('uts', 'A', 'a1', 'a0', 'rm', ds=sds, tfce=True, samples=10)
+    res0 = testnd.TTestRelated('uts', 'A', 'a1', 'a0', 'rm', data=sds, tfce=True, samples=10)
     tgt = res0.compute_probability_map()
     configure(n_workers=True)
-    res1 = testnd.TTestRelated('uts', 'A', 'a1', 'a0', 'rm', ds=sds, tfce=True, samples=10)
+    res1 = testnd.TTestRelated('uts', 'A', 'a1', 'a0', 'rm', data=sds, tfce=True, samples=10)
     assert_dataobj_equal(res1.compute_probability_map(), tgt)
 
     # zero variance
     ds['utsnd'].x[:, 1, 10] = 0.
-    res = testnd.TTestRelated('utsnd', 'A', match='rm', ds=ds)
+    res = testnd.TTestRelated('utsnd', 'A', match='rm', data=ds)
     assert res.t.x[1, 10] == 0
 
     # argument length
     with pytest.raises(ValueError):
-        testnd.TTestRelated('utsnd', 'A[:-1]', match='rm', ds=ds)
+        testnd.TTestRelated('utsnd', 'A[:-1]', match='rm', data=ds)
     with pytest.raises(ValueError):
-        testnd.TTestRelated('utsnd', 'A', match='rm[:-1]', ds=ds)
+        testnd.TTestRelated('utsnd', 'A', match='rm[:-1]', data=ds)
 
 
 def test_vector():
     """Test vector tests"""
     # single vector
     ds = datasets.get_uv(vector=True)
-    res = testnd.Vector('v[:40]', ds=ds, samples=10)
+    res = testnd.Vector('v[:40]', data=ds, samples=10)
     assert res.p == 0.0
-    res = testnd.Vector('v[40:]', ds=ds, samples=10)
+    res = testnd.Vector('v[40:]', data=ds, samples=10)
     assert res.p == 1.0
 
     # single vector with norm stat
-    res_t = testnd.Vector('v[:40]', ds=ds, samples=10, norm=True)
+    res_t = testnd.Vector('v[:40]', data=ds, samples=10, norm=True)
     assert res_t.p == 0.0
-    res_t = testnd.Vector('v[40:]', ds=ds, samples=10, norm=True)
+    res_t = testnd.Vector('v[40:]', data=ds, samples=10, norm=True)
     assert res_t.p == 1.0
 
     # non-space tests should raise error
     with pytest.raises(WrongDimension):
-        testnd.TTestOneSample('v', ds=ds)
+        testnd.TTestOneSample('v', data=ds)
     with pytest.raises(WrongDimension):
-        testnd.TTestRelated('v', 'A', match='rm', ds=ds)
+        testnd.TTestRelated('v', 'A', match='rm', data=ds)
     with pytest.raises(WrongDimension):
-        testnd.TTestIndependent('v', 'A', ds=ds)
+        testnd.TTestIndependent('v', 'A', data=ds)
     with pytest.raises(WrongDimension):
-        testnd.TContrastRelated('v', 'A', 'a0 > a1', 'rm', ds=ds)
+        testnd.TContrastRelated('v', 'A', 'a0 > a1', 'rm', data=ds)
     with pytest.raises(WrongDimension):
-        testnd.Correlation('v', 'fltvar', ds=ds)
+        testnd.Correlation('v', 'fltvar', data=ds)
     with pytest.raises(WrongDimension):
-        testnd.ANOVA('v', 'A * B', ds=ds)
+        testnd.ANOVA('v', 'A * B', data=ds)
 
     # vector in time
     ds = datasets.get_uts(vector3d=True)
@@ -733,7 +733,7 @@ def test_cwt():
     "Test tests with wavelet transform"
     ds = datasets.get_uts(True)
     ds['cwt'] = cwt_morlet(ds['utsnd'], np.arange(10, 20)).abs()
-    res = testnd.TTestRelated('cwt', 'A', match='rm', ds=ds, pmin=0.05, samples=10)
+    res = testnd.TTestRelated('cwt', 'A', match='rm', data=ds, pmin=0.05, samples=10)
     cluster = res.clusters.sub("p == 0")
     assert_array_equal(cluster['frequency_min'], 10)
     assert_array_equal(cluster['frequency_max'], 19)
@@ -765,26 +765,26 @@ def test_merged_temporal_cluster_dist():
                 assert cl['p_parc'] >= cl['p']
 
     # multi-effect
-    res1 = testnd.ANOVA(ds=ds1, **anova_kw)
-    res2 = testnd.ANOVA(ds=ds2, **anova_kw)
+    res1 = testnd.ANOVA(data=ds1, **anova_kw)
+    res2 = testnd.ANOVA(data=ds2, **anova_kw)
     test_merged(res1, res2)
 
     # TTestRelated
-    res1 = testnd.TTestRelated(ds=ds1, match='rm', **ttest_kw)
-    res2 = testnd.TTestRelated(ds=ds2, match='rm', **ttest_kw)
+    res1 = testnd.TTestRelated(data=ds1, match='rm', **ttest_kw)
+    res2 = testnd.TTestRelated(data=ds2, match='rm', **ttest_kw)
     test_merged(res1, res2)
 
     # TTestIndependent
-    res1 = testnd.TTestIndependent(ds=ds1, **ttest_kw)
-    res2 = testnd.TTestIndependent(ds=ds2, **ttest_kw)
+    res1 = testnd.TTestIndependent(data=ds1, **ttest_kw)
+    res2 = testnd.TTestIndependent(data=ds2, **ttest_kw)
     test_merged(res1, res2)
 
     # TTestOneSample
-    res1 = testnd.TTestOneSample('uts', ds=ds1, pmin=0.05, samples=10)
-    res2 = testnd.TTestOneSample('uts', ds=ds2, pmin=0.05, samples=10)
+    res1 = testnd.TTestOneSample('uts', data=ds1, pmin=0.05, samples=10)
+    res2 = testnd.TTestOneSample('uts', data=ds2, pmin=0.05, samples=10)
     test_merged(res1, res2)
 
     # TContrastRelated
-    res1 = testnd.TContrastRelated(ds=ds1, match='rm', **contrast_kw)
-    res2 = testnd.TContrastRelated(ds=ds2, match='rm', **contrast_kw)
+    res1 = testnd.TContrastRelated(data=ds1, match='rm', **contrast_kw)
+    res2 = testnd.TContrastRelated(data=ds2, match='rm', **contrast_kw)
     test_merged(res1, res2)

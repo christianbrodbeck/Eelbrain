@@ -102,7 +102,7 @@ def deprecated(version, replacement):
             msg += f"; use {replacement.__name__} instead"
             call_func = replacement
         else:
-            raise TypeError(f"replacement={replacement!r}")
+            raise TypeError(f"{replacement=}")
         func.__doc__ = msg
 
         @functools.wraps(func)
@@ -154,6 +154,17 @@ def deprecated_attribute(version, class_name, replacement):
             return getattr(obj, replacement)
 
     return Dec
+
+
+def deprecate_ds_arg(func):
+    """Backwards compatibility and deprecation for the `ds` parameter (renamed to `data`)"""
+    @functools.wraps(func)
+    def new(*args, ds=None, **kwargs):
+        if ds is not None:
+            warn("The `ds` argument has been renamed to `data`. `ds` will stop working in Eelbrain 0.41.", DeprecationWarning)
+            kwargs['data'] = ds
+        return func(*args, **kwargs)
+    return new
 
 
 def log_level(arg):

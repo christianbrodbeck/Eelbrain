@@ -140,9 +140,9 @@ Events are represented as :class:`Dataset` objects and can be inspected with
 corresponding methods and functions, for example::
 
     >>> e = WordExperiment("/files")
-    >>> ds = e.load_events()
-    >>> ds.head()
-    >>> print(table.frequencies('trigger', ds=ds))
+    >>> data = e.load_events()
+    >>> data.head()
+    >>> print(table.frequencies('trigger', data=data))
 
 
 For more complex designs and variables, you can override methods that provide
@@ -170,8 +170,8 @@ selection strings. The epoch selection is determined by
 ``selection = event_ds.eval(epoch['sel'])``. Thus, a specific setting could be
 tested with::
 
-    >>> ds = e.load_events()
-    >>> print(ds.sub("event == 'value'"))
+    >>> data = e.load_events()
+    >>> print(data.sub("event == 'value'"))
 
 
 Bad channels
@@ -188,12 +188,12 @@ Another good check for bad channels is plotting the average evoked response,
 and looking for channels which are uncorrelated with neighboring
 channels. To plot the average before trial rejection, use::
 
-    >>> ds = e.load_epochs(epoch='epoch', reject=False)
-    >>> plot.TopoButterfly('meg', ds=ds)
+    >>> data = e.load_epochs(epoch='epoch', reject=False)
+    >>> plot.TopoButterfly('meg', data=data)
 
 The neighbor correlation can also be quantified, using::
 
-    >>> nc = neighbor_correlation(concatenate(ds['meg']))
+    >>> nc = neighbor_correlation(concatenate(data['meg']))
     >>> nc.sensor.names[nc < 0.3]
     Datalist(['MEG 099'])
 
@@ -306,8 +306,8 @@ The following is a complete example for an experiment class definition file
 The event structure is illustrated by looking at the first few events::
 
     >>> from mouse import *
-    >>> ds = e.load_events()
-    >>> ds.head()
+    >>> data = e.load_events()
+    >>> data.head()
     trigger   i_start   T        SOA     subject   stimulus   prediction
     --------------------------------------------------------------------
     182       104273    104.27   12.04   S0001
@@ -409,7 +409,7 @@ By default, events are loaded from all stim channels; use this parameter to rest
 
 .. py:attribute:: MneExperiment.merge_triggers : int
 
-Use a non-default ``merge`` parameter for :func:`.load.fiff.events`.
+Use a non-default ``merge`` parameter for :func:`.load.mne.events`.
 
 .. py:attribute:: MneExperiment.trigger_shift : float | Dict[str, float]
 
@@ -417,7 +417,7 @@ Set this attribute to shift all trigger times by a constant (in seconds). For ex
 
 .. py:attribute:: MneExperiment.meg_system : str
 
-Specify the MEG system used to acquire the data so that the right sensor neighborhood graph can be loaded. This is usually automatic, but is needed for KIT files convert with with :mod:`mne` < 0.13. Equivalent to the ``sysname`` parameter in :func:`.load.fiff.epochs_ndvar` etc. For example, for data from NYU New York, the correct value is ``meg_system="KIT-157"``.
+Specify the MEG system used to acquire the data so that the right sensor neighborhood graph can be loaded. This is usually automatic, but is needed for KIT files convert with with :mod:`mne` < 0.13. Equivalent to the ``sysname`` parameter in :func:`.load.mne.epochs_ndvar` etc. For example, for data from NYU New York, the correct value is ``meg_system="KIT-157"``.
 
 
 Pre-processing (raw)
@@ -543,8 +543,9 @@ Tests
 
 .. py:attribute:: MneExperiment.tests
 
-Statistical tests are defined as ``{name: test_definition}`` dictionary. Test-
-definitions are defined from the following:
+Statistical tests are defined as ``{name: test_definition}`` dictionary.
+This allows automatic caching of permutation test results when using :meth:`MneExperiment.load_test`.
+Tests are defined using the following classes:
 
 .. autosummary::
    :toctree: generated

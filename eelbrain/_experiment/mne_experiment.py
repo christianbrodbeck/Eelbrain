@@ -53,7 +53,7 @@ from .epochs import ContinuousEpoch, PrimaryEpoch, SecondaryEpoch, SuperEpoch, E
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
 from .groups import assemble_groups
-from .parc import SEEDED_PARC_RE, CombinationParc, EelbrainParc, FreeSurferParc, FSAverageParc, SeededParc, IndividualSeededParc, LabelParc, Parcellation, SubParc, assemble_parcs
+from .parc import SEEDED_PARC_RE, CombinationParc, EelbrainParc, FreeSurferParc, FSAverageParc, SeededParc, IndividualSeededParc, LabelParc, VolumeParc, Parcellation, SubParc, assemble_parcs
 from .preprocessing import (
     assemble_pipeline, RawPipe, RawSource, RawFilter, RawICA, RawApplyICA,
     compare_pipelines, ask_to_delete_ica_files)
@@ -319,6 +319,9 @@ class MneExperiment(FileTree):
         'PALS_B12_Lobes': FSAverageParc(),
         'PALS_B12_OrbitoFrontal': FSAverageParc(),
         'PALS_B12_Visuotopic': FSAverageParc(),
+        # Volume
+        'aparc+aseg': VolumeParc(),
+        # Combinations
         'lobes': EelbrainParc(True, ('lateral', 'medial')),
         'lobes-op': CombinationParc('lobes', {'occipitoparietal': "occipital + parietal"}, ('lateral', 'medial')),
         'lobes-ot': CombinationParc('lobes', {'occipitotemporal': "occipital + temporal"}, ('lateral', 'medial')),
@@ -897,11 +900,11 @@ class MneExperiment(FileTree):
             'version': CACHE_STATE_VERSION,
             'stim_channel': self._stim_channel,
             'merge_triggers': self.merge_triggers,
-            'raw': {k: v.as_dict() for k, v in self._raw.items()},
+            'raw': {k: v._as_dict() for k, v in self._raw.items()},
             'groups': self._groups,
-            'epochs': {k: v.as_dict() for k, v in self._epochs.items()},
-            'tests': {k: v.as_dict() for k, v in self._tests.items()},
-            'parcs': {k: v.as_dict() for k, v in self._parcs.items()},
+            'epochs': {k: v._as_dict() for k, v in self._epochs.items()},
+            'tests': {k: v._as_dict() for k, v in self._tests.items()},
+            'parcs': {k: v._as_dict() for k, v in self._parcs.items()},
             'events': events,
         }
         cache_state_path = join(cache_dir, 'cache-state.pickle')
@@ -1030,7 +1033,7 @@ class MneExperiment(FileTree):
         # epochs
         if cache_state_v < 3:
             # Epochs represented as dict up to Eelbrain 0.24
-            new_state['epochs'] = {k: v.as_dict_24() for k, v in self._epochs.items()}
+            new_state['epochs'] = {k: v._as_dict_24() for k, v in self._epochs.items()}
             for e in cache_state['epochs'].values():
                 e.pop('base', None)
                 if 'sel_epoch' in e:
@@ -1047,7 +1050,7 @@ class MneExperiment(FileTree):
         # raw pipeline
         if cache_state_v < 5:
             legacy_raw = assemble_pipeline(LEGACY_RAW, '', '', '', '', self._sessions, self._log)
-            cache_state['raw'] = {k: v.as_dict() for k, v in legacy_raw.items()}
+            cache_state['raw'] = {k: v._as_dict() for k, v in legacy_raw.items()}
 
         # parcellations represented as dicts
         if cache_state_v < 6:
@@ -1061,7 +1064,7 @@ class MneExperiment(FileTree):
             for params in cache_state['tests'].values():
                 if 'desc' in params:
                     del params['desc']
-            cache_state['tests'] = {k: v.as_dict() for k, v in assemble_tests(cache_state['tests']).items()}
+            cache_state['tests'] = {k: v._as_dict() for k, v in assemble_tests(cache_state['tests']).items()}
         elif cache_state_v == 7:  # 'kind' key missing
             for name, params in cache_state['tests'].items():
                 if name in new_state['tests']:
@@ -1865,7 +1868,7 @@ class MneExperiment(FileTree):
         ----------
         ds : Dataset
             A Dataset containing events (with variables as returned by
-            :func:`load.fiff.events`).
+            :func:`load.mne.events`).
 
         Returns
         -------
@@ -1909,7 +1912,7 @@ class MneExperiment(FileTree):
         ----------
         ds : Dataset
             A Dataset containing events (with variables as returned by
-            :func:`load.fiff.events`).
+            :func:`load.mne.events`).
 
         Returns
         -------
@@ -2297,11 +2300,11 @@ class MneExperiment(FileTree):
         decim = decim_param(samplingrate, decim, epoch, ds.info['sfreq'])
 
         if variable_tmax:
-            ds['epochs'] = load.fiff.variable_length_mne_epochs(ds, tmin, tmax, baseline, allow_truncation=True, decim=decim, reject_by_annotation=False)
+            ds['epochs'] = load.mne.variable_length_mne_epochs(ds, tmin, tmax, baseline, allow_truncation=True, decim=decim, reject_by_annotation=False)
             epochs_list = ds['epochs']
         else:
             n = ds.n_cases
-            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim, drop_bad_chs=False, tstop=tstop, reject_by_annotation=False)
+            ds = load.mne.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim, drop_bad_chs=False, tstop=tstop, reject_by_annotation=False)
             if ds.n_cases != n:
                 self._log.warning(f"{n_of(n - ds.n_cases, 'epoch')} missing for {subject}/{epoch_name}")
 
@@ -2364,11 +2367,11 @@ class MneExperiment(FileTree):
                 else:
                     name = data_kind
                 if variable_tmax:
-                    ys = [load.fiff.epochs_ndvar(e, data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude, name=data_kind)[0] for e in ds['epochs']]
+                    ys = [load.mne.epochs_ndvar(e, data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude, name=data_kind)[0] for e in ds['epochs']]
                     if isinstance(data.sensor, str):
                         ys = [getattr(y, data.sensor)('sensor') for y in ys]
                 else:
-                    ys = load.fiff.epochs_ndvar(ds['epochs'], data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude)
+                    ys = load.mne.epochs_ndvar(ds['epochs'], data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude)
                     if add_bads_to_info:
                         ys.info[BAD_CHANNELS] = ds['epochs'].info['bads']
                     if isinstance(data.sensor, str):
@@ -2431,7 +2434,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``False``.
         data_raw
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
@@ -2523,7 +2526,7 @@ class MneExperiment(FileTree):
 
         if ndvar:
             src = self.get('src')
-            ndvar_list = [load.fiff.stc_ndvar(stc, mrisubject, src, mri_sdir, method, make_kw.get('fixed', False), parc=parc, connectivity=self.get('connectivity')) for stc in stc_list]
+            ndvar_list = [load.mne.stc_ndvar(stc, mrisubject, src, mri_sdir, method, make_kw.get('fixed', False), parc=parc, connectivity=self.get('connectivity')) for stc in stc_list]
             if src_baseline:
                 for v in ndvar_list:
                     v -= v.summary(time=src_baseline)
@@ -2595,7 +2598,7 @@ class MneExperiment(FileTree):
         if ds is None:
             self._log.debug("Extracting events for %s %s %s", self.get('raw'), subject, self.get('recording'))
             raw = self.load_raw(add_bads)
-            ds = load.fiff.events(raw, self.merge_triggers, stim_channel=self._stim_channel)
+            ds = load.mne.events(raw, self.merge_triggers, stim_channel=self._stim_channel)
             del ds.info['raw']
             ds.info['sfreq'] = raw.info['sfreq']
             ds.info['raw-mtime'] = self._raw_mtime(bad_chs=False, subject=subject)
@@ -2763,7 +2766,7 @@ class MneExperiment(FileTree):
                 sysname = pipe.get_sysname(info, subject, data_kind)
                 connectivity = pipe.get_connectivity(data_kind)
                 name = 'meg' if data_kind == 'mag' else data_kind
-                ds[name] = load.fiff.evoked_ndvar(evoked, data=data_kind, sysname=sysname, connectivity=connectivity)
+                ds[name] = load.mne.evoked_ndvar(evoked, data=data_kind, sysname=sysname, connectivity=connectivity)
                 if data_kind != 'eog' and isinstance(data.sensor, str):
                     ds[name] = getattr(ds[name], data.sensor)('sensor')
 
@@ -2792,7 +2795,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``True``.
         morph
             Morph the source estimates to the common brain
@@ -2839,7 +2842,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``True``.
         morph
             Morph the source estimates to the common brain
@@ -2905,7 +2908,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``False``.
         data_raw
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
@@ -3009,7 +3012,7 @@ class MneExperiment(FileTree):
             mri_sdir = self.get('mri-sdir')
             fixed = make_kw.get('fixed', False)
             parc = self.get('parc') or None
-            stcs = load.fiff.stc_ndvar(stcs, subject, src, mri_sdir, method, fixed, parc=parc, connectivity=self.get('connectivity'))
+            stcs = load.mne.stc_ndvar(stcs, subject, src, mri_sdir, method, fixed, parc=parc, connectivity=self.get('connectivity'))
             if mask:
                 stcs = _mask_ndvar(stcs)
         else:
@@ -3060,7 +3063,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``False``.
         vardef
             Name of a test defining additional variables.
@@ -3133,7 +3136,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``False``.
         ...
             State parameters.
@@ -3157,7 +3160,7 @@ class MneExperiment(FileTree):
             else:
                 self.make_annot()
                 parc = self.get('parc')
-            fwd = load.fiff.forward_operator(fwd_file, src, self.get('mri-sdir'), parc, connectivity=False)
+            fwd = load.mne.forward_operator(fwd_file, src, self.get('mri-sdir'), parc, connectivity=False)
             if mask:
                 fwd = fwd.sub(source=np.invert(
                     fwd.source.parc.startswith('unknown')))
@@ -3217,7 +3220,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``False``.
         ...
             Applicable :ref:`state-parameters`:
@@ -3268,7 +3271,7 @@ class MneExperiment(FileTree):
                 inv = mne.minimum_norm.read_inverse_operator(dst)
 
         if ndvar:
-            inv = load.fiff.inverse_operator(inv, self.get('src'), self.get('mri-sdir'), self.get('parc'))
+            inv = load.mne.inverse_operator(inv, self.get('src'), self.get('mri-sdir'), self.get('parc'))
             if mask:
                 inv = inv.sub(source=~inv.source.parc.startswith('unknown'))
         elif mask:
@@ -3469,7 +3472,7 @@ class MneExperiment(FileTree):
             data_kind = data.data_to_ndvar(raw.info)[0]
             sysname = pipe.get_sysname(raw.info, self.get('subject'), data_kind)
             connectivity = pipe.get_connectivity(data_kind)
-            raw = load.fiff.raw_ndvar(raw, sysname=sysname, connectivity=connectivity)
+            raw = load.mne.raw_ndvar(raw, sysname=sysname, connectivity=connectivity)
 
         return raw
 
@@ -3490,7 +3493,7 @@ class MneExperiment(FileTree):
         mask
             Discard data that is labelled ``unknown`` by the parcellation.
             Parcellation name (:class:`str`) to specify a parcellation,
-            ``True`` to use the :ref:`state-parc`` state parameter.
+            ``True`` to use the :ref:`state-parc` state parameter.
             Only applies when ``ndvar=True``, default ``False``.
         morph
             Morph the source estimates to the common_brain (default False).
@@ -3516,7 +3519,7 @@ class MneExperiment(FileTree):
 
         if ndvar:
             src = self.get('src')
-            return load.fiff.stc_ndvar(stc, mrisubject, src, mri_sdir, method, make_kw.get('fixed', False), parc=parc, connectivity=self.get('connectivity'))
+            return load.mne.stc_ndvar(stc, mrisubject, src, mri_sdir, method, make_kw.get('fixed', False), parc=parc, connectivity=self.get('connectivity'))
         else:
             return stc
 
@@ -3736,7 +3739,7 @@ class MneExperiment(FileTree):
         if not isinstance(test_obj, TwoStageTest):
             raise NotImplementedError("Test kind %r" % test_obj.__class__.__name__)
         ds = self.load_epochs_stc(subject, baseline, src_baseline, mask=True, vardef=test_obj.vars)
-        return testnd.LM('src', test_obj.stage_1, ds, subject=subject)
+        return testnd.LM('src', test_obj.stage_1, data=ds, samples=0, subject=subject)
 
     def load_src(self, add_geom=False, ndvar=False, **state):
         """Load the current source space
@@ -4089,8 +4092,8 @@ class MneExperiment(FileTree):
         self.set(**state)
 
         # variables
-        parc, p = self._get_parc()
-        if p is None:
+        parc, parc_def = self._get_parc()
+        if parc_def is None or isinstance(parc_def, VolumeParc):
             return
 
         mrisubject = self.get('mrisubject')
@@ -4098,7 +4101,7 @@ class MneExperiment(FileTree):
         mtime = self._annot_file_mtime()
         if mrisubject != common_brain:
             is_fake = is_fake_mri(self.get('mri-dir'))
-            if p.morph_from_fsaverage or is_fake:
+            if parc_def.morph_from_fsaverage or is_fake:
                 # make sure annot exists for common brain
                 self.set(mrisubject=common_brain, match=False)
                 common_brain_mtime = self.make_annot()
@@ -4123,7 +4126,7 @@ class MneExperiment(FileTree):
         if mtime:
             return mtime
         self._log.info("Make parcellation %s for %s", parc, mrisubject)
-        labels = p._make(self, parc)
+        labels = parc_def._make(self, parc)
         write_labels_to_annot(labels, mrisubject, parc, True, self.get('mri-sdir'))
 
     def make_bad_channels(self, bad_chs=(), redo=False, **kwargs):
@@ -4197,7 +4200,7 @@ class MneExperiment(FileTree):
         save
             Save the bad channels to the bad channel specification file. Set
             ``save=False`` to examine the result without actually changing the
-             bad channels.
+            bad channels.
         ...
             State parameters.
 
@@ -4394,7 +4397,12 @@ class MneExperiment(FileTree):
         else:
             bem = self._load_bem()
             bemsol = mne.make_bem_solution(bem)
-        fwd = mne.make_forward_solution(raw.info, trans, src, bemsol, ignore_ref=True)
+        # ignore_ref should be True for KIT
+        if 'kit_system_id' in raw.info:
+            is_kit = raw.info['kit_system_id'] is not None
+        else:
+            raise RuntimeError("Unclear how to set ignor_ref for legacy file without kit_system_id")
+        fwd = mne.make_forward_solution(raw.info, trans, src, bemsol, ignore_ref=is_kit)
         for s, s0 in zip(fwd['src'], src):
             if s['nuse'] != s0['nuse']:
                 raise RuntimeError(f"The forward solution {basename(dst)} contains fewer sources than the source space. This could be due to a corrupted bem file with sources outside of the inner skull surface.")
@@ -4729,11 +4737,11 @@ class MneExperiment(FileTree):
         # compute t-maps
         if c0:
             if group:
-                res = testnd.TTestRelated(y, model, c1, c0, match='subject', ds=ds, **state)
+                res = testnd.TTestRelated(y, model, c1, c0, match='subject', data=ds, **state)
             else:
-                res = testnd.TTestIndependent(y, model, c1, c0, ds=ds, **state)
+                res = testnd.TTestIndependent(y, model, c1, c0, data=ds, **state)
         else:
-            res = testnd.TTestOneSample(y, ds=ds, **state)
+            res = testnd.TTestOneSample(y, data=ds, **state)
 
         # select cluster-corrected t-map
         if state:
@@ -4981,7 +4989,7 @@ class MneExperiment(FileTree):
             raise NotImplementedError("Epoch selection for vector data; use data='planar1' and data='planar2'")
         else:
             y_name = data
-            ds[data] = load.fiff.epochs_ndvar(ds['epochs'], data=data)
+            ds[data] = load.mne.epochs_ndvar(ds['epochs'], data=data)
 
         if auto is not None:
             if isinstance(auto, dict):
@@ -5446,7 +5454,7 @@ class MneExperiment(FileTree):
         s_ds = self.show_subjects(asds=True)
         if 'n' in ds:
             if model:
-                n_ds = table.repmeas('n', model, 'subject', ds=ds)
+                n_ds = table.repmeas('n', model, 'subject', data=ds)
             else:
                 n_ds = ds
             n_ds_aligned = align1(n_ds, s_ds['subject'], 'subject')
@@ -5582,7 +5590,7 @@ class MneExperiment(FileTree):
         report = fmtxt.Report(title)
         for subject in self:
             mrisubject = self.get('mrisubject')
-            fig = self.plot_coreg()
+            fig = self.plot_coregistration()
             fig.scene.camera.parallel_projection = True
             fig.scene.camera.parallel_scale = .175
             mlab.draw(fig)
@@ -5917,15 +5925,25 @@ class MneExperiment(FileTree):
 
         return Brain(mrisubject, **brain_args)
 
-    def plot_coreg(self, dig=True, parallel=True, **state):
+    def plot_coregistration(
+            self,
+            surfaces: Union[str, list, dict] = 'auto',
+            meg: Tuple[str, ...] = ('helmet', 'sensors'),
+            dig: bool = True,
+            parallel: bool = True,
+            **state):
         """Plot the coregistration (Head shape and MEG helmet)
 
         Parameters
         ----------
-        dig : bool
+        surfaces
+            :func:`mne.viz.plot_alignment` parameter.
+        meg
+            :func:`mne.viz.plot_alignment` parameter.
+        dig
             Plot the digitization points (default True; 'fiducials' to plot
             fiducial points only).
-        parallel : bool
+        parallel
             Set parallel view.
         ...
             State parameters.
@@ -5937,16 +5955,9 @@ class MneExperiment(FileTree):
         self.set(**state)
         with self._temporary_state:
             raw = self.load_raw(raw='raw')
-        fig = mne.viz.plot_alignment(
-            raw.info, self.get('trans-file'), self.get('mrisubject'),
-            self.get('mri-sdir'), meg=('helmet', 'sensors'), dig=dig,
-            interaction='terrain')
+        fig = mne.viz.plot_alignment(raw.info, self.get('trans-file'), self.get('mrisubject'), self.get('mri-sdir'), surfaces, meg=meg, dig=dig, interaction='terrain')
         if parallel:
-            fig.scene.camera.parallel_projection = True
-            fig.scene.camera.parallel_scale = .2
-            fig.scene.camera.position = [0, .5, .04]
-            fig.scene.camera.focal_point = [0, 0, .04]
-            fig.render()
+            fig.plotter.enable_parallel_projection()
         return fig
 
     def plot_whitened_gfp(self, s_start=None, s_stop=None, run=None):
@@ -6055,7 +6066,7 @@ class MneExperiment(FileTree):
                 ds = self.load_evoked(baseline=baseline)
                 y = guess_y(ds)
                 title = f"{subject} {epoch} {model_name}"
-                p = plot.TopoButterfly(y, model, ds=ds, axh=h, name=title, run=False)
+                p = plot.TopoButterfly(y, model, data=ds, axh=h, name=title, run=False)
                 plots.append(p)
                 vlim.append(p.get_vlim())
 
@@ -6100,7 +6111,7 @@ class MneExperiment(FileTree):
             right_of = None
         if sns:
             key = 'meg' if 'meg' in ds else 'eeg'
-            p = plot.TopoButterfly(key, model, ds=ds, axh=h, w=2.5*h, name=title, right_of=right_of, run=run)
+            p = plot.TopoButterfly(key, model, data=ds, axh=h, w=2.5 * h, name=title, right_of=right_of, run=run)
             if right_of:
                 p.link_time_axis(right_of)
             out.append(p)

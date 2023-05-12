@@ -2,6 +2,8 @@
 Repeated measures ANOVA
 =======================
 
+Repeated measures analysis of variance for univariate data.
+
 Based on [1]_.
 
 """
@@ -16,13 +18,13 @@ a = Factor('abc', repeat=8, name='A')
 
 ###############################################################################
 # Fixed effects ANOVA (independent measures, [1]_ p. 24):
-print(test.ANOVA(y, a, title="Independent Measures"))
+test.ANOVA(y, a, title="Independent Measures")
 
 ###############################################################################
 # Repeated measures ANOVA ([1]_ p. 72): ``subject`` is defined as random effect
 # and entered for model construction as completely crossed factor
 subject = Factor(range(8), tile=3, name='subject', random=True)
-print(test.ANOVA(y, a * subject, title="Repeated Measures"))
+test.ANOVA(y, a * subject, title="Repeated Measures")
 
 ###############################################################################
 # Two-way repeated measures ANOVA
@@ -37,11 +39,11 @@ a = Factor(['a0', 'a1'], repeat=3 * 8, name='A')
 b = Factor(['b0', 'b1', 'b2'], tile=2, repeat=8, name='B')
 subject = Factor(range(8), tile=6, name='subject', random=True)
 
-print(test.ANOVA(y, a * b * subject, title="Repeated Measure:"))
+test.ANOVA(y, a * b * subject, title="Repeated Measure:")
 
 ###############################################################################
 # Bar-plot with within-subject error bars and pairwise tests
-plot.Barplot(y, a % b, match=subject)
+p = plot.Barplot(y, a % b, match=subject)
 
 ###############################################################################
 # References

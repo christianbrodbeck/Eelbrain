@@ -122,23 +122,19 @@ def lm_betas_se_1d(y, b, p):
     return np.sqrt(var_b, var_b)
 
 
-def lm_t(y, p):
-    """Calculate t-values for regression coefficients
-
-    Parameters
-    ----------
-    y : array  [n_cases, ...]
-        Dependent measure.
-    p : Parametrization
-        Parametrized model.
-    """
+def lm_t(
+        y: np.ndarray,  # [n_cases, ...]
+        p: Parametrization,  # Parametrized model
+        out_t: np.ndarray = None,  # [n_betas, ...]
+) -> (np.ndarray, np.ndarray, np.ndarray):  # [n_betas, ...]
+    "Calculate t-values for regression coefficients"
     y_ = y.reshape((len(y), -1))
     b = p.projector.dot(y_)
     se = lm_betas_se_1d(y_, b, p)
     shape = (len(b), *y.shape[1:])
     b = b.reshape(shape)
     se = se.reshape((len(b), *y.shape[1:]))
-    t = b / se
+    t = np.divide(b, se, out=out_t)
     return b, se, t
 
 

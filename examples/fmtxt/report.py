@@ -31,20 +31,20 @@ s11.append(t)
 # add a second subsection with a figure
 s12 = s1.add_section("Figure")
 s12.append("And now finally we will show a figure")
-p = plot.Boxplot('fltvar', 'A%B', 'rm', ds=ds)
+p = plot.Boxplot('fltvar', 'A%B', 'rm', data=ds)
 image = report.add_image_figure(p, "Boxplot of all the data")
 p.close()
 
 # add a more complex figure with legend
 ds = datasets.get_uts()
-p = plot.UTSStat('uts', 'A%B', match='rm', ds=ds, legend=False)
+p = plot.UTSStat('uts', 'A%B', match='rm', data=ds, legend=False)
 p_legend = p.plot_legend()
 report.add_figure("Two plots in one figure", [p, p_legend])
 p.close()
 p_legend.close()
 
 # PNG figure (vector plots with many lines can be slow to display)
-p = plot.UTSStat('uts', 'A%B', match='rm', ds=ds, error='all')
+p = plot.UTSStat('uts', 'A%B', match='rm', data=ds, error='all')
 report.add_figure("All trials", p.image('all', 'png'))
 p.close()
 

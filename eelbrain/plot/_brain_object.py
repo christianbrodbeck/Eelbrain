@@ -47,7 +47,9 @@ try:
 except ImportError as exception:
     from . import _mock_surfer as surfer
     warn(f"Error importing PySurfer: {exception}")
+    SURFER_IMPORTED = False
 else:
+    SURFER_IMPORTED = True
     if first_import:
         reset_logger(surfer.utils.logger)
 del first_import
@@ -170,6 +172,9 @@ class Brain(TimeSlicer, surfer.Brain):
                  offset=True, show_toolbar=False, offscreen=False,
                  interaction='trackball', w=None, h=None, axw=None, axh=None,
                  name=None, pos=None, source_space=None, show=True, run=None):
+        if not SURFER_IMPORTED:
+            raise RuntimeError("PySurfer import failed. You should have seen a warning 'Error importing PySurfer' earlier.")
+
         from ._wx_brain import BrainFrame
 
         self.__data = []
@@ -190,7 +195,7 @@ class Brain(TimeSlicer, surfer.Brain):
         elif hemi in ('lh', 'rh', 'both'):
             n_columns = 1
         else:
-            raise ValueError("hemi=%r" % (hemi,))
+            raise ValueError(f"{hemi=}")
 
         # layout
         if w is None and axw is None:
@@ -218,9 +223,9 @@ class Brain(TimeSlicer, surfer.Brain):
             elif isinstance(name, str):
                 title = name
             else:
-                raise TypeError("name=%r (str required)" % (name,))
+                raise TypeError(f"{name=} (str required)")
         elif not isinstance(title, str):
-            raise TypeError("title=%r (str required)" % (title,))
+            raise TypeError(f"{title=} (str required)")
 
         if foreground is None:
             foreground = 'black'

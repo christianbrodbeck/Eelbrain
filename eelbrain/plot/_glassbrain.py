@@ -35,12 +35,13 @@ DAMAGE.
 
 """
 import os
+from typing import Literal, Union
 import warnings
 
 import nibabel
 import numpy as np
 
-from .._data_obj import VolumeSourceSpace
+from .._data_obj import NDVarArg, Dataset, VolumeSourceSpace
 from .._utils.numpy_utils import newaxis
 from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, brain_data, butterfly_data, use_inline_backend
 from ._utsnd import Butterfly
@@ -93,28 +94,29 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
 
     Parameters
     ----------
-    ndvar : NDVar  ([case,] time, source[, space])
-        Data to plot; if ``ndvar`` has a case dimension, the mean is plotted.
-        if ``ndvar`` has a space dimension, the norm is plotted.
-    cmap : str
+    ndvar
+        Data to plot ([case,] time, source[, space]).
+        If ``ndvar`` has a case dimension, the mean is plotted.
+        If ``ndvar`` has a space dimension, the norm is plotted.
+    cmap
         Colormap (name of a matplotlib colormap).
-    vmin : scalar
+    vmin
         Plot data range minimum.
-    vmax : scalar
+    vmax
         Plot data range maximum.
-    dest : 'mri' | 'surf'
+    dest
         If 'mri' the volume is defined in the coordinate system of
         the original T1 image. If 'surf' the coordinate system
         of the FreeSurfer surface is used (Surface RAS).
-    mri_resolution: bool
+    mri_resolution
         If True the image is created in MRI resolution through upsampling.
         WARNING: it can result in significantly high memory usage.
-    mni305 : bool
+    mni305
         Project data from MNI-305 space to MNI-152 space (by default this
         is enabled iff the source space subject is ``fsaverage``).
-    black_bg : boolean. Default is 'False'
+    black_bg
         If True, the background of the image is set to be black.
-    display_mode : str
+    display_mode
         Direction of the cuts:
 
         - ``'x'``: sagittal
@@ -128,41 +130,43 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         Possible values are: 'ortho', 'x', 'y', 'z', 'xz', 'yx', 'yz',
         'l', 'r', 'lr', 'lzr', 'lyr', 'lzry', 'lyrz'. The default depends on
         the data: 'lyr' if both hemispheres are present, 'xz' if only one is.
-    threshold : scalar | 'auto'
+    threshold
         If a number is given, values below the threshold (in absolute value) are
         plotted as transparent. If ``'auto'`` is given, the threshold is
         determined magically by analysis of the image.
-    colorbar : boolean
+    colorbar
         If True, display a colorbar on the right of the plots.
-    draw_cross: boolean
+    draw_cross
         If draw_cross is True, a cross is drawn on the plot to
         indicate the cut plosition.
-    annotate: boolean
+    annotate
         If annotate is True, positions and left/right annotation
         are added to the plot.
-    alpha : float between 0 and 1
-        Alpha transparency for the brain schematics
-    plot_abs : bool
+    alpha
+        Alpha transparency for the brain schematics (between 0 and 1).
+    plot_abs
         Plot the maximum intensity projection of the absolute value (rendering
         positive and negative values in the same manner). By default,
         (``False``), the sign of the maximum intensity will be represented with
         different colors. See `examples <http://nilearn.github.io/auto_examples/
         01_plotting/plot_demo_glass_brain_extensive.html>`_.
-    draw_arrows: boolean
+    draw_arrows
         Draw arrows in the direction of activation over the glassbrain plots.
         Naturally, for this to work ``ndvar`` needs to contain space dimension
         (i.e 3D vectors). By default it is set to ``True``.
-    symmetric_cbar : boolean | 'auto'
+    symmetric_cbar
         Specifies whether the colorbar should range from -vmax to vmax
         or from vmin to vmax. Setting to 'auto' will select the latter if
         the range of the whole image is either positive or negative.
         Note: The colormap will always be set to range from -vmax to vmax.
-    interpolation : str
+    interpolation
         Interpolation to use when resampling the image to the destination
         space. Can be "continuous" to use 3rd-order spline
         interpolation, or "nearest" to use nearest-neighbor mapping.
         "nearest" (default) is faster but can be noisier in some cases.
-    title : str | bool
+    show_time
+        Add time label as text.
+    title
         Figure title. Set to ``True`` to display current time point as figure
         title.
     ...
@@ -178,11 +182,29 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     _make_axes = False
     _display_time_in_frame_title = True
 
-    def __init__(self, ndvar, cmap=None, vmin=None, vmax=None, dest='mri',
-                 mri_resolution=False, mni305=None, black_bg=False, display_mode=None,
-                 threshold=None, colorbar=False, draw_cross=True, annotate=True,
-                 alpha=0.7, plot_abs=False, draw_arrows=True, symmetric_cbar='auto',
-                 interpolation='nearest', show_time=False, **kwargs):
+    def __init__(
+            self,
+            ndvar: NDVarArg,
+            cmap: str = None,
+            vmin: float = None,
+            vmax: float = None,
+            dest: Literal['mri', 'surf'] = 'mri',
+            mri_resolution: bool = False,
+            mni305: bool = None,
+            black_bg: bool = False,
+            display_mode: str = None,
+            threshold: Union[float, Literal['auto']] = None,
+            colorbar: bool = False,
+            draw_cross: bool = True,
+            annotate: bool = True,
+            alpha: float = 0.7,
+            plot_abs: bool = False,
+            draw_arrows: bool = True,
+            symmetric_cbar: Union[bool, Literal['auto']] = 'auto',
+            interpolation: str = 'nearest',
+            show_time: bool = False,
+            data: Dataset = None,
+            **kwargs):
         # Give wxPython a chance to initialize the menu before pyplot
         if not use_inline_backend():
             from .._wxgui import get_app
@@ -211,7 +233,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             source = ndvar
             ndvar = time = None
         else:
-            ndvar = brain_data(ndvar)
+            ndvar = brain_data(ndvar, data)
             source = ndvar.get_dim('source')
             if not isinstance(source, VolumeSourceSpace):
                 raise ValueError(f"ndvar={ndvar!r}:  need volume source space data")

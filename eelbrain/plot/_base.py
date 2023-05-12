@@ -179,15 +179,6 @@ UNIT_FORMAT = {
     'normalized': 1,
     int: int,
 }
-SCALE_FORMATTERS = {
-    1: None,
-    1e3: FuncFormatter(lambda x, pos: '%g' % (1e3 * x)),
-    1e6: FuncFormatter(lambda x, pos: '%g' % (1e6 * x)),
-    1e9: FuncFormatter(lambda x, pos: '%g' % (1e9 * x)),
-    1e12: FuncFormatter(lambda x, pos: '%g' % (1e12 * x)),
-    1e15: FuncFormatter(lambda x, pos: '%g' % (1e15 * x)),
-    int: FuncFormatter(lambda x, pos: '%i' % round(x)),
-}
 DEFAULT_CMAPS = {
     'B': 'xpolar',
     'V': 'xpolar',
@@ -231,7 +222,7 @@ class AxisScale:
             data_unit = None
             meas = None
             unit = None
-            scale = v
+            scale = 1 / v
         else:
             if isnumeric(v):
                 meas = v.info.get('meas')
@@ -252,10 +243,12 @@ class AxisScale:
                 unit = data_unit
         self.data_unit = data_unit  # None | str
         self.display_unit = unit
-        # ScalarFormatter: disabled because it always used e notation in status bar
-        # (needs separate instance because it adapts to data)
-        # fmt = ScalarFormatter() if scale == 1 else scale_formatters[scale]
-        self.formatter = SCALE_FORMATTERS[scale]  # Matplotlib tick formatter
+        if scale == 1:
+            self.formatter = None
+        elif scale is int:
+            self.formatter = FuncFormatter(lambda x, pos: f'{x:.0f}')
+        else:
+            self.formatter = FuncFormatter(lambda x, pos: f'{scale * x:g}')
 
         if label is True:
             if meas and unit and meas not in unit:
@@ -679,12 +672,13 @@ def find_labels(
 
 def brain_data(
         data: Union[NDVar, testnd.NDTest],
+        dataset: Dataset = None,
 ):
     # for GlassBrain and surfer brain
     if isinstance(data, testnd.NDDifferenceTest):
         return data.masked_difference()
     else:
-        return asndvar(data)
+        return asndvar(data, data=dataset)
 
 
 def butterfly_data(
@@ -1113,7 +1107,7 @@ class PlotData:
             y: Union[NDVarArg, Sequence[NDVarArg]],
             dims: Union[int, Tuple[Optional[str], ...]],
             xax: CategorialArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             sub: IndexArg = None,
     ):
         """Unpack the first argument to top-level NDVar plotting functions
@@ -1129,7 +1123,7 @@ class PlotData:
             A model to divide ``y`` into different axes. ``xax`` is currently
             applied on the first level, i.e., it assumes that ``y``'s first
             dimension is cases.
-        ds
+        data
             Dataset containing data objects which are provided as :class:`str`.
         sub
             Index selecting a subset of cases.
@@ -1150,7 +1144,7 @@ class PlotData:
             for layer in y.layers:
                 dims = find_data_dims(layer.y, dims)
             return PlotData([y], dims)
-        sub = assub(sub, ds)
+        sub = assub(sub, data)
         if hasattr(y, '_default_plot_obj'):
             ys = getattr(y, '_default_plot_obj')()
         elif isinstance(y, (tuple, list)):
@@ -1169,14 +1163,14 @@ class PlotData:
                 if ax is None:
                     axes.append(None)
                 elif isinstance(ax, NDVarTypes):
-                    ax = asndvar(ax, sub, ds)
+                    ax = asndvar(ax, sub, data)
                     agg, dims = find_data_dims(ax, dims)
                     layer = aggregate(ax, agg)
                     axes.append([layer])
                 else:
                     layers = []
                     for layer in ax:
-                        layer = asndvar(layer, sub, ds)
+                        layer = asndvar(layer, sub, data)
                         agg, dims = find_data_dims(layer, dims)
                         layers.append(aggregate(layer, agg))
                     axes.append(layers)
@@ -1190,7 +1184,7 @@ class PlotData:
                     if layer.name and layer.name not in y_names:
                         y_names.append(layer.name)
         elif all(ax is None or isinstance(ax, NDVarTypes) for ax in ys):
-            ys = [asndvar(layer, sub, ds) for layer in ys]
+            ys = [asndvar(layer, sub, data) for layer in ys]
             y_names = [layer.name for layer in ys]
             layers = []
             if isinstance(xax, str) and xax.startswith('.'):
@@ -1220,7 +1214,7 @@ class PlotData:
                 x_name = xax
             else:
                 # y=[y1, y2], xax=categorial
-                xax = ascategorial(xax, sub, ds)
+                xax = ascategorial(xax, sub, data)
                 xax_indexes = [xax == cell for cell in xax.cells]
                 for layer in ys:
                     agg, dims = find_data_dims(layer, dims)
@@ -1293,19 +1287,19 @@ class PlotData:
             y = ds.info['varname']
             xax = combine_x_args(xax, xax_dim)
         x_full = combine_x_args(x, xax)
-        ct = Celltable(y, x_full, match, sub, ds=ds)
+        ct = Celltable(y, x_full, match, sub, data=ds)
         # data dimensions
         agg, dims = find_data_dims(ct.y, dims, 'case')
         if agg:
             raise NotImplementedError
         # reconstruct x/xax
         if x is not None:
-            x = ct._align(x, ds=ds, coerce=ascategorial)
+            x = ct._align(x, data=ds, coerce=ascategorial)
         if xax is None:
             default_color_cells = None
             ax_cells = [None]
         else:
-            xax = ct._align(xax, ds=ds, coerce=ascategorial)
+            xax = ct._align(xax, data=ds, coerce=ascategorial)
             ax_cells = xax.cells
             if x is None:
                 default_color_cells = None
@@ -2856,6 +2850,7 @@ class ColorBarMixin:
             clipmin: float = None,
             clipmax: float = None,
             orientation: Literal['horizontal', 'vertical'] = 'horizontal',
+            unit: Union[str, float] = None,
             **kwargs,
     ):
         """Plot a colorbar corresponding to the displayed data
@@ -2876,6 +2871,9 @@ class ColorBarMixin:
             Clip the color-bar above this value.
         orientation
             Orientation of the bar (default is horizontal).
+        unit
+            Unit for the axis to determine tick labels (for example, ``'µV'`` to
+            label 0.000001 as '1') or multiplier (e.g., ``1e-6``).
         ...
             More parameters for :class:`plot.ColorBar`.
 
@@ -2894,7 +2892,9 @@ class ColorBarMixin:
             cmap, vmin, vmax = self.__get_params()
         else:
             raise RuntimeError(f"No colormap on {self}")
-        return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation, clipmin, clipmax, orientation, self.__scale, **kwargs)
+        if unit is None:
+            unit = self.__scale
+        return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation, clipmin, clipmax, orientation, unit, **kwargs)
 
 
 class ColorMapMixin(ColorBarMixin):

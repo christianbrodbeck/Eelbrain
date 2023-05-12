@@ -9,7 +9,7 @@ def scatter_table(
         xs: Sequence[VarArg],
         color: VarArg = None,
         sub: IndexArg = None,
-        ds: Dataset = None,
+        data: Dataset = None,
         diagonal: Tuple[float, float] = None,
         rasterize: bool = None,
         markers: str = '.',
@@ -26,7 +26,7 @@ def scatter_table(
         Plot the correlation separately for different categories.
     sub
         Plot a subset of cases.
-    ds
+    data
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     diagonal
@@ -59,7 +59,7 @@ def scatter_table(
             elif i_column <= i_row:
                 table.cell()
                 continue
-            p = plot.Scatter(y, x, color, sub=sub, markers=markers, ds=ds, alpha=alpha, **kwargs)
+            p = plot.Scatter(y, x, color, sub=sub, markers=markers, data=data, alpha=alpha, **kwargs)
             if diagonal:
                 p.axes[0].plot(diagonal, diagonal, color='k')
             if rasterize is None:

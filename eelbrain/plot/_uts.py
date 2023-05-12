@@ -10,6 +10,7 @@ import numpy as np
 from .._colorspaces import oneway_colors
 from .._data_obj import NDVarArg, Case, CategorialArg, CellArg, IndexArg, Dataset, NDVar, asndvar, cellname, longname
 from .._stats.testnd import NDTest
+from .._utils import deprecate_ds_arg
 from . import _base
 from ._base import AxisData, EelFigure, Layout, LegendArg, LegendMixin, PlotType, PlotData, StatLayer, DataLayer, TimeSlicerEF, XAxisMixin, YLimMixin
 from ._styles import Style, to_styles_dict
@@ -31,7 +32,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         Identifier for repeated measures data.
     sub
         Only use a subset of the data provided.
-    ds
+    data
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     main : func | None
@@ -146,6 +147,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         plot.UTSStat([['uts1', 'uts2']], match=True, ds=ds)
 
     """
+    @deprecate_ds_arg
     def __init__(
             self,
             y: Union[NDVarArg, Sequence[NDVarArg]],
@@ -153,7 +155,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             xax: CategorialArg = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             main: Callable = np.mean,
             error: Union[str, Callable] = 'sem',
             pool_error: bool = None,
@@ -181,17 +183,17 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         if case and case != 'case':
             if x or xax or match:
                 raise ValueError('x, xax and match cannot be specified with case')
-            y = asndvar(y, sub, ds)
+            y = asndvar(y, sub, data)
             dimnames = y.get_dimnames(first=case)
             new_x = y.get_data(dimnames)
             dims = y.get_dims(dimnames[1:])
             y = NDVar(new_x, (Case, *dims))
 
-        data = PlotData.from_stats(y, x, xax, match, sub, ds, (xdim,), colors, mask).for_plot(PlotType.LINE)
-        xdim, = data.dims
+        plot_data = PlotData.from_stats(y, x, xax, match, sub, data, (xdim,), colors, mask).for_plot(PlotType.LINE)
+        xdim, = plot_data.dims
 
-        layout = Layout(data.plot_used, 2, 4, **kwargs)
-        EelFigure.__init__(self, data.frame_title, layout)
+        layout = Layout(plot_data.plot_used, 2, 4, **kwargs)
+        EelFigure.__init__(self, plot_data.frame_title, layout)
         if clip is None:
             clip = layout.frame is True
 
@@ -199,16 +201,16 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         self._plots = []
         legend_handles = {}
         ymax = ymin = None
-        for ax, ax_data in zip(self.axes, data):
+        for ax, ax_data in zip(self.axes, plot_data):
             p = _ax_uts_stat(ax, ax_data, xdim, main, error, pool_error, clusters, pmax, ptrend, clip, error_alpha)
             self._plots.append(p)
             legend_handles.update(p.legend_handles)
             ymin = p.vmin if ymin is None else min(ymin, p.vmin)
             ymax = p.vmax if ymax is None else max(ymax, p.vmax)
-        self._set_axtitle(axtitle, data)
+        self._set_axtitle(axtitle, plot_data)
 
         # The legend should only display cells with distinct styles: remap legend handles to source cells
-        alias_cells = {cell: style.alias for cell, style in data.styles.items() if style.alias}
+        alias_cells = {cell: style.alias for cell, style in plot_data.styles.items() if style.alias}
         if alias_cells:
             legend_handles = {alias_cells[cell]: handle for cell, handle in legend_handles.items()}
 
@@ -222,9 +224,9 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         for p in self._plots:
             p.set_ylim(ymin, ymax)
 
-        self._configure_axis_data('y', data.ct.y, ylabel, yticklabels)
-        self._configure_axis_dim('x', data.ct.y.get_dim(xdim), xlabel, xticklabels)
-        XAxisMixin._init_with_data(self, ((data.ct.y,),), xdim, xlim)
+        self._configure_axis_data('y', plot_data.ct.y, ylabel, yticklabels)
+        self._configure_axis_dim('x', plot_data.ct.y.get_dim(xdim), xlabel, xticklabels)
+        XAxisMixin._init_with_data(self, ((plot_data.ct.y,),), xdim, xlim)
         YLimMixin.__init__(self, self._plots)
         LegendMixin.__init__(self, legend, legend_handles, labels, alt_sort=colors)
         self._update_ui_cluster_button()
@@ -338,7 +340,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     sub : str | array
@@ -396,12 +398,13 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
      - ``r``: y-axis zoom in (reduce y-axis range)
      - ``c``: y-axis zoom out (increase y-axis range)
     """
+    @deprecate_ds_arg
     def __init__(
             self,
             y: Union[NDVarArg, Sequence, NDTest],
             xax: CategorialArg = None,
             axtitle: Union[bool, Sequence[str]] = True,
-            ds: Dataset = None,
+            data: Dataset = None,
             sub: IndexArg = None,
             xlabel: Union[bool, str] = True,
             ylabel: Union[bool, str] = True,
@@ -417,21 +420,21 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
             color: Any = None,
             stem: bool = False,
             **kwargs):
-        data = PlotData.from_args(y, (None,), xax, ds, sub).for_plot(PlotType.LINE)
-        xdim = data.dims[0]
-        layout = Layout(data.plot_used, 2, 4, **kwargs)
-        EelFigure.__init__(self, data.frame_title, layout)
-        self._set_axtitle(axtitle, data)
-        self._configure_axis_dim('x', xdim, xlabel, xticklabels, data=data.data)
-        self._configure_axis_data('y', data, ylabel, yticklabels)
+        plot_data = PlotData.from_args(y, (None,), xax, data, sub).for_plot(PlotType.LINE)
+        xdim = plot_data.dims[0]
+        layout = Layout(plot_data.plot_used, 2, 4, **kwargs)
+        EelFigure.__init__(self, plot_data.frame_title, layout)
+        self._set_axtitle(axtitle, plot_data)
+        self._configure_axis_dim('x', xdim, xlabel, xticklabels, data=plot_data.data)
+        self._configure_axis_data('y', plot_data, ylabel, yticklabels)
         if clip is None:
             clip = layout.frame is True
 
         self.plots = []
         legend_handles = {}
-        vlims = _base.find_fig_vlims(data.data, top, bottom)
+        vlims = _base.find_fig_vlims(plot_data.data, top, bottom)
 
-        n_colors = max(map(len, data.data))
+        n_colors = max(map(len, plot_data.data))
         if colors is None:
             if color is None:
                 styles = [Style._coerce(color) for color in oneway_colors(n_colors)]
@@ -442,16 +445,16 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         else:
             styles = (Style._coerce(colors),) * n_colors
 
-        for ax, layers in zip(self.axes, data):
+        for ax, layers in zip(self.axes, plot_data):
             h = _ax_uts(ax, layers, xdim, vlims, styles, stem, clip)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
-        self.epochs = data.data
-        XAxisMixin._init_with_data(self, data.data, xdim, xlim)
+        self.epochs = plot_data.data
+        XAxisMixin._init_with_data(self, plot_data.data, xdim, xlim)
         YLimMixin.__init__(self, self.plots)
         LegendMixin.__init__(self, legend, legend_handles, labels)
-        TimeSlicerEF.__init__(self, xdim, data.time_dim)
+        TimeSlicerEF.__init__(self, xdim, plot_data.time_dim)
         self._show()
 
     def _fill_toolbar(self, tb):

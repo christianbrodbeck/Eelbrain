@@ -18,14 +18,14 @@ Major changes
 New in 0.39
 -----------
 
+* :class:`testnd.LM` now supports permutation-based significance testing.
 * New :class:`NDVar` functions for time series and an auditory model: :func:`pad`, :func:`gammatone_bank`, :func:`edge_detector`
 * API:
 
+   - The common ``ds`` parameter has been renamed to ``data`` to be more consistent with other packages.
    - The evaluation context for :class:`Dataset` does not include ``from numpy import *`` anymore, to avoid overwriting builtins like :func:`abs`; instead, NumPy is accessible as ``numpy``.
+   - :class:`testnd.LM`: The default number of permutations is now 10000 and the argument order has changed slightly to be consistent with other :mod:`testnd` tests. To use :class:`testnd.LM` for two-stage tests, set ``samples=0``.
    - :class:`plot.Barplot` parameter ``c`` renamed to ``color``.
-
-* In the ipython environment, prompt_toolkit
-Disable GUI
 
 
 New in 0.38
@@ -38,14 +38,14 @@ New in 0.37
 -----------
 
 * ICA-GUI (:func:`gui.select_components`): Sort noisy epochs by dominant components - makes it easier to find components that capture specific artifacts.
-* API: :func:`load.fiff.events` now loads events from all stim-channels. To use a subset, use the ``stim_channel`` parameter.
+* API: :func:`load.mne.events` now loads events from all stim-channels. To use a subset, use the ``stim_channel`` parameter.
 * New plot: :class:`plot.SensorMap3d`.
 * :func:`plot.styles_for_twoway` to quickly generate different color and line-style combinations.
 * New function :func:`set_connectivity` to set the neighborhood structure of an :class:`NDVar`.
-* :class:`MneExperiment`:
+* :class:`pipeline.MneExperiment`:
 
-   - :meth:`MneExperiment.plot_evoked`:  plot sensor data with corresponding source estimates
-   - API: By default, events are now loaded from all stim-channels. To only use a subset of stim-channels, use the new :attr:`MneExperiment.stim_channel` attribute.
+   - :meth:`pipeline.MneExperiment.plot_evoked`:  plot sensor data with corresponding source estimates
+   - API: By default, events are now loaded from all stim-channels. To only use a subset of stim-channels, use the new :attr:`pipeline.MneExperiment.stim_channel` attribute.
 
 
 New in 0.36
@@ -88,12 +88,11 @@ New in 0.34
 New in 0.33
 -----------
 
-* API :func:`load.fiff.events`:  The merge parameter is now by default inferred based on the raw data.
+* API :func:`load.mne.events`:  The merge parameter is now by default inferred based on the raw data.
 * Boosting: plot data partitioning scheme (``BoostingResult.splits.plot()``).
-* .. currentmodule:: eelbrain.pipeline
-  Experiment :mod:`pipeline`:
+* :class:`~pipeline.MneExperiment` pipeline:
 
-  - New :attr:`MneExperiment.merge_triggers` attribute.
+  - New :attr:`pipeline.MneExperiment.merge_triggers` attribute.
   - Compatibility with Microsoft Windows.
 
 
@@ -120,7 +119,7 @@ New in 0.32
 
   - :meth:`NDVar.quantile`
 
-* Experiment :mod:`pipeline`:
+* :class:`~pipeline.MneExperiment` pipeline:
 
   - Methods with ``decim`` parameter now also have ``samplingrate`` parameter
   - More control over :ref:`MneExperiment-events`
@@ -150,16 +149,13 @@ New in 0.31
 * :class:`plot.Boxplot`: Accepts additional arguments (``label_fliers`` and :meth:`~matplotlib.axes.Axes.boxplot` parameters)
 * :class:`plot.BarplotHorizontal`: Horizontal bar-plot
 * Non-parametric univariate tests :class:`test.MannWhitneyU` and :class:`test.WilcoxonSignedRank`
-* .. currentmodule:: eelbrain.pipeline
-  :class:`MneExperiment` pipeline:
+* :class:`~pipeline.MneExperiment` pipeline:
 
-  - :class:`SubParc`: Simplified subset parcellation
+  - :class:`pipeline.SubParc`: Simplified subset parcellation
 
 
 New in 0.30
 -----------
-
-.. currentmodule:: eelbrain
 
 * Support for vector data (with many contributions from `Proloy Das`_):
 
@@ -172,18 +168,15 @@ New in 0.30
 * Documentation: New :ref:`examples` section
 * :meth:`Dataset.summary` method
 * Element-wise :func:`maximum` and :func:`minimum` functions for :class:`NDVar` objects
-* .. currentmodule:: eelbrain.pipeline
-  :class:`MneExperiment` pipeline:
+* :class:`~pipeline.MneExperiment` pipeline:
 
-  - :class:`RawApplyICA` preprocessing pipe to apply ICA estimated in a different branch of the pipeline.
-  - :meth:`MneExperiment.load_evoked_stc` API more closely matches :meth:`MneExperiment.load_epochs_stc`
-  - :meth:`MneExperiment.load_neighbor_correlation`
+  - :class:`~pipeline.RawApplyICA` preprocessing pipe to apply ICA estimated in a different branch of the pipeline.
+  - :meth:`pipeline.MneExperiment.load_evoked_stc` API more closely matches :meth:`pipeline.MneExperiment.load_epochs_stc`
+  - :meth:`pipeline.MneExperiment.load_neighbor_correlation`
 
 
 New in 0.29
 -----------
-
-.. currentmodule:: eelbrain
 
 * API: Better default parameters for :func:`resample`
 * Predictor-specific stopping for :func:`boosting`
@@ -193,18 +186,15 @@ New in 0.29
   - :ref:`general-layout-parameters` for plot size relative to screen size
   - Better plots for masked statistic maps
 
-* .. currentmodule:: eelbrain.pipeline
-  :class:`MneExperiment` pipeline:
+* :class:`~pipeline.MneExperiment` pipeline:
 
-  - API: :meth:`MneExperiment.make_rej` renamed to :meth:`MneExperiment.make_epoch_selection`
+  - API: :meth:`pipeline.MneExperiment.make_rej` renamed to :meth:`pipeline.MneExperiment.make_epoch_selection`
   - Object-based definitions (see :ref:`experiment-class-guide`)
-  - New method :meth:`MneExperiment.plot_raw`
+  - New method :meth:`pipeline.MneExperiment.plot_raw`
 
 
 New in 0.28
 -----------
-
-.. currentmodule:: eelbrain
 
 * Transition to `Python 3.6 <https://docs.python.org/3.6/>`_
 * API changes:
@@ -221,16 +211,13 @@ New in 0.28
     plots.
 
 * :class:`NDVar` and :class:`Var` support for ``round(x)``
-* .. currentmodule:: eelbrain.pipeline
-  :class:`MneExperiment` pipeline:
+* :class:`~pipeline.MneExperiment` pipeline:
 
   - Independent measures t-test
 
 
 New in 0.27
 -----------
-
-.. currentmodule:: eelbrain
 
 * API changes:
 
@@ -285,7 +272,7 @@ New in 0.26
 
 * ANOVAs now support mixed models with between- and within-subjects factors
   (see examples at :class:`test.ANOVA`).
-* :mod:`load.fiff`: when generating epochs from raw data, a new ``tstop``
+* :mod:`load.mne`: when generating epochs from raw data, a new ``tstop``
   argument allows specifying the time interval exclusive of the last sample.
 * New functions:
 
@@ -297,20 +284,17 @@ New in 0.26
   - :meth:`NDVar.log`
   - :meth:`NDVar.smooth`
 
-* .. currentmodule:: eelbrain.pipeline
-  :class:`MneExperiment` pipeline:
+* :class:`~pipeline.MneExperiment` pipeline:
 
-  - :meth:`MneExperiment.reset` (replacing :meth:`MneExperiment.store_state`
-    and :meth:`MneExperiment.restore_state`)
-  - New :attr:`MneExperiment.auto_delete_results` attribute to control whether
+  - :meth:`pipeline.MneExperiment.reset` (replacing :meth:`pipeline.MneExperiment.store_state`
+    and :meth:`pipeline.MneExperiment.restore_state`)
+  - New :attr:`pipeline.MneExperiment.auto_delete_results` attribute to control whether
     invalidated results are automatically deleted.
-  - :attr:`MneExperiment.screen_log_level`
+  - :attr:`pipeline.MneExperiment.screen_log_level`
 
 
 New in 0.25
 -----------
-
-.. currentmodule:: eelbrain
 
 * Installation with ``conda`` (see :doc:`installing`) and ``$ eelbrain`` launch
   script (see :doc:`getting_started`).
@@ -330,15 +314,15 @@ New in 0.25
 
 * :class:`MneExperiment`:
 
-  - A new :attr:`MneExperiment.sessions` attribute replaces
+  - A new :attr:`pipeline.MneExperiment.sessions` attribute replaces
     ``defaults['experiment']``, with support for multiple sessions in one
     experiment (see :ref:`MneExperiment-filestructure`).
-  - The :attr:`MneExperiment.epochs` parameter ``sel_epoch`` has been removed,
+  - The :attr:`pipeline.MneExperiment.epochs` parameter ``sel_epoch`` has been removed,
     use ``base`` instead.
   - The setting ``raw='clm'`` has been renamed to ``raw='raw'``.
-  - Custom preprocessing pipelines (see :attr:`MneExperiment.raw`).
+  - Custom preprocessing pipelines (see :attr:`pipeline.MneExperiment.raw`).
   - The ``model`` parameter for ANOVA tests is now optional (see
-    :attr:`MneExperiment.tests`).
+    :attr:`pipeline.MneExperiment.tests`).
 
 * Deconvolution using :func:`boosting`.
 * Loading and saving ``*.wav`` files (:func:`load.wav` and :func:`save.wav`).
@@ -349,24 +333,24 @@ New in 0.24
 
 * API:
 
-  - :class:`MneExperiment`: For data from the NYU New York system converted
-    with :mod:`mne` < 0.13, the :attr:`MneExperiment.meg_system` attribute needs
+  - :class:`pipeline.MneExperiment`: For data from the NYU New York system converted
+    with :mod:`mne` < 0.13, the :attr:`pipeline.MneExperiment.meg_system` attribute needs
     to be set to ``"KIT-157"`` to distinguish it from data collected with the
     KIT UMD system.
   - :meth:`~testnd.TTestRelated.masked_parameter_map` method of cluster-based test
     results: use of ``pmin=None`` is deprecated, use ``pmin=1`` instead.
 
 * New test: :class:`test.TTestRelated`.
-* :meth:`MneExperiment.make_report_rois` includes corrected p-values in reports
+* :meth:`pipeline.MneExperiment.make_report_rois` includes corrected p-values in reports
   for tests in more than one ROI    
-* :meth:`MneExperiment.make_rej` now has a ``decim`` parameter to improve
+* :meth:`pipeline.MneExperiment.make_rej` now has a ``decim`` parameter to improve
   display performance.
-* :class:`MneExperiment`: BEM-solution files are now created dynamically with
+* :class:`pipeline.MneExperiment`: BEM-solution files are now created dynamically with
   :mod:`mne` and are not cached any more. This can lead to small changes
   in results due to improved numerical precision. Delete old files to free up
   space with ``mne_experiment.rm('bem-sol-file', subject='*')``.
-* New :meth:`MneExperiment.make_report_coreg` method.
-* New :class:`MneExperiment`: analysis parameter
+* New :meth:`pipeline.MneExperiment.make_report_coreg` method.
+* New :class:`pipeline.MneExperiment`: analysis parameter
   :ref:`state-connectivity`
 * :class:`plot.TopoButterfly`: press ``Shift-T`` for a large topo-map with
   sensor names.
@@ -395,7 +379,7 @@ New in 0.22
 
 * :class:`plot.Barplot` and :class:`plot.Boxplot`: new ``cells`` argument to
   customize the order of bars/boxes.
-* :class:`MneExperiment`: new method :meth:`MneExperiment.show_rej_info`.
+* :class:`pipeline.MneExperiment`: new method :meth:`pipeline.MneExperiment.show_rej_info`.
 * :class:`NDVar`: new method :meth:`NDVar.label_clusters`.
 * :func:`plot.configure`: option to revert to wxPython backend for
   :mod:`plot.brain`.
@@ -407,11 +391,11 @@ New in 0.21
 * :class:`MneExperiment`:
 
   - New epoch parameters: ``trigger_shift`` and ``vars`` (see
-    :attr:`MneExperiment.epochs`).
-  - :meth:`~MneExperiment.load_selected_events`: new ``vardef`` parameter to
+    :attr:`pipeline.MneExperiment.epochs`).
+  - :meth:`~pipeline.MneExperiment.load_selected_events`: new ``vardef`` parameter to
     load variables from a test definition.
   - Log files stored in the root directory.
-  - Parcellations (:attr:`MneExperiment.parcs`) based on combinations can also
+  - Parcellations (:attr:`pipeline.MneExperiment.parcs`) based on combinations can also
     include split commands.
 
 * New :class:`Factor` method:  :meth:`Factor.floodfill`.
@@ -423,7 +407,7 @@ New in 0.21
 New in 0.20
 -----------
 
-* :class:`MneExperiment`: new analysis parameter ``select_clusters='all'`` to
+* :class:`pipeline.MneExperiment`: new analysis parameter ``select_clusters='all'`` to
   keep all clusters in cluster tests (see
   :ref:`state-select_clusters`).
 * Use :func:`testnd.configure` to limit the number of CPUs that are used in
@@ -432,7 +416,7 @@ New in 0.20
 New in 0.19
 -----------
 
-* Two-stage tests (see :attr:`MneExperiment.tests`).
+* Two-stage tests (see :attr:`pipeline.MneExperiment.tests`).
 * Safer cache-handling. See note at :ref:`MneExperiment-intro-analysis`.
 * :meth:`Dataset.head` and :meth:`Dataset.tail` methods for more efficiently
   inspecting partial Datasets.
@@ -452,7 +436,7 @@ New in 0.19
 New in 0.18
 -----------
 
-* API: The first argument for :meth:`MneExperiment.plot_annot` is now `parc`.
+* API: The first argument for :meth:`pipeline.MneExperiment.plot_annot` is now `parc`.
 * API: the ``fill_in_missing`` parameter to :func:`combine` has been deprecated
   and replaced with a new parameter called ``incomplete``.
 * API: Several plotting functions have a new ``xticklabels`` parameter to
@@ -464,7 +448,7 @@ New in 0.18
   on a case by case basis.
 * Rejection-GUI (:func:`gui.select_epochs`): Press Shift-i when hovering over
   an epoch to enter channels for interpolation manually.
-* :meth:`MneExperiment.show_file_status` now shows the last modification date
+* :meth:`pipeline.MneExperiment.show_file_status` now shows the last modification date
   of each file.
 * Under OS X 10.8 and newer running code under a notifier statement now
   automatically prevents the computer from going to sleep.
@@ -473,15 +457,15 @@ New in 0.18
 New in 0.17
 -----------
 
-* :attr:`MneExperiment.brain_plot_defaults` can be used to customize PySurfer
+* :attr:`pipeline.MneExperiment.brain_plot_defaults` can be used to customize PySurfer
   plots in movies and reports.
-* :attr:`MneExperiment.trigger_shift` can now also be a dictionary mapping
+* :attr:`pipeline.MneExperiment.trigger_shift` can now also be a dictionary mapping
   subject name to shift value.
 * The rejection GUI now allows selecting individual channels for interpolation
   using the 'i' key.
 * Parcellations based on combinations of existing labels, as well as
   parcellations based on regions around points specified in MNI coordinates can
-  now be defined in :attr:`MneExperiment.parcs`.
+  now be defined in :attr:`pipeline.MneExperiment.parcs`.
 * Source space :class:`NDVar` can be indexed with lists of region names, e.g.,
   ``ndvar.sub(source=['cuneus-lh', 'lingual-lh'])``.
 * API: :func:`plot.brain.bin_table` function signature changed slightly (more
@@ -492,7 +476,7 @@ New in 0.17
   reproduce previous behavior.
 * API: Previously, :meth:`Var.as_factor` mapped unspecified values to
   ``str(value)``. Now they are mapped to ``''``. This also applies to
-  :attr:`MneExperiment.variables` entries with unspecified values.
+  :attr:`pipeline.MneExperiment.variables` entries with unspecified values.
 
 
 New in 0.16
@@ -500,11 +484,11 @@ New in 0.16
 
 * New function for plotting a legend for annot-files:
   :func:`plot.brain.annot_legend` (automatically used in reports).
-* Epoch definitions in :attr:`MneExperiment.epochs` can now include a ``'base'``
+* Epoch definitions in :attr:`pipeline.MneExperiment.epochs` can now include a ``'base'``
   parameter, which will copy the given "base" epoch and modify it with the
   current definition.
-* :meth:`MneExperiment.make_mov_ttest` and
-  :meth:`MneExperiment.make_mov_ga_dspm` are fixed but require PySurfer 0.6.
+* :meth:`pipeline.MneExperiment.make_mov_ttest` and
+  :meth:`pipeline.MneExperiment.make_mov_ga_dspm` are fixed but require PySurfer 0.6.
 * New function: :func:`table.melt_ndvar`.
 * API: :mod:`plot.brain` function signatures changed slightly to accommodate
   more layout-related arguments.
@@ -547,7 +531,7 @@ New in 0.13
 -----------
 
 * The :func:`gui.select_epochs` GUI can now also be used to set bad channels.
-  :class:`MneExperiment` subclasses will combine bad channel information from
+  :class:`pipeline.MneExperiment` subclasses will combine bad channel information from
   rejection files with bad channel information from bad channel files. Note
   that while bad channel files set bad channels for a given raw file
   globally, rejection files set bad channels only for the given epoch.
@@ -558,14 +542,14 @@ New in 0.13
 * :class:`MneExperiment`:
 
   - API: Subclasses should remove the ``subject`` and ``experiment`` parameters
-    from :meth:`MneExperiment.label_events`.
-  - API: :class:`MneExperiment` can now be imported directly from
+    from :meth:`pipeline.MneExperiment.label_events`.
+  - API: :class:`pipeline.MneExperiment` can now be imported directly from
     :mod:`eelbrain`.
-  - API: The :attr:`MneExperiment._defaults` attribute should be renamed to
-    :attr:`MneExperiment.defaults`.
+  - API: The :attr:`pipeline.MneExperiment._defaults` attribute should be renamed to
+    :attr:`pipeline.MneExperiment.defaults`.
   - A draft for a guide at :ref:`experiment-class-guide`.
   - Cached files are now saved in a separate folder at ``root/eelbrain-cache``.
-    The cache can be cleared using :meth:`MneExperiment.clear_cache`. To
+    The cache can be cleared using :meth:`pipeline.MneExperiment.clear_cache`. To
     preserve cached test results, move the ``root/test`` folder into the
     ``root/eelbrain-cache`` folder.
 
@@ -576,7 +560,7 @@ New in 0.12
 * API: :class:`Dataset` construction changed, allows setting the number of
   cases in the Dataset.
 * API:  :class:`plot.SensorMap2d` was renamed to :class:`plot.SensorMap`.
-* :class:`~experiment.MneExperiment`:
+* :class:`MneExperiment`:
 
   - API: The default number of samples for reports is now 10'000.
   - New epoch parameter ``'n_cases'``:  raise an error if an epoch definition
@@ -589,12 +573,12 @@ New in 0.12
 New in 0.11
 -----------
 
-* :class:`~experiment.MneExperiment`:
+* :class:`MneExperiment`:
 
   - Change in the way the covariance matrix
     is defined:  The epoch for the covariance matrix should be specified in
     ``MneExperiment.epochs['cov']``. The regularization is no longer part of
-    :meth:`~experiment.MneExperiment.set_inv`, but is instead set with
+    :meth:`pipeline.MneExperiment.set_inv`, but is instead set with
     ``MneExperiment.set(cov='reg')`` or ``MneExperiment.set(cov='noreg')``.
   - New option ``cov='bestreg'`` automatically selects the regularization
     parameter for each subejct.
@@ -619,7 +603,7 @@ New in 0.9
 
 * :class:`Factor` API change:  The ``rep`` argument was renamed to ``repeat``.
 * T-values for regression coefficients through :meth:`NDVar.ols_t`.
-* :class:`~experiment.MneExperiment`: subject name patterns and eog_sns are
+* :class:`pipeline.MneExperiment`: subject name patterns and eog_sns are
   now handled automatically.
 * :class:`~plot.uts.UTSStat` and :class:`~plot.uv.Barplot` plots can use pooled
   error for variability estimates (on by default for related measures designs,

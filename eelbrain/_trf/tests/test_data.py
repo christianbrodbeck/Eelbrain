@@ -68,8 +68,8 @@ def test_deconvolution_data_continuous():
 def test_deconvolution_data_trials():
     ds = datasets.get_uts()
     n_times = len(ds['uts'].time)
-    ds['imp'] = epoch_impulse_predictor('uts', ds=ds)
-    ds['imp_a'] = epoch_impulse_predictor('uts', "A == 'a1'", ds=ds)
+    ds['imp'] = epoch_impulse_predictor('uts', data=ds)
+    ds['imp_a'] = epoch_impulse_predictor('uts', "A == 'a1'", data=ds)
 
     data = DeconvolutionData('uts', 'imp', ds)
     data.normalize('l1')

@@ -140,7 +140,7 @@ def get_mne_evoked(ndvar=False):
                                'sample_audvis-ave.fif')
     evoked = mne.Evoked(evoked_path, "Left Auditory")
     if ndvar:
-        return load.fiff.evoked_ndvar(evoked)
+        return load.mne.evoked_ndvar(evoked)
     else:
         return evoked
 
@@ -183,7 +183,7 @@ def get_mne_stc(ndvar=False, src='ico-5', subject='sample'):
         elif subject != 'sample':
             raise ValueError(f"subject={subject!r}")
         if ndvar:
-            return load.fiff.stc_ndvar(stc, subject, 'vol-7', subjects_dir, 'MNE', sss_filename='{subject}-volume-7mm-src.fif')
+            return load.mne.stc_ndvar(stc, subject, 'vol-7', subjects_dir, 'MNE', sss_filename='{subject}-volume-7mm-src.fif')
         else:
             return stc
     elif src == 'oct-4':
@@ -200,7 +200,7 @@ def get_mne_stc(ndvar=False, src='ico-5', subject='sample'):
         raise ValueError(f"src={src!r}")
 
     if ndvar:
-        return load.fiff.stc_ndvar(stc, subject, src, subjects_dir)
+        return load.mne.stc_ndvar(stc, subject, src, subjects_dir)
     else:
         return stc
 
@@ -306,7 +306,7 @@ def get_mne_sample(
         fixed = False
         pick_ori = 'vector'
     else:
-        raise ValueError(f"ori={ori!r}")
+        raise ValueError(f"{ori=}")
 
     data_dir = mne.datasets.sample.data_path()
     meg_dir = os.path.join(data_dir, 'MEG', 'sample')
@@ -320,7 +320,7 @@ def get_mne_sample(
         raw = mne.io.Raw(raw_file)
         events = mne.find_events(raw, stim_channel='STI 014')
         mne.write_events(event_file, events)
-    ds = load.fiff.events(raw_file, events=event_file)
+    ds = load.mne.events(raw_file, events=event_file)
     if hpf:
         ds.info['raw'].load_data()
         ds.info['raw'].filter(hpf, None, n_jobs=1)
@@ -346,27 +346,29 @@ def get_mne_sample(
     if sub:
         ds = ds.sub(sub)
 
-    load.fiff.add_mne_epochs(ds, tmin, tmax, baseline)
+    load.mne.add_mne_epochs(ds, tmin, tmax, baseline)
     if sns:
         data_arg = 'mag' if sns is True else sns
-        ds['meg'] = load.fiff.epochs_ndvar(ds['epochs'], data=data_arg, sysname='neuromag306', proj=proj)
+        ds['meg'] = load.mne.epochs_ndvar(ds['epochs'], data=data_arg, sysname='neuromag306', proj=proj)
 
     if not src:
         return ds
     elif src == 'ico':
-        src_tag = 'ico-4'
+        src_tag = inv_tag = 'ico-4'
+        if fixed:
+            inv_tag += '-fixed'
     elif src == 'vol':
-        src_tag = 'vol-10'
+        src_tag = inv_tag = 'vol-10'
     else:
-        raise ValueError(f"src={src!r}")
+        raise ValueError(f"{src=}")
     epochs = ds['epochs']
 
     # get inverse operator
-    inv_file = os.path.join(meg_dir, f'sample_eelbrain_{src_tag}-inv.fif')
+    inv_file = os.path.join(meg_dir, f'sample_eelbrain_{inv_tag}-inv.fif')
     if os.path.exists(inv_file):
         inv = mne.minimum_norm.read_inverse_operator(inv_file)
     else:
-        fwd_file = os.path.join(meg_dir, 'sample-%s-fwd.fif' % src_tag)
+        fwd_file = os.path.join(meg_dir, f'sample-{src_tag}-fwd.fif')
         bem_dir = os.path.join(subjects_dir, subject, 'bem')
         bem_file = os.path.join(bem_dir, 'sample-5120-5120-5120-bem-sol.fif')
         trans_file = os.path.join(meg_dir, 'sample_audvis_raw-trans.fif')
@@ -380,15 +382,12 @@ def get_mne_sample(
 
         cov_file = os.path.join(meg_dir, 'sample_audvis-cov.fif')
         cov = mne.read_cov(cov_file)
-        inv = mn.make_inverse_operator(epochs.info, fwd, cov, loose=loose,
-                                       depth=None, fixed=fixed)
+        inv = mn.make_inverse_operator(epochs.info, fwd, cov, loose=loose, depth=None, fixed=fixed)
         mne.minimum_norm.write_inverse_operator(inv_file, inv)
     ds.info['inv'] = inv
 
-    stcs = mn.apply_inverse_epochs(epochs, inv, 1. / (snr ** 2), method,
-                                   pick_ori=pick_ori)
-    ds['src'] = load.fiff.stc_ndvar(stcs, subject, src_tag, subjects_dir,
-                                    method, fixed)
+    stcs = mn.apply_inverse_epochs(epochs, inv, 1. / (snr ** 2), method, pick_ori=pick_ori)
+    ds['src'] = load.mne.stc_ndvar(stcs, subject, src_tag, subjects_dir, method, fixed)
     if stc:
         ds['stc'] = stcs
 

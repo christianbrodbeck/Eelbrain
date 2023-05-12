@@ -19,18 +19,18 @@ def test_cast_to_ndvar():
     })
 
     # categorial
-    ds = table.cast_to_ndvar('fltvar', 'A', 'B%rm', ds=long_ds, name='new')
+    ds = table.cast_to_ndvar('fltvar', 'A', 'B%rm', data=long_ds, name='new')
     assert ds.n_cases == long_ds.n_cases / 2
     assert ds['new'].A == Categorial('A', ('a1', 'a2'))
 
     # scalar
-    ds2 = table.cast_to_ndvar('fltvar', 'scalar', 'B%rm', ds=long_ds, dim='newdim', name='new')
+    ds2 = table.cast_to_ndvar('fltvar', 'scalar', 'B%rm', data=long_ds, dim='newdim', name='new')
     assert ds2.n_cases == long_ds.n_cases / 2
     assert ds2['new'].newdim == Scalar('newdim', [False, True])
     assert_array_equal(ds['new'].x, ds2['new'].x)
 
     # time
-    ds = table.cast_to_ndvar('fltvar', 'time', 'rm', ds=long_ds, dim='uts', name='y')
+    ds = table.cast_to_ndvar('fltvar', 'time', 'rm', data=long_ds, dim='uts', name='y')
     assert ds.n_cases == long_ds.n_cases / 4
     assert ds['y'].time == UTS(0, 0.1, 4)
 
@@ -42,19 +42,19 @@ def test_difference():
     labels = {c: c[-1] for c in ds['rm'].cells}
     ds['rmf'] = Factor(ds['rm'], labels=labels)
 
-    dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm', ds=ds)
+    dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm', data=ds)
     assert repr(dds) == "<Dataset (20 cases) 'rm':F, 'fltvar':V, 'rmf':F>"
     assert_array_equal(dds['rmf'], Factor(dds['rm'], labels=labels))
-    dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm % B', ds=ds)
+    dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm % B', data=ds)
     assert repr(dds) == "<Dataset (40 cases) 'rm':F, 'B':F, 'fltvar':V, 'rmf':F>"
     # difference of the difference
-    ddds = table.difference('fltvar', 'B', 'b1', 'b2', 'rm', ds=dds)
+    ddds = table.difference('fltvar', 'B', 'b1', 'b2', 'rm', data=dds)
     assert repr(ddds) == "<Dataset (20 cases) 'rm':F, 'fltvar':V, 'rmf':F>"
-    dds = table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm', ds=ds)
+    dds = table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm', data=ds)
     assert repr(dds) == "<Dataset (20 cases) 'rm':F, 'fltvar':V, 'rmf':F>"
 
     # sub
-    dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm', sub="B == 'b1'", ds=ds)
+    dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm', sub="B == 'b1'", data=ds)
     assert repr(dds) == "<Dataset (20 cases) 'rm':F, 'fltvar':V, 'B':F, 'rmf':F>"
 
     # create bigger dataset
@@ -62,24 +62,24 @@ def test_difference():
     ds['C', :] = 'c1'
     ds2['C', :] = 'c2'
     ds = combine((ds, ds2))
-    dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm % B % C', ds=ds)
+    dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm % B % C', data=ds)
     assert repr(dds) == "<Dataset (80 cases) 'rm':F, 'B':F, 'C':F, 'fltvar':V, 'rmf':F>"
-    dds = table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm % C', ds=ds)
+    dds = table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm % C', data=ds)
     assert repr(dds) == "<Dataset (40 cases) 'rm':F, 'C':F, 'fltvar':V, 'rmf':F>"
 
 
 def test_frequencies():
     "Test table.frequencies"
     ds = datasets.get_uts()
-    freq = table.frequencies('YCat', 'A', ds=ds)
+    freq = table.frequencies('YCat', 'A', data=ds)
     assert str(freq) == 'A    c1   c2   c3\n-----------------\na0   10   10   10\na1   7    14   9 '
-    freq = table.frequencies('YCat', 'A % B', ds=ds)
+    freq = table.frequencies('YCat', 'A % B', data=ds)
     assert str(freq) == 'A    B    c1   c2   c3\n----------------------\na0   b0   5    6    4 \na0   b1   5    4    6 \na1   b0   5    6    4 \na1   b1   2    8    5 '
-    freq = table.frequencies('YCat % A', 'B', ds=ds)
+    freq = table.frequencies('YCat % A', 'B', data=ds)
     assert str(freq) == 'B    c1_a0   c1_a1   c2_a0   c2_a1   c3_a0   c3_a1\n--------------------------------------------------\nb0   5       5       6       6       4       4    \nb1   5       2       4       8       6       5    '
     ds = Dataset()
     ds['n'] = Factor('xxxyyy')
-    freq = table.frequencies('n', ds=ds)
+    freq = table.frequencies('n', data=ds)
     assert str(freq) == 'n   n_\n------\nx   3 \ny   3 '
 
 
@@ -118,18 +118,18 @@ def test_melt_ndvar():
 def test_repmeas():
     "Test table.repmeas (repeated measures table)"
     ds = datasets.get_uv()
-    print(table.repmeas('fltvar', 'A', 'rm', ds=ds))
-    print(table.repmeas('fltvar', 'A%B', 'rm', ds=ds))
-    print(table.repmeas('fltvar', 'A', 'B%rm', ds=ds))
+    print(table.repmeas('fltvar', 'A', 'rm', data=ds))
+    print(table.repmeas('fltvar', 'A%B', 'rm', data=ds))
+    print(table.repmeas('fltvar', 'A', 'B%rm', data=ds))
 
     # with int model
     ds['Bv'] = ds['B'].as_var({'b1': 1, 'b2': 2})
-    print(table.repmeas('fltvar', 'A', 'Bv%rm', ds=ds))
+    print(table.repmeas('fltvar', 'A', 'Bv%rm', data=ds))
 
     # test naturalization of cellnames
     ds['ANum'] = Factor(ds['A'], labels={'a1': '1', 'a2': '2'})
-    print(table.repmeas('fltvar', 'ANum', 'rm', ds=ds))
+    print(table.repmeas('fltvar', 'ANum', 'rm', data=ds))
 
     # with empty cell name
     ds['A'].update_labels({'a1': ''})
-    print(table.repmeas('fltvar', 'A', 'rm', ds=ds))
+    print(table.repmeas('fltvar', 'A', 'rm', data=ds))

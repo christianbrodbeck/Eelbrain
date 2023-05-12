@@ -1,38 +1,91 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Statistical Parametric Mapping"""
-from operator import mul
+from itertools import repeat
+from typing import Dict, Literal, Sequence, Union
 
 import numpy as np
 
 from .. import _info, fmtxt
-from .._data_obj import Dataset, Factor, Var, NDVar, Case, asmodel, asndvar, assub, combine, dataobj_repr
+from .._data_obj import Dataset, Factor, Var, NDVar, Case, IndexArg, ModelArg, NDVarArg, Parametrization, PermutedParametrization, asmodel, asndvar, assub, combine
 from .._exceptions import DimensionMismatchError
+from .._utils import deprecate_ds_arg
 from . import stats
-from .stats import lm_betas_se_1d
+from .glm import MPTestMapper
 from .test import star
-from .testnd import TTestOneSample
-from functools import reduce
+from .testnd import TTestOneSample, MultiEffectNDTest, NDPermutationDistribution, permute_order, run_permutation_me
 
 
-class LM:
+class LMMapper(MPTestMapper):
+
+    def __init__(
+            self,
+            parametrization: Parametrization,
+    ):
+        self.parametrization = parametrization
+        self.permuted_parametrization = PermutedParametrization(parametrization, g=True)
+        self._flat_t_buffer = None
+
+    def preallocate(self, y_shape: Sequence[int]) -> np.ndarray:
+        n_columns = len(self.parametrization.column_names)
+        shape = (n_columns, *y_shape)
+        buffer = np.empty(shape)
+        self._flat_t_buffer = buffer.reshape((n_columns, -1))
+        return buffer
+
+    def map(
+            self,
+            y: np.ndarray,  # (n_cases, ...)
+            perm: np.ndarray = None,  # (n_cases,) permutation index
+    ) -> None:
+        if perm is None:
+            parametrization = self.parametrization
+        else:
+            parametrization = self.permuted_parametrization
+            parametrization.permute(perm)
+        stats.lm_t(y, parametrization, out_t=self._flat_t_buffer)
+
+
+class LM(MultiEffectNDTest):
     """Fixed effects linear model
 
     Parameters
     ----------
-    y : NDVar
+    y
         Dependent variable.
-    model : Model
+    x
         Model to fit.
-    ds : Dataset
+    sub
+        Only use part of the data.
+    data
         Optional Dataset providing data for y/model.
-    coding : 'dummy' | 'effect'
+    coding
         Model parametrization (default is dummy coding). Vars are centered for
         effect coding (but not for dummy coding).
-    subject : str
+    subject
         Optional information used by :class:`LMGroup`; if subject is a column in
         ``ds`` it will be extracted automatically.
-    sub : index
-        Only use part of the data.
+    samples
+        Number of samples for permutation test (default 10,000).
+    pmin
+        Threshold for forming clusters:  use a t-value equivalent to an
+        uncorrected p-value.
+    tmin
+        Threshold for forming clusters as t-value.
+    tfce
+        Use threshold-free cluster enhancement. Use a scalar to specify the
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
+    tstart
+        Start of the time window for the permutation test (default is the
+        beginning of ``y``).
+    tstop
+        Stop of the time window for the permutation test (default is the
+        end of ``y``).
+    force_permutation
+        Conduct permutations regardless of whether there are any clusters.
+    mintime : scalar
+        Minimum duration for clusters (in seconds).
+    minsource : int
+        Minimum number of sources per cluster.
 
     See Also
     --------
@@ -41,17 +94,47 @@ class LM:
     Examples
     --------
     See :ref:`exa-two-stage` example.
+
+    Notes
+    -----
+    By default, this model generates a permutation distribution to correct for
+    multiple comparisons. This is not needed for a two-stage model, where
+    correction occurs at the group level. When fitting two-stage models, set
+    ``samples=0`` to skip this and save time.
+
+    This class stores a shallow copy of ``y.info`` (for predicting).
     """
-    def __init__(self, y, model, ds=None, coding='dummy', subject=None, sub=None):
-        sub, n_cases = assub(sub, ds, return_n=True)
-        y, n_cases = asndvar(y, sub, ds, n_cases, return_n=True)
-        model = asmodel(model, sub, ds, n_cases)
-        p = model._parametrize(coding)
-        b, se, t = stats.lm_t(y.x, p)
+    _state_specific = ('model', 'coding', '_coeffs_flat', '_se_flat', 'subject_variables', '_parametrization', '_y_info')
+    # _statistic = 't'  # would be consistent with testnd but require turning LM.t() into an attr
+
+    @deprecate_ds_arg
+    def __init__(
+            self,
+            y: NDVarArg,
+            x: ModelArg,
+            sub: IndexArg = None,
+            data: Dataset = None,
+            coding: Literal['dummy', 'effect'] = 'dummy',
+            subject: str = None,
+            samples: int = 10000,
+            pmin: float = None,
+            tmin: float = None,
+            tfce: Union[float, bool] = False,
+            tstart: float = None,
+            tstop: float = None,
+            force_permutation: bool = False,
+            **criteria,
+    ):
+        sub_arg = sub
+        sub, n_cases = assub(sub, data, return_n=True)
+        y, n_cases = asndvar(y, sub, data, n_cases, return_n=True)
+        model = asmodel(x, sub, data, n_cases)
+        parametrization = model._parametrize(coding)
+        ß_maps, se_maps, t_maps = stats.lm_t(y.x, parametrization)
         # find variables to keep
         variables = {}
-        if ds is not None:
-            for key, item in ds.items():
+        if data is not None:
+            for key, item in data.items():
                 if isinstance(item, Factor):
                     if sub is not None:
                         item = item[sub]
@@ -62,69 +145,145 @@ class LM:
             if not isinstance(subject, str):
                 raise TypeError(f"{subject=}: needs to be string or None")
             variables['subject'] = subject
+
+        # Cluster-based tests
+        n_effects = len(parametrization.column_names)
+        n_threshold_params = sum((pmin is not None, tmin is not None, bool(tfce)))
+        if n_threshold_params == 0 and not samples:
+            cdists = None
+        elif n_threshold_params > 1:
+            raise ValueError("Only one of pmin, tmin and tfce can be specified")
+        else:
+            if pmin is not None:
+                df = len(y) - model.df
+                thresholds = tuple(repeat(stats.ttest_t(pmin, df), n_effects))
+            elif tmin is not None:
+                thresholds = tuple(repeat(abs(tmin), n_effects))
+            else:
+                thresholds = tuple(repeat(None, n_effects))
+
+            cdists = [NDPermutationDistribution(y, samples, thresh, tfce, 0, 't', name, tstart, tstop, criteria, None, force_permutation) for name, thresh in zip(parametrization.column_names, thresholds)]
+
+            # Find clusters in the actual data
+            do_permutation = 0
+            for cdist, t_map in zip(cdists, t_maps):
+                cdist.add_original(t_map)
+                do_permutation += cdist.do_permutation
+            # Generate null distribution
+            if do_permutation:
+                iterator = permute_order(len(y), samples)
+                run_permutation_me(LMMapper(parametrization), cdists, iterator)
+
+        x_desc = x if isinstance(x, str) else model.name  # TODO: x.name should use * when appropriate
+        MultiEffectNDTest.__init__(self, x_desc, parametrization.column_names, y, None, sub_arg, samples, tfce, pmin, cdists, tstart, tstop)
         self.coding = coding
-        self._coeffs_flat = b.reshape((len(b), -1))
-        self._se_flat = se.reshape((len(se), -1))
+        self._coeffs_flat = ß_maps.reshape((len(ß_maps), -1))
+        self._se_flat = se_maps.reshape((len(se_maps), -1))
         self.model = model
-        self._p = p
-        self.dims = y.dims[1:]
+        self._parametrization = parametrization
+        self._y_info = y.info.copy()
         self.subject_variables = variables
-        self._y = dataobj_repr(y)
-        self._init_secondary()
+        self._expand_state()
+
+    def _expand_state(self):
+        self.subject = self.subject_variables.get('subject', None)
+        self._shape = tuple(map(len, self._dims))
+        self.column_names = self._parametrization.column_names
+        self.n_cases = self.model.df_total
+        self.dims = self._dims
+        MultiEffectNDTest._expand_state(self)
+
+    def _name(self):
+        y = f'{self.y} ' if self.y else ''
+        return f"LM: {y}~ {self.model.name}, {self.subject}>"
 
     def __setstate__(self, state):
-        self.coding = state['coding']
-        self._coeffs_flat = state['coeffs']
-        self._se_flat = state['se']
-        self.model = state['model']
-        self.dims = state['dims']
-        self._y = state.get('y')
-        if 'subject' in state:
-            self.subject_variables = {'subject': state['subject']}
-        else:
-            self.subject_variables = state['subject_variables']
-        if 'p' in state:
-            self._p = state['p']
-        else:
-            self._p = self.model._parametrize(self.coding)
-        self._init_secondary()
-
-    def _init_secondary(self):
-        self.subject = self.subject_variables.get('subject', None)
-        self._shape = tuple(map(len, self.dims))
-        self.column_names = self._p.column_names
-        self.n_cases = self.model.df_total
-
-    def __getstate__(self):
-        return {'coding': self.coding, 'coeffs': self._coeffs_flat, 'se': self._se_flat, 'model': self.model, 'dims': self.dims, 'subject_variables': self.subject_variables, 'y': self._y}
-
-    def __repr__(self):
-        y = self._y or '<?>'
-        subject = '' if self.subject is None else f', {self.subject}'
-        return f"<LM: {y} ~ {self.model.name}{subject}>"
+        # backwards compatibility
+        if 'dims' in state:
+            state['_dims'] = state.pop('dims')
+            state['_coeffs_flat'] = state.pop('coeffs')
+            state['_se_flat'] = state.pop('se')
+            if 'subject' in state:
+                state['subject_variables'] = {'subject': state.pop('subject')}
+            if 'p' in state:
+                state['_parametrization'] = state.pop('p')
+            else:
+                state['_parametrization'] = state['model']._parametrize(state['coding'])
+        MultiEffectNDTest.__setstate__(self, state)
 
     def _coefficient(self, term):
         """Regression coefficient for a given term"""
         index = self._index(term)
         return self._coeffs_flat[index].reshape((1,) + self._shape)
 
-    def _index(self, term):
+    def _default_plot_obj(self):
+        if self.samples:
+            return [self.masked_parameter_map(e) for e in self.effects]
+        else:
+            return [self.t(term) for term in self.column_names]
+
+    def _index(self, term: str) -> int:
         if term in self.column_names:
             return self.column_names.index(term)
-        elif term in self._p.terms:
-            index = self._p.terms[term]
+        elif term in self._parametrization.terms:
+            index = self._parametrization.terms[term]
             if index.stop - index.start > 1:
                 raise NotImplementedError("Term has more than one column")
             return index.start
         else:
-            raise KeyError(f"Unknown term: {term!r}")
+            raise KeyError(f"{term=}")
 
     def coefficient(self, term):
-        ":class:`NDVar` with regression coefficient for a given term"
-        return NDVar(self._coefficient(term)[0], self.dims, name=term)
+        ":class:`NDVar` with regression coefficient for a given term (or ``'intercept'``)"
+        return NDVar(self._coefficient(term)[0], self.dims, term, self._y_info)
 
-    def t(self, term):
-        ":class:`NDVar` with t-values for a given term"
+    def predict(
+            self,
+            values: Union[Sequence[float], Dict[str, float]],
+            name: str = None,
+    ) -> NDVar:
+        """Predict ``y`` based on given values of ``x``
+
+        Parameters
+        ----------
+        values
+            Give as list of values, in the same order as ``x``, or as dictionary
+            mapping predictor names to values (missing predictors are
+            substituted with the mean from the original data).
+        name
+            Name the resulting :class:`NDVar`.
+        """
+        names = [e.name for e in self._parametrization.model.effects]
+        if isinstance(values, dict):
+            if unknown := set(values).difference(names):
+                raise ValueError(f"{values}: Unknown terms ({', '.join(unknown)})")
+            x_in = []
+            for e in self._parametrization.model.effects:
+                if isinstance(e, Var):
+                    if e.name in values:
+                        v_i = values[e.name]
+                        if self._parametrization.method == 'effect':
+                            v_i -= e.mean()
+                    elif self._parametrization.method == 'effect':
+                        v_i = 0
+                    else:
+                        v_i = e.mean()
+                    x_in.append(v_i)
+                else:
+                    raise NotImplementedError("Predict for categorial models")
+        else:
+            x_in = list(values)
+            if (l1 := len(x_in)) != (l2 := len(self._parametrization.x.shape(1) - 1)):
+                raise ValueError(f"{values}: wrong length (got {l1}, need {l2})")
+            if self._parametrization.method == 'effect':
+                x_in = [v / e.mean() for e, v in zip(self._parametrization.model.effects, x_in)]
+        # Add intercept
+        x = np.append(1, x_in)
+        y = x.dot(self._coeffs_flat)
+        return NDVar(y.reshape(self._shape), self.dims, name, self._y_info)
+
+    def t(self, term: str) -> NDVar:
+        ":class:`NDVar` with t-values for a given term (or ``'intercept'``)."
         index = self._index(term)
         se = self._se_flat[index]
         flat_index = se == 0.
@@ -138,10 +297,10 @@ class LM:
             t[np.logical_and(flat_index, t != 0)] *= np.inf
         info = _info.for_stat_map('t')
         info['term'] = term
-        return NDVar(t.reshape(self._shape), self.dims, info, term)
+        return NDVar(t.reshape(self._shape), self.dims, term, info)
 
     def _n_columns(self):
-        return {term: s.stop - s.start for term, s in self._p.terms.items()}
+        return {term: s.stop - s.start for term, s in self._parametrization.terms.items()}
 
 
 class LMGroup:
@@ -231,8 +390,7 @@ class LMGroup:
 
     def __repr__(self):
         lm = self._lms[0]
-        y = lm._y or '<?>'
-        return f"<LMGroup: {y} ~ {lm.model.name}, n={len(self._lms)}>"
+        return f"<LMGroup {lm.y!r}, {lm.x!r}, n={len(self._lms)}>"
 
     def coefficients(self, term):
         "Coefficients for one term as :class:`NDVar`"

@@ -20,12 +20,12 @@ raw_path = os.path.join(datapath, 'MEG', 'sample',
                         'sample_audvis_filt-0-40_raw.fif')
 
 # Load the events from the samepl data file
-ds = load.fiff.events(raw_path)
+ds = load.mne.events(raw_path)
 
 # print the first 10 events to check what we loaded
 print(ds[:10])
 # check how many events of which trigger we have
-print(table.frequencies('trigger', ds=ds))
+print(table.frequencies('trigger', data=ds))
 
 # retrieve the trigger variable form the dataset for easier access
 trigger = ds['trigger']
@@ -40,9 +40,9 @@ ds['modality'] = Factor(trigger, labels=modality_labels)
 # print the first 10 events with the new labels
 print(ds[:10])
 # print a nicer table with event frequencies
-print(table.frequencies('side', 'modality', ds=ds))
+print(table.frequencies('side', 'modality', data=ds))
 # don't print None cells
-print(table.frequencies('side', 'modality', ds=ds, sub="modality != 'None'"))
+print(table.frequencies('side', 'modality', data=ds, sub="modality != 'None'"))
 
 # Extract a subset of events for which to load data
 ds_sub = ds.sub("modality != 'None'")
@@ -54,20 +54,20 @@ ds_sub = ds.sub("modality != 'None'")
 # Load epochs for our selection. Baseline correct from the beginning of the
 # epoch to the trigger i.e., t=0). Reject trials with peak to peak values larger
 # than 3 pico tesla.
-ds_sub = load.fiff.add_epochs(ds_sub, -0.1, 0.6, baseline=(None, 0),
+ds_sub = load.mne.add_epochs(ds_sub, -0.1, 0.6, baseline=(None, 0),
                               reject=3e-12, sysname='neuromag306mag')
 # check how many events are left
-print(table.frequencies('modality', ds=ds_sub))
+print(table.frequencies('modality', data=ds_sub))
 
 # Plot a butterfly plot with flexible topography of the grand average
-plot.TopoButterfly('meg', ds=ds_sub)
+plot.TopoButterfly('meg', data=ds_sub)
 # plot all conditions separately ('%' is to specify an interaction)
-plot.TopoButterfly('meg', 'side % modality', ds=ds_sub)
+plot.TopoButterfly('meg', 'side % modality', data=ds_sub)
 
 # compare left and right visual stimulation in a cluster t-test (this might
 # take a minute -- increase samples to 10000 for a better test)
 res = testnd.TTestIndependent('meg', 'side', 'L', 'R', sub="modality == 'V'",
-                              ds=ds_sub, samples=100, pmin=0.05, tstart=0,
+                              data=ds_sub, samples=100, pmin=0.05, tstart=0,
                               tstop=0.4, mintime=0.01)
 # show parameters for all clusters
 print(res.clusters)

@@ -1,12 +1,4 @@
-"""
-Tools for loading data from text files.
-
-.. autosummary::
-   :toctree: generated
-
-   tsv
-   var
-"""
+"Tools for loading data from text files."
 import csv
 import gzip
 from pathlib import Path

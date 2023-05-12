@@ -36,7 +36,7 @@ class Celltable:
     cat : None | sequence of cells of x
         Only retain data for these cells. Data will be sorted in the order
         of cells occuring in cat.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, input items (y / x / match / sub) can
         be str instead of data-objects, in which case they will be
         retrieved from the Dataset.
@@ -94,19 +94,19 @@ class Celltable:
             match: CategorialArg = None,
             sub: IndexArg = None,
             cat: Sequence[CellArg] = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             coercion: Callable = asdataobject,
             dtype: np.dtype = None,
     ):
         self.sub = sub
-        sub, n_cases = assub(sub, ds, return_n=True)
+        sub, n_cases = assub(sub, data, return_n=True)
 
         if x is None:
             if cat is not None:
                 raise TypeError(f"{cat=}: cat is only a valid argument if x is provided")
-            y, n_cases = coercion(y, sub, ds, n_cases, return_n=True)
+            y, n_cases = coercion(y, sub, data, n_cases, return_n=True)
         else:
-            x, n_cases = ascategorial(x, sub, ds, n_cases, return_n=True)
+            x, n_cases = ascategorial(x, sub, data, n_cases, return_n=True)
             if cat is not None:
                 cat = tuple(cat)
                 # reconstruct cat if some cells are provided as None
@@ -134,11 +134,11 @@ class Celltable:
                     if sub.dtype.kind == 'b':
                         sub = np.flatnonzero(sub)
                     sub = sub[sort_idx]
-            y = coercion(y, sub, ds, n_cases)
+            y = coercion(y, sub, data, n_cases)
 
         sort_idx = aggregate = None
         if match is not None:
-            match = ascategorial(match, sub, ds, n_cases)
+            match = ascategorial(match, sub, data, n_cases)
             cell_model = match if x is None else x % match
             if len(cell_model) > len(cell_model.cells):
                 aggregate = cell_model
@@ -237,11 +237,17 @@ class Celltable:
     def __len__(self):
         return self.n_cells
 
-    def _align_ds(self, ds, rm=False, skip=(), filter=None):
+    def _align_ds(
+            self,
+            data: Dataset,
+            rm: bool = False,
+            skip: Sequence = (),
+            filter: Callable = None,
+    ):
         """Align a Dataset to the celltable"""
         out = Dataset()
         reference_cell = self.cells[0]
-        for k, v in ds.items():
+        for k, v in data.items():
             if k in skip:
                 continue
             elif filter and not filter(v):
@@ -255,18 +261,24 @@ class Celltable:
                 out[k] = reference_v
         return out
 
-    def _align(self, y, rm: bool = False, ds: Dataset = None, coerce: Callable = asdataobject):
+    def _align(
+            self,
+            y: Sequence,
+            rm: bool = False,
+            data: Dataset = None,
+            coerce: Callable = asdataobject,
+    ):
         """Align an additional variable to the celltable
 
         Parameters
         ----------
-        y : data-object
+        y
             Data-object to align.
         rm
             If the celltable is a repeated-measures celltable, align ``y`` to
             the repeated measures table rather than the long form table.
         """
-        y_ = coerce(y, self._sub, ds, self._n_cases)
+        y_ = coerce(y, self._sub, data, self._n_cases)
         if self._aggregate is not None:
             y_ = y_.aggregate(self._aggregate)
         if self._sort_idx is not None:

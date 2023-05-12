@@ -134,71 +134,71 @@ def test_celltable():
     ds = datasets.get_uts()
     ds['cat'] = Factor('abcd', repeat=15)
 
-    ct = Celltable('Y', 'A', ds=ds)
+    ct = Celltable('Y', 'A', data=ds)
     assert ct.n_cases == 60
     assert ct.n_cells == 2
     assert repr(ct) == "Celltable(Y, A)"
-    assert repr(Celltable(ds['Y'].x, 'A', ds=ds)) == "Celltable(<ndarray>, A)"
-    assert repr(Celltable(ds['Y'].x, ds['A'].x, ds=ds)) == "Celltable(<ndarray>, <Factor>)"
+    assert repr(Celltable(ds['Y'].x, 'A', data=ds)) == "Celltable(<ndarray>, A)"
+    assert repr(Celltable(ds['Y'].x, ds['A'].x, data=ds)) == "Celltable(<ndarray>, <Factor>)"
 
-    ct = Celltable('Y', 'A', match='rm', ds=ds)
+    ct = Celltable('Y', 'A', match='rm', data=ds)
     assert ct.n_cases == 30
     assert ct.n_cells == 2
 
     # cat argument
-    ct = Celltable('Y', 'cat', cat=('c', 'b'), ds=ds)
+    ct = Celltable('Y', 'cat', cat=('c', 'b'), data=ds)
     assert ct.n_cases == 30
     assert ct.x[0] == 'c'
     assert ct.x[-1] == 'b'
     with pytest.raises(ValueError):
-        Celltable('Y', 'cat', cat=('c', 'e'), ds=ds)
+        Celltable('Y', 'cat', cat=('c', 'e'), data=ds)
 
-    ct = Celltable('Y', 'A', match='rm', ds=ds)
+    ct = Celltable('Y', 'A', match='rm', data=ds)
     assert ct.n_cases == 30
     assert np.all(ct.groups['a0'] == ct.groups['a1'])
 
-    ct = Celltable('Y', 'cat', match='rm', cat=('c', 'b'), ds=ds)
+    ct = Celltable('Y', 'cat', match='rm', cat=('c', 'b'), data=ds)
     assert ct.n_cases == 30
     assert ct.x[0] == 'c'
     assert ct.x[-1] == 'b'
 
     # catch unequal length
     with pytest.raises(ValueError):
-        Celltable(ds['Y', :-1], 'cat', ds=ds)
+        Celltable(ds['Y', :-1], 'cat', data=ds)
     with pytest.raises(ValueError):
-        Celltable(ds['Y', :-1], 'cat', match='rm', ds=ds)
+        Celltable(ds['Y', :-1], 'cat', match='rm', data=ds)
 
     # coercion of numerical X
     X = ds.eval("A == 'a0'")
-    ct = Celltable('Y', X, cat=(None, None), ds=ds)
+    ct = Celltable('Y', X, cat=(None, None), data=ds)
     assert ct.cat == ('False', 'True')
     assert_array_equal(ct.data['True'], ds['Y', X])
 
-    ct = Celltable('Y', X, cat=('True', 'False'), ds=ds)
+    ct = Celltable('Y', X, cat=('True', 'False'), data=ds)
     assert ('True', 'False') == ct.cat
     assert_array_equal(ct.data['True'], ds['Y', X])
 
     # test coercion of Y
-    ct = Celltable(ds['Y'].x, 'A', ds=ds)
+    ct = Celltable(ds['Y'].x, 'A', data=ds)
     assert isinstance(ct.y, np.ndarray)
-    ct = Celltable(ds['Y'].x, 'A', ds=ds, coercion=asvar)
+    ct = Celltable(ds['Y'].x, 'A', data=ds, coercion=asvar)
     assert isinstance(ct.y, Var)
 
     # test sub
     ds_sub = ds.sub("A == 'a0'")
-    ct_sub = Celltable('Y', 'B', ds=ds_sub)
-    ct = Celltable('Y', 'B', sub="A == 'a0'", ds=ds)
+    ct_sub = Celltable('Y', 'B', data=ds_sub)
+    ct = Celltable('Y', 'B', sub="A == 'a0'", data=ds)
     assert_dataobj_equal(ct_sub.y, ct.y)
-    ct_sub = Celltable('Y', 'B', sub="Var(A == 'a0')", cat=('b0', 'b1'), ds=ds)
+    ct_sub = Celltable('Y', 'B', sub="Var(A == 'a0')", cat=('b0', 'b1'), data=ds)
     assert_dataobj_equal(ct_sub.y, ct.y)
 
     # test sub with rm
-    ct_sub = Celltable('Y', 'B', match='rm', ds=ds_sub)
-    ct = Celltable('Y', 'B', match='rm', sub="A == 'a0'", ds=ds)
+    ct_sub = Celltable('Y', 'B', match='rm', data=ds_sub)
+    ct = Celltable('Y', 'B', match='rm', sub="A == 'a0'", data=ds)
     assert_dataobj_equal(ct_sub.y, ct.y)
 
     # Interaction match
-    ct = Celltable('Y', 'A', match='B % rm', ds=ds)
+    ct = Celltable('Y', 'A', match='B % rm', data=ds)
     assert ct.all_within
     assert_dataobj_equal(combine((ct.data['a0'], ct.data['a1'])), ds['Y'])
 
@@ -210,7 +210,7 @@ def test_celltable():
     idx = np.arange(12)
     np.random.shuffle(idx)
     ds = ds[idx]
-    ct = Celltable('Y', 'X', 'rm', ds=ds)
+    ct = Celltable('Y', 'X', 'rm', data=ds)
     assert_array_equal(ct.match, Factor('abc', tile=2))
     assert_array_equal(ct.y, np.tile(np.arange(3.), 2))
     assert_array_equal(ct.x, Factor('ab', repeat=3))

@@ -32,7 +32,7 @@ import re
 import socket
 from threading import Thread
 from time import time as current_time
-from typing import Union
+from typing import Iterable, List, Union
 
 import numpy as np
 import scipy.stats
@@ -49,13 +49,13 @@ from .._data_obj import (
     ascategorial, asmodel, asndvar, asvar, assub,
     cellname, combine, dataobj_repr, longname)
 from .._exceptions import OldVersionError, WrongDimension, ZeroVariance
-from .._utils import user_activity, restore_main_spec
+from .._utils import deprecate_ds_arg, user_activity, restore_main_spec
 from .._utils.numpy_utils import FULL_AXIS_SLICE
 from .._utils.notebooks import trange
 from . import opt, stats, vector
 from .connectivity import Connectivity, find_peaks
 from .connectivity_opt import merge_labels, tfce_increment
-from .glm import _nd_anova
+from .glm import MPTestMapper, _nd_anova
 from .permutation import (
     _resample_params, permute_order, permute_sign_flip, random_seeds,
     rand_rotation_matrices)
@@ -207,22 +207,23 @@ class NDTest:
     def _first_cdist(self):
         return self._cdist
 
+    @property
+    def permutation_distribution(self):
+        if self._cdist is not None:
+            return self._cdist.dist
+
     def _plot_model(self):
         "Determine x for plotting categories"
         return None
 
     def _plot_sub(self):
         if isinstance(self.sub, str) and self.sub == "<unsaved array>":
-            raise RuntimeError("The sub parameter was not saved for previous "
-                               "versions of Eelbrain. Please recompute this "
-                               "result with the current version.")
+            raise RuntimeError("The sub parameter was not saved for previous versions of Eelbrain. Please recompute this result with the current version.")
         return self.sub
 
     def _assert_has_cdist(self):
         if self._cdist is None:
-            raise RuntimeError("This method only applies to results of tests "
-                               "with threshold-based clustering and tests with "
-                               "a permutation distribution (samples > 0)")
+            raise RuntimeError("This method only applies to results of tests with threshold-based clustering and tests with a permutation distribution (samples > 0)")
 
     def masked_parameter_map(self, pmin: float = 0.05, **sub) -> NDVar:
         """Statistical parameter map masked by significance
@@ -242,17 +243,17 @@ class NDTest:
         self._assert_has_cdist()
         return self._cdist.masked_parameter_map(pmin, **sub)
 
-    def cluster(self, cluster_id):
+    def cluster(self, cluster_id: int) -> NDVar:
         """Retrieve a specific cluster as NDVar
 
         Parameters
         ----------
-        cluster_id : int
+        cluster_id
             Cluster id.
 
         Returns
         -------
-        cluster : NDVar
+        cluster
             NDVar of the cluster, 0 outside the cluster.
 
         Notes
@@ -269,52 +270,57 @@ class NDTest:
         else:
             return self.find_clusters(None, True)
 
-    def find_clusters(self, pmin=None, maps=False, **sub):
+    def find_clusters(
+            self,
+            pmin: float = None,
+            maps: bool = False,
+            **sub,
+    ) -> Dataset:
         """Find significant regions or clusters
 
         Parameters
         ----------
-        pmin : None | scalar, 1 >= p  >= 0
+        pmin
             Threshold p-value. For threshold-based tests, all clusters with a
             p-value smaller than ``pmin`` are included (default 1);
             for other tests, find contiguous regions with ``p ≤ pmin`` (default
             0.05).
-        maps : bool
+        maps
             Include in the output a map of every cluster (can be memory
             intensive if there are large statistical maps and/or many
             clusters; default ``False``).
 
         Returns
         -------
-        ds : Dataset
+        Dataset
             Dataset with information about the clusters.
         """
         self._assert_has_cdist()
         return self._cdist.clusters(pmin, maps, **sub)
 
-    def find_peaks(self):
+    def find_peaks(self) -> Dataset:
         """Find peaks in a threshold-free cluster distribution
 
         Returns
         -------
-        ds : Dataset
+        Dataset
             Dataset with information about the peaks.
         """
         self._assert_has_cdist()
         return self._cdist.find_peaks()
 
-    def compute_probability_map(self, **sub):
+    def compute_probability_map(self, **sub) -> NDVar:
         """Compute a probability map
 
         Returns
         -------
-        probability : NDVar
+        NDVar
             Map of p-values.
         """
         self._assert_has_cdist()
         return self._cdist.compute_probability_map(**sub)
 
-    def info_list(self, computation=True):
+    def info_list(self, computation: bool = True) -> fmtxt.List:
         "List with information about the test"
         out = fmtxt.List("Mass-univariate statistics:")
         out.add_item(self._name())
@@ -447,7 +453,7 @@ class TContrastRelated(NDTest):
         Match cases for a repeated measures test.
     sub : index
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -525,6 +531,7 @@ class TContrastRelated(NDTest):
     _statistic = 't'
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
@@ -532,7 +539,7 @@ class TContrastRelated(NDTest):
             contrast: str,
             match: CategorialArg = None,
             sub: CategorialArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             tail: int = 0,
             samples: int = 10000,
             pmin: float = None,
@@ -545,7 +552,7 @@ class TContrastRelated(NDTest):
             **criteria):
         if match is None:
             raise TypeError("The `match` parameter needs to be specified for TContrastRelated")
-        ct = Celltable(y, x, match, sub, ds=ds, coercion=asndvar, dtype=np.float64)
+        ct = Celltable(y, x, match, sub, data=data, coercion=asndvar, dtype=np.float64)
         check_for_vector_dim(ct.y)
         check_variance(ct.y.x)
 
@@ -624,7 +631,7 @@ class Correlation(NDTest):
         Categories in which to normalize (z-score) x.
     sub : index
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     samples : int
@@ -679,13 +686,14 @@ class Correlation(NDTest):
     _statistic = 'r'
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
             x: VarArg,
             norm: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             samples: int = 10000,
             pmin: float = None,
             rmin: float = None,
@@ -695,16 +703,16 @@ class Correlation(NDTest):
             match: CategorialArg = None,
             parc: str = None,
             **criteria):
-        sub, n = assub(sub, ds, True)
-        y, n = asndvar(y, sub, ds, n, np.float64, True)
+        sub, n = assub(sub, data, True)
+        y, n = asndvar(y, sub, data, n, np.float64, True)
         check_for_vector_dim(y)
         if not y.has_case:
             raise ValueError("Dependent variable needs case dimension")
-        x = asvar(x, sub, ds, n)
+        x = asvar(x, sub, data, n)
         if norm is not None:
-            norm = ascategorial(norm, sub, ds, n)
+            norm = ascategorial(norm, sub, data, n)
         if match is not None:
-            match = ascategorial(match, sub, ds, n)
+            match = ascategorial(match, sub, data, n)
 
         self.x = x.name
         name = f"{longname(y)} ~ {longname(x)}"
@@ -863,7 +871,7 @@ class TTestOneSample(NDDifferenceTest):
         Combine data for these categories before testing.
     sub : index
         Perform test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     tail : 0 | 1 | -1
@@ -930,13 +938,14 @@ class TTestOneSample(NDDifferenceTest):
     _statistic = 't'
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
             popmean: float = 0,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             tail: int = 0,
             samples: int = 10000,
             pmin: float = None,
@@ -947,7 +956,7 @@ class TTestOneSample(NDDifferenceTest):
             parc: str = None,
             force_permutation: bool = False,
             **criteria):
-        ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar, dtype=np.float64)
+        ct = Celltable(y, match=match, sub=sub, data=data, coercion=asndvar, dtype=np.float64)
         check_for_vector_dim(ct.y)
 
         n = len(ct.y)
@@ -1070,7 +1079,7 @@ class TTestIndependent(NDDifferenceTest):
         Combine cases with the same cell on ``x % match``.
     sub : index
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -1140,6 +1149,7 @@ class TTestIndependent(NDDifferenceTest):
     _statistic = 't'
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
@@ -1148,7 +1158,7 @@ class TTestIndependent(NDDifferenceTest):
             c0: CellArg = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             tail: int = 0,
             samples: int = 10000,
             pmin: float = None,
@@ -1159,7 +1169,7 @@ class TTestIndependent(NDDifferenceTest):
             parc: str = None,
             force_permutation: bool = False,
             **criteria):
-        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub, True)
+        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, data, sub, True)
         check_for_vector_dim(y)
 
         n1 = len(y1)
@@ -1289,7 +1299,7 @@ class TTestRelated(NDMaskedC1Mixin, NDDifferenceTest):
         within-subject comparison).
     sub : index
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -1364,6 +1374,7 @@ class TTestRelated(NDMaskedC1Mixin, NDDifferenceTest):
     _statistic = 't'
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
@@ -1372,7 +1383,7 @@ class TTestRelated(NDMaskedC1Mixin, NDDifferenceTest):
             c0: CellArg = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             tail: int = 0,
             samples: int = 10000,
             pmin: float = None,
@@ -1383,7 +1394,7 @@ class TTestRelated(NDMaskedC1Mixin, NDDifferenceTest):
             parc: str = None,
             force_permutation: bool = False,
             **criteria):
-        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub, True)
+        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, data, sub, True)
         check_for_vector_dim(y1)
 
         if n <= 2:
@@ -1498,6 +1509,18 @@ class TTestRelated(NDMaskedC1Mixin, NDDifferenceTest):
 
 class MultiEffectNDTest(NDTest):
 
+    _state_common = ('x', 'effects', *NDTest._state_common)
+
+    def __init__(
+            self,
+            x: str,
+            effects: Iterable[str],
+            *args,
+    ):
+        NDTest.__init__(self, *args)
+        self.x = x
+        self.effects = tuple(effects)
+
     def _repr_test_args(self):
         args = [repr(self.y), repr(self.x)]
         if self.match is not None:
@@ -1527,8 +1550,6 @@ class MultiEffectNDTest(NDTest):
         return table
 
     def _expand_state(self):
-        self.effects = tuple([e.name for e in self._effects])
-
         # clusters
         cdists = self._cdist
         if cdists is None:
@@ -1554,6 +1575,11 @@ class MultiEffectNDTest(NDTest):
             return None
         else:
             return self._cdist[0]
+
+    @property
+    def permutation_distribution(self):
+        if self._first_cdist is not None:
+            return [cdist.dist for cdist in self._cdist]
 
     def _max_statistic(
             self,
@@ -1637,27 +1663,33 @@ class MultiEffectNDTest(NDTest):
         i = self._effect_index(effect)
         return self._cdist[i].masked_parameter_map(pmin, **sub)
 
-    def find_clusters(self, pmin=None, maps=False, effect=None, **sub):
+    def find_clusters(
+            self,
+            pmin: float = None,
+            maps: bool = False,
+            effect: Union[int, str] = None,
+            **sub,
+    ) -> Dataset:
         """Find significant regions or clusters
 
         Parameters
         ----------
-        pmin : None | scalar, 1 >= p  >= 0
+        pmin
             Threshold p-value. For threshold-based tests, all clusters with a
             p-value smaller than ``pmin`` are included (default 1);
             for other tests, find contiguous regions with ``p ≤ pmin`` (default
             0.05).
-        maps : bool
+        maps
             Include in the output a map of every cluster (can be memory
             intensive if there are large statistical maps and/or many
             clusters; default ``False``).
-        effect : int | str
+        effect
             Index or name of the effect from which to find clusters (default is
             all effects).
 
         Returns
         -------
-        ds : Dataset
+        Dataset
             Dataset with information about the clusters.
         """
         self._assert_has_cdist()
@@ -1676,12 +1708,12 @@ class MultiEffectNDTest(NDTest):
         out.info.update(info)
         return out
 
-    def find_peaks(self):
+    def find_peaks(self) -> Dataset:
         """Find peaks in a TFCE distribution
 
         Returns
         -------
-        ds : Dataset
+        Dataset
             Dataset with information about the peaks.
         """
         self._assert_has_cdist()
@@ -1704,7 +1736,7 @@ class ANOVA(MultiEffectNDTest):
         Independent variables.
     sub : index
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     samples : int
@@ -1765,17 +1797,18 @@ class ANOVA(MultiEffectNDTest):
     For information on model specification see the univariate
     :class:`~eelbrain.test.ANOVA` examples.
     """
-    _state_specific = ('x', 'pmin', '_effects', '_dfs_denom', 'f')
+    _state_specific = ('pmin', '_effects', '_dfs_denom', 'f')
     _statistic = 'f'
     _statistic_tail = 1
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
             x: ModelArg,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             samples: int = 10000,
             pmin: float = None,
             fmin: float = None,
@@ -1788,10 +1821,10 @@ class ANOVA(MultiEffectNDTest):
             **criteria):
         x_arg = x
         sub_arg = sub
-        sub, n = assub(sub, ds, True)
-        y, n = asndvar(y, sub, ds, n, np.float64, True)
+        sub, n = assub(sub, data, True)
+        y, n = asndvar(y, sub, data, n, np.float64, True)
         check_for_vector_dim(y)
-        x = asmodel(x, sub, ds, n, require_names=True)
+        x = asmodel(x, sub, data, n, require_names=True)
         if match is None:
             random_effects = [e for e in x.effects if e.random]
             if not random_effects:
@@ -1801,7 +1834,7 @@ class ANOVA(MultiEffectNDTest):
             else:
                 match = random_effects[0]
         elif match is not False:
-            match = ascategorial(match, sub, ds, n)
+            match = ascategorial(match, sub, data, n)
 
         lm = _nd_anova(x)
         effects = lm.effects
@@ -1843,8 +1876,9 @@ class ANOVA(MultiEffectNDTest):
             f.append(NDVar(fmap, dims, e.name, info))
 
         # store attributes
-        MultiEffectNDTest.__init__(self, y, match, sub_arg, samples, tfce, pmin, cdists, tstart, tstop)
-        self.x = x_arg if isinstance(x_arg, str) else x.name
+        x_desc = x_arg if isinstance(x_arg, str) else x.name  # TODO: x.name should use * when appropriate
+        effect_names = (e.name for e in effects)
+        MultiEffectNDTest.__init__(self, x_desc, effect_names, y, match, sub_arg, samples, tfce, pmin, cdists, tstart, tstop)
         self._effects = effects
         self._dfs_denom = dfs_denom
         self.f = f
@@ -1853,8 +1887,11 @@ class ANOVA(MultiEffectNDTest):
 
     def _expand_state(self):
         # backwards compatibility
-        if hasattr(self, 'effects'):
+        if hasattr(self, 'effects') and not isinstance(self.effects[0], str):
             self._effects = self.effects
+            del self.effects
+        if not hasattr(self, 'effects'):
+            self.effects = tuple([e.name for e in self._effects])
 
         MultiEffectNDTest._expand_state(self)
 
@@ -1987,7 +2024,7 @@ class Vector(NDDifferenceTest):
         Combine data for these categories before testing.
     sub : index
         Perform test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     samples : int
@@ -2053,12 +2090,13 @@ class Vector(NDDifferenceTest):
     _state_specific = ('difference', 'n', '_v_dim', 't2')
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             samples: int = 10000,
             tmin: float = None,
             tfce: Union[float, bool] = False,
@@ -2069,7 +2107,7 @@ class Vector(NDDifferenceTest):
             norm: bool = False,
             **criteria):
         use_norm = bool(norm)
-        ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar, dtype=np.float64)
+        ct = Celltable(y, match=match, sub=sub, data=data, coercion=asndvar, dtype=np.float64)
 
         n = len(ct.y)
         cdist = NDPermutationDistribution(ct.y, samples, tmin, tfce, 1, 'norm', 'Vector test', tstart, tstop, criteria, parc, force_permutation)
@@ -2167,7 +2205,7 @@ class VectorDifferenceIndependent(Vector):
         Combine cases with the same cell on ``x % match``.
     sub : index
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     samples : int
@@ -2231,6 +2269,7 @@ class VectorDifferenceIndependent(Vector):
     _statistic = 'norm'
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
@@ -2239,7 +2278,7 @@ class VectorDifferenceIndependent(Vector):
             c0: str = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             samples: int = 10000,
             tmin: float = None,
             tfce: bool = False,
@@ -2250,7 +2289,7 @@ class VectorDifferenceIndependent(Vector):
             norm: bool = False,
             **criteria):
         use_norm = bool(norm)
-        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub, True)
+        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, data, sub, True)
         self.n1 = len(y1)
         self.n0 = len(y0)
         self.n = len(y)
@@ -2333,7 +2372,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
         within-subject comparison).
     sub : index
         Perform the test with a subset of the data.
-    ds : Dataset
+    data : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     samples : int
@@ -2393,6 +2432,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
     _state_specific = ('x', 'c1', 'c0', 'difference', 'c1_mean', 'c0_mean', 'n', '_v_dim', 't2')
 
     @user_activity
+    @deprecate_ds_arg
     def __init__(
             self,
             y: NDVarArg,
@@ -2401,7 +2441,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
             c0: str = None,
             match: CategorialArg = None,
             sub: IndexArg = None,
-            ds: Dataset = None,
+            data: Dataset = None,
             samples: int = 10000,
             tmin: float = None,
             tfce: bool = False,
@@ -2412,7 +2452,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
             norm: bool = False,
             **criteria):
         use_norm = bool(norm)
-        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub, True)
+        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, data, sub, True)
         difference = y1 - y0
         difference.name = 'difference'
 
@@ -2768,10 +2808,7 @@ class ClusterProcessor(StatMapProcessor):
         if threshold is None:
             threshold = self.threshold
         cmap = self._cmap
-        cids = _label_clusters(stat_map, threshold, self.tail, self.connectivity,
-                               self.criteria, cmap, self._cmap_flat,
-                               self._bin_buff, self._int_buff,
-                               self._int_buff_flat)
+        cids = _label_clusters(stat_map, threshold, self.tail, self.connectivity, self.criteria, cmap, self._cmap_flat, self._bin_buff, self._int_buff, self._int_buff_flat)
         if self.parc is not None:
             v = []
             for idx in self.parc:
@@ -2857,8 +2894,7 @@ class NDPermutationDistribution:
     dist = None
     tfce_warning = None
 
-    def __init__(self, y, samples, threshold, tfce=False, tail=0, meas='?', name=None,
-                 tstart=None, tstop=None, criteria={}, parc=None, force_permutation=False):
+    def __init__(self, y, samples, threshold, tfce=False, tail=0, meas='?', name=None, tstart=None, tstop=None, criteria={}, parc=None, force_permutation=False):
         assert y.has_case
         assert parc is None or isinstance(parc, str)
         if tfce and threshold:
@@ -2924,18 +2960,15 @@ class NDPermutationDistribution:
                 raise ValueError("Can not use cluster size criteria when doing threshold free cluster evaluation")
             criteria_ = []
             for k, v in criteria.items():
-                m = re.match(r'min(\w+)', k)
-                if m:
+                if m := re.match(r'min(\w+)', k):
                     dimname = m.group(1)
                     if not y.has_dim(dimname):
-                        raise TypeError(
-                            "%r is an invalid keyword argument for this testnd "
-                            "function (no dimension named %r)" % (k, dimname))
+                        raise TypeError(f"{k}={v!r}: invalid keyword argument (no dimension named {dimname})")
                     ax = y.get_axis(dimname) - 1
                     if dimname == 'time':
                         v = int(ceil(v / y.time.tstep))
                 else:
-                    raise TypeError("%r is an invalid keyword argument for this testnd function" % (k,))
+                    raise TypeError(f"{k}={v!r}: invalid keyword argument")
 
                 if nad_ax:
                     if ax == 0:
@@ -3356,17 +3389,17 @@ class NDPermutationDistribution:
     def _cluster_property_labels(self):
         return [l for dim in self.dims for l in dim._cluster_property_labels()]
 
-    def cluster(self, cluster_id):
+    def cluster(self, cluster_id: int) -> NDVar:
         """Retrieve a specific cluster as NDVar
 
         Parameters
         ----------
-        cluster_id : int
+        cluster_id
             Cluster id.
 
         Returns
         -------
-        cluster : NDVar
+        NDVar
             NDVar of the cluster, 0 outside the cluster.
 
         Notes
@@ -3387,15 +3420,20 @@ class NDPermutationDistribution:
             out.info[k] = properties[0, k]
         return out
 
-    def clusters(self, pmin=None, maps=True, **sub):
+    def clusters(
+            self,
+            pmin: float = None,
+            maps: bool = True,
+            **sub,
+    ) -> Dataset:
         """Find significant clusters
 
         Parameters
         ----------
-        pmin : None | scalar, 1 >= p  >= 0
+        pmin
             Threshold p-value for clusters (for thresholded cluster tests the
             default is 1, for others 0.05).
-        maps : bool
+        maps
             Include in the output a map of every cluster (can be memory
             intensive if there are large statistical maps and/or many
             clusters; default True).
@@ -3411,7 +3449,7 @@ class NDPermutationDistribution:
             if self.samples > 0 and self.kind != 'cluster':
                 pmin = 0.05
         elif self.samples == 0:
-            raise ValueError(f"pmin={pmin!r}: Can not determine p values in distribution without permutations")
+            raise ValueError(f"{pmin=}: Can not determine p values in distribution without permutations")
 
         if sub:
             param_map = self.parameter_map.sub(**sub)
@@ -3465,14 +3503,7 @@ class NDPermutationDistribution:
         else:
             p_map = self.compute_probability_map(**sub)
             bin_map = np.less_equal(p_map.x, pmin)
-
-            # threshold for maps
-            if maps:
-                values = np.abs(param_map.x)[bin_map]
-                if len(values):
-                    threshold = values.min() / 2
-                else:
-                    threshold = 1.
+            threshold = None
 
             # find clusters (reshape to internal shape for labelling)
             if self._nad_ax:
@@ -3506,10 +3537,11 @@ class NDPermutationDistribution:
             # package ndvar
             dims = ('case',) + param_map.dims
             param_contours = {}
-            if self.tail >= 0:
-                param_contours[threshold] = (0.7, 0.7, 0)
-            if self.tail <= 0:
-                param_contours[-threshold] = (0.7, 0, 0.7)
+            if threshold:
+                if self.tail >= 0:
+                    param_contours[threshold] = (0.7, 0.7, 0)
+                if self.tail <= 0:
+                    param_contours[-threshold] = (0.7, 0, 0.7)
             info = _info.for_stat_map(self.meas, contours=param_contours)
             info['summary_func'] = np.sum
             ds['cluster'] = NDVar(c_maps, dims, info=info)
@@ -3822,8 +3854,11 @@ def setup_workers(test_func, dist, func_args):
     return workers, permutation_queue, kill_beacon, shared_memory  # return shared_memory so that it does not get garbage collected
 
 
-def run_permutation_me(test, dists, iterator):
-    "Perform multi-effect permutation test"
+def run_permutation_me(
+        test: MPTestMapper,
+        dists: List[NDPermutationDistribution],
+        iterator: Iterable[np.ndarray],
+):
     dist = dists[0]
     if dist.kind == 'cluster':
         thresholds = tuple(d.threshold for d in dists)

@@ -588,7 +588,7 @@ def add_mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, target='epochs', **k
     ----------
     ds : Dataset
         Dataset with events from a raw fiff file (i.e., created by
-        load.fiff.events).
+        load.mne.events).
     tmin : scalar
         First sample to include in the epochs in seconds (Default is -0.1).
     tmax : scalar
@@ -602,7 +602,7 @@ def add_mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, target='epochs', **k
     target : str
         Name for the Epochs object in the Dataset.
     ...
-        See :func:`~eelbrain.load.fiff.mne_epochs`.
+        See :func:`~eelbrain.load.mne.mne_epochs`.
     """
     epochs_ = mne_epochs(ds, tmin, tmax, baseline, **kwargs)
     ds = _trim_ds(ds, epochs_)
@@ -816,11 +816,25 @@ def sensor_dim(
                     names = [f'{n[:3]} {n[3:]}' for n in names]
             elif connectivity == 'ctf275':
                 ch_names = [name[:5] for name in ch_names]
+            elif connectivity.startswith('bti'):
+                names = [f'MEG {name[1:]:0>3}' for name in names]
 
         # fix channel order
         if names != ch_names:
-            index = np.array([names.index(name) for name in ch_names])
-            c_matrix = c_matrix[index][:, index]
+            try:
+                index = np.array([names.index(name) for name in ch_names])
+                c_matrix = c_matrix[index][:, index]
+            except IndexError:
+                missing = [name for name in ch_names if name not in names]
+                raise IndexError(f"{connectivity=} is missing channels {', '.join(missing)}")
+            # Add superfluous channels as unconnected nodes?
+            # if len(names) < len(ch_names):
+            #     # Add zeros (no connectivity) at index -1
+            #     n = c_matrix.shape[0] + 1
+            #     indptr = np.append(c_matrix.indptr, c_matrix.indptr[-1])
+            #     c_matrix = scipy.sparse.csr_matrix((c_matrix.data, c_matrix.indices, indptr), (n, n), c_matrix.dtype)
+            #     index = [names.index(name) if name in names else -1 for name in ch_names]
+            #     c_matrix = c_matrix[index][:, index]
 
         connectivity = _matrix_graph(c_matrix)
     elif connectivity in (None, False):
@@ -933,8 +947,8 @@ def variable_length_mne_epochs(
         the data from the beginning of the epoch up to ``t = 0``). Set to
         ``None`` for no baseline correction (default).
     allow_truncation
-        If a ``tmax`` value falls outside the data available in ``raw``,
-        automatically truncate the epoch (by default this raises a
+        If a ``tmin`` or ``tmax`` value falls outside the data available in
+        ``raw``, automatically truncate the epoch (by default this raises a
         ``ValueError``).
     tstop
         Alternative to ``tmax``. While ``tmax`` specifies the last samples to
@@ -969,8 +983,16 @@ def variable_length_mne_epochs(
     if picks is None and raw.info['bads']:
         picks = mne.pick_types(raw.info, meg=True, eeg=True, eog=True, ref_meg=False, exclude=[])
     events = _mne_events(ds)
+    # Load epochs
     out = []
     for i, (tmin_i, tmax_i) in enumerate(zip(tmin, tmax)):
+        i_min = events[i, 0] + floor(tmin_i * raw.info['sfreq'])
+        if raw.first_samp > i_min:
+            if allow_truncation:
+                tmin_i = (raw.first_samp - events[i, 0]) / raw.info['sfreq']
+            else:
+                missing = (i_min - raw.first_samp) / raw.info['sfreq']
+                raise ValueError(f"{tmin[i]=} is outside of data range by {missing:g} s")
         i_max = events[i, 0] + floor(tmax_i * raw.info['sfreq'])
         if raw.last_samp < i_max:
             if allow_truncation:

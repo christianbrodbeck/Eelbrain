@@ -42,7 +42,6 @@ extensions = [
     'sphinx.ext.todo', 'sphinx.ext.imgmath',  # default
     'sphinx.ext.intersphinx',  # http://sphinx.pocoo.org/ext/intersphinx.html
     'sphinx.ext.napoleon',  # https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html
-    'sphinx_autodoc_typehints',  # https://github.com/agronholm/sphinx-autodoc-typehints
     'sphinxcontrib.bibtex',  # https://sphinxcontrib-bibtex.readthedocs.io
     'sphinx_gallery.gen_gallery',  # https://sphinx-gallery.github.io
     # 'scanpydoc',  # https://github.com/theislab/scanpydoc
@@ -51,6 +50,7 @@ extensions = [
 # enable to have all methods documented on the same page as a class:
 # autodoc_default_flags=['inherited-members']
 autosummary_generate = True
+autodoc_typehints = "description"
 
 # Napoleon settings
 napoleon_google_docstring = False
@@ -99,8 +99,9 @@ example_order = NameOrder({
     'examples': [],
     'datasets': [
         'intro.py',
-        'basic.py',
+        'dataset-basics.py',
         'align.py',
+        'ndvar-creating.py',
     ],
     'statistics': [
         'models.py',
@@ -108,8 +109,9 @@ example_order = NameOrder({
         'ANCOVA.py',
     ],
     'mass-univariate-statistics': [
-        'simulate-N400.py',
+        'permutation-statistics.py',
         'sensor-cluster-based-ttest.py',
+        'sensor-lm.py',
         'sensor-two-stage.py',
         'compare-topographies.py',
     ],

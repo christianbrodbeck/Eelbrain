@@ -125,7 +125,7 @@ class Document(FileDocument):
         self.accept = np.ones(self.ica.n_components_, bool)
         self.accept[ica.exclude] = False
         self.epochs = epochs = ds['epochs']
-        self.epochs_ndvar = load.fiff.epochs_ndvar(epochs, sysname=sysname, connectivity=connectivity)
+        self.epochs_ndvar = load.mne.epochs_ndvar(epochs, sysname=sysname, connectivity=connectivity)
         self.ds = ds
         # for 3d-data, pick magnetometers
         picks = _picks(ica.info, None, 'bads')
@@ -492,7 +492,7 @@ class SharedToolsMenu:  # Frame mixin
         ds_clean[:, 'data'] = 'Cleaned'
         ds = combine((ds_original, ds_clean))
         colors = {'Source': 'red', 'Cleaned': 'blue'}
-        plot.UTSStat('psd', 'data', ds=ds, error=np.std, w=8, title="Spectrum (±1 STD)", colors=colors)
+        plot.UTSStat('psd', 'data', data=ds, error=np.std, w=8, title="Spectrum (±1 STD)", colors=colors)
 
 
 class Frame(SharedToolsMenu, FileFrame):
@@ -1513,7 +1513,7 @@ def select_components(
         Optional, to define sensor connectivity.
     connectivity
         Optional, to define sensor connectivity (see
-        :func:`eelbrain.load.fiff.sensor_dim`).
+        :func:`eelbrain.load.mne.sensor_dim`).
     decim
         Decimate the data for display (only applies when data is a ``Raw``
         object; default is to spproximate 100 Hz samplingrate).

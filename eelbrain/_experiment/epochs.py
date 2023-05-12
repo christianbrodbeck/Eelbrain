@@ -139,9 +139,9 @@ class Epoch(EpochBase):
         self.post_baseline_trigger_shift_min = post_baseline_trigger_shift_min
         self.post_baseline_trigger_shift_max = post_baseline_trigger_shift_max
 
-    def as_dict_24(self):
+    def _as_dict_24(self):
         "Dict to be compared with Eelbrain 0.24 cache"
-        out = {k: v for k, v in self.as_dict().items() if v is not None}
+        out = {k: v for k, v in self._as_dict().items() if v is not None}
         if isinstance(self, (SecondaryEpoch, SuperEpoch)):
             out['_rej_file_epochs'] = self.rej_file_epochs
         if isinstance(self, PrimaryEpoch) and self.n_cases:
@@ -422,22 +422,22 @@ class ContinuousEpoch(EpochBase):
 
     Parameters
     ----------
-    session : str
+    session
         Session (raw file) from which to load data.
-    sel : str
+    sel
         Expression which evaluates in the events Dataset to the index of the
-        events included in this Epoch specification.
-    pad_start : scalar
+        events included in this Epoch specification (default is all events).
+    pad_start
         Time to add before the first event (in seconds, default 0.100).
-    pad_end : scalar
+    pad_end
         Time to add after the last event (in seconds, default 1).
-    split : scalar
+    split
         Split into several continuous epochs whenever time between used data
         (event times ± ``pad``) is larger than ``split`` (default 10).
-    samplingrate : scalar
+    samplingrate
         Target samplingrate. Needs to divide data samplingrate evenly (e.g.
         ``200`` for data sampled at 1000 Hz; default ``200``).
-    vars : dict
+    vars
         Add new variables only for this epoch.
         Each entry specifies a variable with the following schema:
         ``{name: definition}``. ``definition`` can be either a string that is
@@ -451,7 +451,7 @@ class ContinuousEpoch(EpochBase):
     def __init__(
             self,
             session: str,
-            sel: str,
+            sel: str = None,
             pad_start: float = 0.100,
             pad_end: float = 1.000,
             split: float = 10,

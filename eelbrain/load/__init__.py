@@ -19,6 +19,7 @@ from .._io import txt
 from . import besa
 from . import eyelink
 from . import fiff
+from . import mne
 
 from .._io.txt import tsv
 from .._io.cnd import read_cnd as cnd

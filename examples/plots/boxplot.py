@@ -28,7 +28,7 @@ from eelbrain import *
 
 ds = datasets.get_uv()
 ds.summary()
-p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds)
+p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds)
 
 ###############################################################################
 # Test against population mean
@@ -36,7 +36,7 @@ p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds)
 #
 # Instead of pairwise tests, test the values in each category against a population mean. Use the ``test`` parameter to set the value to test against. In the example, ``test=0`` will test whether each sample is significantly different form zero. Use the ``tail`` parameter to determine the tailedness of the test (``tail=1`` to test for a value greater than 0).
 
-p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, test=0, tail=1)
+p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, test=0, tail=1)
 
 ###############################################################################
 # Appearance: colored boxes and category labels
@@ -54,7 +54,7 @@ labels = {
     ('a2', 'b1'): 'A-2 (B-1)',
     ('a2', 'b2'): 'A-2 (B-2)',
 }
-p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, colors=colors, xticks=labels)
+p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, colors=colors, xticks=labels)
 
 colors = {
     ('a1', 'b1'): plot.Style((1, .5, .5), hatch=''),
@@ -62,7 +62,7 @@ colors = {
     ('a2', 'b1'): plot.Style((.5, .5, 1), hatch=''),
     ('a2', 'b2'): plot.Style((.5, .5, 1), hatch='///'),
 }
-p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, colors=colors)
+p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, colors=colors)
 
 colors = {
     ('a1', 'b1'): plot.Style('w', hatch='///'),
@@ -70,7 +70,7 @@ colors = {
     ('a2', 'b1'): plot.Style('w', hatch='O'),
     ('a2', 'b2'): plot.Style('w', hatch='.'),
 }
-p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, colors=colors)
+p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, colors=colors)
 
 ###############################################################################
 # Label fliers
@@ -78,4 +78,4 @@ p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, colors=colors)
 #
 # The ``label_fliers=True`` option is used to identify outlier points (labels are based on the ``match`` argument).
 
-p = plot.Boxplot('fltvar', 'A % B', match='rm', ds=ds, label_fliers=True)
+p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, label_fliers=True)

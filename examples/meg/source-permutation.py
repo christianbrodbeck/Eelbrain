@@ -12,7 +12,7 @@ n_samples = 1000
 ds = e.datasets.get_mne_sample(tmin=-0.1, tmax=0.2, src='ico', sub="modality=='A'")
 
 # compute distribution of max t values through permutation
-res = e.testnd.TTestIndependent('src', 'side', 'L', 'R', ds=ds, samples=n_samples, tstart=0.05)
+res = e.testnd.TTestIndependent('src', 'side', 'L', 'R', data=ds, samples=n_samples, tstart=0.05)
 
 # generate parameter map thresholded at p=0.05
 pmap = res.masked_parameter_map(pmin=0.05)

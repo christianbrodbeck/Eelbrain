@@ -85,7 +85,7 @@ def source_cluster_im(ndvar, surfer_kwargs, mark_sources=None):
 
 def source_time_results(
         res: testnd.NDTest,
-        ds: Dataset,
+        data: Dataset,
         colors: dict = None,
         include: float = 0.1,
         surfer_kwargs: dict = {},
@@ -94,7 +94,7 @@ def source_time_results(
         y: str = None,
 ):
     report = Section(title)
-    y = ds[y or res.y]
+    y = data[y or res.y]
     if parc is True:
         parc = res._first_cdist.parc
     model = res._plot_model()
@@ -105,18 +105,14 @@ def source_time_results(
         title = "{tstart}-{tstop} p={p}{mark} {effect}"
         for label in y.source.parc.cells:
             section = report.add_section(label.capitalize())
-
             clusters = res.find_clusters(source=label)
-            source_time_clusters(section, clusters, y, ds, model, include,
-                                 title, colors, res, surfer_kwargs)
+            source_time_clusters(section, clusters, y, data, model, include, title, colors, res, surfer_kwargs)
     elif not parc and res._kind == 'cluster':
         source_bin_table(report, res, surfer_kwargs)
-
         clusters = res.find_clusters()
         clusters.sort('tstart')
         title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
-        source_time_clusters(report, clusters, y, ds, model, include, title,
-                             colors, res, surfer_kwargs)
+        source_time_clusters(report, clusters, y, data, model, include, title, colors, res, surfer_kwargs)
     elif not parc and res._kind in ('raw', 'tfce'):
         section = report.add_section("P<=.05")
         source_bin_table(section, res, surfer_kwargs, 0.05)
@@ -124,8 +120,7 @@ def source_time_results(
         clusters.sort('tstart')
         title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
         for cluster in clusters.itercases():
-            source_time_cluster(section, cluster, y, model, ds, title, colors,
-                                res.match, surfer_kwargs)
+            source_time_cluster(section, cluster, y, model, data, title, colors, res.match, surfer_kwargs)
 
         # trend section
         section = report.add_section("Trend: p<=.1")
@@ -146,7 +141,7 @@ def source_time_results(
             clusters_all = clusters_all.sub("p>0.1")
             clusters = combine((clusters_sig, clusters_trend, clusters_all))
             clusters.sort('tstart')
-            source_time_clusters(section, clusters, y, ds, model, include,
+            source_time_clusters(section, clusters, y, data, model, include,
                                  title, colors, res, surfer_kwargs)
     else:
         raise RuntimeError
@@ -283,7 +278,7 @@ def cluster_timecourse(section, cluster, y, dim, model, ds, colors, match):
     # cluster time course
     idx = c_extent.any('time')
     tc = y[idx].mean(dim)
-    p = plot.UTSStat(tc, model, match=match, ds=ds, legend=False, h=4,
+    p = plot.UTSStat(tc, model, match=match, data=ds, legend=False, h=4,
                      colors=colors, show=False)
     # mark original cluster
     for ax in p.axes:
@@ -303,13 +298,13 @@ def cluster_timecourse(section, cluster, y, dim, model, ds, colors, match):
     # Barplot
     idx = (c_extent != 0)
     v = y.mean(idx)
-    p = plot.Barplot(v, model, match, ds=ds, corr=None, colors=colors, h=4,
+    p = plot.Barplot(v, model, match, data=ds, corr=None, colors=colors, h=4,
                      show=False)
     image_bar = p.image('cluster_%i_barplot.png' % cid)
     p.close()
 
     # Boxplot
-    p = plot.Boxplot(v, model, match, ds=ds, corr=None, colors=colors, h=4,
+    p = plot.Boxplot(v, model, match, data=ds, corr=None, colors=colors, h=4,
                      show=False)
     image_box = p.image('cluster_%i_boxplot.png' % cid)
     p.close()
@@ -318,7 +313,7 @@ def cluster_timecourse(section, cluster, y, dim, model, ds, colors, match):
         # compose figure
         section.add_figure("Time course in cluster area, and average value in cluster by condition, with pairwise t-tests.", [image_tc, image_bar, image_box, legend])
         # pairwise test table
-        res = test.pairwise(v, model, match, ds=ds, corr=None)
+        res = test.pairwise(v, model, match, data=ds, corr=None)
         section.add_figure("Pairwise t-tests of average value in cluster by condition", res)
     else:
         section.add_figure("Time course in cluster area, and average value in cluster.", [image_tc, image_bar, image_box])
