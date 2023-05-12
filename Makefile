@@ -34,6 +34,6 @@ test-gui-nomayavi:
 pypi:
 	rm -rf build dist
 	python setup.py sdist bdist_wheel bdist_egg
-	twine upload --repository-url https://upload.pypi.org/legacy/ -u christianbrodbeck dist/*
+	twine upload dist/*
 
 .PHONY: clean clean-py doc testw pypi
