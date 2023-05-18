@@ -14,8 +14,8 @@ def _adjacency_id(info: mne.Info, ch_type: str):
     elif has_vv_grad and ch_type == 'grad':
         conn_name = 'neuromag306planar'
     elif has_4D_mag:
-        if 'MEG 248' in info['ch_names']:
-            idx = info['ch_names'].index('MEG 248')
+        if any((key := f'MEG {i}') in info['ch_names'] for i in range(149, 249)):
+            idx = info['ch_names'].index(key)
             grad = info['chs'][idx]['coil_type'] == FIFF.FIFFV_COIL_MAGNES_GRAD
             mag = info['chs'][idx]['coil_type'] == FIFF.FIFFV_COIL_MAGNES_MAG
             if ch_type == 'grad' and grad:
