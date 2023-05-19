@@ -8,7 +8,7 @@ import logging
 from os import makedirs, remove
 from os.path import basename, dirname, exists, getmtime, join, splitext
 from pathlib import Path
-from typing import Callable, Dict, List, Sequence, Tuple, Union
+from typing import Callable, Collection, Dict, List, Sequence, Tuple, Union
 
 import mne
 from scipy import signal
@@ -90,7 +90,7 @@ class RawPipe:
         if isinstance(add_bads, Sequence):
             raw.info['bads'] = list(add_bads)
         elif add_bads:
-            raw.info['bads'] = self.load_bad_channels(subject, recording)
+            raw.info['bads'] = self.load_bad_channels(subject, recording, raw.ch_names)
         elif add_bads is False:
             raw.info['bads'] = []
         else:
@@ -101,7 +101,12 @@ class RawPipe:
         path = self.path.format(root=self.root, subject=subject, recording=recording)
         return mne.io.read_raw_fif(path, preload=preload)
 
-    def load_bad_channels(self, subject, recording):
+    def load_bad_channels(
+            self,
+            subject: str,
+            recording: str,
+            existing: Collection[str] = None,
+    ):
         raise NotImplementedError
 
     def make_bad_channels(self, subject, recording, bad_chs, redo):
@@ -282,14 +287,22 @@ class RawSource(RawPipe):
         kit_system_id = info.get('kit_system_id')
         return KIT_NEIGHBORS.get(kit_system_id)
 
-    def load_bad_channels(self, subject, recording):
+    def load_bad_channels(
+            self,
+            subject: str,
+            recording: str,
+            existing: Collection[str] = None,
+    ):
         path = self.bads_path.format(root=self.root, subject=subject, recording=recording)
         if not exists(path):
             # need to create one to know mtime after user deletes the file
             self.log.info("Generating bad_channels file for %s %s", subject, recording)
             self.make_bad_channels_auto(subject, recording)
         with open(path) as fid:
-            return [l for l in fid.read().splitlines() if l]
+            bad_chs = [l for l in fid.read().splitlines() if l]
+        if existing is not None:
+            bad_chs = [ch for ch in bad_chs if ch in existing]
+        return bad_chs
 
     def make_bad_channels(self, subject, recording, bad_chs, redo):
         path = self.bads_path.format(root=self.root, subject=subject, recording=recording)
@@ -413,8 +426,13 @@ class CachedRawPipe(RawPipe):
             raw = self._make(subject, recording)
         return RawPipe.load(self, subject, recording, add_bads, preload, raw)
 
-    def load_bad_channels(self, subject, recording):
-        return self.source.load_bad_channels(subject, recording)
+    def load_bad_channels(
+            self,
+            subject: str,
+            recording: str,
+            existing: Collection[str] = None,
+    ):
+        return self.source.load_bad_channels(subject, recording, existing)
 
     def _make(self, subject, recording):
         raise NotImplementedError
@@ -615,12 +633,17 @@ class RawICA(CachedRawPipe):
     def _as_dict(self, args: Sequence[str] = ()):
         return CachedRawPipe._as_dict(self, [*args, 'session', 'kwargs'])
 
-    def load_bad_channels(self, subject, recording):
+    def load_bad_channels(
+            self,
+            subject: str,
+            recording: str,
+            existing: Collection[str] = None,
+    ):
         visit = _visit(recording)
         bad_chs = set()
         for session in self.session:
             recording = compound((session, visit))
-            bad_chs.update(self.source.load_bad_channels(subject, recording))
+            bad_chs.update(self.source.load_bad_channels(subject, recording, existing))
         return sorted(bad_chs)
 
     def load_ica(self, subject, recording):
@@ -715,7 +738,7 @@ class RawICA(CachedRawPipe):
 
     def _make(self, subject, recording):
         raw = self.source.load(subject, recording, preload=True)
-        raw.info['bads'] = self.load_bad_channels(subject, recording)
+        raw.info['bads'] = self.load_bad_channels(subject, recording, existing=raw.ch_names)
         ica = self.load_ica(subject, recording)
         self._check_ica_channels(ica, raw, raise_on_mismatch=True, raw_name=self.name, subject=subject)
         self.log.debug("Raw %s: applying ICA for %s/%s...", self.name, subject, recording)
@@ -789,8 +812,13 @@ class RawApplyICA(CachedRawPipe):
         out['ica_source'] = self._ica_source
         return out
 
-    def load_bad_channels(self, subject, recording):
-        return self.ica_source.load_bad_channels(subject, recording)
+    def load_bad_channels(
+            self,
+            subject: str,
+            recording: str,
+            existing: Collection[str] = None,
+    ):
+        return self.ica_source.load_bad_channels(subject, recording, existing)
 
     def _make(self, subject, recording):
         raw = self.source.load(subject, recording, preload=True)
