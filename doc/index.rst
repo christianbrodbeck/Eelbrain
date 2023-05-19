@@ -57,7 +57,8 @@ and incorporates icons from the `Tango Desktop Project <http://tango.freedesktop
 Eelbrain is maintained by `Christian Brodbeck <http://christianbrodbeck.net>`_.
 Current funding:
 `University of Connecticut <https://uconn.edu>`_ (2021-);
-`NSF <http://nsf.gov>`_ `2043950 <https://www.nsf.gov/awardsearch/showAward?AWD_ID=2043950>`_ (2021-);
+`NSF <http://nsf.gov>`_ `2207770 <https://www.nsf.gov/awardsearch/showAward?AWD_ID=2207770>`_ (2023-);
+`NSF <http://nsf.gov>`_ `2043903 <https://www.nsf.gov/awardsearch/showAward?AWD_ID=2043903>`_ (2021-);
 Past funding:
 `NSF <http://nsf.gov>`_ `1754284 <https://www.nsf.gov/awardsearch/showAward?AWD_ID=1754284>`_ (2020-2021);
 `NIH <https://www.nih.gov>`_ R01-DC-014085 (2016-2020);
