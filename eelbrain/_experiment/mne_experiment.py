@@ -6576,7 +6576,10 @@ class MneExperiment(FileTree):
                 else:
                     folder = "Whole Brain"
                     # only compute unmasked test once (probably rare anyways)
-                    kwargs['parc'] = 'aparc'
+                    if self.get('src').startswith('vol'):
+                        kwargs['parc'] = 'aparc+aseg'
+                    else:
+                        kwargs['parc'] = 'aparc'
                     kwargs['test_dims'] = 'unmasked'
             elif mask:
                 raise ValueError("Can't specify mask together with parc")
