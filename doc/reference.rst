@@ -147,6 +147,7 @@ functions. See also :class:`NDVar` methods.
    cross_correlation
    cwt_morlet
    dss
+   edge_detector
    filter_data
    find_intervals
    find_peaks
