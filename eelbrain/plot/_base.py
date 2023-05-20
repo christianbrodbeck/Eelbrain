@@ -2831,9 +2831,11 @@ class ColorBarMixin:
             param_func: Callable = None,  # function to get cmap, vmin, vmax
             data: Union[NDVar, Var, Number, str, 'PlotData'] = None,  # to infer unit
             mappable: Any = None,  # matplotlib mappable object
+            default_kwargs: dict = None,  # default parameters for plotting colorbar
     ):
         self.__get_params = param_func
         self.__mappable = mappable
+        self.__default_kwargs = default_kwargs or {}
         if data is None:
             self.__scale = AxisScale(1)
         else:
@@ -2853,10 +2855,6 @@ class ColorBarMixin:
             label: Union[bool, str] = True,
             label_position: Literal['left', 'right', 'top', 'bottom'] = None,
             label_rotation: float = None,
-            clipmin: float = None,
-            clipmax: float = None,
-            orientation: Literal['horizontal', 'vertical'] = 'horizontal',
-            unit: Union[str, float] = None,
             **kwargs,
     ):
         """Plot a colorbar corresponding to the displayed data
@@ -2871,15 +2869,6 @@ class ColorBarMixin:
             Angle of the label in degrees (For horizontal colorbars, the default is
             0; for vertical colorbars, the default is 0 for labels of 3 characters
             and shorter, and 90 for longer labels).
-        clipmin
-            Clip the color-bar below this value.
-        clipmax
-            Clip the color-bar above this value.
-        orientation
-            Orientation of the bar (default is horizontal).
-        unit
-            Unit for the axis to determine tick labels (for example, ``'µV'`` to
-            label 0.000001 as '1') or multiplier (e.g., ``1e-6``).
         ...
             More parameters for :class:`plot.ColorBar`.
 
@@ -2898,9 +2887,8 @@ class ColorBarMixin:
             cmap, vmin, vmax = self.__get_params()
         else:
             raise RuntimeError(f"No colormap on {self}")
-        if unit is None:
-            unit = self.__scale
-        return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation, clipmin, clipmax, orientation, unit, **kwargs)
+        kwargs = {'unit': self.__scale, **self.__default_kwargs, **kwargs}
+        return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation, **kwargs)
 
 
 class ColorMapMixin(ColorBarMixin):

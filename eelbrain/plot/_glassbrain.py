@@ -244,6 +244,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         if mni305 is None:
             mni305 = source.subject == 'fsaverage'
 
+        cbar_clip_at_0 = False
         if ndvar is None:
             cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = threshold = None
         else:
@@ -277,6 +278,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             # determine parameters for colorbar
             if ndvar.has_dim('space'):
                 data = ndvar.norm('space').x
+                cbar_clip_at_0 = True
             else:
                 data = ndvar.x
 
@@ -333,14 +335,18 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             frame_title = source.subject
         EelFigure.__init__(self, frame_title, layout)
 
-        project = get_projector(display_mode)
-        display = project(img0, alpha=alpha, plot_abs=plot_abs, threshold=threshold, figure=self.figure, axes=None, black_bg=black_bg, colorbar=colorbar)
+        projector_class = get_projector(display_mode)
+        display = projector_class(img0, alpha=alpha, plot_abs=plot_abs, threshold=threshold, figure=self.figure, axes=None, black_bg=black_bg, colorbar=colorbar)
         if img0:
             display.add_overlay(img0, threshold=threshold, interpolation=interpolation, colorbar=colorbar, vmin=vmin, vmax=vmax, cmap=cmap)
 
-        ColorBarMixin.__init__(self, self._colorbar_params, ndvar)
+        cbar_kwargs = {}
+        if cbar_clip_at_0:
+            cbar_kwargs['clipmin'] = 0
+        ColorBarMixin.__init__(self, self._colorbar_params, ndvar, default_kwargs=cbar_kwargs)
 
         self.display = display
+        self.axes = [obj.ax for obj in display.axes.values()]
         self.threshold = threshold
         self.interpolation = interpolation
         self.cmap = cmap
