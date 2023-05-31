@@ -2,7 +2,7 @@
 """I/O for MNE"""
 from collections.abc import Iterable
 import fnmatch
-from itertools import zip_longest
+from itertools import repeat, zip_longest
 from logging import getLogger
 from math import floor
 import os
@@ -1015,6 +1015,7 @@ def raw_ndvar(
         i_start: Union[int, Sequence[int]] = None,
         i_stop: Union[int, Sequence[int]] = None,
         decim: int = 1,
+        reset_tmin: bool = False,
         data: Literal['eeg',  'mag',  'grad'] = None,
         exclude: Union[str, Sequence[str]] = 'bads',
         sysname: str = None,
@@ -1034,6 +1035,9 @@ def raw_ndvar(
         Downsample the data by this factor when importing. ``1`` (default)
         means no downsampling. Note that this function does not low-pass filter
         the data. The data is downsampled by picking out every n-th sample.
+    reset_tmin
+        Set the time axis of each :class:`NDVar` in the output to begin at 0.
+        By default, the NDVars wll retain time information from the raw data.
     data
         The kind of data to include (default based on data).
     exclude
@@ -1103,7 +1107,13 @@ def raw_ndvar(
 
         if decim != 1:
             x = x[:, ::decim]
-        time = UTS(0, float(decim) / raw.info['sfreq'], x.shape[1])
+        if reset_tmin:
+            tmin = 0
+        elif start is None:
+            tmin = raw.first_samp / raw.info['sfreq']
+        else:
+            tmin = (raw.first_samp + start) / raw.info['sfreq']
+        time = UTS(tmin, float(decim) / raw.info['sfreq'], x.shape[1])
         out.append(NDVar(x, (dim, time), name, info))
 
     if scalar:
