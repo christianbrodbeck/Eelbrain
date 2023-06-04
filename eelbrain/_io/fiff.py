@@ -44,6 +44,7 @@ except ImportError:
     }
 
 BaselineArg = Optional[Tuple[Optional[float], Optional[float]]]
+ConnectivityArg = Union[str, Sequence[Tuple[str, str]], np.ndarray]
 DataArg = Literal['eeg', 'mag', 'grad']
 PicksArg = Any
 
@@ -53,15 +54,19 @@ def mne_neighbor_files():
     return [re.match(r'([\w-]+)_neighb', path.stem).group(1) for path in neighbor_dir.glob('*_neighb.mat')]
 
 
-def mne_raw(path=None, proj=False, **kwargs):
+def mne_raw(
+        path: PathArg = None,
+        proj: Union[bool, str] = False,
+        **kwargs,
+) -> mne.io.BaseRaw:
     """Load a :class:`mne.io.Raw` object
 
     Parameters
     ----------
-    path : None | str
+    path
         path to a raw fiff or sqd file. If no path is supplied, a file can be
         chosen from a file dialog.
-    proj : bool | str
+    proj
         Add projections from a separate file to the Raw object.
         **``False``**: No proj file will be added.
         **``True``**: ``'{raw}*proj.fif'`` will be used.
@@ -70,7 +75,7 @@ def mne_raw(path=None, proj=False, **kwargs):
         pattern, a ValueError will be raised.
         **``str``**: A custom path template can be provided, ``'{raw}'`` and
         ``'*'`` will be treated as with ``True``.
-    kwargs
+    **kwargs
         Additional keyword arguments are forwarded to :class:`mne.io.Raw`
         initialization.
     """
@@ -388,7 +393,7 @@ def epochs(
         i_start: str = 'i_start',
         tstop: float = None,
         sysname: str = None,
-        connectivity: Union[str, Sequence] = None,
+        connectivity: ConnectivityArg = None,
 ) -> NDVar:
     """
     Load epochs as :class:`NDVar`.
@@ -712,7 +717,7 @@ def sensor_dim(
         info: mne.Info,
         picks: np.ndarray = None,
         sysname: str = None,
-        connectivity: Union[str, Sequence] = None,
+        connectivity: ConnectivityArg = None,
 ):
     """Create a :class:`Sensor` dimension from an :class:`mne.Info` object.
 
@@ -852,7 +857,7 @@ def variable_length_epochs(
         data: DataArg = None,
         exclude: Union[str, Sequence[str]] = 'bads',
         sysname: str = None,
-        connectivity: Union[str, Sequence] = None,
+        connectivity: ConnectivityArg = None,
         tstop: Union[float, Sequence[float]] = None,
         name: str = None,
         **kwargs,
@@ -1005,32 +1010,41 @@ def variable_length_mne_epochs(
     return out
 
 
-def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads', sysname=None,  connectivity=None):
+def raw_ndvar(
+        raw: Union[mne.io.BaseRaw, PathArg],
+        i_start: Union[int, Sequence[int]] = None,
+        i_stop: Union[int, Sequence[int]] = None,
+        decim: int = 1,
+        data: Literal['eeg',  'mag',  'grad'] = None,
+        exclude: Union[str, Sequence[str]] = 'bads',
+        sysname: str = None,
+        connectivity: ConnectivityArg = None,
+) -> Union[NDVar, List[NDVar]]:
     """Raw data as NDVar
 
     Parameters
     ----------
-    raw : Raw | str
+    raw
         Raw instance, or path of a raw FIFF file..
-    i_start : int | sequence of int
+    i_start
         Start sample (see notes; default is the beginning of the ``raw``).
-    i_stop : int | sequence of int
+    i_stop
         Stop sample (see notes; default is end of the ``raw``).
-    decim : int
+    decim
         Downsample the data by this factor when importing. ``1`` (default)
         means no downsampling. Note that this function does not low-pass filter
         the data. The data is downsampled by picking out every n-th sample.
-    data : 'eeg' | 'mag' | 'grad' | None
+    data
         The kind of data to include (default based on data).
-    exclude : list of string | str
+    exclude
         Channels to exclude (:func:`mne.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
         If empty do not exclude any.
-    sysname : str
+    sysname
         Name of the sensor system to load sensor connectivity (e.g. 'neuromag306',
         inferred automatically for KIT data converted with a recent version of
         MNE-Python).
-    connectivity : str | list of (str, str) | array of int, (n_edges, 2)
+    connectivity
         Connectivity between elements. Can be specified as:
 
         - ``"none"`` for no connections
@@ -1064,7 +1078,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
     start_scalar = i_start is None or isinstance(i_start, int)
     stop_scalar = i_stop is None or isinstance(i_stop, int)
     if start_scalar != stop_scalar:
-        raise TypeError(f"i_start and i_stop must either both be scalar or both iterable, got i_start={i_start!r}, i_stop={i_stop!r}")
+        raise TypeError(f"i_start and i_stop must either both be scalar or both iterable, got: \n{i_start=}\n{i_stop=}")
     elif start_scalar:
         i_start = (i_start,)
         i_stop = (i_stop,)
@@ -1108,7 +1122,7 @@ def epochs_ndvar(
         sensors: Sensor = None,
         vmax: float = None,
         sysname: str = None,
-        connectivity: Union[str, Sequence] = None,
+        connectivity: ConnectivityArg = None,
         proj: bool = True,
 ):
     """
@@ -1293,35 +1307,51 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
 
 
 def forward_operator(
-        fwd,
-        src,
-        subjects_dir=None,
-        parc='aparc',
+        fwd: Union[str, mne.Forward],
+        src: str,
+        subjects_dir: PathArg = None,
+        parc: str = 'aparc',
         sysname: str = None,
-        connectivity: Union[str, Sequence] = None,
-        name=None,
-):
+        connectivity: ConnectivityArg = None,
+        name: str = None,
+) -> NDVar:
     """Load forward operator as :class:`NDVar`
 
     Parameters
     ----------
-    fwd : str | mne Forward
+    fwd
         MNE Forward solution, or path to forward solution.
-    src : str
+    src
         Tag describing the source space (e.g., "ico-4").
-    subjects_dir : str
+    subjects_dir
         Location of the MRI subjects directory.
-    parc : str
+    parc
         Parcellation to load (corresponding to existing annot files; default
         'aparc').
-    name : str
+    sysname
+        Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
+        inferred automatically for KIT data converted with a recent version of
+        MNE-Python).
+    connectivity
+        Connectivity between elements. Can be specified as:
+
+        - ``"none"`` for no connections
+        - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
+        - :class:`numpy.ndarray` of int, shape (n_edges, 2), to specify
+          connections in terms of indices. Each row should specify one
+          connection [i, j] with i < j. If the array's dtype is uint32,
+          property checks are disabled to improve efficiency.
+        - ``"grid"`` to use adjacency in the sensor names
+
+        If unspecified, it is inferred from ``sysname`` if possible.
+    name
         Name the NDVar (default is the filename if a path is provided,
         otherwise "fwd").
 
     Returns
     -------
-    fwd : NDVar  (sensor, source)
-        NDVar containing the gain matrix.
+    fwd : NDVar
+        NDVar ``(sensor, source)`` containing the gain matrix.
     """
     is_vol = src.startswith('vol')
     if isinstance(fwd, str):
