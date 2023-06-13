@@ -6666,7 +6666,7 @@ class MneExperiment(FileTree):
         if tstart is not None or tstop is not None:
             items.append(_time_window_str((tstart, tstop)))
         if samplingrate is not None:
-            assert isinstance(samplingrate, int)
+            # allow non-int samplingrate (it is still constrained by being divisor of original samplingrate)
             items.append(f'{samplingrate:g}Hz')
 
         items.extend(test_options)
