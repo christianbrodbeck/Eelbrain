@@ -3062,18 +3062,20 @@ class LegendMixin:
     def plot_legend(
             self,
             loc: LegendArg = 'fig',
-            labels=None,
-            **kwargs):
+            labels: Dict[CellArg, str] = None,
+            **kwargs,
+    ):
         """Plot the legend (or remove it from the figure).
 
         Parameters
         ----------
         loc
             Where to plot the legend (see Notes; default 'fig').
-        labels : dict
+        labels
             Dictionary with alternate labels for all cells.
         ... :
-            Parameters for :class:`eelbrain.plot.Legend`.
+            Additional legend parameters (for :class:`eelbrain.plot.Legend` if
+            ``loc=='fig'``, otherwise for :math:`matplotlib.figure.Figure.legend`).
 
         Returns
         -------
@@ -3154,11 +3156,11 @@ class LegendMixin:
                 elif self.legend is not None:
                     self.legend.remove()
                 elif loc == 'draggable':
-                    self.legend = self.figure.legend(handles, labels, loc=1)
+                    self.legend = self.figure.legend(handles, labels, loc=1, **kwargs)
                     self.legend.set_draggable(True)
 
                 if loc != 'draggable':
-                    self.legend = self.figure.legend(handles, labels, loc=loc)
+                    self.legend = self.figure.legend(handles, labels, loc=loc, **kwargs)
                 self.draw()
         elif self.legend is not None:
             self.legend.remove()
