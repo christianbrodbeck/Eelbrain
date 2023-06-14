@@ -131,19 +131,19 @@ def unpickle(path: PathArg = None):
             raise EOFError(f"Corrupted file, writing may have been interrupted: {path}")
 
 
-def update_subjects_dir(obj, subjects_dir, depth=0):
-    """Update NDVar SourceSpace.subjects_dir attributes
+def update_subjects_dir(obj: object, subjects_dir: PathArg, depth: int = 0) -> None:
+    """Update NDVar SourceSpace.subjects_dir attributes in place
 
     Examine elements of ``obj`` recursively and replace ``subjects_dir`` on all
     NDVars with SourceSpace dimension that are found.
 
     Parameters
     ----------
-    obj : object
+    obj
         Object to examine.
-    subjects_dir : str
+    subjects_dir
         New values for subjects_dir.
-    depth : int
+    depth
         Recursion depth for examining attributes (default 0, i.e. only apply to
         ``obj`` without recursion). Negative number for exhaustive search.
 

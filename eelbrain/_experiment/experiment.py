@@ -910,41 +910,42 @@ class FileTree(TreeModel):
             root = os.path.normpath(root)
         return root
 
-    def get(self, temp, fmatch=False, vmatch=True, match=True, mkdir=False,
-            make=False, **kwargs):
+    def get(
+            self,
+            temp: str,
+            fmatch: bool = False,
+            vmatch: bool = True,
+            match: bool = True,
+            mkdir: bool = False,
+            make: bool = False,
+            **state,
+    ):
         """
         Retrieve a formatted template
 
-        With match=True, '*' are expanded to match a file,
-        and if there is not a unique match, an error is raised. With
-        mkdir=True, the directory containing the file is created if it does not
-        exist.
-
         Parameters
         ----------
-        temp : str
+        temp
             Name of the requested template.
-        fmatch : bool
-            "File-match": If the template contains asterisk ('*'), use glob to
-            fill it in. An IOError is raised if the pattern does not match
+        fmatch
+            "File-match": If the template contains asterisk (``*``), use ``glob`` to
+            expand it. An IOError is raised if the pattern does not match
             exactly one file.
-        vmatch : bool
+        vmatch
             "Value match": Require existence of the assigned value (only
             applies for fields with stored values).
-        match : bool
-            Do any matching (i.e., match=False sets fmatch as well as vmatch
-            to False).
-        mkdir : bool
+        match
+            Do any matching (i.e., ``match=False`` sets ``fmatch`` as well as
+            ``vmatch`` to ``False``).
+        mkdir
             If the directory containing the file does not exist, create it.
-        make : bool
+        make
             If a requested file does not exists, make it if possible.
-        kwargs :
-            Set any state values.
         """
         if not match:
             fmatch = vmatch = False
 
-        path = TreeModel.get(self, temp, vmatch=vmatch, **kwargs)
+        path = TreeModel.get(self, temp, vmatch=vmatch, **state)
         path = os.path.expanduser(path)
 
         # assert the presence of the file

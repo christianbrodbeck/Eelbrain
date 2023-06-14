@@ -1,7 +1,6 @@
 """Some basic example datasets for testing."""
 from distutils.version import LooseVersion
 from itertools import product
-import os
 from pathlib import Path
 import shutil
 import string
@@ -116,11 +115,9 @@ def get_loftus_masson_1994():
 
 def get_mne_epochs():
     """MNE-Python Epochs"""
-    data_path = mne.datasets.sample.data_path()
-    raw_path = os.path.join(data_path, 'MEG', 'sample',
-                            'sample_audvis_raw.fif')
-    events_path = os.path.join(data_path, 'MEG', 'sample',
-                               'sample_audvis_raw-eve.fif')
+    data_path = Path(mne.datasets.sample.data_path())
+    raw_path = data_path / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
+    events_path = data_path / 'MEG' / 'sample' / 'sample_audvis_raw-eve.fif'
     raw = mne.io.Raw(raw_path)
     events = mne.read_events(events_path)
     epochs = mne.Epochs(raw, events, 32, -0.1, 0.4, preload=True)
@@ -135,9 +132,8 @@ def get_mne_evoked(ndvar=False):
     ndvar : bool
         Convert to NDVar (default False).
     """
-    data_path = mne.datasets.sample.data_path()
-    evoked_path = os.path.join(data_path, 'MEG', 'sample',
-                               'sample_audvis-ave.fif')
+    data_path = Path(mne.datasets.sample.data_path())
+    evoked_path = data_path / 'MEG' / 'sample' / 'sample_audvis-ave.fif'
     evoked = mne.Evoked(evoked_path, "Left Auditory")
     if ndvar:
         return load.mne.evoked_ndvar(evoked)
@@ -165,8 +161,8 @@ def get_mne_stc(ndvar=False, src='ico-5', subject='sample'):
     subjects_dir = data_path / 'subjects'
     # scaled subject
     if subject == 'fsaverage_scaled':
-        subject_dir = os.path.join(subjects_dir, subject)
-        if not os.path.exists(subject_dir):
+        subject_dir = subjects_dir / subject
+        if not subject_dir.exists():
             mne.scale_mri('fsaverage', subject, .9, subjects_dir=subjects_dir, skip_fiducials=True, labels=False, annot=True)
         data_subject = 'fsaverage'
     else:
@@ -215,24 +211,18 @@ def _mne_source_space(subject, src_tag, subjects_dir):
     src_tag : str
         Spacing (e.g., 'ico-4').
     """
-    src_file = os.path.join(subjects_dir, subject, 'bem',
-                            '%s-%s-src.fif' % (subject, src_tag))
+    src_file = Path(subjects_dir) / subject / 'bem' / f'{subject}-{src_tag}-src.fif'
     src, spacing = src_tag.split('-')
-    if os.path.exists(src_file):
+    if src_file.exists():
         return mne.read_source_spaces(src_file, False)
     elif src == 'ico':
-        ss = mne.setup_source_space(subject, spacing=src + spacing,
-                                    subjects_dir=subjects_dir, add_dist=True)
+        ss = mne.setup_source_space(subject, spacing=src + spacing, subjects_dir=subjects_dir, add_dist=True)
     elif src == 'vol':
-        mri_file = os.path.join(subjects_dir, subject, 'mri', 'orig.mgz')
-        bem_file = os.path.join(subjects_dir, subject, 'bem',
-                                'sample-5120-5120-5120-bem-sol.fif')
-        ss = mne.setup_volume_source_space(subject, pos=float(spacing),
-                                           mri=mri_file, bem=bem_file,
-                                           mindist=0., exclude=0.,
-                                           subjects_dir=subjects_dir)
+        mri_file = subjects_dir / subject / 'mri' / 'orig.mgz'
+        bem_file = subjects_dir / subject / 'bem' / 'sample-5120-5120-5120-bem-sol.fif'
+        ss = mne.setup_volume_source_space(subject, pos=float(spacing), mri=mri_file, bem=bem_file, mindist=0., exclude=0., subjects_dir=subjects_dir)
     else:
-        raise ValueError("src_tag=%s" % repr(src_tag))
+        raise ValueError(f"{src_tag=}")
     mne.write_source_spaces(src_file, ss)
     return ss
 
@@ -308,15 +298,15 @@ def get_mne_sample(
     else:
         raise ValueError(f"{ori=}")
 
-    data_dir = mne.datasets.sample.data_path()
-    meg_dir = os.path.join(data_dir, 'MEG', 'sample')
-    raw_file = os.path.join(meg_dir, 'sample_audvis_filt-0-40_raw.fif')
-    event_file = os.path.join(meg_dir, 'sample_audvis_filt-0-40-eve.fif')
-    subjects_dir = os.path.join(data_dir, 'subjects')
+    data_dir = Path(mne.datasets.sample.data_path())
+    meg_dir = data_dir / 'MEG' / 'sample'
+    raw_file = meg_dir / 'sample_audvis_filt-0-40_raw.fif'
+    event_file = meg_dir / 'sample_audvis_filt-0-40-eve.fif'
+    subjects_dir = data_dir / 'subjects'
     subject = 'sample'
-    label_path = os.path.join(subjects_dir, subject, 'label', '%s.label')
+    label_path = subjects_dir / subject / 'label' / '%s.label'
 
-    if not os.path.exists(event_file):
+    if not event_file.exists():
         raw = mne.io.Raw(raw_file)
         events = mne.find_events(raw, stim_channel='STI 014')
         mne.write_events(event_file, events)
@@ -364,23 +354,23 @@ def get_mne_sample(
     epochs = ds['epochs']
 
     # get inverse operator
-    inv_file = os.path.join(meg_dir, f'sample_eelbrain_{inv_tag}-inv.fif')
-    if os.path.exists(inv_file):
+    inv_file = meg_dir / f'sample_eelbrain_{inv_tag}-inv.fif'
+    if inv_file.exists():
         inv = mne.minimum_norm.read_inverse_operator(inv_file)
     else:
-        fwd_file = os.path.join(meg_dir, f'sample-{src_tag}-fwd.fif')
-        bem_dir = os.path.join(subjects_dir, subject, 'bem')
-        bem_file = os.path.join(bem_dir, 'sample-5120-5120-5120-bem-sol.fif')
-        trans_file = os.path.join(meg_dir, 'sample_audvis_raw-trans.fif')
+        fwd_file = meg_dir / f'sample-{src_tag}-fwd.fif'
+        bem_dir = subjects_dir / subject / 'bem'
+        bem_file = bem_dir / 'sample-5120-5120-5120-bem-sol.fif'
+        trans_file = meg_dir / 'sample_audvis_raw-trans.fif'
 
-        if os.path.exists(fwd_file):
+        if fwd_file.exists():
             fwd = mne.read_forward_solution(fwd_file)
         else:
             src_ = _mne_source_space(subject, src_tag, subjects_dir)
             fwd = mne.make_forward_solution(epochs.info, trans_file, src_, bem_file)
             mne.write_forward_solution(fwd_file, fwd)
 
-        cov_file = os.path.join(meg_dir, 'sample_audvis-cov.fif')
+        cov_file = meg_dir / 'sample_audvis-cov.fif'
         cov = mne.read_cov(cov_file)
         inv = mn.make_inverse_operator(epochs.info, fwd, cov, loose=loose, depth=None, fixed=fixed)
         mne.minimum_norm.write_inverse_operator(inv_file, inv)
@@ -635,13 +625,11 @@ def setup_samples_experiment(
                                      [ 0.00933457,  0.99443108, -0.10497498, -0.0205526 ],
                                      [-0.01544655,  0.10511042,  0.9943406,  -0.04443745],
                                      [ 0.,          0.,          0.,          1.        ]])
-        # os.environ['_MNE_FEW_SURFACES'] = 'true'
         for subject in subjects:
             mne.scale_mri('fsaverage', subject, 1., subjects_dir=mri_sdir, skip_fiducials=True, labels=False)
             meg_dir = meg_sdir / subject
             meg_dir.mkdir(exist_ok=mris_only)
             trans.save(str(meg_dir / f'{subject}-trans.fif'))
-        # del os.environ['_MNE_FEW_SURFACES']
     if mris_only:
         return
 

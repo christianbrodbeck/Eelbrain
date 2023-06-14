@@ -225,9 +225,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
 
         # check parameters
         if vmax is not None and np.isnan(vmax):
-            raise ValueError(f"vmax={vmax!r} (Tip: Use np.nanmax() instead of np.max())")
+            raise ValueError(f"{vmax=} (Tip: Use np.nanmax() instead of np.max())")
         elif vmin is not None and np.isnan(vmin):
-            raise ValueError(f"vmin={vmin!r} (Tip: Use np.nanmin() instead of np.min())")
+            raise ValueError(f"{vmin=} (Tip: Use np.nanmin() instead of np.min())")
 
         if isinstance(ndvar, VolumeSourceSpace):
             source = ndvar
@@ -236,7 +236,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             ndvar = brain_data(ndvar, data)
             source = ndvar.get_dim('source')
             if not isinstance(source, VolumeSourceSpace):
-                raise ValueError(f"ndvar={ndvar!r}:  need volume source space data")
+                raise ValueError(f"{ndvar=}: need volume source space data")
             time = ndvar.get_dim('time') if ndvar.has_dim('time') else None
             if isinstance(ndvar.x, np.ma.MaskedArray) and np.all(ndvar.x.mask):
                 ndvar = None

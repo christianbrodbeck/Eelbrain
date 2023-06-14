@@ -410,36 +410,6 @@
             ]
         }
     },
-    "A7PzHd0HsK4J": {
-        "title": "Neural Tracking Measures of Speech Intelligibility: Manipulating Intelligibility while Keeping Acoustics Unchanged",
-        "result_id": "A7PzHd0HsK4J",
-        "type": "Pdf",
-        "link": "http://cansl.isr.umd.edu/simonlab/pubs/ARO2023NeuralIntelligibiiity.pdf",
-        "snippet": "Neural speech tracking has advanced our understanding of how our brains rapidly map an acoustic speech signal onto linguistic representations and ultimately meaning [1]. However, it \u2026",
-        "publication_info": {
-            "summary": "IMD Karunathilake, JP Kulasingham, JZ Simon - cansl.isr.umd.edu",
-            "authors": [
-                {
-                    "name": "IMD Karunathilake",
-                    "link": "https://scholar.google.com/citations?user=yif4EIoAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=yif4EIoAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "yif4EIoAAAAJ"
-                },
-                {
-                    "name": "JP Kulasingham",
-                    "link": "https://scholar.google.com/citations?user=IApEm-QAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=IApEm-QAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "IApEm-QAAAAJ"
-                },
-                {
-                    "name": "JZ Simon",
-                    "link": "https://scholar.google.com/citations?user=pr8YcVIAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=pr8YcVIAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "pr8YcVIAAAAJ"
-                }
-            ]
-        }
-    },
     "B-pQP7xth8QJ": {
         "title": "Bilingual language switching in the laboratory versus in the wild: The spatiotemporal dynamics of adaptive language control",
         "result_id": "B-pQP7xth8QJ",
@@ -1527,6 +1497,35 @@
             ]
         }
     },
+    "aADnZp0CBmAJ": {
+        "title": "Neural Tracking Measures of Speech Intelligibility: Manipulating Intelligibility while Keeping Acoustics Unchanged",
+        "result_id": "aADnZp0CBmAJ",
+        "link": "https://www.biorxiv.org/content/10.1101/2023.05.18.541269.abstract",
+        "snippet": "Neural speech tracking has advanced our understanding of how our brains rapidly map an acoustic speech signal onto linguistic representations and ultimately meaning. It remains \u2026",
+        "publication_info": {
+            "summary": "IMD Karunathilake, JP Kulasingham, JZ Simon - bioRxiv, 2023 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "IMD Karunathilake",
+                    "link": "https://scholar.google.com/citations?user=yif4EIoAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=yif4EIoAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "yif4EIoAAAAJ"
+                },
+                {
+                    "name": "JP Kulasingham",
+                    "link": "https://scholar.google.com/citations?user=IApEm-QAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=IApEm-QAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "IApEm-QAAAAJ"
+                },
+                {
+                    "name": "JZ Simon",
+                    "link": "https://scholar.google.com/citations?user=pr8YcVIAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=pr8YcVIAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "pr8YcVIAAAAJ"
+                }
+            ]
+        }
+    },
     "aPjEwTCwSEsJ": {
         "title": "Rapid transformation from auditory to linguistic representations of continuous speech",
         "result_id": "aPjEwTCwSEsJ",
@@ -1583,6 +1582,35 @@
                     "link": "https://scholar.google.com/citations?user=LLq-Ti4AAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=LLq-Ti4AAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "LLq-Ti4AAAAJ"
+                }
+            ]
+        }
+    },
+    "cNSSor0KzSwJ": {
+        "title": "Lip movements and lexical features improve speech tracking differently for clear and multi-speaker speech",
+        "result_id": "cNSSor0KzSwJ",
+        "link": "https://www.biorxiv.org/content/10.1101/2023.05.15.540818.abstract",
+        "snippet": "Visual speech plays a powerful role in facilitating auditory speech processing and has been a publicly noticed topic with the wide usage of face masks during the Covid-19 pandemic. In \u2026",
+        "publication_info": {
+            "summary": "CL Haider, H Park, A Hauswald, N Weisz - bioRxiv, 2023 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "CL Haider",
+                    "link": "https://scholar.google.com/citations?user=IiWNABwAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=IiWNABwAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "IiWNABwAAAAJ"
+                },
+                {
+                    "name": "H Park",
+                    "link": "https://scholar.google.com/citations?user=Vyn8xRQAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=Vyn8xRQAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "Vyn8xRQAAAAJ"
+                },
+                {
+                    "name": "N Weisz",
+                    "link": "https://scholar.google.com/citations?user=C1ao7w4AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=C1ao7w4AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "C1ao7w4AAAAJ"
                 }
             ]
         }
@@ -2224,13 +2252,12 @@
         }
     },
     "r6sxXEpjc44J": {
-        "title": "Daytime Affect and Sleep EEG Activity: A Data-Driven Exploration",
+        "title": "Daytime affect and sleep EEG activity: A data\u2010driven exploration",
         "result_id": "r6sxXEpjc44J",
-        "type": "Pdf",
-        "link": "https://psyarxiv.com/aufbz/download?format=pdf",
-        "snippet": "It has long been thought that links between affect and sleep are bidirectional. However, few studies have directly assessed the relationships between (1) pre-sleep affect and sleep EEG \u2026",
+        "link": "https://onlinelibrary.wiley.com/doi/abs/10.1111/jsr.13916",
+        "snippet": "It has long been thought that links between affect and sleep are bidirectional. However, few studies have directly assessed the relationships between: (1) pre\u2010sleep affect and sleep \u2026",
         "publication_info": {
-            "summary": "JX Zhang, M Ten Brink, Y Yan, A Goldstein-Piekarski\u2026 - 2023 - psyarxiv.com",
+            "summary": "JX Zhang, M Ten Brink, Y Yan\u2026 - Journal of Sleep \u2026, 2023 - Wiley Online Library",
             "authors": [
                 {
                     "name": "JX Zhang",
@@ -2249,12 +2276,6 @@
                     "link": "https://scholar.google.com/citations?user=ER1DHXcAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=ER1DHXcAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "ER1DHXcAAAAJ"
-                },
-                {
-                    "name": "A Goldstein-Piekarski",
-                    "link": "https://scholar.google.com/citations?user=G7jKPfQAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=G7jKPfQAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "G7jKPfQAAAAJ"
                 }
             ]
         }
