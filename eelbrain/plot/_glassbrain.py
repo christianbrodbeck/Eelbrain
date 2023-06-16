@@ -447,32 +447,22 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
 
         return
 
-    # used by _update_time
-    def _remove_overlay(self):
-        for axis in self.display._cut_displayed:
-            if len(self.display.axes[axis].ax.images) > 0:
-                self.display.axes[axis].ax.images.clear()
-
-    # used by _update_time
-    def _remove_arrows(self):
-        for q in self._quivers:
-            q.remove()
-
     def _update_time(self, t, fixate):
         if self._ndvar is None:
             return
         index = self.time._array_index(t)
-        self._remove_overlay()
-        self.display.add_overlay(
-            self._imgs[index], threshold=self.threshold, interpolation=self.interpolation,
-            colorbar=False, vmin=self.vmin, vmax=self.vmax, cmap=self.cmap)
-        # A little hack to make sure that the display
-        # still has correct colorbar flag.
+        # Redraw the overlay
+        for axis in self.display._cut_displayed:
+            for im in self.display.axes[axis].ax.images:
+                im.remove()
+        self.display.add_overlay(self._imgs[index], threshold=self.threshold, interpolation=self.interpolation, colorbar=False, vmin=self.vmin, vmax=self.vmax, cmap=self.cmap)
+        # A little hack to make sure that the display still has correct colorbar flag.
         self.display._colorbar = self.colorbar
 
-        # take care of arrows
+        # Redraw the arrows
         if self._arrows:
-            self._remove_arrows()
+            for q in self._quivers:
+                q.remove()
             self._add_arrows(index)
 
         self.canvas.redraw(self.figure.axes)
