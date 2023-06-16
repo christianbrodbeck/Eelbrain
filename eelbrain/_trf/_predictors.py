@@ -129,5 +129,7 @@ def event_impulse_predictor(
 
     out = NDVar(np.zeros(len(uts)), uts, name)
     for t, l, v in zip(time, latency, value):
-        out[t + l] = v
+        t_ = t + l
+        if uts.tmin <= t_ <= uts.tmax:
+            out[t_] = v
     return out

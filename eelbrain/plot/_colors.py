@@ -384,6 +384,8 @@ class ColorBar(EelFigure):
         Plot the colorbar to the keft of, and matching in height of these axes.
     below
         Plot the colorbar below, and matching in width of these axes.
+    offset
+        Additional offset when using ``right_of``/``left_of``/``below``.
     """
     def __init__(
             self,
@@ -410,6 +412,7 @@ class ColorBar(EelFigure):
             right_of: matplotlib.axes.Axes = None,
             left_of: matplotlib.axes.Axes = None,
             below: matplotlib.axes.Axes = None,
+            offset: float = 0,
             **kwargs,
     ):
         # get Colormap
@@ -431,10 +434,10 @@ class ColorBar(EelFigure):
             figure = source_axes.get_figure()
             source_bbox = source_axes.get_position()
             if right_of or left_of:
-                thickness, _ = inch_to_figure(figure, x=width or 0.05)
+                thickness = inch_to_figure(figure, x=width or 0.05)
                 y0 = source_bbox.y0
                 if h:
-                    _, height = inch_to_figure(figure, y=h)
+                    height = inch_to_figure(figure, y=h)
                     y0 += (source_bbox.bounds[3] - height) / 2
                 else:
                     height = source_bbox.bounds[3]
@@ -444,17 +447,22 @@ class ColorBar(EelFigure):
                     x0 = source_bbox.x0 - 3*thickness
                     if ticklocation == 'auto':
                         ticklocation = 'left'
+                if offset:
+                    x0 += inch_to_figure(figure, x=offset)
                 rect = (x0, y0, thickness, height)
                 orientation = 'vertical'
             elif below:
-                _, thickness = inch_to_figure(figure, y=width or 0.05)
+                thickness = inch_to_figure(figure, y=width or 0.05)
                 x0 = source_bbox.x0
                 if w:
-                    ax_width, _ = inch_to_figure(figure, x=w)
+                    ax_width = inch_to_figure(figure, x=w)
                     x0 += (source_bbox.bounds[2] - ax_width) / 2
                 else:
                     ax_width = source_bbox.bounds[2]
-                rect = (x0, source_bbox.y0 - 3*thickness, ax_width, thickness)
+                y0 = source_bbox.y0 - 3*thickness
+                if offset:
+                    y0 += inch_to_figure(figure, y=offset)
+                rect = (x0, y0, ax_width, thickness)
                 orientation = 'horizontal'
             else:
                 raise RuntimeError
