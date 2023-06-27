@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib.colors import LinearSegmentedColormap, to_rgb, to_rgba
 
-from .._colorspaces import LocatedListedColormap, lch_to_rgb, rgb_to_lch, oneway_colors, twoway_colors, symmetric_cmaps
+from .._colorspaces import LocatedListedColormap, lch_to_rgb, rgb_to_lch, oneway_colors, twoway_colors, SYMMETRIC_CMAPS
 from .._data_obj import Factor, Interaction, CellArg
 from .._exceptions import KeysMissing
 from functools import cached_property
@@ -472,7 +472,7 @@ def soft_threshold_colormap(
     assert vmax > threshold >= 0
     cmap = mpl.colormaps.get_cmap(cmap)
     if symmetric is None:
-        symmetric = cmap.name in symmetric_cmaps
+        symmetric = cmap.name in SYMMETRIC_CMAPS
 
     colors = cmap(np.linspace(0., 1., cmap.N))
     if subthreshold is None:
