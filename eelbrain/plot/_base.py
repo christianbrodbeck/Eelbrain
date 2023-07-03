@@ -3518,14 +3518,10 @@ class CategorialAxisMixin:
         self.__cells = cells
         if axis == 'x':
             self.__axis_obj = ax.xaxis
-            if layout.frame is not True:
-                ax.spines['bottom'].set_visible(False)
             if origin is not None:
                 ax.axhline(origin, color='k', linewidth=mpl.rcParams['axes.linewidth'], clip_on=False)
         elif axis == 'y':
             self.__axis_obj = ax.yaxis
-            if layout.frame is not True:
-                ax.spines['left'].set_visible(False)
             if origin is not None:
                 ax.axvline(origin, color='k', linewidth=mpl.rcParams['axes.linewidth'], clip_on=False)
         else:
