@@ -1,12 +1,14 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from contextlib import ContextDecorator
 import os
+import platform
 import sys
 
 IS_OSX = sys.platform == 'darwin'
+IS_MACOS_ARM = IS_OSX and platform.processor() == 'arm'
 IS_WINDOWS = os.name == 'nt'
 
-if IS_OSX:
+if IS_OSX and not IS_MACOS_ARM:  # Causes segfault on ARM
     from . import macos as c
 else:
     from . import dummy_os as c

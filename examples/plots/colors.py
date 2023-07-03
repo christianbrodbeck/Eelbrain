@@ -22,10 +22,9 @@ In general, colors for categorial variables are set as ``{cell: color}`` diction
 """
 # sphinx_gallery_thumbnail_number = 3
 from eelbrain import *
-import matplotlib.style
+
 
 ds = datasets.get_uv()
-
 
 colors = {'a1': (1, 0, 0), 'a2': (0, 0, 1)}
 p = plot.Barplot('fltvar', 'A', data=ds, w=2, colors=colors)

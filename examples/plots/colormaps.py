@@ -22,6 +22,7 @@ cmap_list = [
     'xpolar',
     'lpolar',
     'lux',
+    'lux-gray',
     'polar-lux',
     'lux-purple',
     'polar-lux-purple',

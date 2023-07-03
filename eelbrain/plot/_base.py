@@ -100,7 +100,7 @@ from matplotlib.ticker import FuncFormatter
 import numpy as np
 
 from .._celltable import Celltable
-from .._colorspaces import LocatedColormap, symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
+from .._colorspaces import LocatedColormap, SYMMETRIC_CMAPS, ZEROBASED_CMAPS, ALPHA_CMAPS
 from .._config import CONFIG
 from .._data_obj import Dimension, Dataset, Factor, Interaction, NDVar, Var, Case, UTS, NDVarArg, CategorialArg, IndexArg, CellArg, NDVarTypes, ascategorial, asndvar, assub, isnumeric, isdataobject, combine_cells, cellname
 from .._utils.notebooks import use_inline_backend
@@ -572,8 +572,8 @@ def fix_vlim_for_cmap(vmin, vmax, cmap):
     else:
         if isinstance(cmap, Colormap):
             cmap = cmap.name
-        is_symmetric = cmap in symmetric_cmaps 
-        starts_at_zero = cmap in zerobased_cmaps
+        is_symmetric = cmap in SYMMETRIC_CMAPS
+        starts_at_zero = cmap in ZEROBASED_CMAPS
 
     if is_symmetric:
         if vmax is None and vmin is None:
@@ -3543,6 +3543,8 @@ class CategorialAxisMixin:
         # ticks
         self.__axis_obj.set_ticks_position('none')
         if ticks:
+            offset = None  # Transform to properly align labels with bars
+            kwargs = {}
             if isinstance(ticks, dict) or ticks is True:
                 labels_ = find_labels(cells, labels, tick_delim)
                 if isinstance(ticks, dict):
@@ -3550,7 +3552,26 @@ class CategorialAxisMixin:
                 tick_labels = [labels_[cell] for cell in cells]
             else:
                 tick_labels = ticks
-            self.__axis_obj.set_ticks(tick_pos, tick_labels, rotation=rotation)
+            if isinstance(rotation, Number):
+                if rotation:
+                    ax.tick_params(axis, pad=0)
+
+                if rotation == -90:
+                    offset = -matplotlib.rcParams['xtick.labelsize'] / 4
+                elif 0 < rotation < 90:
+                    kwargs['ha'] = 'right'
+                    offset = matplotlib.rcParams['xtick.labelsize']
+                elif -90 < rotation < 0:
+                    kwargs['ha'] = 'left'
+                    kwargs['rotation_mode'] = 'anchor'
+                    if rotation < -60:
+                        offset = matplotlib.rcParams['xtick.labelsize'] * ((-rotation - 60) / 90)
+            self.__axis_obj.set_ticks(tick_pos, tick_labels, rotation=rotation, **kwargs)
+            if offset:
+                dx = offset / matplotlib.rcParams['figure.dpi']
+                offset_transform = matplotlib.transforms.ScaledTranslation(dx, 0, ax.figure.dpi_scale_trans)
+                for label in ax.xaxis.get_majorticklabels():
+                    label.set_transform(label.get_transform() + offset_transform)
         elif ticks is False:
             self.__axis_obj.set_ticks(())
 
