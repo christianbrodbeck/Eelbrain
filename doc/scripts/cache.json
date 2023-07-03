@@ -565,6 +565,12 @@
             "summary": "F Schmidt, SK Danboeck, E Trinka, G Demarchi\u2026 - bioRxiv, 2022 - biorxiv.org",
             "authors": [
                 {
+                    "name": "F Schmidt",
+                    "link": "https://scholar.google.com/citations?user=jD0R7UYAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=jD0R7UYAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "jD0R7UYAAAAJ"
+                },
+                {
                     "name": "SK Danboeck",
                     "link": "https://scholar.google.com/citations?user=6s-AmMwAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=6s-AmMwAAAAJ&engine=google_scholar_author&hl=en",
@@ -575,6 +581,24 @@
                     "link": "https://scholar.google.com/citations?user=GiarXIUAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=GiarXIUAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "GiarXIUAAAAJ"
+                }
+            ]
+        }
+    },
+    "EXVd1t6JJs8J": {
+        "title": "The effects of data quantity on performance of temporal response function analyses of natural speech processing",
+        "result_id": "EXVd1t6JJs8J",
+        "type": "Html",
+        "link": "https://www.frontiersin.org/articles/10.3389/fnins.2022.963629/full",
+        "snippet": "In recent years, temporal response function (TRF) analyses of neural activity recordings evoked by continuous naturalistic stimuli have become increasingly popular for characterizing \u2026",
+        "publication_info": {
+            "summary": "J Mesik, M Wojtczak - Frontiers in Neuroscience, 2023 - frontiersin.org",
+            "authors": [
+                {
+                    "name": "M Wojtczak",
+                    "link": "https://scholar.google.com/citations?user=HGob-WUAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=HGob-WUAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "HGob-WUAAAAJ"
                 }
             ]
         }
@@ -1874,7 +1898,15 @@
         "link": "https://www.biorxiv.org/content/10.1101/2023.01.23.525171.abstract",
         "snippet": "Over the last decades, cognitive neuroscience has identified a distributed set of brain regions that are critical for attention - one of the key principles of adaptive behavior. A strong \u2026",
         "publication_info": {
-            "summary": "Q Gehmacher, J Schubert, F Schmidt, T Hartmann\u2026 - bioRxiv, 2023 - biorxiv.org"
+            "summary": "Q Gehmacher, J Schubert, F Schmidt, T Hartmann\u2026 - bioRxiv, 2023 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "F Schmidt",
+                    "link": "https://scholar.google.com/citations?user=jD0R7UYAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=jD0R7UYAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "jD0R7UYAAAAJ"
+                }
+            ]
         }
     },
     "ixMq9TJ_SpYJ": {
@@ -2248,7 +2280,15 @@
         "link": "https://academic.oup.com/cercor/advance-article-abstract/doi/10.1093/cercor/bhac528/6975346",
         "snippet": "Listening can be conceptualized as a process of active inference, in which the brain forms internal models to integrate auditory information in a complex interaction of bottom-up and top-\u2026",
         "publication_info": {
-            "summary": "J Schubert, F Schmidt, Q Gehmacher\u2026 - Cerebral \u2026, 2023 - academic.oup.com"
+            "summary": "J Schubert, F Schmidt, Q Gehmacher\u2026 - Cerebral \u2026, 2023 - academic.oup.com",
+            "authors": [
+                {
+                    "name": "F Schmidt",
+                    "link": "https://scholar.google.com/citations?user=jD0R7UYAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=jD0R7UYAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "jD0R7UYAAAAJ"
+                }
+            ]
         }
     },
     "r6sxXEpjc44J": {
@@ -2299,6 +2339,23 @@
                     "link": "https://scholar.google.com/citations?user=gbhrJ38AAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=gbhrJ38AAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "gbhrJ38AAAAJ"
+                }
+            ]
+        }
+    },
+    "sf9zVQUc8sIJ": {
+        "title": "Sensory and Cognitive Factors Underlying Self-Perceived Listening Difficulties in Adults with Normal Hearing Thresholds",
+        "result_id": "sf9zVQUc8sIJ",
+        "link": "http://d-scholarship.pitt.edu/44538/",
+        "snippet": "One in ten adults seeking help at audiology clinics present with a primary complaint of listening difficulties yet have normal hearing thresholds. These adults with complaints of listening \u2026",
+        "publication_info": {
+            "summary": "JR McHaney - 2023 - d-scholarship.pitt.edu",
+            "authors": [
+                {
+                    "name": "JR McHaney",
+                    "link": "https://scholar.google.com/citations?user=Gv2ZiSgAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=Gv2ZiSgAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "Gv2ZiSgAAAAJ"
                 }
             ]
         }
@@ -2637,7 +2694,15 @@
         "link": "https://www.biorxiv.org/content/10.1101/2022.04.22.489224.abstract",
         "snippet": "Listening can be conceptualized as a process of active inference, in which the brain forms internal models to predict and integrate auditory information in a complex interaction of bottom-\u2026",
         "publication_info": {
-            "summary": "J Schubert, F Schmidt, Q Gehmacher, A Bresgen\u2026 - bioRxiv, 2022 - biorxiv.org"
+            "summary": "J Schubert, F Schmidt, Q Gehmacher, A Bresgen\u2026 - bioRxiv, 2022 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "F Schmidt",
+                    "link": "https://scholar.google.com/citations?user=jD0R7UYAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=jD0R7UYAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "jD0R7UYAAAAJ"
+                }
+            ]
         }
     }
 }
