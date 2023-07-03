@@ -1115,6 +1115,7 @@ def pairwise(
         x: CategorialArg,
         match: CategorialArg = None,
         sub: IndexArg = None,
+        cells: Sequence[CellArg] = None,
         data: Dataset = None,
         par: bool = True,
         corr: MCCArg = 'Hochberg',
@@ -1135,6 +1136,9 @@ def pairwise(
         Repeated measures factor.
     sub : index-array
         Perform tests with a subset of the data.
+    cells
+        Cells to include. All entries have to be cells of ``model``. Can be
+        used to change the order of cells in the table.
     data : Dataset
         If a Dataset is given, all data-objects can be specified as names of
         Dataset variables.
@@ -1157,7 +1161,7 @@ def pairwise(
     table : FMText Table
         Table with results.
     """
-    ct = Celltable(y, x, match=match, sub=sub, data=data, coercion=asvar)
+    ct = Celltable(y, x, match, sub, cells, data, coercion=asvar)
     tests = _pairwise(ct, par, corr, trend)
 
     # extract test results
