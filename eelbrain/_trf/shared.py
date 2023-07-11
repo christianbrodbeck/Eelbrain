@@ -159,7 +159,7 @@ def split_data(
             split_segments = []
             soft_splits = []
             for start, stop in segments:
-                split_points = np.round(np.linspace(start, stop, n_parts)).astype(np.int64)
+                split_points = np.round(np.linspace(start, stop, n_parts + 1)).astype(np.int64)
                 soft_splits.append(split_points[1:-1])
                 split_segments.extend(split_points[i: i + 2] for i in range(n_parts))
             soft_splits = np.concatenate(soft_splits)
