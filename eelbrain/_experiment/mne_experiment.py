@@ -6853,19 +6853,32 @@ class MneExperiment(FileTree):
 
         # pipe-specific
         if isinstance(pipe, RawICA):
-            table = fmtxt.Table('lrr')
-            table.cells('Subject', 'n components', 'reject')
-            table.midrule()
+            rows = []
             for subject in self:
-                table.cell(subject)
                 try:
                     ica = self.load_ica()
-                    table.cells(ica.n_components_, len(ica.exclude))
+                    rows.append((subject, ica.n_components_, len(ica.exclude)))
                 except FileMissing:
                     if all(source_pipe.mtime(subject, self.get('recording', session=session), False) for session in pipe.session):
-                        table.cells("No ICA-file", '')
+                        rows.append((subject, "No ICA-file", -1))
                     else:
-                        table.cells("No data", '')
+                        rows.append((subject, "No data", -1))
+
+            n_selected = [row[-1] for row in rows]
+            mark_unselected = any(n_selected) and not all(n_selected)
+
+            table = fmtxt.Table('lrr' + 'r'*mark_unselected)
+            table.cells('Subject', 'n components', 'reject')
+            if mark_unselected:
+                table.cell('*')
+            table.midrule()
+            for subject, n, n_selected in rows:
+                table.cells(subject, n)
+                if not isinstance(n, str):
+                    table.cell(n_selected)
+                    if mark_unselected and n_selected == 0:
+                        table.cell('*')
+                table.endline()
             print()
             print(table)
 
