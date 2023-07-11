@@ -152,9 +152,9 @@ def split_data(
         else:
             # need to subdivide segments
             if model is not None:
-                raise NotImplementedError(f'partitions={partitions}: with model')
+                raise NotImplementedError(f'{partitions=}: with model')
             elif partitions % cell_size:
-                raise ValueError(f'partitions={partitions}: not a multiple of n_cases ({cell_size})')
+                raise ValueError(f'{partitions=}: not a multiple of n_cases ({cell_size})')
             n_parts = partitions // cell_size
             split_segments = []
             soft_splits = []

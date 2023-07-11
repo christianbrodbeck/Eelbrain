@@ -3171,7 +3171,7 @@ class MneExperiment(FileTree):
                 mne.convert_forward_solution(fwd, surf_ori, copy=False)
             return fwd
 
-    def load_ica(self, **state):
+    def load_ica(self, **state) -> mne.preprocessing.ICA:
         """Load the mne-python ICA object
 
         Parameters
@@ -3181,8 +3181,7 @@ class MneExperiment(FileTree):
 
         Returns
         -------
-        ica : mne.preprocessing.ICA
-            ICA object for the current :ref:`state-raw` setting.
+        ICA object for the current :ref:`state-raw` setting.
         """
         pipe = self._get_ica_pipe(state)
         return pipe.load_ica(self.get('subject'), self.get('recording'))

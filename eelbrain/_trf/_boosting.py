@@ -344,7 +344,7 @@ class BoostingResult(PickleableDataClass):
         --------
         Fit a TRF and reproduce the error using the cross-predict function::
 
-            trf = boosting(y, x, 0, 0.5, partitions=5, test=1)
+            trf = boosting(y, x, 0, 0.5, partitions=5, test=1, partition_results=True)
             y_pred = trf.cross_predict(x, scale='normalized')
 
             y_normalized = (y - trf.y_mean) / trf.y_scale
