@@ -8,7 +8,8 @@ variables = {
 }
 
 """
-from typing import Any, Dict, Sequence, Tuple, Union
+from fnmatch import fnmatch as fnmatch_func
+from typing import Dict, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -110,12 +111,14 @@ class LabelVar(VarDef):
         unlabeled input values.
     session
         Only apply the variable to events from this session.
+    fnmatch
+        Treat keys in ``codes`` as :mod:`fnmatch` patterns.
 
     See Also
     --------
     MneExperiment.variables
     """
-    _pickle_args = ('session', 'source', 'codes', 'labels', 'is_factor', 'default')
+    _pickle_args = ('session', 'source', 'codes', 'labels', 'is_factor', 'default', 'fnmatch')
 
     def __init__(
             self,
@@ -123,6 +126,7 @@ class LabelVar(VarDef):
             codes: Dict[Union[str, float, Tuple[str, ...], Tuple[float, ...]], Union[str, float]],
             default: Union[bool, str, float] = True,
             session: str = None,
+            fnmatch: bool = False,
     ):
         super(LabelVar, self).__init__(session)
         self.source = source
@@ -147,20 +151,29 @@ class LabelVar(VarDef):
             if isinstance(default, str) != is_factor:
                 raise TypeError(f"{default=}")
         self.default = default
+        self.fnmatch = fnmatch
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.source!r}, {self.codes})"
 
     @property
     def _eq_args(self):
-        return self.source, self.labels, self.default
+        return self.source, self.labels, self.default, self.fnmatch
 
     def apply(self, ds, e):
         source = ds.eval(self.source)
-        if self.is_factor:
-            return Factor(source, labels=self.labels, default=self.default)
+        if self.fnmatch:
+            labels = {}
+            for value in source.cells:
+                for pattern, target in self.labels.items():
+                    if fnmatch_func(value, pattern):
+                        labels[value] = target
         else:
-            return Var.from_dict(source, self.labels, default=self.default)
+            labels = self.labels
+        if self.is_factor:
+            return Factor(source, labels=labels, default=self.default)
+        else:
+            return Var.from_dict(source, labels, default=self.default)
 
     def input_vars(self):
         return find_variables(self.source)
