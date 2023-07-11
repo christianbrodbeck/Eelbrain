@@ -397,7 +397,7 @@ class CachedRawPipe(RawPipe):
             logger.info(f"eelbrain {__version__}")
             logger.info(f"mne {mne.__version__}")
             logger.info(repr(self._as_dict()))
-            raw = self._make(subject, recording)
+            raw = self._make(subject, recording, True)
         # save
         try:
             raw.save(path, overwrite=True)
@@ -429,7 +429,7 @@ class CachedRawPipe(RawPipe):
         elif preload == -1:
             raw = self._make_info(subject, recording)
         else:
-            raw = self._make(subject, recording)
+            raw = self._make(subject, recording, preload)
         return RawPipe.load(self, subject, recording, add_bads, preload, raw)
 
     def load_bad_channels(
@@ -440,7 +440,7 @@ class CachedRawPipe(RawPipe):
     ):
         return self.source.load_bad_channels(subject, recording, existing)
 
-    def _make(self, subject, recording):
+    def _make(self, subject, recording, preload):
         raise NotImplementedError
 
     def _make_info(self, subject, recording) -> mne.io.BaseRaw:
@@ -505,7 +505,7 @@ class RawFilter(CachedRawPipe):
     def filter_ndvar(self, ndvar, **kwargs):
         return filter_data(ndvar, *self.args, **self._use_kwargs, **kwargs)
 
-    def _make(self, subject, recording):
+    def _make(self, subject, recording, preload):
         raw = self.source.load(subject, recording, preload=True)
         self.log.info("Raw %s: filtering for %s/%s...", self.name, subject, recording)
         raw.filter(*self.args, **self._use_kwargs, n_jobs=self.n_jobs)
@@ -566,7 +566,7 @@ class RawFilterElliptic(CachedRawPipe):
         x = signal.sosfilt(sos, ndvar.x, axis)
         return NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
 
-    def _make(self, subject, recording):
+    def _make(self, subject, recording, preload):
         raw = self.source.load(subject, recording, preload=True)
         self.log.info("Raw %s: filtering for %s/%s...", self.name, subject, recording)
         # filter data
@@ -755,7 +755,7 @@ class RawICA(CachedRawPipe):
             ica.save(path)
         return path
 
-    def _make(self, subject, recording):
+    def _make(self, subject, recording, preload):
         raw = self.source.load(subject, recording, preload=True)
         raw.info['bads'] = self.load_bad_channels(subject, recording, existing=raw.ch_names)
         ica = self.load_ica(subject, recording)
@@ -839,7 +839,7 @@ class RawApplyICA(CachedRawPipe):
     ):
         return self.ica_source.load_bad_channels(subject, recording, existing)
 
-    def _make(self, subject, recording):
+    def _make(self, subject, recording, preload):
         raw = self.source.load(subject, recording, preload=True)
         raw.info['bads'] = self.load_bad_channels(subject, recording)
         ica = self.ica_source.load_ica(subject, recording)
@@ -887,7 +887,7 @@ class RawMaxwell(CachedRawPipe):
     def _as_dict(self, args: Sequence[str] = ()):
         return CachedRawPipe._as_dict(self, [*args, 'kwargs'])
 
-    def _make(self, subject, recording):
+    def _make(self, subject, recording, preload):
         raw = self.source.load(subject, recording)
         self.log.info(f"Raw %s: computing Maxwell filter for %s/%s", self.name, subject, recording)
         with user_activity:
@@ -909,11 +909,46 @@ class RawOversampledTemporalProjection(CachedRawPipe):
     def _as_dict(self, args: Sequence[str] = ()):
         return CachedRawPipe._as_dict(self, [*args, 'duration'])
 
-    def _make(self, subject, recording):
+    def _make(self, subject, recording, preload):
         raw = self.source.load(subject, recording)
         self.log.info(f"Raw %s: computing oversampled temporal projection for %s/%s", self.name, subject, recording)
         with user_activity:
             return mne.preprocessing.oversampled_temporal_projection(raw, self.duration)
+
+
+class RawUpdateBadChannels(CachedRawPipe):
+
+    def __init__(
+            self,
+            source: str,
+            bad_channels: Dict[str, Sequence[str]],
+    ):
+        CachedRawPipe.__init__(self, source, False)
+        self.bad_channels = bad_channels
+        self._pattern_keys = [key for key in bad_channels if ('*' in key or '?' in key)]
+
+    def _as_dict(self, args: Sequence[str] = ()):
+        return CachedRawPipe._as_dict(self, [*args, 'bad_channels'])
+
+    def _make(self, subject, recording, preload):
+        return self.source.load(subject, recording, preload=preload)
+
+    def load_bad_channels(
+            self,
+            subject: str,
+            recording: str,
+            existing: Collection[str] = None,
+    ):
+        bad_channels = self.source.load_bad_channels(subject, recording, existing)
+        if subject in self.bad_channels:
+            key = subject
+        else:
+            for key in self._pattern_keys:
+                if fnmatch.fnmatch(subject, key):
+                    break
+            else:
+                raise KeyError(subject)
+        return sorted(set(bad_channels).union(self.bad_channels[key]))
 
 
 class RawReReference(CachedRawPipe):
@@ -955,7 +990,7 @@ class RawReReference(CachedRawPipe):
             out['drop'] = self.drop
         return out
 
-    def _make(self, subject, recording):
+    def _make(self, subject, recording, preload):
         raw = self.source.load(subject, recording, preload=True)
         if self.add:
             with warnings.catch_warnings():
