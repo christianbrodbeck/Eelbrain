@@ -44,6 +44,13 @@ class VarDef:
         for k in self._pickle_args:
             setattr(self, k, state[k])
 
+    @property
+    def _eq_args(self):
+        raise NotImplementedError
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and other._eq_args == self._eq_args
+
     def apply(self, ds, e):
         raise NotImplementedError
 
@@ -75,8 +82,9 @@ class EvalVar(VarDef):
     def __repr__(self):
         return "EvalVar(%r)" % self.code
 
-    def __eq__(self, other):
-        return isinstance(other, EvalVar) and other.code == self.code
+    @property
+    def _eq_args(self):
+        return self.code,
 
     def apply(self, ds, e):
         return as_vardef_var(ds.eval(self.code))
@@ -125,7 +133,7 @@ class LabelVar(VarDef):
             if is_factor is None:
                 is_factor = isinstance(v, str)
             elif isinstance(v, str) != is_factor:
-                raise DefinitionError(f"LabelVar with codes={codes!r}: value type inconsistent, need all or none to be str")
+                raise DefinitionError(f"LabelVar with {codes=}: value type inconsistent, need all or none to be str")
 
             if isinstance(key, tuple):
                 for k in key:
@@ -137,15 +145,15 @@ class LabelVar(VarDef):
             default = '' if is_factor else 0
         elif default is not None:
             if isinstance(default, str) != is_factor:
-                raise TypeError(f"default={default!r}")
+                raise TypeError(f"{default=}")
         self.default = default
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.source!r}, {self.codes})"
 
-    def __eq__(self, other):
-        return (isinstance(other, LabelVar) and other.source == self.source and
-                other.labels == self.labels and other.default == self.default)
+    @property
+    def _eq_args(self):
+        return self.source, self.labels, self.default
 
     def apply(self, ds, e):
         source = ds.eval(self.source)
@@ -194,10 +202,11 @@ class GroupVar(VarDef):
         self.groups = groups
 
     def __repr__(self):
-        return "GroupVar(%r)" % (self.groups,)
+        return f"GroupVar({self.groups!r})"
 
-    def __eq__(self, other):
-        return isinstance(other, GroupVar) and other.groups == self.groups
+    @property
+    def _eq_args(self):
+        return self.groups,
 
     def apply(self, ds, e):
         return e.label_groups(ds['subject'], self.groups)
@@ -221,7 +230,7 @@ class GroupVar(VarDef):
 
 def parse_named_vardef(string):
     if '=' not in string:
-        raise DefinitionError(f"variable {str!r}: needs '='")
+        raise DefinitionError(f"variable {string!r}: needs '='")
     name, vdef = string.split('=', 1)
     return name.strip(), parse_vardef(vdef)
 
