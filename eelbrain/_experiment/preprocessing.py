@@ -248,7 +248,8 @@ class RawSource(RawPipe):
         path = self.path.format(root=self.root, subject=subject, recording=recording)
         raw = self.reader(path, preload=preload, **self._read_raw_kwargs)
         if self.rename_channels:
-            raw.rename_channels(self.rename_channels)
+            if rename := {k: v for k, v in self.rename_channels.items() if k in raw.ch_names}:
+                raw.rename_channels(rename)
         if self.montage:
             raw.set_montage(self.montage)
         if not raw.info['dig'] and self._dig_sessions is not None and self._dig_sessions[subject]:
