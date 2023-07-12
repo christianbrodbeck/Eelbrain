@@ -94,7 +94,7 @@ class RawPipe:
         elif add_bads is False:
             raw.info['bads'] = []
         else:
-            raise TypeError(f"add_bads={add_bads!r}")
+            raise TypeError(f"{add_bads=}")
         return raw
 
     def _load(self, subject, recording, preload):
@@ -644,7 +644,7 @@ class RawICA(CachedRawPipe):
         raw_ch_names = [raw.ch_names[i] for i in picks]
         names_match = ica.ch_names == raw_ch_names
         if raise_on_mismatch and not names_match:
-            raise RuntimeError(f"The ICA channel names do not match the data channels for raw={raw_name!r}, subject={subject!r}. Have the bad channels changed since the ICA was computed? Try to revert the data channels, or recompute the ICA using MneExperiment.make_ica().\nData: {', '.join(raw_ch_names)}\nICA:  {', '.join(ica.ch_names)}")
+            raise RuntimeError(f"The ICA channel names do not match the data channels for raw={raw_name!r}, {subject=}. Have the bad channels changed since the ICA was computed? Try to revert the data channels, or recompute the ICA using MneExperiment.make_ica().\nData: {', '.join(raw_ch_names)}\nICA:  {', '.join(ica.ch_names)}")
         return names_match
 
     def load_concatenated_source_raw(
@@ -689,7 +689,7 @@ class RawICA(CachedRawPipe):
                 elif command == 'delete':
                     remove(path)
                 else:
-                    raise RuntimeError(f"command={command!r}")
+                    raise RuntimeError(f"{command=}")
 
         for recording in recordings[1:]:
             raw_ = self.source.load(subject, recording, False)
