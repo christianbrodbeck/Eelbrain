@@ -12,7 +12,7 @@ import tempfile
 import numpy as np
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
-from matplotlib.backend_bases import FigureCanvasBase, MouseEvent
+from matplotlib.backend_bases import MouseEvent, KeyEvent
 from matplotlib.figure import Figure
 import wx
 
@@ -62,13 +62,13 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
         self.Bind(wx.EVT_ENTER_WINDOW, self.ChangeCursor)
         self._background = None
 
-    def _onKeyDown(self, evt):
+    def _on_key_down(self, event):
         # Override to avoid system chime
-        FigureCanvasBase.key_press_event(self, self._get_key(evt), guiEvent=evt)
+        KeyEvent("key_press_event", self, self._get_key(event), *self._mpl_coords(), guiEvent=event)._process()
 
-    def _onKeyUp(self, evt):
+    def _on_key_up(self, event):
         # Override to avoid system chime
-        FigureCanvasBase.key_release_event(self, self._get_key(evt), guiEvent=evt)
+        KeyEvent("key_release_event", self, self._get_key(event), *self._mpl_coords(), guiEvent=event)._process()
 
     def CanCopy(self):
         return True

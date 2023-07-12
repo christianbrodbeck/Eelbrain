@@ -591,6 +591,7 @@ class Frame(SharedToolsMenu, FileFrame):
         # Finalize
         self.plot()
         self.UpdateTitle()
+        self.canvas.SetFocus()
 
     def plot(self):
         n = self.doc.ica.n_components_
