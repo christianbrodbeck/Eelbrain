@@ -786,6 +786,8 @@ class MneExperiment(FileTree):
                 events_changed = True
             if events_changed:
                 self.rm('event-file', inclusive=True, confirm=True)
+                input_state['merge_triggers'] = self.merge_triggers
+                input_state['stim_channel'] = self._stim_channel
 
         # collect raw input info
         raw_mtimes = input_state['raw-mtimes']
