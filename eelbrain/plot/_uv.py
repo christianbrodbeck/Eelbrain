@@ -348,7 +348,8 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         For pairwise tests, plot markers indicating significance level
         (stars).
     bottom
-        Lower end of the y axis (default is determined from the data).
+        Lower end of the y axis (default is determined from the data; for
+        adjusting the bottom of the bars see the ``origin`` argument).
     top
         Upper end of the y axis (default is determined from the data).
     origin
@@ -457,7 +458,7 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
     sub
         Use a subset of the data.
     cells
-        Cells to plot (optional). All entries have to be cells of ``x``). Can be
+        Cells to plot (optional). All entries have to be cells of ``x``. Can be
         used to change the order of the bars or plot only certain cells.
     error
         Measure of variability to plot. Examples:
@@ -602,6 +603,9 @@ class _plt_uv_base:
         elif origin is not None:
             y_top = max(y_top, origin)
 
+        if origin is not None and origin == bottom:
+            origin = None  # Axes frame, does not need extra line
+
         if np.isscalar(width):
             left_margin = right_margin = width
         else:
@@ -609,7 +613,7 @@ class _plt_uv_base:
             right_margin = width[np.argmax(pos)]
         self.left = min(pos) - left_margin
         self.right = max(pos) + right_margin
-        self.origin = origin
+        self.origin = origin  # draw a horizontal line at the origin
         self.bottom = bottom
         self.top = y_top
         self.pos = pos

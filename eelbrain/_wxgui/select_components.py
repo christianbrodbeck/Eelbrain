@@ -27,7 +27,7 @@ from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot, fmtxt
 from .._colorspaces import UNAMBIGUOUS_COLORS
-from .._data_obj import Dataset, Factor, NDVar, Categorial, Scalar, asndvar, combine
+from .._data_obj import Dataset, Factor, NDVar, Categorial, Scalar, combine
 from .._io.fiff import _picks
 from .._types import PathArg
 from .._utils.numpy_utils import INT_TYPES
@@ -122,10 +122,11 @@ class Document(FileDocument):
         if LooseVersion(mne.__version__) < LooseVersion('0.16'):
             ica.pre_whitener_ = ica._pre_whitener
 
+        self._ndvar_args = dict(sysname=sysname, connectivity=connectivity)
         self.accept = np.ones(self.ica.n_components_, bool)
         self.accept[ica.exclude] = False
         self.epochs = epochs = ds['epochs']
-        self.epochs_ndvar = load.mne.epochs_ndvar(epochs, sysname=sysname, connectivity=connectivity)
+        self.epochs_ndvar = self.as_ndvar(epochs)
         self.ds = ds
         # for 3d-data, pick magnetometers
         picks = _picks(ica.info, None, 'bads')
@@ -164,6 +165,13 @@ class Document(FileDocument):
 
         # publisher
         self.callbacks.register_key('case_change')
+
+    def as_ndvar(self, epochs):
+        if isinstance(epochs, mne.BaseEpochs):
+            return load.mne.epochs_ndvar(epochs, **self._ndvar_args)
+        elif isinstance(epochs, mne.Evoked):
+            return load.mne.evoked_ndvar(epochs, **self._ndvar_args)
+        raise TypeError(f"{epochs=}")
 
     def apply(self, inst):
         if isinstance(inst, list):
@@ -285,7 +293,7 @@ class SharedToolsMenu:  # Frame mixin
 
         # compute and rank
         if apply_rejection:
-            epochs = asndvar(self.doc.apply(self.doc.epochs))
+            epochs = self.doc.as_ndvar(self.doc.apply(self.doc.epochs))
         else:
             epochs = self.doc.epochs_ndvar
         peaks = epochs.extrema(('time', 'sensor')).abs().x
@@ -464,8 +472,8 @@ class SharedToolsMenu:  # Frame mixin
             self._PlotButterfly(self.doc.epochs[i_epoch], name)
 
     def _PlotButterfly(self, epoch, title):
-        original = asndvar(epoch)
-        clean = asndvar(self.doc.apply(epoch))
+        original = self.doc.as_ndvar(epoch)
+        clean = self.doc.as_ndvar(self.doc.apply(epoch))
         if self.butterfly_baseline == ID.BASELINE_CUSTOM:
             if original.time.tmin >= 0:
                 wx.MessageBox(f"The data displayed does not have a baseline period (tmin={original.time.tmin}). Change the baseline through the Tools menu.", "No Baseline Period", style=wx.ICON_ERROR)
@@ -486,9 +494,9 @@ class SharedToolsMenu:  # Frame mixin
             plot.TopoButterfly([original, clean], title=title, axtitle=("Original", "Cleaned"))
 
     def PlotPSD(self):
-        ds_original = Dataset({'psd': asndvar(self.doc.epochs).fft().mean('sensor')})
+        ds_original = Dataset({'psd': self.doc.as_ndvar(self.doc.epochs).fft().mean('sensor')})
         ds_original[:, 'data'] = 'Source'
-        ds_clean = Dataset({'psd': asndvar(self.doc.apply(self.doc.epochs)).fft().mean('sensor')})
+        ds_clean = Dataset({'psd': self.doc.as_ndvar(self.doc.apply(self.doc.epochs)).fft().mean('sensor')})
         ds_clean[:, 'data'] = 'Cleaned'
         ds = combine((ds_original, ds_clean))
         colors = {'Source': 'red', 'Cleaned': 'blue'}
@@ -583,6 +591,7 @@ class Frame(SharedToolsMenu, FileFrame):
         # Finalize
         self.plot()
         self.UpdateTitle()
+        self.canvas.SetFocus()
 
     def plot(self):
         n = self.doc.ica.n_components_
@@ -934,7 +943,7 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
     def _get_clean_range(self):
         epoch_index = slice(self.i_first_epoch, self.i_first_epoch + self.n_epochs)
         epochs = self.doc.epochs[epoch_index]
-        y_clean = asndvar(self.doc.apply(epochs))
+        y_clean = self.doc.as_ndvar(self.doc.apply(epochs))
         y_min = y_clean.min('sensor').x.ravel()
         y_max = y_clean.max('sensor').x.ravel()
         y_min /= self.doc.pre_ica_range_scale

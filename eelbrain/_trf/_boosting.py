@@ -48,6 +48,20 @@ def to_array(ndvar: Union[NDVar, Tuple[NDVar, ...], float]) -> np.ndarray:
         return np.array([ndvar])
 
 
+def to_index(ndvar: Sequence[Union[NDVar, float]]) -> List[Union[int, slice]]:
+    out = []
+    i0 = 0
+    for x in ndvar:
+        if isinstance(x, NDVar):
+            i1 = i0 + reduce(mul, x.shape, 1)
+            out.append(slice(i0, i1))
+            i0 = i1
+        else:
+            out.append(i0)
+            i0 += 1
+    return out
+
+
 @dataclass(eq=False)
 class BoostingResult(PickleableDataClass):
     """Result from boosting
@@ -344,7 +358,7 @@ class BoostingResult(PickleableDataClass):
         --------
         Fit a TRF and reproduce the error using the cross-predict function::
 
-            trf = boosting(y, x, 0, 0.5, partitions=5, test=1)
+            trf = boosting(y, x, 0, 0.5, partitions=5, test=1, partition_results=True)
             y_pred = trf.cross_predict(x, scale='normalized')
 
             y_normalized = (y - trf.y_mean) / trf.y_scale
@@ -363,6 +377,7 @@ class BoostingResult(PickleableDataClass):
         # check predictors match h
         if x_data.x_name == self.x:
             x_use = None
+            x_use_index = slice(None)
         else:
             if isinstance(self.x, str):
                 raise ValueError(f'{x=} for {self}')
@@ -373,6 +388,13 @@ class BoostingResult(PickleableDataClass):
             missing = set(x_use).difference(self.x)
             if missing:
                 raise ValueError(f"{x=}: has variables not in {self}:\nx: {', '.join(missing)}")
+            x_use_orig_order = [xi for xi in self.x if xi in x_use]
+            if x_use_orig_order != x_use:
+                raise NotImplementedError("x in different order than original fit")
+            # index for subset of self.x
+            x_use_index = np.ones(self._x_mean_array.shape[0], bool)
+            for index, name in zip(to_index(self.x_mean), self.x):
+                x_use_index[index] = name in x_use
         # prepare output array
         if self._y_dims is None:  # only possible in results from dev version
             y_dims = self.y_mean.dims
@@ -384,9 +406,11 @@ class BoostingResult(PickleableDataClass):
         # prepare x:  (n_x_only, n_shared, n_x_times)
         x_array = x_data.data
         if self.scale_data:
-            x_array -= self._x_mean_array[:, np.newaxis]
-            x_pads = -(self._x_mean_array / self._x_scale_array)[np.newaxis]
-            x_array /= self._x_scale_array[:, np.newaxis]
+            x_mean = self._x_mean_array[x_use_index]
+            x_scale = self._x_scale_array[x_use_index]
+            x_array -= x_mean[:, np.newaxis]
+            x_pads = -(x_mean / x_scale)[np.newaxis]
+            x_array /= x_scale[:, np.newaxis]
         else:
             x_pads = np.zeros((1, len(x_array)))
         x_array = x_array[np.newaxis, :, :]
