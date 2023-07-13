@@ -786,6 +786,8 @@ class MneExperiment(FileTree):
                 events_changed = True
             if events_changed:
                 self.rm('event-file', inclusive=True, confirm=True)
+                input_state['merge_triggers'] = self.merge_triggers
+                input_state['stim_channel'] = self._stim_channel
 
         # collect raw input info
         raw_mtimes = input_state['raw-mtimes']
@@ -3191,7 +3193,7 @@ class MneExperiment(FileTree):
         pipe = self._raw[raw]
         while not isinstance(pipe, RawICA):
             if isinstance(pipe, RawSource):
-                raise ValueError(f"raw={raw!r} does not involve ICA")
+                raise ValueError(f"{raw=} does not involve ICA")
             elif isinstance(pipe, RawApplyICA):
                 pipe = pipe.ica_source
             else:
