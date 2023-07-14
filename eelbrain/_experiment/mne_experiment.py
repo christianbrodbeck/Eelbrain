@@ -4457,6 +4457,7 @@ class MneExperiment(FileTree):
             ...     e.make_ica()
             ...
         """
+        debug = state.pop('debug', False)
         # ICA
         path = self.make_ica(**state)
         # display data
@@ -4488,7 +4489,9 @@ class MneExperiment(FileTree):
         data_kind = data.data_to_ndvar(info)[0]
         sysname = pipe.get_sysname(info, subject, data_kind)
         connectivity = pipe.get_connectivity(data_kind)
-        gui.select_components(path, display_data, sysname, connectivity, decim)
+        frame = gui.select_components(path, display_data, sysname, connectivity, decim, debug)
+        if debug:
+            return frame
 
     def make_ica(self, **state):
         """Compute ICA decomposition for a :class:`pipeline.RawICA` preprocessing step
