@@ -2296,7 +2296,7 @@ class MneExperiment(FileTree):
                 tmax = tmax + pad
             elif tstop is not None:
                 tstop = tstop + pad
-        decim = decim_param(samplingrate, decim, epoch, ds.info['sfreq'])
+        decim = decim_param(samplingrate, decim, epoch, ds.info)
 
         if variable_tmax:
             ds['epochs'] = load.mne.variable_length_mne_epochs(ds, tmin, tmax, baseline, allow_truncation=True, decim=decim, reject_by_annotation=False)
@@ -4464,7 +4464,7 @@ class MneExperiment(FileTree):
                 if session is None:
                     session = pipe.session
                 raw = pipe.load_concatenated_source_raw(subject, session, self.get('visit'))
-                decim = decim_param(samplingrate, decim, None, raw.info['sfreq']) or int(raw.info['sfreq'] // 100)
+                decim = decim_param(samplingrate, decim, None, raw.info, minimal=True)
                 info = raw.info
                 display_data = raw
             elif session is not None:

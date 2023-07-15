@@ -473,21 +473,30 @@ def decim_param(
         samplingrate: int,
         decim: int,
         epoch: Optional[Epoch],
-        raw_samplingrate: float,
-):
+        info: dict,
+        minimal: bool = False,  # try to infer minimally necessary samplingrate
+) -> int:
     if samplingrate is not None:
         if decim is not None:
             raise TypeError(f"{samplingrate=}, {decim=}: can only specify one at a time")
     elif decim is not None:
         return decim
-    elif epoch is not None:
+    elif epoch is not None and not minimal:
         if epoch.decim is not None:
             return epoch.decim
         elif epoch.samplingrate is not None:
             samplingrate = epoch.samplingrate
 
     if samplingrate is not None:
-        decim_ratio = raw_samplingrate / samplingrate
+        decim_ratio = info['sfreq'] / samplingrate
         if decim_ratio % 1:
-            raise ValueError(f"{samplingrate=} with data at {raw_samplingrate:g} Hz: needs to be integer ratio")
+            raise ValueError(f"{samplingrate=} with data at {info['sfreq']:g} Hz: needs to be integer ratio")
         return int(decim_ratio)
+
+    if minimal:
+        if h_freq := info.get('lowpass'):
+            return int(info['sfreq'] / (h_freq * 2.5))
+        else:
+            return int(info['sfreq'] / 100)
+
+    return 1
