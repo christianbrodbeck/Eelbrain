@@ -261,17 +261,23 @@ def typed_arg(arg, type_, secondary_type=None):
         return type_(arg)
 
 
-def tuple_arg(arg: Sequence, item_type: Type = str, allow_none: bool = True):
-    if arg is None and allow_none:
-        return None
+def tuple_arg(
+        name: str,  # for error message
+        arg: Sequence,
+        item_type: Type = str,
+        allow_none: bool = True,
+):
+    if arg is None:
+        if allow_none:
+            return None
+        else:
+            raise TypeError(f"{name}={arg!r}")
     elif isinstance(arg, item_type):
         return arg,
-    elif isinstance(arg, list):
-        out = tuple(arg)
     elif isinstance(arg, tuple):
         out = arg
     else:
-        raise TypeError(f"{arg}: tuple of {item_type.__name__} required")
+        out = tuple(arg)
     if not all(isinstance(item, item_type) for item in out):
-        raise TypeError(f"{arg}: tuple of {item_type.__name__} required")
+        raise TypeError(f"{name}={arg!r}: sequence of {item_type.__name__} required")
     return out

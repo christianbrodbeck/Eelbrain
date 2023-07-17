@@ -88,7 +88,7 @@ class SubParc(Parcellation):
     ):
         Parcellation.__init__(self, views)
         self.base = base
-        self.labels = tuple_arg(labels)
+        self.labels = tuple_arg('labels', labels)
 
     def _make(self, e, parc):
         with e._temporary_state:
@@ -294,7 +294,7 @@ class LabelParc(Parcellation):
             views: Union[str, Sequence[str]] = None,
     ):
         Parcellation.__init__(self, views)
-        self.labels = tuple_arg(labels)
+        self.labels = tuple_arg('labels', labels)
 
     def _make(self, e, parc):
         labels = []

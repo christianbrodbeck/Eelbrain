@@ -63,10 +63,11 @@ from .test_def import (
     assemble_tests,
 )
 from .variable_def import GroupVar, Variables
+from . import preprocessing
 
 
 # current cache state version
-CACHE_STATE_VERSION = 16
+CACHE_STATE_VERSION = 17
 # History:
 #  10:  input_state: share forward-solutions between sessions
 #  11:  add samplingrate to epochs
@@ -750,7 +751,7 @@ class MneExperiment(FileTree):
         raw_missing = set()  # [(subject, recording), ...]
         subjects_with_raw_changes = set()  # {subject, ...}
         events = {}  # {(subject, recording): event_dataset}
-        self._stim_channel = tuple_arg(self.stim_channel, allow_none=True)
+        self._stim_channel = tuple_arg(f'{self.__class__.__name__}.stim_channel', self.stim_channel)
 
         # saved mtimes
         input_state_file = join(cache_dir, 'input-state.pickle')
@@ -1081,6 +1082,9 @@ class MneExperiment(FileTree):
                         params['vars'] = None
                 else:
                     params['vars'] = None
+
+        # normalize raw dict
+        preprocessing.normalize_dict(cache_state['raw'])
 
     @staticmethod
     def _migrate_cache(cache_state_v, cache_dir):

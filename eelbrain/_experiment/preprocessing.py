@@ -23,7 +23,7 @@ from .._text import enumeration
 from .._utils import as_sequence, ask, user_activity
 from ..mne_fixes import CaptureLog
 from ..mne_fixes._version import MNE_VERSION, V0_19, V0_24
-from .definitions import compound, log_dict_change, typed_arg
+from .definitions import compound, log_dict_change, tuple_arg, typed_arg
 from .exceptions import FileMissing
 
 
@@ -65,6 +65,10 @@ class RawPipe:
         out = {arg: getattr(self, arg) for arg in chain(args, ('name',))}
         out['type'] = self.__class__.__name__
         return out
+
+    @staticmethod
+    def _normalize_dict(state):
+        pass
 
     def cache(self, subject, recording):
         "Make sure the file exists and is up to date"
@@ -636,13 +640,7 @@ class RawICA(CachedRawPipe):
             **kwargs,
     ):
         CachedRawPipe.__init__(self, source, cache)
-        if isinstance(session, str):
-            session = (session,)
-        else:
-            if not isinstance(session, tuple):
-                session = tuple(session)
-            assert all(isinstance(s, str) for s in session)
-        self.session = session
+        self.session = tuple_arg('session', session, allow_none=False)
         self.kwargs = {'method': method, 'random_state': random_state, **kwargs}
 
     def _link(self, name, pipes, root, raw_dir, cache_path, log):
@@ -956,39 +954,52 @@ class RawReReference(CachedRawPipe):
 
     Parameters
     ----------
-    source : str
+    source
         Name of the raw pipe to use for input data.
-    reference : str | sequence of str
+    reference
         New reference: ``'average'`` (default) or one or several electrode
         names.
-    add : str | list of str
+    add
         Reconstruct reference channels with given names and set them to 0.
-    drop : list of str
+    drop
         Drop these channels after applying the reference.
-    cache : bool
+    cache
         Cache the resulting raw files (default ``False``).
 
     See Also
     --------
     MneExperiment.raw
     """
-    def __init__(self, source, reference='average', add=None, drop=None, cache=False):
+    def __init__(
+            self,
+            source: str,
+            reference: Union[str, Sequence[str]] = 'average',
+            add: Union[str, Sequence[str]] = None,
+            drop: Union[str, Sequence[str]] = None,
+            cache: bool = False,
+    ):
         CachedRawPipe.__init__(self, source, cache)
         if not isinstance(reference, str):
-            reference = list(reference)
-            if not all(isinstance(ch, str) for ch in reference):
-                raise TypeError(f"reference={reference}: must be list of str")
+            reference = tuple_arg('reference', reference, allow_none=False)
         self.reference = reference
-        self.add = add
-        self.drop = drop
+        self.add = tuple_arg('add', add)
+        self.drop = tuple_arg('drop', drop)
 
     def _as_dict(self, args: Sequence[str] = ()):
         out = CachedRawPipe._as_dict(self, [*args, 'reference'])
-        if self.add is not None:
+        if self.add:
             out['add'] = self.add
         if self.drop:
             out['drop'] = self.drop
         return out
+
+    @staticmethod
+    def _normalize_dict(state):
+        if not isinstance(state['reference'], str):
+            state['reference'] = tuple_arg('reference', state['reference'])
+        for key in ['add', 'drop']:
+            if key in state:
+                state[key] = tuple_arg(key, state[key])
 
     def _make(self, subject, recording, preload):
         raw = self.source.load(subject, recording, preload=True)
@@ -1157,3 +1168,10 @@ def ask_to_delete_ica_files(raw, status, filenames):
         raise RuntimeError("User abort")
     elif command != 'ignore':
         raise RuntimeError("command=%r" % (command,))
+
+
+def normalize_dict(raw: dict):
+    "Normalize pipeline state with latest pipeline classes"
+    for key, params in raw.items():
+        pipe_class = globals()[params['type']]
+        pipe_class._normalize_dict(params)
