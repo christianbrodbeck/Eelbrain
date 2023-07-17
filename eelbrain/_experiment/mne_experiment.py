@@ -3795,8 +3795,13 @@ class MneExperiment(FileTree):
             Kind of test.
         parc
             Run the test separately in each label of parc.
-            *Warning: for spatio-temporal tests, this does not properly correct
-            for multiple comparisons*.
+
+            .. Warning::
+                Results from spatio-temporal tests using ``parc`` are not
+                corrected for multiple comparisons. You must manually correct
+                for multiple comparisons based on the number of labels in
+                ``parc`` before interpreting *p*-values.
+
         mask
             Parcellation to use as anatomical mask in which to perform the test.
         samples
@@ -5085,8 +5090,13 @@ class MneExperiment(FileTree):
             Test for which to create a report (entry in MneExperiment.tests).
         parc
             Run the test separately in each label of parc.
-            *Warning: for spatio-temporal tests, this does not properly correct
-            for multiple comparisons*.
+
+            .. Warning::
+                Results from spatio-temporal tests using ``parc`` are not
+                corrected for multiple comparisons. You must manually correct
+                for multiple comparisons based on the number of labels in
+                ``parc`` before interpreting *p*-values.
+
         mask
             Parcellation to use as anatomical mask in which to perform the test.
         pmin
