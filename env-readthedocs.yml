@@ -9,6 +9,7 @@ dependencies:
 - docutils <0.17  # https://stackoverflow.com/a/68008428/166700
 - keyring >=5
 - matplotlib-base >=3.4
+- seaborn
 - mne-base >=0.17
 - nibabel >2.3.0  # read_annot bug
 - nilearn

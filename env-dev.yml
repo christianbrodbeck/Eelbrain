@@ -16,6 +16,7 @@ dependencies:
 - scipy >= 1.5
 - numba
 - matplotlib-base >= 3.6
+- seaborn
 - pymatreader
 - pyarrow
 - pillow

@@ -22,6 +22,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 import numpy as np
 from scipy import linalg
+import seaborn
 import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 
@@ -29,6 +30,7 @@ from .. import load, plot, fmtxt
 from .._colorspaces import UNAMBIGUOUS_COLORS
 from .._data_obj import Dataset, Factor, NDVar, Categorial, Scalar, combine
 from .._io.fiff import _picks
+from .._ndvar import concatenate, neighbor_correlation
 from .._types import PathArg
 from .._utils.numpy_utils import INT_TYPES
 from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN
@@ -190,6 +192,17 @@ class Document(FileDocument):
         else:
             self.ica.save(self.path)
 
+    def explained_variance(self, component: int, format: bool = False):
+        if component not in self._explained_variance:
+            self._explained_variance[component] = self.ica.get_explained_variance_ratio(self.epochs, components=component)
+        desc_dict = self._explained_variance[component]
+        if format:
+            if len(desc_dict) == 1:
+                return ''.join(f'{v:.1%}' for v in desc_dict.values())
+            else:
+                return ', '.join([f'{k}: {v:.1%}' for k, v in desc_dict.items()])
+        return desc_dict
+
 
 class Model(FileModel):
     """Manages a document with its history"""
@@ -242,11 +255,13 @@ class SharedToolsMenu:  # Frame mixin
     def MakeToolsMenu(self, menu):
         app = wx.GetApp()
 
-        # find events
+        # Artifact detection helpers
         item = menu.Append(wx.ID_ANY, "Find Rare Events", "Find components with major loading on a small number of epochs")
         app.Bind(wx.EVT_MENU, self.OnFindRareEvents, item)
         item = menu.Append(wx.ID_ANY, "Find Noisy Epochs", "Find epochs with strong signal")
         app.Bind(wx.EVT_MENU, self.OnFindNoisyEpochs, item)
+        item = menu.Append(wx.ID_ANY, "Find Bad Channels", "Find components that are likely due to bad channels")
+        app.Bind(wx.EVT_MENU, self.OnFindBadChannels, item)
         menu.AppendSeparator()
 
         # plotting
@@ -411,6 +426,75 @@ class SharedToolsMenu:  # Frame mixin
             doc.append(fmtxt.delim_list((fmtxt.Link(self.doc.epoch_labels[e], f'component:{c} epoch:{e}') for e in epochs)))
             doc.append(fmtxt.linebreak)
         InfoFrame(self, "Rare Events", doc, 500)
+
+    def OnFindBadChannels(self, event):
+        nc_before = neighbor_correlation(concatenate(self.doc.epochs_ndvar))
+        if self.doc.accept.all():
+            nc_after = None
+        else:
+            epochs = self.doc.as_ndvar(self.doc.apply(self.doc.epochs))
+            nc_after = neighbor_correlation(concatenate(epochs))
+
+        # Find ICA components that load on a single channel
+        candidates = []
+        for i, component_map in enumerate(self.doc.components):
+            abs_comp = abs(component_map.x)
+            argsort = np.argsort(abs_comp)
+            if abs_comp[argsort[-1]] > abs_comp[argsort[-2]] * 3:
+                ch_name = self.doc.epochs_ndvar.sensor.names[argsort[-1]]
+                # Explained variance
+                explained_desc = self.doc.explained_variance(i, format=True)
+                explained_variance = max(self.doc.explained_variance(i).values())
+                # Loading by epoch
+                max_loadings = self.doc.sources[:, i].extrema('time').abs().x
+                # Store
+                candidates.append([i, ch_name, max_loadings, explained_desc, explained_variance])
+        candidates = sorted(candidates, key=itemgetter(-1), reverse=True)
+
+        # format output
+        doc = fmtxt.Section("Bad Channels")
+
+        # Neighbor correlation map
+        for nc, desc in [[nc_before, 'raw data'], [nc_after, 'cleaned']]:
+            if nc is None:
+                continue
+            figure = matplotlib.figure.Figure(figsize=(4, 3))
+            axes = figure.add_axes((0.1, 0.1, .7, 0.8))
+            p = plot.Topomap(nc, axes=axes, vmax=1, interpolation='linear')
+            p.plot_colorbar(right_of=axes, ticks=3)
+            image = fmtxt.Image(f'Neighbor correlation {desc}', 'jpg')
+            canvas = FigureCanvasAgg(figure)
+            canvas.print_jpeg(image)
+            doc.append(image)
+
+        # Candidate components
+        for component, ch_name, max_loadings, explained_variance, _ in candidates:
+            # plot component map
+            figure = matplotlib.figure.Figure(figsize=(1, 1))
+            canvas = FigureCanvasAgg(figure)
+            axes = figure.add_subplot()
+            plot.Topomap(self.doc.components[component], axes=axes, interpolation='linear')
+            image = fmtxt.Image(f'#{component}', 'jpg')
+            canvas.print_jpeg(image)
+
+            # Text desc
+            component_link = fmtxt.Link(f"#{component}", f'component:{component}')
+            desc = fmtxt.FMText([ch_name, fmtxt.linebreak, component_link, fmtxt.linebreak, explained_variance])
+            table = fmtxt.Table('lll', rules=False)
+            doc.add_paragraph(table)
+
+            # Loadings
+            binrange = [0, max_loadings.max()]
+            figure = matplotlib.figure.Figure(figsize=(2, 1))
+            canvas = FigureCanvasAgg(figure)
+            axes = figure.add_subplot()
+            seaborn.histplot(max_loadings, binrange=binrange, bins=40, ax=axes)
+            histogram = fmtxt.Image(f'#{component}', 'jpg')
+            canvas.print_jpeg(histogram)
+
+            table.cells(image, desc, histogram)
+
+        InfoFrame(self, "Bad Channels", doc, 500)
 
     def OnPlotButterfly(self, event):
         self.PlotConditionAverages(self)
