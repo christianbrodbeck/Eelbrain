@@ -1126,6 +1126,16 @@ def test_ndvar_binning():
     assert_array_equal(b.x, np.vstack((x_dst, x_dst, x_dst)), "Binned data")
     assert_array_equal(b.time, time_dst, "Bin times")
 
+    # masked NDVar
+    x = np.vstack((x, x + 1, x + 2))
+    ndvar = NDVar(x, ('case', time)).mask(x % 2)
+    binned = ndvar.bin(0.2)
+    assert_array_equal(binned.x.data, np.vstack([x[0, ::2], x[1, 1::2], x[2, ::2]]))
+    binned_max = ndvar.bin(0.2, func='max')
+    assert_array_equal(binned_max.x.data, np.vstack([x[0, ::2], x[1, 1::2], x[2, ::2]]))
+    binned_extrema = ndvar.bin(0.2, func='extrema')
+    assert_array_equal(binned_extrema.x.data, binned_max.x.data)
+
     # time:
     x = np.ones((5, 70))
     ndvar = NDVar(x, ('case', UTS(0.45000000000000007, 0.005, 70)))

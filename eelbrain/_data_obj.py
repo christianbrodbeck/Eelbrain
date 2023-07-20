@@ -3988,7 +3988,10 @@ class NDVar(Named):
             else:
                 func = np.mean
         elif isinstance(func, str):
-            func = getattr(numpy, func)
+            if func in EVAL_CONTEXT:
+                func = EVAL_CONTEXT[func]
+            else:
+                func = getattr(numpy, func)
         elif not callable(func):
             raise TypeError(f"{func=}")
 
