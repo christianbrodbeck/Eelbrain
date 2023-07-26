@@ -2033,9 +2033,7 @@ class MneExperiment(FileTree):
             State parameters.
         """
         self.make_annot(**state)
-        return mne.read_labels_from_annot(self.get('mrisubject'),
-                                          self.get('parc'), 'both',
-                                          subjects_dir=self.get('mri-sdir'))
+        return mne.read_labels_from_annot(self.get('mrisubject'), self.get('parc'), 'both', subjects_dir=self.get('mri-sdir'))
 
     def load_bad_channels(self, **kwargs):
         """Load bad channels
@@ -2083,8 +2081,7 @@ class MneExperiment(FileTree):
                     os.environ['FREESURFER_HOME'] = subp.get_fs_home()
                     mne.bem.make_watershed_bem(subject, self.get('mri-sdir'), overwrite=True)
 
-            return mne.make_bem_model(subject, conductivity=(0.3,),
-                                      subjects_dir=self.get('mri-sdir'))
+            return mne.make_bem_model(subject, conductivity=(0.3,), subjects_dir=self.get('mri-sdir'))
 
     def load_cov(self, **kwargs):
         """Load the covariance matrix
@@ -3798,8 +3795,13 @@ class MneExperiment(FileTree):
             Kind of test.
         parc
             Run the test separately in each label of parc.
-            *Warning: for spatio-temporal tests, this does not properly correct
-            for multiple comparisons*.
+
+            .. Warning::
+                Results from spatio-temporal tests using ``parc`` are not
+                corrected for multiple comparisons. You must manually correct
+                for multiple comparisons based on the number of labels in
+                ``parc`` before interpreting *p*-values.
+
         mask
             Parcellation to use as anatomical mask in which to perform the test.
         samples
@@ -4342,10 +4344,12 @@ class MneExperiment(FileTree):
                 ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count, drop=('i_start', 't_edf', 'T', 'index', 'trigger'))
                 # check cells
                 if model_vars:
-                    cells = [' % '.join(cell) for cell in ds.zip(*model_vars)]
+                    cells = [' % '.join(cell) or 'No comment' for cell in ds.zip(*model_vars)]
                 else:
                     cells = ['No comment']
-                assert [e.comment for e in evoked] == cells
+                comments = [e.comment for e in evoked]
+                if comments != cells:
+                    raise RuntimeError(f"Error reading cached evoked: {comments=}, {cells=}")
                 ds['evoked'] = evoked
                 return ds
             self._log.debug("Evoked outdated (%s)", evoked[0].info['description'])
@@ -4410,21 +4414,28 @@ class MneExperiment(FileTree):
         mne.write_forward_solution(dst, fwd, True)
         return dst
 
-    def make_ica_selection(self, epoch=None, samplingrate=None, decim=None, session=None, **state):
+    def make_ica_selection(
+            self,
+            epoch: str = None,
+            samplingrate: float = None,
+            decim: int = None,
+            session: Union[str, Sequence[str]] = None,
+            **state,
+    ):
         """Select ICA components to remove through a GUI
 
         Parameters
         ----------
-        epoch : str
+        epoch
             Epoch to use for visualization in the GUI (default is to use the
             raw data).
-        samplingrate : int
+        samplingrate
             Samplingrate in Hz for the visualization (set to a lower value to
             improve GUI performance; for raw data, the default is ~100 Hz, for
             epochs the default is the epoch setting).
-        decim : int
+        decim
             Data decimation factor (alternative to ``samplingrate``).
-        session : str | list of str
+        session
             One or more sessions for which to plot the raw data (this parameter
             can not be used together with ``epoch``; default is the session used
             for ICA estimation).
@@ -5079,8 +5090,13 @@ class MneExperiment(FileTree):
             Test for which to create a report (entry in MneExperiment.tests).
         parc
             Run the test separately in each label of parc.
-            *Warning: for spatio-temporal tests, this does not properly correct
-            for multiple comparisons*.
+
+            .. Warning::
+                Results from spatio-temporal tests using ``parc`` are not
+                corrected for multiple comparisons. You must manually correct
+                for multiple comparisons based on the number of labels in
+                ``parc`` before interpreting *p*-values.
+
         mask
             Parcellation to use as anatomical mask in which to perform the test.
         pmin

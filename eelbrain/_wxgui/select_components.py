@@ -1468,7 +1468,14 @@ class FindRareEventsDialog(EelbrainDialog):
 
 class InfoFrame(HTMLFrame):
 
-    def __init__(self, parent: wx.Window, title: str, doc, w: int, h: int = -1):
+    def __init__(
+            self,
+            parent: Union[wx.Window, SharedToolsMenu],
+            title: str,
+            doc: fmtxt.FMTextElement,
+            w: int,
+            h: int = -1,
+    ):
         pos, size = self.find_pos(w, h)
         style = wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX | wx.RESIZE_BORDER | wx.CAPTION | wx.CLOSE_BOX | wx.FRAME_FLOAT_ON_PARENT | wx.FRAME_TOOL_WINDOW
         html_doc = fmtxt.make_html_doc(doc)

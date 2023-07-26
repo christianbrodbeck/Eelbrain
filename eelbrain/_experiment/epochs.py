@@ -469,7 +469,12 @@ class ContinuousEpoch(EpochBase):
         self.sessions = (session,)
 
 
-def decim_param(samplingrate: int, decim: int, epoch: Optional[Epoch], raw_samplingrate: float):
+def decim_param(
+        samplingrate: int,
+        decim: int,
+        epoch: Optional[Epoch],
+        raw_samplingrate: float,
+):
     if samplingrate is not None:
         if decim is not None:
             raise TypeError(f"{samplingrate=}, {decim=}: can only specify one at a time")

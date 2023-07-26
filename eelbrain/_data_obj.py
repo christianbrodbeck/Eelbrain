@@ -1056,7 +1056,7 @@ def combine(
         items: Iterable,
         name: str = None,
         check_dims: bool = True,
-        incomplete: str = 'raise',
+        incomplete: Literal['raise', 'drop', 'fill in'] = 'raise',
         dim_intersection: bool = False,
         to_list: bool = False,
 ):
@@ -1075,7 +1075,7 @@ def combine(
         For :class:`NDVar` columns, check dimensions for consistency between
         items (e.g., channel locations in a :class:`Sensor`). Default is
         ``True``. Set to ``False`` to ignore mismatches.
-    incomplete : "raise" | "drop" | "fill in"
+    incomplete
         Only applies when combining Datasets: how to handle variables that are
         missing from some of the input Datasets. With ``"raise"`` (default),
         raise a :exc:`ValueError`. With ``"drop"``, drop partially missing
@@ -3988,7 +3988,10 @@ class NDVar(Named):
             else:
                 func = np.mean
         elif isinstance(func, str):
-            func = getattr(numpy, func)
+            if func in EVAL_CONTEXT:
+                func = EVAL_CONTEXT[func]
+            else:
+                func = getattr(numpy, func)
         elif not callable(func):
             raise TypeError(f"{func=}")
 
