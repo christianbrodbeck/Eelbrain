@@ -4342,10 +4342,12 @@ class MneExperiment(FileTree):
                 ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count, drop=('i_start', 't_edf', 'T', 'index', 'trigger'))
                 # check cells
                 if model_vars:
-                    cells = [' % '.join(cell) for cell in ds.zip(*model_vars)]
+                    cells = [' % '.join(cell) or 'No comment' for cell in ds.zip(*model_vars)]
                 else:
                     cells = ['No comment']
-                assert [e.comment for e in evoked] == cells
+                comments = [e.comment for e in evoked]
+                if comments != cells:
+                    raise RuntimeError(f"Error reading cached evoked: {comments=}, {cells=}")
                 ds['evoked'] = evoked
                 return ds
             self._log.debug("Evoked outdated (%s)", evoked[0].info['description'])
