@@ -1333,15 +1333,15 @@ class Table(FMTextElement):
 
     Parameters
     ----------
-    columns : str
+    columns
         alignment for each column, e.g. ``'lrr'``
-    rules : bool
+    rules
         Add toprule and bottomrule
-    title : text
+    title
         Title for the table.
-    caption : text
+    caption
         Caption for the table.
-    rows : list of Row
+    rows
         Table body.
 
     Examples
@@ -1377,7 +1377,14 @@ class Table(FMTextElement):
     >>> table.save_tex()
 
     """
-    def __init__(self, columns, rules=True, title=None, caption=None, rows=()):
+    def __init__(
+            self,
+            columns: str,
+            rules: bool = True,
+            title: FMTextLike = None,
+            caption: FMTextLike = None,
+            rows: Sequence[Row] = (),
+    ):
         self.columns = columns
         self.n_columns = len(columns)
         self.rows = list(rows)

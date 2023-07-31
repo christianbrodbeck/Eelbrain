@@ -20,30 +20,30 @@ class Celltable:
 
     Parameters
     ----------
-    y : data-object
+    y
         dependent measurement
-    x : categorial
+    x
         Model (Factor or Interaction) for dividing y.
-    match : categorial
+    match
         Factor on which cases are matched (i.e. subject for a repeated
         measures comparisons). If several data points with the same
         case fall into one cell of x, they are combined using
         match_func. If match is not None, Celltable.groups contains the
         {Xcell -> [match values of data points], ...} mapping corres-
         ponding to self.data
-    sub : bool array
+    sub
         Bool array of length N specifying which cases to include
-    cat : None | sequence of cells of x
+    cat
         Only retain data for these cells. Data will be sorted in the order
         of cells occuring in cat.
-    data : Dataset
+    data
         If a Dataset is specified, input items (y / x / match / sub) can
         be str instead of data-objects, in which case they will be
         retrieved from the Dataset.
-    coercion : callable
+    coercion
         Function to convert the y parameter to to the dependent varaible
         (default: asdataobject).
-    dtype : numpy.dtype
+    dtype
         If specified, ``y`` will be converted to this type.
 
 
@@ -113,13 +113,12 @@ class Celltable:
                 is_none = [c is None for c in cat]
                 if any(is_none):
                     if len(cat) == len(x.cells):
-                        if all(is_none):
-                            cat = x.cells
-                        else:
-                            cells = [c for c in x.cells if c not in cat]
-                            cat = tuple([cells.pop(0) if c is None else c for c in cat])
+                        cells = [c for c in x.cells if c not in cat]
+                        cat = tuple([cells.pop(0) if c is None else c for c in cat])
+                    elif len(cat) > len(x.cells):
+                        raise ValueError(f"{cat=} for x with {x.cells=}: more categories than cells")
                     else:
-                        raise ValueError(f"{cat=}: categories can only be specified as None if all cells in x are used, but there are more than {len(cat)} cells: {x.cells}")
+                        raise ValueError(f"{cat=} for x with {x.cells=}: categories in cat can only be specified as None if all cells in x are used")
 
                 # make sure all categories are in data
                 if missing := [c for c in cat if c not in x.cells]:
