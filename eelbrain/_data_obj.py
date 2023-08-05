@@ -670,6 +670,7 @@ def asndvar(
         n: int = None,
         dtype: np.dtype = None,
         return_n: bool = False,
+        ragged: bool = False,
 ) -> NDVar:
     if isinstance(x, str):
         if data is None:
@@ -677,6 +678,7 @@ def asndvar(
         x = data.eval(x)
 
     # convert MNE objects
+    is_ragged = False
     if isinstance(x, NDVar):
         pass
     elif isinstance(x, MNE_EPOCHS):
@@ -693,14 +695,24 @@ def asndvar(
             from .load.mne import evoked_ndvar
             x = evoked_ndvar(x)
         else:
-            x = combine(map(asndvar, x))
+            x_list = [asndvar(xi) for xi in x]
+            if ragged:
+                if dtype is not None:
+                    x_list = [xi if xi.x.dtype == dtype else xi.astype(dtype) for xi in x_list]
+                if isinstance(x, Datalist):
+                    x = Datalist(x_list, x.name, x._fmt)
+                else:
+                    x = Datalist(x_list, x_list[0].name)
+                is_ragged = True
+            else:
+                x = combine(x_list)
     elif hasattr(x, '_default_plot_obj'):
         x = x._default_plot_obj()
     else:
         raise TypeError(f"NDVar required, got {x!r}")
 
     x, n = _apply_sub(x, sub, n, return_n=True)
-    if dtype is not None and x.x.dtype != dtype:
+    if dtype is not None and not is_ragged and x.x.dtype != dtype:
         x = x.astype(dtype)
     return (x, n) if return_n else x
 

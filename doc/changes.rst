@@ -15,6 +15,12 @@ Check for open issues, or report new ones on `GitHub <https://github.com/christi
 Major changes
 =============
 
+New in 0.40
+-----------
+
+* :func:`boosting` now accepts data with ragged trials (trials of different lengths).
+
+
 New in 0.39
 -----------
 

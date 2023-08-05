@@ -209,7 +209,7 @@ class ScreenHandler(logging.StreamHandler):
         tqdm.write(self.format(record))
 
 
-def intervals(seq):
+def intervals(seq, first=None):
     """Iterate over each successive pair in a sequence.
 
     Examples
@@ -222,10 +222,13 @@ def intervals(seq):
     (3, 45)
     """
     iterator = iter(seq)
-    try:
-        last = next(iterator)
-    except StopIteration:
-        return
+    if first is None:
+        try:
+            last = next(iterator)
+        except StopIteration:
+            return
+    else:
+        last = first
 
     for item in iterator:
         yield last, item

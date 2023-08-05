@@ -1,3 +1,4 @@
+import numpy
 from dataclasses import dataclass, fields
 from functools import cached_property, reduce
 from itertools import product
@@ -9,8 +10,8 @@ import scipy.signal
 from scipy.linalg import norm
 
 from .. import _info
-from .._data_obj import CategorialArg, NDVarArg, Dataset, NDVar, Case, UTS, dataobj_repr, ascategorial, asndvar
-from .._utils import PickleableDataClass
+from .._data_obj import CategorialArg, NDVarArg, Datalist, Dataset, NDVar, Case, UTS, dataobj_repr, ascategorial, asndvar
+from .._utils import PickleableDataClass, intervals
 from .._utils.numpy_utils import newaxis
 
 
@@ -213,82 +214,120 @@ class PredictorData:
             data: Dataset = None,
             copy: bool = False,
     ):
-        if isinstance(x, (NDVar, str)):
+        if isinstance(x, (NDVar, Datalist, str)):
             multiple_x = False
-            xs = [asndvar(x, data=data)]
+            xs = [asndvar(x, data=data, ragged=True)]
             x_name = xs[0].name
         else:
             multiple_x = True
-            xs = [asndvar(x_, data=data) for x_ in x]
+            xs = [asndvar(x_, data=data, ragged=True) for x_ in x]
             if len(xs) == 0:
                 raise ValueError(f"{x=} of length 0")
             x_name = [x_.name for x_ in xs]
+        is_ragged = not isinstance(xs[0], NDVar)
+        if is_ragged:
+            has_case = True
+            n_cases = len(xs[0])
+            if not all(len(xi) == n_cases for xi in xs[1:]):
+                raise ValueError(f'x={xs}: different number of items')
+            time_dim = [x0j.get_dim('time') for x0j in xs[0]]
+            for xi in xs:
+                if any(xij.get_dim('time') != time_x0j for xij, time_x0j in zip(xi, time_dim)):
+                    raise ValueError("Not all NDVars in x have matching time dimensions")
+            n_times = [len(uts) for uts in time_dim]
+            seg_i = np.append(0, np.cumsum(n_times, dtype=np.int64))
+        else:
+            time_dim = xs[0].get_dim('time')
+            if any(xi.get_dim('time') != time_dim for xi in xs[1:]):
+                raise ValueError("Not all NDVars in x have matching time dimensions")
+            n_times = len(time_dim)
 
-        time_dim = xs[0].get_dim('time')
-        if any(xi.get_dim('time') != time_dim for xi in xs[1:]):
-            raise ValueError("Not all NDVars in x have the same time dimension")
-        n_times = len(time_dim)
-
-        # determine cases (used as segments)
-        has_case = n_cases = segments = None
-        for xi in xs:
-            # determine cases
-            if n_cases is None:
-                has_case = xi.has_case
-                if xi.has_case:
-                    n_cases = len(xi)
-                    # prepare segment index
-                    seg_i = np.arange(0, n_cases * n_times + 1, n_times, np.int64)[:, newaxis]
-                    segments = np.hstack((seg_i[:-1], seg_i[1:]))
-                else:
-                    n_cases = 0
-                    segments = np.array([[0, n_times]], np.int64)
-            elif xi.has_case ^ has_case:
-                raise ValueError(f'x={xs}: some but not all x have case')
-            elif has_case and len(xi) != n_cases:
-                raise ValueError(f'x={xs}: not all items have the same number of cases')
+            # determine cases (used as segments)
+            has_case = n_cases = seg_i = None
+            for xi in xs:
+                # determine cases
+                if n_cases is None:
+                    has_case = xi.has_case
+                    if xi.has_case:
+                        n_cases = len(xi)
+                        # prepare segment index
+                        seg_i = np.arange(0, n_cases * n_times + 1, n_times, np.int64)
+                    else:
+                        n_cases = 0
+                        seg_i = np.array([0, n_times], np.int64)
+                elif xi.has_case ^ has_case:
+                    raise ValueError(f'x={xs}: some but not all x have case')
+                elif has_case and len(xi) != n_cases:
+                    raise ValueError(f'x={xs}: not all items have the same number of cases')
+        segments = np.hstack((seg_i[:-1, newaxis], seg_i[1:, newaxis]))
 
         # x_data:  predictor x time array
-        x_data = []
+        if is_ragged:
+            x0s = [xi[0] for xi in xs]
+        else:
+            x0s = xs
+        if has_case and not is_ragged:
+            last = ('case', 'time')
+            last_dim = -2
+        else:
+            last = 'time'
+            last_dim = -1
+        x_dimnames = [xi.get_dimnames(last=last) for xi in x0s]
+        x_dims = [xi.get_dims(dimnames[:last_dim]) for xi, dimnames in zip(x0s, x_dimnames)]
+        x_ns = [reduce(mul, [len(dim) for dim in dims], 1) for dims in x_dims]
+        x_indexes = [start if stop - start == 1 else slice(start, stop) for start, stop in intervals(np.cumsum(x_ns), first=0)]
+        if is_ragged:
+            n_times_flat = sum(n_times)
+        elif has_case:
+            n_times_flat = n_cases * n_times
+        else:
+            n_times_flat = n_times
+        total_n_x = sum(x_ns)
+        if is_ragged:
+            x_data = numpy.empty((total_n_x, n_times_flat))
+            i0 = 0
+            for xi, dimnames, n in zip(xs, x_dimnames, x_ns):
+                i1 = i0 + n
+                t0 = 0
+                for xij, n_times_j in zip(xi, n_times):
+                    t1 = t0 + n_times_j
+                    x_data[i0:i1, t0:t1] = xij.get_data(dimnames).reshape((n, n_times_j))
+                    t0 = t1
+                i0 = i1
+            x_data_is_copy = True
+        else:
+            shape = (-1, n_times_flat)
+            x_data = [xi.get_data(dimnames).reshape(shape) for xi, dimnames in zip(xs, x_dimnames)]
+            if len(x_data) == 1:
+                x_data = x_data[0]
+                if copy:
+                    x_data = x_data.copy()
+                    x_data_is_copy = True
+                else:
+                    x_data_is_copy = False
+            else:
+                x_data = np.concatenate(x_data)
+                x_data_is_copy = True
+
+        # x_meta:  meta-information for x_data
         x_meta = []
         x_names = []
-        n_x = 0
-        for xi in xs:
-            ndim = xi.ndim - bool(n_cases)
-            if has_case:
-                dimnames = xi.get_dimnames(last=('case', 'time'))
-                xdims = xi.get_dims(dimnames[:-2])
-                shape = (-1, n_cases * n_times)
-            else:
-                dimnames = xi.get_dimnames(last='time')
-                xdims = xi.get_dims(dimnames[:-1])
-                shape = (-1, n_times)
-            xi_data = xi.get_data(dimnames).reshape(shape)
+        for xi, dims, index in zip(x0s, x_dims, x_indexes):
             x_repr = dataobj_repr(xi)
-            if ndim == 1:
-                index = n_x
+            if len(dims) == 0:
                 x_names.append(x_repr)
             else:
-                index = slice(n_x, n_x + len(xi_data))
-                for v in product(*xdims):
+                for v in product(*dims):
                     x_names.append("-".join((x_repr, *map(str, v))))
-            x_data.append(xi_data)
-            x_meta.append((xi.name, xdims, index))
-            n_x += len(xi_data)
+            x_meta.append((xi.name, dims, index))
 
-        if len(x_data) == 1 and not copy:
-            x_data = x_data[0]
-            x_data_is_copy = False
-        else:
-            x_data = np.concatenate(x_data)
-            x_data_is_copy = True
-
+        self.is_ragged = is_ragged
         self.has_case = has_case
         self.n_cases = n_cases
-        self.case_to_segments = n_cases > 0
+        self.case_to_segments = n_cases > 0 and not is_ragged
         self.time_dim = time_dim
         self.n_times = n_times
-        self.n_times_flat = n_cases * n_times if n_cases else n_times
+        self.n_times_flat = n_times_flat
         self.multiple_x = multiple_x
         self.x_name = x_name
         self.x_names = x_names
@@ -335,20 +374,28 @@ class DeconvolutionData:
         x_data = PredictorData(x, data)
 
         # check y
-        y = asndvar(y, data=data)
-        if y.get_dim('time') != x_data.time_dim:
+        y = asndvar(y, data=data, ragged=x_data.is_ragged)
+        if x_data.is_ragged:
+            n_cases = len(y)
+            y0 = y[0]
+            y_time_dim = [yi.get_dim('time') for yi in y]
+        else:
+            n_cases = len(y) if y.has_case else 0
+            y0 = y
+            y_time_dim = y.get_dim('time')
+            if y.has_case ^ x_data.has_case:
+                raise ValueError(f'{y=}: case dimension does not match x')
+        if y_time_dim != x_data.time_dim:
             raise ValueError("y does not have the same time dimension as x")
-        if y.has_case ^ x_data.has_case:
-            raise ValueError(f'{y=}: case dimension does not match x')
-        elif y.has_case and len(y) != x_data.n_cases:
+        elif n_cases != x_data.n_cases:
             raise ValueError(f'{y=}: different number of cases from x ({x_data.n_cases})')
 
         # vector dimension
-        vector_dims = [dim.name for dim in y.dims if dim._connectivity_type == 'vector']
+        vector_dims = [dim.name for dim in y0.dims if dim._connectivity_type == 'vector']
         if not vector_dims:
             vector_dim = None
         elif len(vector_dims) == 1:
-            vector_dim = y.get_dim(vector_dims.pop())
+            vector_dim = y0.get_dim(vector_dims.pop())
         else:
             raise NotImplementedError(f"{y=}: more than one vector dimension ({', '.join(vector_dims)})")
 
@@ -360,11 +407,17 @@ class DeconvolutionData:
             n_ydims -= 1
         if vector_dim:
             last = (vector_dim.name, *last)
-        y_dimnames = y.get_dimnames(last=last)
-        ydims = y.get_dims(y_dimnames[:n_ydims])
+        y_dimnames = y0.get_dimnames(last=last)
+        ydims = y0.get_dims(y_dimnames[:n_ydims])
         n_flat = reduce(mul, map(len, ydims), 1)
         shape = (n_flat, x_data.n_times_flat)
-        y_data = y.get_data(y_dimnames).reshape(shape)
+        if x_data.is_ragged:
+            y_data = np.empty(shape)
+            for yi, (start, stop) in zip(y, x_data.segments):
+                y_data[:, start:stop] = yi.get_data(y_dimnames).reshape((n_flat, stop-start))
+            self._y_is_copy = True
+        else:
+            y_data = y.get_data(y_dimnames).reshape(shape)
         # shape for exposing vector dimension
         if vector_dim:
             n_flat_prevector = reduce(mul, map(len, ydims[:-1]), 1)
@@ -374,7 +427,7 @@ class DeconvolutionData:
         else:
             vector_shape = None
 
-        self.time = x_data.time_dim
+        self.time = x_data.time_dim[0] if x_data.is_ragged else x_data.time_dim
         self.segments = x_data.segments
         self.shortest_segment_n_times = x_data.n_times
         self.in_place = in_place
@@ -382,10 +435,10 @@ class DeconvolutionData:
         self.y = y_data  # (n_signals, n_times)
         self.y_name = y.name
         self._y_repr = dataobj_repr(y)
-        self.y_info = _info.copy(y.info)
+        self.y_info = _info.copy(y0.info)
         self.ydims = ydims  # without case and time
         self.yshape = tuple(map(len, ydims))
-        self.full_y_dims = y.get_dims(y_dimnames)
+        self.full_y_dims = None if x_data.is_ragged else y.get_dims(y_dimnames)
         self.vector_dim = vector_dim  # vector dimension
         self.vector_shape = vector_shape  # flat shape with vector dim separate
         # x
@@ -615,6 +668,8 @@ class DeconvolutionData:
         return NDVar(value, dims, name, info)
 
     def package_y_like(self, data, name):
+        if not self.full_y_dims:
+            raise NotImplementedError
         shape = tuple(map(len, self.full_y_dims))
         data = data.reshape(shape)
         # roll Case to first axis

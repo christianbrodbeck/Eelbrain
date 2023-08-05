@@ -440,20 +440,32 @@ class BoostingResult(PickleableDataClass):
             # convolution
             parallel_convolve_segments(h_array, x_array, x_pads, h_i_start, segments, y_pred)
         # package output
-        dims = [*y_dims, x_data.time_dim]
-        shape = [len(dim) for dim in dims]
-        if x_data.case_to_segments:
-            dims = (Case, *dims)
-            shape.insert(-1, x_data.n_cases)
-        y_pred = y_pred.reshape(shape)
-        if x_data.case_to_segments:
-            y_pred = np.rollaxis(y_pred, -2)
         if name is None:
             name = self.y
-        y_pred = NDVar(y_pred, dims, name, self._y_info)
-        if scale == 'original' and self.scale_data:
-            y_pred *= self.y_scale
-            y_pred += self.y_mean
+
+        if x_data.is_ragged:
+            split_points = [0, *np.cumsum(x_data.n_times)]
+            shape = [*[len(dim) for dim in y_dims], split_points[-1]]
+            y_pred = y_pred.reshape(shape)
+            y_pred = [y_pred[..., i0: i1] for i0, i1 in zip(split_points[:-1], split_points[1:])]
+            y_pred = [NDVar(y_, [*y_dims, uts], name, self._y_info) for y_, uts in zip(y_pred, x_data.time_dim)]
+            if scale == 'original' and self.scale_data:
+                for y_ in y_pred:
+                    y_ *= self.y_scale
+                    y_ += self.y_mean
+        else:
+            dims = [*y_dims, x_data.time_dim]
+            shape = [len(dim) for dim in dims]
+            if x_data.case_to_segments:
+                dims = (Case, *dims)
+                shape.insert(-1, x_data.n_cases)
+            y_pred = y_pred.reshape(shape)
+            if x_data.case_to_segments:
+                y_pred = np.rollaxis(y_pred, -2)
+            y_pred = NDVar(y_pred, dims, name, self._y_info)
+            if scale == 'original' and self.scale_data:
+                y_pred *= self.y_scale
+                y_pred += self.y_mean
         return y_pred
 
     def partition_result_data(self, model: str = None) -> Dataset:
