@@ -8,7 +8,7 @@ import logging
 from os import makedirs, remove
 from os.path import basename, dirname, exists, getmtime, join, splitext
 from pathlib import Path
-from typing import Callable, Collection, Dict, List, Sequence, Tuple, Union
+from typing import Callable, Collection, Dict, List, Literal, Sequence, Tuple, Union
 
 import mne
 from scipy import signal
@@ -28,6 +28,7 @@ from .exceptions import FileMissing
 
 
 AddBadsArg = Union[bool, Sequence[str]]
+PreloadArg = Union[bool, Literal[-1]]
 
 
 def _visit(recording: str) -> str:
@@ -80,11 +81,13 @@ class RawPipe:
             subject: str,
             recording: str,
             add_bads: AddBadsArg = True,
-            preload: bool = False,
+            preload: PreloadArg = False,  # -1: info only, data will not be needed
             raw: mne.io.BaseRaw = None,
     ):
         # raw
         if raw is None:
+            if preload == -1:
+                preload = False
             raw = self._load(subject, recording, preload)
         # bad channels
         if isinstance(add_bads, Sequence):
@@ -416,13 +419,15 @@ class CachedRawPipe(RawPipe):
             subject: str,
             recording: str,
             add_bads: AddBadsArg = True,
-            preload: bool = False,
+            preload: PreloadArg = False,  # -1: info only, data will not be needed
             raw: mne.io.BaseRaw = None,
-    ):
+    ) -> mne.io.BaseRaw:
         if raw is not None:
             pass
         elif self._cache:
             raw = self.cache(subject, recording)
+        elif preload == -1:
+            raw = self._make_info(subject, recording)
         else:
             raw = self._make(subject, recording)
         return RawPipe.load(self, subject, recording, add_bads, preload, raw)
@@ -437,6 +442,9 @@ class CachedRawPipe(RawPipe):
 
     def _make(self, subject, recording):
         raise NotImplementedError
+
+    def _make_info(self, subject, recording) -> mne.io.BaseRaw:
+        return self.source.load(subject, recording, preload=-1)
 
     def make_bad_channels(self, subject, recording, bad_chs, redo):
         self.source.make_bad_channels(subject, recording, bad_chs, redo)
@@ -501,6 +509,17 @@ class RawFilter(CachedRawPipe):
         raw = self.source.load(subject, recording, preload=True)
         self.log.info("Raw %s: filtering for %s/%s...", self.name, subject, recording)
         raw.filter(*self.args, **self._use_kwargs, n_jobs=self.n_jobs)
+        return raw
+
+    def _make_info(self, subject, recording) -> mne.io.BaseRaw:
+        raw = super()._make_info(subject, recording)
+        l_freq, h_freq = self.args
+        if l_freq and l_freq > (raw.info["highpass"] or 0):
+            with raw.info._unlock():
+                raw.info["highpass"] = float[l_freq]
+        if h_freq and h_freq < (raw.info["lowpass"] or raw.info['sfreq']):
+            with raw.info._unlock():
+                raw.info["lowpass"] = float[h_freq]
         return raw
 
 
@@ -695,9 +714,8 @@ class RawICA(CachedRawPipe):
     ):
         path = self._ica_path(subject, visit)
         recordings = [compound((session, visit)) for session in self.session]
-        raw = self.source.load(subject, recordings[0], False)
         bad_channels = self.load_bad_channels(subject, recordings[0])
-        raw.info['bads'] = bad_channels
+        raw = self.source.load(subject, recordings[0], bad_channels, preload=-1)
         if exists(path):
             ica = mne.preprocessing.read_ica(path)
             if not self._check_ica_channels(ica, raw):
@@ -715,9 +733,9 @@ class RawICA(CachedRawPipe):
                 else:
                     raise RuntimeError(f"{command=}")
 
+        raw = self.source.load(subject, recordings[0], bad_channels)
         for recording in recordings[1:]:
-            raw_ = self.source.load(subject, recording, False)
-            raw_.info['bads'] = bad_channels
+            raw_ = self.source.load(subject, recording, bad_channels)
             raw.append(raw_)
 
         self.log.info("Raw %s: computing ICA decomposition for %s", self.name, subject)
@@ -953,6 +971,12 @@ class RawReReference(CachedRawPipe):
         if self.drop:
             raw = raw.drop_channels(self.drop)
         return raw
+
+    def _make_info(self, subject, recording) -> mne.io.BaseRaw:
+        if self.add or self.drop:
+            return self._make(subject, recording, False)
+        else:
+            return super()._make_info(subject, recording)
 
 
 def assemble_pipeline(raw_dict, raw_dir, cache_path, root, sessions, log):
