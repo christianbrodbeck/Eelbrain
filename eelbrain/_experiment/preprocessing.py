@@ -680,10 +680,20 @@ class RawICA(CachedRawPipe):
             raise_on_mismatch: bool = False,
             raw_name: str = None,
             subject: str = None,
+            return_missing: bool = False,  # if ICA is only missing channels, retrun those
     ):
         picks = mne.pick_types(raw.info, meg=True, eeg=True, ref_meg=False)
         raw_ch_names = [raw.ch_names[i] for i in picks]
         names_match = ica.ch_names == raw_ch_names
+        if return_missing:
+            assert raise_on_mismatch
+            if names_match:
+                return ()
+            ica_set = set(ica.ch_names)
+            raw_set = set(raw_ch_names)
+            if not ica_set - raw_set:
+                if missing := raw_set - ica_set:
+                    return tuple(missing)
         if raise_on_mismatch and not names_match:
             raise RuntimeError(f"The ICA channel names do not match the data channels for raw={raw_name!r}, {subject=}. Have the bad channels changed since the ICA was computed? Try to revert the data channels, or recompute the ICA using MneExperiment.make_ica().\nData: {', '.join(raw_ch_names)}\nICA:  {', '.join(ica.ch_names)}")
         return names_match
@@ -753,16 +763,32 @@ class RawICA(CachedRawPipe):
             ica.save(path)
         return path
 
-    def _make(self, subject, recording, preload):
+    def _make(
+            self,
+            subject: str,
+            recording: str,
+            preload: PreloadArg,
+    ) -> mne.io.BaseRaw:
         raw = self.source.load(subject, recording, preload=True)
+        return self._apply(raw, subject, recording, self.name)
+
+    def _apply(
+            self,
+            raw: mne.io.BaseRaw,
+            subject: str,
+            recording: str,
+            raw_name: str,
+    ) -> mne.io.BaseRaw:
+        self.log.debug("Raw %s: applying ICA for %s/%s...", raw_name, subject, recording)
         raw.info['bads'] = self.load_bad_channels(subject, recording, existing=raw.ch_names)
         ica = self.load_ica(subject, recording)
-        self._check_ica_channels(ica, raw, raise_on_mismatch=True, raw_name=self.name, subject=subject)
-        self.log.debug("Raw %s: applying ICA for %s/%s...", self.name, subject, recording)
+        missing = self._check_ica_channels(ica, raw, raise_on_mismatch=True, raw_name=raw_name, subject=subject, return_missing=True)
+        if missing:
+            raw.drop_channels(missing)
         ica.apply(raw)
         return raw
 
-    def mtime(self, subject, recording, bad_chs=True):
+    def mtime(self, subject: str, recording: str, bad_chs: bool=True):
         mtime = CachedRawPipe.mtime(self, subject, recording, bad_chs or self._bad_chs_affect_cache)
         if mtime:
             path = self._ica_path(subject, recording=recording)
@@ -837,14 +863,9 @@ class RawApplyICA(CachedRawPipe):
     ):
         return self.ica_source.load_bad_channels(subject, recording, existing)
 
-    def _make(self, subject, recording, preload):
+    def _make(self, subject: str, recording: str, preload: PreloadArg):
         raw = self.source.load(subject, recording, preload=True)
-        raw.info['bads'] = self.load_bad_channels(subject, recording)
-        ica = self.ica_source.load_ica(subject, recording)
-        self.ica_source._check_ica_channels(ica, raw, raise_on_mismatch=True, raw_name=self.name, subject=subject)
-        self.log.debug("Raw %s: applying ICA for %s/%s...", self.name, subject, recording)
-        ica.apply(raw)
-        return raw
+        return self.ica_source._apply(raw, subject, recording, self.name)
 
     def mtime(self, subject, recording, bad_chs=True):
         mtime = CachedRawPipe.mtime(self, subject, recording, bad_chs)
