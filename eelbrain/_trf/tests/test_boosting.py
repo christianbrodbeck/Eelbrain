@@ -130,6 +130,9 @@ def test_boosting_cross_predict(error):
 
     # With scaling: normalized
     trf = boosting('y', 'x1', 0, 1, data=ds, error=error, partitions=3, test=1, partition_results=True, debug=True)
+    # Results
+    assert getattr(trf, f'{error}_total') == pytest.approx(trf.n_samples, 1e-16)
+    # Re-predict
     y_pred = trf.cross_predict('x1', ds, scale='normalized')
     assert_array_equal(y_pred, trf.y_pred)
     # Proportion explained
@@ -182,7 +185,8 @@ def test_boosting_epochs():
     assert res.residual.ndim == 0
 
 
-def test_boosting_oo():
+def test_boosting_object():
+    "Test Boosting object"
     ds = datasets._get_continuous(ynd=True)
     data = DeconvolutionData('y', 'x2', ds)
     data.apply_basis(0.2, 'hamming')

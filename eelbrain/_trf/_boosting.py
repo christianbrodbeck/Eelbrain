@@ -160,6 +160,20 @@ class BoostingResult(PickleableDataClass):
           - 0: Normalize ``x`` after applying basis
           - 1: Numba implementation
           - 2: Cython multiprocessing implementation (Eelbrain 0.38)
+
+
+    Examples
+    --------
+    To compare the fit of models estimated with different loss metrics
+    (``error`` parameter) calculate the proportion of explained variance,
+    for example::
+
+        data = datasets._get_continuous()
+        trf_l1 = boosting('y', 'x1', 0, 1, data=data, error='l1', partitions=3, test=1)
+        trf_l2 = boosting('y', 'x1', 0, 1, data=data, error='l2', partitions=3, test=1)
+        l1_explained_variance = 1 - (trf_l1.l2_residual / trf_l1.l2_total)
+        l2_explained_variance = 1 - (trf_l2.l2_residual / trf_l2.l2_total)
+
     """
     # basic parameters
     y: Optional[str]
@@ -190,13 +204,16 @@ class BoostingResult(PickleableDataClass):
     _y_dims: Tuple[Dimension, ...] = None
     # fit metrics
     i_test: int = None  # test partition for fit metrics
-    residual: Union[float, NDVar] = None
+    l1_residual: Union[float, NDVar] = None
+    l2_residual: Union[float, NDVar] = None
+    l1_total: Union[float, NDVar] = None
+    l2_total: Union[float, NDVar] = None
     r: Union[float, NDVar] = None
     r_rank: Union[float, NDVar] = None
     r_l1: NDVar = None
     partition_results: List[BoostingResult] = None
     # store the version of the boosting algorithm with which model was fit
-    version: int = 13  # file format (updates when re-saving)
+    version: int = 14  # file format (updates when re-saving)
     algorithm_version: int = -1  # does not change when re'saving
     # debug parameters
     y_pred: NDVar = None
@@ -229,6 +246,9 @@ class BoostingResult(PickleableDataClass):
                     state['residual'] *= state['n_samples']
             if version < 13:
                 state['splits'] = Splits(None, state.pop('_partitions_arg'), state.pop('partitions'), state.pop('validate', 1), state.pop('test', 0), state.pop('model'))
+            if version < 14:
+                # state[f"y_{state['error']}_scale"] = state.pop('y_scale')
+                state[f"{state['error']}_residual"] = state.pop('residual')
         PickleableDataClass.__setstate__(self, state)
 
     def __repr__(self):
@@ -308,6 +328,10 @@ class BoostingResult(PickleableDataClass):
             return self.h.time
         else:
             return self.h[0].time
+
+    @cached_property
+    def residual(self):
+        return getattr(self, f'{self.error}_residual')
 
     @cached_property
     def _variability(self):
@@ -775,7 +799,7 @@ class Boosting:
                 if self.error == 'l1':
                     metrics.append('vec-corr-l1')
             else:
-                metrics = [self.error, 'r', 'r_rank']
+                metrics = ['l1_residual', 'l2_residual', 'r', 'r_rank', 'l1_total', 'l2_total']
 
         # test sets to use
         if cross_fit:

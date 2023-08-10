@@ -61,7 +61,7 @@ class Evaluator:
 
 
 class L1(Evaluator):
-    attr = 'residual'
+    attr = 'l1_residual'
     name = 'L1 residuals'
 
     def add_y(
@@ -76,7 +76,7 @@ class L1(Evaluator):
 
 
 class L2(Evaluator):
-    attr = 'residual'
+    attr = 'l2_residual'
     name = 'L2 residuals'
 
     def add_y(
@@ -88,6 +88,34 @@ class L2(Evaluator):
         err = y - y_pred
         for x, segments in zip(self.xs, self.segments):
             x[i] = error_for_indexes(err, segments, 2)
+
+
+class L1Total(Evaluator):
+    attr = 'l1_total'
+    name = 'L1 total'
+
+    def add_y(
+            self,
+            i: int,  # y index (row in data.y)
+            y: np.ndarray,  # actual data
+            y_pred: np.ndarray,  # data predicted by model
+    ):
+        for x, segments in zip(self.xs, self.segments):
+            x[i] = error_for_indexes(y, segments, 1)
+
+
+class L2Total(Evaluator):
+    attr = 'l2_total'
+    name = 'L2 total'
+
+    def add_y(
+            self,
+            i: int,  # y index (row in data.y)
+            y: np.ndarray,  # actual data
+            y_pred: np.ndarray,  # data predicted by model
+    ):
+        for x, segments in zip(self.xs, self.segments):
+            x[i] = error_for_indexes(y, segments, 2)
 
 
 class Correlation(Evaluator):
@@ -131,7 +159,7 @@ class RankCorrelation(Evaluator):
 
 class VectorL1(Evaluator):
     vector = True
-    attr = 'residual'
+    attr = 'l1_residual'
     name = 'Vector l1 residuals'
 
     def add_y(
@@ -148,7 +176,7 @@ class VectorL1(Evaluator):
 
 class VectorL2(Evaluator):
     vector = True
-    attr = 'residual'
+    attr = 'l2_residual'
     name = 'Vector l2 residuals'
 
     def add_y(
@@ -237,8 +265,10 @@ class VectorCorrelationL1(VectorCorrelation):
 
 
 EVALUATORS = {
-    'l1': L1,
-    'l2': L2,
+    'l1_residual': L1,
+    'l2_residual': L2,
+    'l1_total': L1Total,
+    'l2_total': L2Total,
     'r': Correlation,
     'r_rank': RankCorrelation,
     'vec-l1': VectorL1,
