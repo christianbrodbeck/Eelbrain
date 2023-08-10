@@ -2,13 +2,13 @@
 """Statistics functions that work on numpy arrays."""
 from dataclasses import dataclass
 import re
-from typing import Union  #, Literal
+from typing import Optional, Sequence, Union
 
 import numpy as np
 import scipy.stats
 from scipy.linalg import inv
 
-from .._data_obj import Model, Parametrization, asfactor, asmodel
+from .._data_obj import Categorial, CellArg, Factor, Model, Parametrization, asfactor, asmodel
 from . import opt
 from . import vector
 
@@ -454,16 +454,23 @@ def ttest_t(p, df, tail=0):
     return t
 
 
-def variability(y, x, match, spec: str, pool: bool, cells=None):
+def variability(
+        y: np.ndarray,
+        x: Optional[Categorial],
+        match: Factor,
+        spec: str,
+        pool: bool,
+        cells: Sequence[CellArg] = None,
+):
     """Calculate data variability
 
     Parameters
     ----------
-    y : ndarray
+    y
         Dependent measure.
-    x : None | Categorial
+    x
         Cells for pooling variance.
-    match : Factor
+    match
         Calculate variability for related measures (Loftus & Masson 1994).
     spec
         The variability estimate. Contains an optional number, an optional
@@ -475,7 +482,7 @@ def variability(y, x, match, spec: str, pool: bool, cells=None):
     pool
         Pool the variability to create a single estimate (as opposed to one for
         each cell in x).
-    cells : list of cells
+    cells
         Estimate variance in these cells of ``x`` (default ``x.cells``).
 
     Returns
@@ -493,11 +500,15 @@ def variability(y, x, match, spec: str, pool: bool, cells=None):
 
     y = np.asarray(y, np.float64)
     if spec_.measure == 'SD':
+        if x is not None or match is not None:
+            raise NotImplementedError(f"{spec!r} with x or match")
         out = y.std(0)
         if spec_.multiplier != 1:
             out *= spec_.multiplier
     elif pool or x is None:
         out = SEM(y, x, match).get(spec_)
+    elif match is not None:
+        raise NotImplementedError(f"{spec!r} unpooled with match")
     else:
         out = np.array([SEM(y[x == cell]).get(spec_) for cell in cells])
 
