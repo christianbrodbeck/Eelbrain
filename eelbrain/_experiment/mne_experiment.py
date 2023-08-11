@@ -3780,6 +3780,7 @@ class MneExperiment(FileTree):
             baseline: BaselineArg = True,
             smooth: float = None,
             src_baseline: BaselineArg = None,
+            samplingrate: int = None,
             return_data: bool = False,
             make: bool = False,
             **state,
@@ -3831,6 +3832,9 @@ class MneExperiment(FileTree):
             Apply baseline correction using this period in source space.
             True to use the epoch's baseline specification. The default is to
             not apply baseline correction.
+        samplingrate
+            Samplingrate in Hz for the analysis (default is specified in epoch
+            definition).
         return_data
             Return the data along with the test result (see below).
 
@@ -3857,8 +3861,8 @@ class MneExperiment(FileTree):
         """
         self.set(test=test, **state)
         data = TestDims.coerce(data, morph=True)
-        self._set_analysis_options(data, baseline, src_baseline, pmin, tstart, tstop, parc, mask, smooth=smooth)
-        return self._load_test(test, tstart, tstop, pmin, parc, mask, samples, data, baseline, src_baseline, return_data, make, smooth)
+        self._set_analysis_options(data, baseline, src_baseline, pmin, tstart, tstop, parc, mask, samplingrate, smooth=smooth)
+        return self._load_test(test, tstart, tstop, pmin, parc, mask, samples, data, baseline, src_baseline, return_data, make, smooth, samplingrate)
 
     def _load_test(
             self,
@@ -3875,6 +3879,7 @@ class MneExperiment(FileTree):
             return_data: bool,
             make: bool,
             smooth: float = None,
+            samplingrate: int = None,
     ):
         "Load a cached test after _set_analysis_options() has been called"
         test_obj = self._tests[test]
@@ -3935,20 +3940,20 @@ class MneExperiment(FileTree):
             if smooth:
                 raise NotImplementedError(f"{smooth=}: smoothing for two-stage tests")
             if isinstance(data.source, str):
-                res_data, res = self._make_test_rois_2stage(baseline, src_baseline, test_obj, samples, test_kwargs, res, data, return_data)
+                res_data, res = self._make_test_rois_2stage(baseline, src_baseline, test_obj, samples, test_kwargs, res, data, return_data, samplingrate)
             elif data.source is True:
-                res_data, res = self._make_test_2stage(baseline, src_baseline, mask, test_obj, test_kwargs, res, data, return_data)
+                res_data, res = self._make_test_2stage(baseline, src_baseline, mask, test_obj, test_kwargs, res, data, return_data, samplingrate)
             else:
                 raise NotImplementedError(f"Two-stage test with data={data.string!r}")
         elif isinstance(data.source, str):
             if smooth:
                 raise TypeError(f"{smooth=} for ROI tests")
-            res_data, res = self._make_test_rois(baseline, src_baseline, test_obj, samples, pmin, test_kwargs, res, data)
+            res_data, res = self._make_test_rois(baseline, src_baseline, test_obj, samples, pmin, test_kwargs, res, data, samplingrate)
         else:
             if data.sensor:
-                res_data = self.load_evoked(True, baseline, True, test_obj.cat, data=data, vardef=test_obj.vars)
+                res_data = self.load_evoked(True, baseline, True, test_obj.cat, samplingrate, data=data, vardef=test_obj.vars)
             elif data.source:
-                res_data = self.load_evoked_stc(True, baseline, src_baseline, morph=True, cat=test_obj.cat, mask=mask, vardef=test_obj.vars)
+                res_data = self.load_evoked_stc(True, baseline, src_baseline, test_obj.cat, morph=True, mask=mask, vardef=test_obj.vars, samplingrate=samplingrate)
                 if smooth:
                     res_data[data.y_name] = res_data[data.y_name].smooth('source', smooth, 'gaussian')
             else:
@@ -3978,14 +3983,14 @@ class MneExperiment(FileTree):
             out[label] = label_ds
         return out
 
-    def _make_test_rois(self, baseline, src_baseline, test_obj, samples, pmin, test_kwargs, res, data):
+    def _make_test_rois(self, baseline, src_baseline, test_obj, samples, pmin, test_kwargs, res, data, samplingrate):
         # load data
         dss_list = []
         n_trials_dss = []
         labels = set()
         subjects = self.get_field_values('subject')
         for _ in self.iter(progress_bar="Loading data"):
-            ds = self.load_evoked_stc(1, baseline, src_baseline, vardef=test_obj.vars)
+            ds = self.load_evoked_stc(1, baseline, src_baseline, vardef=test_obj.vars, samplingrate=samplingrate)
             dss = self._src_to_label_tc(ds, data.source)
             n_trials_dss.append(ds)
             dss_list.append(dss)
@@ -4021,7 +4026,7 @@ class MneExperiment(FileTree):
         res = ROITestResult(subjects, samples, n_trials_ds, merged_dist, label_results)
         return label_data, res
 
-    def _make_test_rois_2stage(self, baseline, src_baseline, test_obj, samples, test_kwargs, res, data, return_data):
+    def _make_test_rois_2stage(self, baseline, src_baseline, test_obj, samples, test_kwargs, res, data, return_data, samplingrate):
         # stage 1
         lms = []
         res_data = []
@@ -4029,9 +4034,9 @@ class MneExperiment(FileTree):
         subjects = self.get_field_values('subject')
         for subject in self.iter(progress_bar="Loading stage 1 models"):
             if test_obj.model is None:
-                ds = self.load_epochs_stc(1, baseline, src_baseline, mask=True, vardef=test_obj.vars)
+                ds = self.load_epochs_stc(1, baseline, src_baseline, mask=True, vardef=test_obj.vars, samplingrate=samplingrate)
             else:
-                ds = self.load_evoked_stc(1, baseline, src_baseline, mask=True, vardef=test_obj.vars, model=test_obj.model)
+                ds = self.load_evoked_stc(1, baseline, src_baseline, mask=True, vardef=test_obj.vars, model=test_obj.model, samplingrate=samplingrate)
 
             dss = self._src_to_label_tc(ds, data.source)
             if res is None:
@@ -4061,15 +4066,15 @@ class MneExperiment(FileTree):
             data_out = None
         return data_out, res
 
-    def _make_test_2stage(self, baseline, src_baseline, mask, test_obj, test_kwargs, res, data, return_data):
+    def _make_test_2stage(self, baseline, src_baseline, mask, test_obj, test_kwargs, res, data, return_data, samplingrate):
         # stage 1
         lms = []
         res_data = []
         for subject in self.iter(progress_bar="Loading stage 1 models"):
             if test_obj.model is None:
-                ds = self.load_epochs_stc(1, baseline, src_baseline, morph=True, mask=mask, vardef=test_obj.vars)
+                ds = self.load_epochs_stc(1, baseline, src_baseline, morph=True, mask=mask, vardef=test_obj.vars, samplingrate=samplingrate)
             else:
-                ds = self.load_evoked_stc(1, baseline, src_baseline, morph=True, mask=mask, vardef=test_obj.vars, model=test_obj.model)
+                ds = self.load_evoked_stc(1, baseline, src_baseline, morph=True, mask=mask, vardef=test_obj.vars, model=test_obj.model, samplingrate=samplingrate)
 
             if res is None:
                 lms.append(test_obj.make_stage_1(data.y_name, ds, subject))
