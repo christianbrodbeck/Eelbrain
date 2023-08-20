@@ -1425,7 +1425,7 @@ class SequencePlotter:
         if isinstance(res, MultiEffectNDTest):
             iterator = zip(res.p, res._statistic_map, res.effects)
         elif isinstance(res, NDVar):
-            iterator = [res, None, res.name]
+            iterator = ([res, None, res.name],)
         else:
             if isinstance(res, NDDifferenceTest):
                 desc = res.difference.name
