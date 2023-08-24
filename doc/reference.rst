@@ -425,9 +425,9 @@ specified manually by supplying them as keyword arguments.
    to the screen (e.g., ``w=0`` to use the full screen width).
 ``axh``, ``axw`` : scalar
    Height and width of the axes.
-``nrow``, ``ncol`` : ``None`` | ``int``
-   Limit number of rows/columns. If neither is specified, a square layout
-   is produced
+``rows``, ``columns`` : ``None`` | ``int``
+   Limit the number of rows or columns of axes in the figure.
+   If neither is specified, a square layout is produced.
 ``margins`` : ``dict``
     Absolute subplot parameters (in inches). Implies ``tight=False``.
     If ``margins`` is specified, ``axw`` and ``axh`` are interpreted

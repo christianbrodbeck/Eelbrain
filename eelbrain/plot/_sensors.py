@@ -500,7 +500,7 @@ class SensorMaps(EelFigure):
         self._drag_ax = None
         self._drag_x = None
         self._drag_y = None
-        layout = ImLayout(4, 1, 3, None, {}, frame='off', ncol=2, nrow=2, **kwargs)
+        layout = ImLayout(4, 1, 3, None, {}, frame='off', columns=2, rows=2, **kwargs)
         EelFigure.__init__(self, sensors.sysname, layout)
         self.figure.subplots_adjust(left=0, bottom=0, right=1, top=1,
                                     wspace=.1, hspace=.1)

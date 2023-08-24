@@ -1381,8 +1381,8 @@ class Histogram(EelFigure):
         elif ct.all_within:
             n_comp = len(ct.cells) - 1
             nax = n_comp ** 2
-            kwargs['nrow'] = n_comp
-            kwargs['ncol'] = n_comp
+            kwargs['rows'] = n_comp
+            kwargs['columns'] = n_comp
             self._make_axes = False
             self._default_ylabel_ax = -1
             if title is True:

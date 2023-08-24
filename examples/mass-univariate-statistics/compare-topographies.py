@@ -36,7 +36,7 @@ print(ds.head())
 ###############################################################################
 # The simulated data in the two conditions:
 
-p = plot.TopoArray('eeg', 'predictability', data=ds, ncol=1, axh=2, axw=10, t=[0.120, 0.200, 0.280], head_radius=0.35)
+p = plot.TopoArray('eeg', 'predictability', data=ds, columns=1, axh=2, axw=10, t=[0.120, 0.200, 0.280], head_radius=0.35)
 
 ###############################################################################
 # Test between conditions
@@ -92,8 +92,8 @@ ds_topography.head()
 ###############################################################################
 # Plot the topographies before and after normalization:
 
-p = plot.Topomap('eeg', 'time', data=ds_times, ncol=2, title="Original", head_radius=0.35)
-p = plot.Topomap(topography, 'time', data=ds_times, ncol=2, title="Normalized", head_radius=0.35)
+p = plot.Topomap('eeg', 'time', data=ds_times, columns=2, title="Original", head_radius=0.35)
+p = plot.Topomap(topography, 'time', data=ds_times, columns=2, title="Normalized", head_radius=0.35)
 
 ###############################################################################
 # Compre the topographies with the ANOVA -- test whether the effect of time differs between sensors:
@@ -103,7 +103,7 @@ test.ANOVA('eeg', 'time * sensor * subject', data=ds_topography)
 # Visualize the difference
 
 res = testnd.TTestRelated(topography, 'time', match='subject', data=ds_times)
-p = plot.Topomap(res, ncol=3, title="Normalized topography differences", head_radius=0.35)
+p = plot.Topomap(res, columns=3, title="Normalized topography differences", head_radius=0.35)
 
 ###############################################################################
 # References

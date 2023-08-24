@@ -45,7 +45,7 @@ def sensor_time_frequency_results(
         table_.cell(plot_.image(close=True))
         diff = res.difference.mean(sensor=chs).mask(res.p.min(sensor=chs) > p, missing=True)
         ys = [res.c1_mean.mean(sensor=chs), res.c0_mean.mean(sensor=chs), diff]
-        plot_ = plot.Array(ys, ncol=3, xlim=xlim, vmax=vmax, h=2)
+        plot_ = plot.Array(ys, columns=3, xlim=xlim, vmax=vmax, h=2)
         table_.cell(plot_.image(close=True))
     return table_
 
@@ -132,7 +132,7 @@ def sensor_time_cluster(section, cluster, y, model, ds, colors, match='subject')
                   cluster_topo] for cell in x.cells]
     else:
         topos = [[topo, cluster_topo]]
-    p = plot.Topomap(topos, axh=3, nrow=1, show=False)
+    p = plot.Topomap(topos, axh=3, rows=1, show=False)
     p.mark_sensors(np.flatnonzero(cluster_topo.x), c='y', marker='o')
 
     caption_ = ["Cluster"]

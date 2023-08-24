@@ -148,7 +148,7 @@ time_window = (clusters[0, 'tstart'], clusters[0, 'tstop'])
 c1_topo = res.c1_mean.mean(time=time_window)
 c0_topo = res.c0_mean.mean(time=time_window)
 diff_topo = res.difference.mean(time=time_window)
-p = plot.Topomap([c1_topo, c0_topo, diff_topo], axtitle=['Low cloze', 'High cloze', 'Low - high'], ncol=3)
+p = plot.Topomap([c1_topo, c0_topo, diff_topo], axtitle=['Low cloze', 'High cloze', 'Low - high'], columns=3)
 p.mark_sensors(roi, -1)
 
 ###############################################################################

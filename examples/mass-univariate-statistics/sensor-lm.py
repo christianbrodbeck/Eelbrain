@@ -77,4 +77,4 @@ for effect, time in EFFECTS:
     t_av = t.mask(p > 0.05)
     t_maps.append(t_av)
 
-p = plot.Topomap(t_maps, ncol=2)
+p = plot.Topomap(t_maps, columns=2)

@@ -12,17 +12,17 @@ def assert_layout_consistent(layout):
     if layout.margins is None:
         return
     assert all(v >= 0 for v in layout.margins.values())
-    assert layout.w == layout.margins['left'] + layout.ncol * layout.axw + (layout.ncol - 1) * layout.margins['wspace'] + layout.margins['right']
-    assert layout.h == layout.margins['bottom'] + layout.nrow * layout.axh + (layout.nrow - 1) * layout.margins['hspace'] + layout.margins['top']
+    assert layout.w == layout.margins['left'] + layout.columns * layout.axw + (layout.columns - 1) * layout.margins['wspace'] + layout.margins['right']
+    assert layout.h == layout.margins['bottom'] + layout.rows * layout.axh + (layout.rows - 1) * layout.margins['hspace'] + layout.margins['top']
 
 
 def assert_layout_ok(*args, **kwargs):
     layout = Layout(*args, **kwargs)
-    assert layout.nrow * layout.ncol >= layout.nax
+    assert layout.rows * layout.columns >= layout.nax
     if layout.h_fixed:
-        assert layout.nrow * layout.ncol < layout.nax + layout.nrow
+        assert layout.rows * layout.columns < layout.nax + layout.rows
     else:
-        assert layout.nrow * layout.ncol < layout.nax + layout.ncol
+        assert layout.rows * layout.columns < layout.nax + layout.columns
     assert_layout_consistent(layout)
 
 
@@ -46,7 +46,7 @@ def test_layout():
 
     # left margin & axw
     margins = dict(left=1, top=2, bottom=1, wspace=1, hspace=2)
-    layout = Layout(2, 2, 2, margins=margins, axw=5, w=10, ncol=1)
+    layout = Layout(2, 2, 2, margins=margins, axw=5, w=10, columns=1)
     assert_layout_consistent(layout)
     assert layout.w == 10
     assert layout.margins == dict(right=10 - 1 - 5, **margins)
@@ -54,7 +54,7 @@ def test_layout():
     assert layout.h == 5 + 2 * layout.axh
     assert layout.tight is False
 
-    layout = Layout(2, 2, 2, margins=True, w=10, ncol=1)
+    layout = Layout(2, 2, 2, margins=True, w=10, columns=1)
     assert_layout_consistent(layout)
     assert layout.tight is False
 
@@ -68,7 +68,7 @@ def test_im_layout():
     assert l.w == 3
     assert l.h == 3
     assert l.axw == l.axh == 3
-    l = ImLayout(2, 1, 5, None, {}, w=3, ncol=2)
+    l = ImLayout(2, 1, 5, None, {}, w=3, columns=2)
     assert l.w == 3
     assert l.h == 1.5
     assert l.axw == l.axh == 1.5
@@ -76,13 +76,13 @@ def test_im_layout():
     assert l.w == 3
     assert l.h == 3
     assert l.axw == l.axh == 3
-    l = ImLayout(2, 1, 5, None, {}, axw=3, ncol=2)
+    l = ImLayout(2, 1, 5, None, {}, axw=3, columns=2)
     assert l.w == 6
     assert l.h == 3
     assert l.axw == l.axh == 3
     # 2 x 2 layout
     margins = {'left': 0.4, 'right': 0.1, 'top': 0.1, 'bottom': 0.4}
-    l = ImLayout(4, 4/3, 2, margins, {'bottom': 0.5}, nrow=2, ncol=2, w=4, h=4)
+    l = ImLayout(4, 4/3, 2, margins, {'bottom': 0.5}, rows=2, columns=2, w=4, h=4)
     assert l.w == 4
     assert l.axw == 1.75
 

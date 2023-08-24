@@ -20,6 +20,7 @@ New in 0.40
 
 * :func:`boosting` now accepts data with ragged trials (trials of different lengths).
 * :func:`boosting` now stores both the l1 and l2 loss of the final fit.
+* API: Plotting parameters ``ncol`` and ``nrow`` have been renamed to ``columns`` and ``rows``
 
 
 New in 0.39

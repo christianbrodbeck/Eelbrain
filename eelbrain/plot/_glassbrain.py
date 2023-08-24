@@ -323,7 +323,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             else:
                 display_mode = 'lyr'
         n_plots = 3 if display_mode == 'ortho' else len(display_mode)
-        layout = Layout(n_plots, 0.85, 2.6, tight=False, ncol=n_plots, **kwargs)
+        layout = Layout(n_plots, 0.85, 2.6, tight=False, columns=n_plots, **kwargs)
         # frame title
         if layout.name:
             frame_title = layout.name
@@ -578,7 +578,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         if name is None:
             name = brain_data.name
 
-        p = Butterfly(bfly_data, vmin=vmin, vmax=vmax, xlim=xlim, h=h, w=w, ncol=1, name=name, color='black', ylabel=hemis, axtitle=False)
+        p = Butterfly(bfly_data, vmin=vmin, vmax=vmax, xlim=xlim, h=h, w=w, columns=1, name=name, color='black', ylabel=hemis, axtitle=False)
 
         # Give wxPython a chance to initialize the menu before pyplot
         if jumpstart:
