@@ -217,9 +217,7 @@ class BoostingResult(PickleableDataClass):
     algorithm_version: int = -1  # does not change when re'saving
     # debug parameters
     y_pred: NDVar = None
-    fit: Any = None  # scanpydoc can't handle undocumented 'Boosting'
-    # Legacy attributes (pickled objects may have these attributes)
-    prefit: str = None
+    fit: Boosting = None
 
     def __post_init__(self):
         if self.splits is None:
@@ -236,6 +234,8 @@ class BoostingResult(PickleableDataClass):
                 state['partitions_arg'] = state.pop('n_partitions_arg')
             if version < 9:
                 state['residual'] = state.pop('fit_error')
+                if state.pop('prefit', None):
+                    raise IOError('Boosting result used the prefit functionality that has been removed. Use an older version of eelbrain to open this result.')
             if version < 11:
                 for key in ['partitions_arg', 'h', 'isnan', 'y_info']:
                     state[f'_{key}'] = state.pop(key, None)
@@ -249,6 +249,9 @@ class BoostingResult(PickleableDataClass):
             if version < 14:
                 # state[f"y_{state['error']}_scale"] = state.pop('y_scale')
                 state[f"{state['error']}_residual"] = state.pop('residual')
+            if version < 15:
+                if state.pop('prefit', None):
+                    raise IOError('Boosting result used the prefit functionality that has been removed. Use an older version of eelbrain to open this result.')
         PickleableDataClass.__setstate__(self, state)
 
     def __repr__(self):
