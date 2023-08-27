@@ -459,7 +459,13 @@ def find_fig_contours(epochs, vlims, contours_arg):
     return out
 
 
-def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
+def find_fig_vlims(
+        plots: Sequence[Sequence[NDVar]],
+        vmax: Union[dict, float] = None,
+        vmin: Union[dict, float] = None,
+        cmaps: dict = None,
+        unmask: bool = True,
+):
     """Find vmin and vmax parameters for every (meas, cmap) combination
 
     Parameters
@@ -474,6 +480,8 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
         None, -vmax is used.
     cmaps : dict
         If provided, vlims will be fixed to match symmetric or 0-based cmaps.
+    unmask
+        Also consider masked values for limits.
 
     Returns
     -------
@@ -499,7 +507,7 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
             if vmax is None:
                 meas_ndvars = [v for v in ndvars if v.info.get('meas') == meas]
                 for ndvar in meas_ndvars:
-                    _, vmax_ = find_vlim_args(ndvar)
+                    _, vmax_ = find_vlim_args(ndvar, unmask=unmask)
                     vmax = vmax_ if vmax is None else max(vmax, vmax_)
 
             vlims[meas] = (vmin, vmax)
@@ -508,7 +516,7 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
     # for other meas, fill in data limits
     for ndvar in ndvars:
         meas = ndvar.info.get('meas')
-        vmin, vmax = find_vlim_args(ndvar)
+        vmin, vmax = find_vlim_args(ndvar, unmask=unmask)
         if meas in vlims:
             vmin_, vmax_ = vlims[meas]
             vmin = vmin if vmin_ is None else min(vmin, vmin_)

@@ -432,7 +432,7 @@ class Brain(TimeSlicer, surfer.Brain):
         if cmap is None or isinstance(cmap, (str, Colormap)):
             epochs = ((ndvar,),)
             cmaps = find_fig_cmaps(epochs, cmap, alpha=True)
-            vlims = find_fig_vlims(epochs, vmax, vmin, cmaps)
+            vlims = find_fig_vlims(epochs, vmax, vmin, cmaps, unmask=False)
             vmin, vmax = vlims[meas]
         # colormap
         if contours is not None:
