@@ -116,7 +116,7 @@ from ._utils import adjust_hsv
 
 
 # constants
-POINT = 0.013888888888898
+POINT = 0.013888888888898  # inches
 
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}
@@ -3549,19 +3549,18 @@ class CategorialAxisMixin:
                     ax.tick_params(axis, pad=0)
 
                 if rotation == -90:
-                    offset = -matplotlib.rcParams['xtick.labelsize'] / 4
+                    offset = -mpl_font_size('xtick.labelsize') / 4
                 elif 0 < rotation < 90:
                     kwargs['ha'] = 'right'
-                    offset = matplotlib.rcParams['xtick.labelsize']
+                    offset = mpl_font_size('xtick.labelsize')
                 elif -90 < rotation < 0:
                     kwargs['ha'] = 'left'
                     kwargs['rotation_mode'] = 'anchor'
                     if rotation < -60:
-                        offset = matplotlib.rcParams['xtick.labelsize'] * ((-rotation - 60) / 90)
+                        offset = mpl_font_size('xtick.labelsize') * ((-rotation - 60) / 90)
             self.__axis_obj.set_ticks(tick_pos, tick_labels, rotation=rotation, **kwargs)
             if offset:
-                dx = offset / matplotlib.rcParams['figure.dpi']
-                offset_transform = matplotlib.transforms.ScaledTranslation(dx, 0, ax.figure.dpi_scale_trans)
+                offset_transform = matplotlib.transforms.ScaledTranslation(offset, 0, ax.figure.dpi_scale_trans)
                 for label in ax.xaxis.get_majorticklabels():
                     label.set_transform(label.get_transform() + offset_transform)
         elif ticks is False:
