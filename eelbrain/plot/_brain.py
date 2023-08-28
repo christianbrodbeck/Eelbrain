@@ -562,7 +562,9 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
     brain = Brain(subject, hemi, surf, title, cortex, views=views, w=w, h=h, axw=axw, axh=axh, foreground=foreground, background=background, subjects_dir=subjects_dir, name=name, pos=pos, source_space=source)
 
     if ndvar is not None:
-        if ndvar.x.dtype.kind in 'ui':
+        if ndvar.x.dtype.kind == 'b':
+            brain.add_ndvar_label(ndvar, cmap, False)
+        elif ndvar.x.dtype.kind in 'ui':
             brain.add_ndvar_annotation(ndvar, cmap, False)
         else:
             brain.add_ndvar(ndvar, cmap, vmin, vmax, smoothing_steps, colorbar, time_label)
