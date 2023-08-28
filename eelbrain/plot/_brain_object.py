@@ -629,6 +629,8 @@ class Brain(TimeSlicer, surfer.Brain):
         method can only plot static labels; to plot a contour that varies over
         time, use :meth:`Brain.add_ndvar` with the ``contours`` parameter.
         """
+        if color is None:
+            color = (1, 0, 0)
         source = self._check_source_space(ndvar)
         x = ndvar.get_data(source.name)
         if x.dtype.kind != 'b':
