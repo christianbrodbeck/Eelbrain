@@ -44,7 +44,6 @@ extensions = [
     'sphinx.ext.napoleon',  # https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html
     'sphinxcontrib.bibtex',  # https://sphinxcontrib-bibtex.readthedocs.io
     'sphinx_gallery.gen_gallery',  # https://sphinx-gallery.github.io
-    # 'scanpydoc',  # https://github.com/theislab/scanpydoc
     'sphinx_rtd_theme',  # https://sphinx-rtd-theme.readthedocs.io/
 ]
 # enable to have all methods documented on the same page as a class:

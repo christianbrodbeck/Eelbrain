@@ -3896,7 +3896,7 @@ class MneExperiment(FileTree):
                     if not return_data:
                         return res
                 elif not make:
-                    raise IOError(f"The requested test {desc} is cached with samples={res.samples}, but you request samples={samples}; Set make=True to perform the test.")
+                    raise IOError(f"The requested test {desc} is cached with samples={res.samples}, but you requested {samples=}; Set make=True to compute the test with the new number of samples.")
                 else:
                     res = None
         elif not make and exists(dst):
@@ -3918,11 +3918,11 @@ class MneExperiment(FileTree):
             if not isinstance(parc, str):
                 raise TypeError(f"parc needs to be set for ROI test (data={data.string!r})")
             elif mask is not None:
-                raise TypeError(f"mask={mask!r}: invalid for data={data.string!r}")
+                raise TypeError(f"{mask=}: invalid for data={data.string!r}")
         elif parc is not None:
-            raise TypeError(f"parc={parc!r}: invalid for data={data.string!r}")
+            raise TypeError(f"{parc=}: invalid for data={data.string!r}")
         elif mask is not None:
-            raise TypeError(f"mask={mask!r}: invalid for data={data.string!r}")
+            raise TypeError(f"{mask=}: invalid for data={data.string!r}")
 
         do_test = res is None
         if do_test:
@@ -6605,7 +6605,7 @@ class MneExperiment(FileTree):
             elif mask:
                 raise ValueError("Can't specify mask together with parc")
             elif pmin is None or pmin == 'tfce':
-                raise NotImplementedError(f"Threshold-free test (pmin={pmin!r}) is not implemented for parcellation (parc parameter). Use a mask instead, or do a cluster-based test.")
+                raise NotImplementedError(f"Threshold-free test ({pmin=}) is not implemented for parcellation (parc parameter). Use a mask instead, or do a cluster-based test.")
             else:
                 folder = parc
                 kwargs['parc'] = parc

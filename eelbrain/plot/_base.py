@@ -82,7 +82,7 @@ from functools import cached_property, reduce
 from itertools import chain, cycle, repeat
 from logging import getLogger
 import math
-from numbers import Number
+from numbers import Real
 import os
 import re
 import time
@@ -216,7 +216,7 @@ class AxisScale:
     """
     def __init__(
             self,
-            v: Union[NDVar, Var, Number, str, 'PlotData'],
+            v: Union[NDVar, Var, Real, str, 'PlotData'],
             label: Union[bool, str, Sequence[str]] = True,
     ):
         if isinstance(v, str):
@@ -224,7 +224,7 @@ class AxisScale:
             meas = None
             unit = v
             scale = UNIT_FORMAT.get(v, 1)
-        elif isinstance(v, Number):
+        elif isinstance(v, Real):
             data_unit = None
             meas = None
             unit = None
@@ -2829,7 +2829,7 @@ class ColorBarMixin:
     def __init__(
             self,
             param_func: Callable = None,  # function to get cmap, vmin, vmax
-            data: Union[NDVar, Var, Number, str, 'PlotData'] = None,  # to infer unit
+            data: Union[NDVar, Var, Real, str, 'PlotData'] = None,  # to infer unit
             mappable: Any = None,  # matplotlib mappable object
             default_kwargs: dict = None,  # default parameters for plotting colorbar
     ):
@@ -3536,7 +3536,7 @@ class CategorialAxisMixin:
                 tick_labels = [labels_[cell] for cell in cells]
             else:
                 tick_labels = ticks
-            if isinstance(rotation, Number):
+            if isinstance(rotation, Real):
                 if rotation:
                     ax.tick_params(axis, pad=0)
 

@@ -1353,7 +1353,7 @@ class SequencePlotter:
             if static:
                 kind = SPLayer.OVERLAY
             elif self._frame_dim:
-                raise ValueError(f"static={static!r} when adding to plot with dimension {self._frame_dim}")
+                raise ValueError(f"{static=} when adding to plot with dimension {self._frame_dim}")
             else:
                 kind = SPLayer.ITEM
                 self._bin_kind = SPLayer.ITEM
@@ -1362,9 +1362,9 @@ class SequencePlotter:
         elif self._bin_kind == SPLayer.ITEM:
             raise ValueError(f"Can't add 2d NDVar to SequencePlotter with multiple NDVars")
         elif index is not None:
-            raise TypeError(f"index={index!r}")
+            raise TypeError(f"{index=}")
         elif static:
-            raise ValueError(f"static={static!r} for multi-dimensional NDVar")
+            raise ValueError(f"{static=} for multi-dimensional NDVar")
         else:
             self._bin_kind = SPLayer.SEQUENCE
             if self._frame_dim is None:
@@ -1542,7 +1542,7 @@ class SequencePlotter:
             Pull the two hemispheres of the same plot closer together (movement
             in inches).
         ...
-            Layout parameters for the figure.
+            Also accepts :ref:`general-layout-parameters`.
 
         Returns
         -------
