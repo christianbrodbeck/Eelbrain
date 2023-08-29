@@ -12,7 +12,7 @@ import mne
 from nibabel.freesurfer import read_annot
 import numpy as np
 
-from .._data_obj import NDVar, SourceSpace
+from .._data_obj import NDVar, SourceSpace, UTS
 from .._types import PathArg
 from .._stats.testnd import NDTest, NDDifferenceTest, MultiEffectNDTest
 from .._utils import deprecated
@@ -1186,6 +1186,7 @@ class SequencePlotter:
         self._subject = subject
         self._subjects_dir = subjects_dir
         self._frame_dim = None
+        self._frame_labels = None
         self._bin_kind: SPLayer = SPLayer.UNDEFINED
         self._frame_order = None
         self._brain_args = {}
@@ -1375,9 +1376,14 @@ class SequencePlotter:
                 self._frame_dim = frame_dim
             elif frame_dim != self._frame_dim:
                 raise ValueError(f"New axis {frame_dim} is incompatible with previously set axis {self._frame_dim}")
-
-            if label is None and 'bins' in ndvar.info:
-                label = ndvar.info['bins']
+            if self._frame_labels is None and 'bins' in ndvar.info:
+                bins = ndvar.info['bins']
+                if isinstance(bins[0], str):
+                    self._frame_labels = bins
+                elif isinstance(frame_dim, UTS):
+                    fmt, _, unit = frame_dim._axis_format(True, '__unit__')
+                    self._frame_labels = [f'{t0*1000:.0f} - {t1*1000:.0f}' for t0, t1 in bins]
+                    self._frame_labels[0] = f'{self._frame_labels[0]} {unit}'
 
             layer = SequencePlotterLayer(SPLayer.SEQUENCE, ndvar, args, kwargs, label)
 
@@ -1469,7 +1475,9 @@ class SequencePlotter:
                         label = items[0]
                     labels.append(label)
             else:
-                if self._frame_dim is None:
+                if self._frame_labels is not None:
+                    return self._frame_labels
+                elif self._frame_dim is None:
                     labels = []
                 elif self._frame_order is None:
                     labels = list(self._frame_dim)

@@ -92,7 +92,7 @@ def test_sequence_plotter():
     sp.add_ndvar(y_mask)
     p = sp.plot_table(view='lateral')
     # test internals
-    assert sp._get_frame_labels(True) == ['25 ms', '75 ms', '125 ms', '175 ms']
+    assert sp._get_frame_labels(True) == ['0 - 50 ms', '50 - 100', '100 - 150', '150 - 200']
 
     # separate NDVars
     sp = plot.brain.SequencePlotter()

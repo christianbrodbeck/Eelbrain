@@ -10789,12 +10789,15 @@ class UTS(Dimension):
         if self.unit == 's' and (v := self.plot_s_as_ms):
             s_to_ms = -v < self.tmax < v and -v < self.tmin < v
 
-        if label is True:
+        if label is True or label == '__unit__':
             if s_to_ms:
                 unit = 'ms'
             else:
                 unit = self.unit
-            label = f"{self.name.capitalize()} [{unit}]"
+            if label == '__unit__':
+                label = unit
+            else:
+                label = f"{self.name.capitalize()} [{unit}]"
 
         if s_to_ms:
             if scalar:
