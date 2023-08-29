@@ -268,7 +268,7 @@ class Dispersion:
         self.model = model
         self.sem = sem
 
-    def get(self, spec: DispersionSpec):
+    def get(self, spec: Union[str, DispersionSpec]):
         spec = DispersionSpec.from_string(spec)
         if spec.measure == 'SEM':
             return self.sem * spec.multiplier
@@ -458,12 +458,12 @@ def ttest_t(p, df, tail=0):
 
 def dispersion(
         y: np.ndarray,
-        x: CategorialArg,
-        match: FactorArg,
+        x: CategorialArg = None,
+        match: FactorArg = None,
         spec: str = 'SEM',
-        pool: bool = None,
         cells: Sequence[CellArg] = None,
         data: Dataset = None,
+        pool: bool = None,
 ):
     """Calculate data dispersion measure
 
@@ -484,7 +484,8 @@ def dispersion(
         ``99%ci``: 99% confidence interval.
     pool
         Pool the variability to create a single estimate (as opposed to one for
-        each cell in x).
+        each cell in x). Default ``True`` iff ``match`` is specified (for
+        within-subject errors).
     cells
         Estimate variance in these cells of ``x`` (default ``x.cells``).
 
@@ -498,6 +499,8 @@ def dispersion(
     y, n = asarray(y, data=data, return_n=True)
     if match is not None:
         match = asfactor(match, data=data, n=n)
+    if pool is None:
+        pool = match is not None
     if x is None:
         if match is not None and match.df == len(match) - 1:
             raise ValueError("Can't calculate within-subject error because the match predictor explains all variability")

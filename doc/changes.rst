@@ -24,6 +24,7 @@ New in 0.40
 
    - Plotting parameters ``ncol`` and ``nrow`` have been renamed to ``columns`` and ``rows``.
    - :class:`Factor` cells that are not specified in ``labels`` are now ordered by their first ocurrence in ``x`` (previously order was alphabetic).
+   - The ``pool_error`` argument is replaced by ``within_subject_error``.
 
 
 New in 0.39

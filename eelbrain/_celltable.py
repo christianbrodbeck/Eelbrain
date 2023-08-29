@@ -366,28 +366,6 @@ class Celltable:
     def _get_func(self, cell, func):
         return self.data[cell].aggregate(func=func).x
 
-    @cached_property
-    def _pooled_sem(self):
-        return Dispersion(self.y.x, self.x, self.match)
-
-    def _get_dispersion(
-            self,
-            cell: CellArg,
-            spec: Union[str, DispersionSpec],
-            pool: bool,  # pooled variance estimate
-    ) -> np.ndarray:
-        spec = DispersionSpec.from_string(spec)
-        if spec.measure == 'SD':
-            out = self.data[cell].x.std(0)
-            if spec.multiplier != 1:
-                out *= spec.multiplier
-            return out
-        if pool:
-            sem = self._pooled_sem
-        else:
-            sem = Dispersion(self.data[cell].x)
-        return sem.get(spec)
-
     def get_statistic(self, func=np.mean):
         """Return a list with ``a * func(data)`` for each data cell.
 
@@ -405,7 +383,7 @@ class Celltable:
             var_spec = func
 
             def func(y):
-                return dispersion(y, None, None, var_spec, False)
+                return dispersion(y, None, None, var_spec)
 
         return [func(self.data[cell].x) for cell in self.cells]
 
@@ -424,33 +402,47 @@ class Celltable:
         """
         return dict(zip(self.cells, self.get_statistic(func)))
 
-    def variability(self, error='sem', pool=None):
+    @cached_property
+    def _pooled_dispersion(self):
+        return Dispersion(self.y.x, self.x, self.match)
+
+    def variability(
+            self,
+            error: str = 'sem',
+            within_subject: bool = None,
+            cell: CellArg = None,
+            as_array: bool = False,
+    ):
         """Variability measure
 
         Parameters
         ----------
-        error : str
+        error
             Measure of variability. Examples:
             ``sem``: Standard error of the mean (default);
             ``2sem``: 2 standard error of the mean;
             ``ci``: 95% confidence interval;
             ``99%ci``: 99% confidence interval.
-        pool : bool
-            Pool the errors for the estimate of variability (default is True
-            for complete within-subject designs, False otherwise).
-
-        Notes
-        -----
-        Returns within-subject standard error for complete within-subject
-        designs (see Loftus & Masson, 1994).
+        within_subject
+            Within-subject standard error for complete within-subject designs
+            (see Loftus & Masson, 1994; default is ``True`` for complete
+            within-subject designs, ``False`` otherwise).
+        cell
+            Return estimate for a single cell in ``x``.
+        as_array
+            Return :class:`numpy.ndarray` instead of :class:`NDVar`.
         """
-        match = self.match if self.all_within else None
-        if pool is None:
-            pool = self.all_within
-        x = dispersion(self.y.x, self.x, match, error, pool)
-        if isinstance(self.y, NDVar):
+        if within_subject is None:
+            within_subject = self.all_within
+        if within_subject:
+            return self._pooled_dispersion.get(error)
+        elif cell is not None:
+            x = dispersion(self.data[cell].x, spec=error)
+        else:
+            x = dispersion(self.y.x, self.x, spec=error)
+        if not as_array and isinstance(self.y, NDVar):
             dims = self.y.dims[1:]
-            if not pool:
+            if cell is None:
                 dims = (Case,) + dims
             return NDVar(x, dims, error, self.y.info.copy())
         else:

@@ -326,10 +326,9 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         ``2sem``: 2 standard error of the mean;
         ``ci``: 95% confidence interval;
         ``99%ci``: 99% confidence interval.
-    pool_error
-        Pool the errors for the estimate of variability (default is True
-        for related measures designs, False for others). See Loftus & Masson
-        (1994).
+    within_subject_error
+        Within-subject error bars (see Loftus & Masson, 1994; default is
+        ``True`` for complete related measures designs, ``False`` otherwise).
     ec : matplotlib color
         Error bar color.
     test
@@ -396,7 +395,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
             sub: IndexArg = None,
             cells: Sequence[CellArg] = None,
             error: str = 'sem',
-            pool_error: bool = None,
+            within_subject_error: bool = None,
             ec: Any = 'k',
             test: Union[bool, float] = True,
             tail: Literal[-1, 0, 1] = 0,
@@ -426,13 +425,13 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
             styles = False
         else:
             styles = find_cell_styles(ct.cells, colors)
-        if pool_error is None:
-            pool_error = ct.all_within
+        if within_subject_error is None:
+            within_subject_error = ct.all_within
 
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), **kwargs)
         self._configure_axis_data('y', ct.y, ylabel)
 
-        p = _plt_barplot(self._ax, ct, error, pool_error, styles, bottom, top, origin, pos, width, color, edgec, ec, test, tail, par, trend, corr, test_markers)
+        p = _plt_barplot(self._ax, ct, error, within_subject_error, styles, bottom, top, origin, pos, width, color, edgec, ec, test, tail, par, trend, corr, test_markers)
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
 
@@ -466,10 +465,9 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
         ``2sem``: 2 standard error of the mean;
         ``ci``: 95% confidence interval;
         ``99%ci``: 99% confidence interval.
-    pool_error
-        Pool the errors for the estimate of variability (default is True
-        for related measures designs, False for others). See Loftus & Masson
-        (1994).
+    within_subject_error
+        Within-subject error bars (see Loftus & Masson, 1994; default is
+        ``True`` for complete related measures designs, ``False`` otherwise).
     ec : matplotlib color
         Error bar color.
     test
@@ -533,7 +531,7 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
             sub: IndexArg = None,
             cells: Sequence[CellArg] = None,
             error: str = 'sem',
-            pool_error: bool = None,
+            within_subject_error: bool = None,
             ec: Any = 'k',
             test: Union[bool, float] = True,
             tail: Literal[-1, 0, 1] = 0,
@@ -566,12 +564,12 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
             styles = False
         else:
             styles = find_cell_styles(ct.cells, colors)
-        if pool_error is None:
-            pool_error = ct.all_within
+        if within_subject_error is None:
+            within_subject_error = ct.all_within
 
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), **kwargs)
 
-        p = _plt_barplot(self._ax, ct, error, pool_error, styles, bottom, top, origin, pos, width, c, edgec, ec, test, tail, par, trend, corr, test_markers, horizontal=True)
+        p = _plt_barplot(self._ax, ct, error, within_subject_error, styles, bottom, top, origin, pos, width, c, edgec, ec, test, tail, par, trend, corr, test_markers, horizontal=True)
         p.ax.set_ylim(p.left, p.right)
         self._configure_axis_data('x', ct.y, ylabel)
 
@@ -709,7 +707,7 @@ class _plt_barplot(_plt_uv_base):
             ax: mpl.axes.Axes,
             ct: Celltable,  # Data to plot.
             error: str,  # Variability description (e.g., "95%ci")
-            pool_error: bool,  # for the variability estimate
+            within_subject_error: bool,  # for the variability estimate
             styles: dict = False,
             bottom: float = None,
             top: float = None,
@@ -747,11 +745,11 @@ class _plt_barplot(_plt_uv_base):
                 origin = 0
 
         # error bars
-        if ct.x is None:
+        if ct.x is None or not within_subject_error:
             error_match = None
         else:
             error_match = ct.match
-        error_bars = stats.dispersion(ct.y.x, ct.x, error_match, error, pool_error, ct.cells)
+        error_bars = stats.dispersion(ct.y.x, ct.x, error_match, error, cells=ct.cells)
 
         # fig spacing
         plot_max = np.max(height + error_bars)

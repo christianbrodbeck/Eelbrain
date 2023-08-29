@@ -47,10 +47,9 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         ``sd``: standard deviation;
         ``all``: Show all traces;
         ``none``: No variability indication.
-    pool_error
-        Pool the errors for the estimate of variability (default is True
-        for related measures designs, False otherwise). See Loftus & Masson
-        (1994).
+    within_subject_error
+        Within-subject error bars (see Loftus & Masson, 1994; default is
+        ``True`` for complete related measures designs, ``False`` otherwise).
     legend
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
@@ -158,7 +157,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             data: Dataset = None,
             main: Callable = np.mean,
             error: Union[str, Callable] = 'sem',
-            pool_error: bool = None,
+            within_subject_error: bool = None,
             legend: LegendArg = None,
             labels: Dict[CellArg, str] = None,
             axtitle: Union[bool, Sequence[str]] = True,
@@ -202,7 +201,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         legend_handles = {}
         ymax = ymin = None
         for ax, ax_data in zip(self.axes, plot_data):
-            p = _ax_uts_stat(ax, ax_data, xdim, main, error, pool_error, clusters, pmax, ptrend, clip, error_alpha)
+            p = _ax_uts_stat(ax, ax_data, xdim, main, error, within_subject_error, clusters, pmax, ptrend, clip, error_alpha)
             self._plots.append(p)
             legend_handles.update(p.legend_handles)
             ymin = p.vmin if ymin is None else min(ymin, p.vmin)
@@ -470,7 +469,7 @@ class _ax_uts_stat:
             xdim: str,
             main: Callable,
             error: Union[str, Callable],
-            pool_error: bool,
+            within_subject_error: bool,
             clusters,
             pmax,
             ptrend,
@@ -483,7 +482,7 @@ class _ax_uts_stat:
         self.legend_handles = {}
 
         for layer in data:
-            plt = _plt_uts_stat(ax, layer, xdim, main, error, pool_error, clip, error_alpha)
+            plt = _plt_uts_stat(ax, layer, xdim, main, error, within_subject_error, clip, error_alpha)
             self.stat_plots.append(plt)
             if plt.main is not None:
                 self.legend_handles[layer.style_key] = plt.main[0]
@@ -668,7 +667,7 @@ class _plt_uts_stat:
             xdim: str,
             main: Callable,
             error: Union[str, Callable],
-            pool_error: bool,
+            within_subject_error: bool,
             clip: bool,
             error_alpha: float,
     ):
@@ -696,7 +695,7 @@ class _plt_uts_stat:
             if callable(error):
                 dev_data = layer.get_statistic(error)
             else:
-                dev_data = layer.get_dispersion(error, pool_error)
+                dev_data = layer.get_dispersion(error, within_subject_error)
             lower = y_main - dev_data
             upper = y_main + dev_data
             self.error = ax.fill_between(x, lower, upper, linewidth=0, clip_on=clip, **layer.style.fill_args(error_alpha))

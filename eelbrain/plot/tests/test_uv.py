@@ -40,7 +40,7 @@ def test_barplot():
 
     # multiple categories
     plot.Barplot('fltvar', 'A%B', match='rm', data=ds)
-    plot.Barplot('fltvar', 'A%B', match='rm', data=ds, pool_error=False)
+    plot.Barplot('fltvar', 'A%B', match='rm', data=ds, within_subject_error=False)
     # test against 0
     plot.Barplot('fltvar', 'A%B', match='rm', test=0, data=ds)
     plot.Barplot('fltvar', 'A%B', match='rm', test=0, tail=1, data=ds)
