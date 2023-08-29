@@ -1145,16 +1145,24 @@ class SequencePlotter:
     --------
     Plot an evoked response or TRF (i.e., a time by source :class:`NDVar`)
     in 50 ms bins between 0 and 300 ms. Use the :meth:`~NDVar.extrema` method to
-    plot peak activity in each time bin::
+    plot peak activity in each time bin. This will plot the most extreme
+    value including its sign, and thus show positive and negative effects::
 
+        # Bin the data
         ndvar_binned = ndvar.bin(step=0.050, start=0, stop=0.3, func='extrema')
+        # Initialize the SequencePlotter and set parameters for visualizing the brain
         sp = plot.brain.SequencePlotter()
         sp.set_brain_args(surf='smoothwm')
+        # Add the data to be plotted
         sp.add_ndvar(ndvar_binned)
+        # Generate the figure with multiple brain plots
         p = sp.plot_table(view='lateral')
+        # Save as you would normally
         p.save('Figure.pdf')
 
-    Plot specific time points in an evoked response or TRF (``ndvar``)::
+    Plot specific time points in an evoked response or TRF (``ndvar``). To do
+    this, simply add mutiple data objects. Make sure to pass a colormap or
+    ``vmax`` parameter to make the color-scale consistent between plots::
 
         cmap = plot.soft_threshold_colormap('xpolar-a', 0.0001, 0.010)
         sp = plot.brain.SequencePlotter()
@@ -1163,16 +1171,28 @@ class SequencePlotter:
             sp.add_ndvar(ndvar.sub(time=t), cmap=cmap, label=f'{int(t*1000)} ms')
         p = sp.plot_table(view='lateral', orientation='vertical')
 
-    Plot a test result::
+    Visualize a test result, by separately adding condition means and a
+    difference map that is masked by significance::
 
-        res = testnd.TTestRelated('srcm', 'condition')
+        res = testnd.TTestRelated('srcm', 'condition', 'a', 'b', match='subject', data=data)
         vmax = 3  # explicitly set vmax to make sure that the color-maps agree
         sp = plot.brain.SequencePlotter()
         sp.set_brain_args(surf='inflated')
         sp.add_ndvar(res.c1_mean, vmax=vmax, label='a')
-        sp.add_ndvar(res.c0_mean, vmax=vmax, label = 'b')
+        sp.add_ndvar(res.c0_mean, vmax=vmax, label='b')
         sp.add_ndvar(res.masked_difference(), vmax=vmax, label='a - b')
         p = sp.plot_table(view='lateral', orientation='vertical')
+
+    Plot a source by time test result, showing how a difference map evolves
+    over time::
+
+        res = testnd.TTestRelated('srcm', 'condition', 'a', 'b', match='subject', data=data)
+        difference = res.masked_difference()
+        binned = difference.bin(step=0.200, start=0.200, stop=1.00, func='extrema')
+        sp = plot.brain.SequencePlotter()
+        sp.add_ndvar(binned)
+        p = sp.plot_table(view='lateral', title='a = b')
+
     """
     max_n_bins = 25
 

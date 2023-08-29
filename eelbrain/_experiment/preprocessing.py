@@ -341,7 +341,7 @@ class RawSource(RawPipe):
 
 class CachedRawPipe(RawPipe):
 
-    _bad_chs_affect_cache: bool= False
+    _bad_chs_affect_cache: bool = False
     source: RawPipe = None  # set on linking
 
     def __init__(self, source, cache=True):
@@ -677,7 +677,7 @@ class RawICA(CachedRawPipe):
         if exists(path):
             ica = mne.preprocessing.read_ica(path)
             if not self._check_ica_channels(ica, raw):
-                self.log.info("Raw %s for subject=%r: ICA channels mismatch data channels", self.name, subject)
+                self.log.info("Raw %s for subject=%r: ICA channels mismatch data channels, recomputing ICA...", self.name, subject)
             else:
                 mtimes = [self.source.mtime(subject, recording, self._bad_chs_affect_cache) for recording in recordings]
                 if all(mtimes) and getmtime(path) > max(mtimes):
