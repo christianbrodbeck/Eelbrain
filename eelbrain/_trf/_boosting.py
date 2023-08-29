@@ -161,6 +161,9 @@ class BoostingResult(PickleableDataClass):
           - 1: Numba implementation
           - 2: Cython multiprocessing implementation (Eelbrain 0.38)
 
+    eelbrain_version : int
+        Version of Eelbrain with which the model was estimated.
+
 
     Examples
     --------
@@ -214,7 +217,8 @@ class BoostingResult(PickleableDataClass):
     partition_results: List[BoostingResult] = None
     # store the version of the boosting algorithm with which model was fit
     version: int = 14  # file format (updates when re-saving)
-    algorithm_version: int = -1  # does not change when re'saving
+    algorithm_version: int = -1  # do not change when re-saving
+    eelbrain_version: int = '< 0.39.6'  # do not change when re-saving
     # debug parameters
     y_pred: NDVar = None
     fit: Boosting = None
@@ -588,7 +592,7 @@ class BoostingResult(PickleableDataClass):
                 if not all(v is not None for v in values):
                     raise ValueError(f'partition_results avaiable for some but not all part-results')
                 new_value = [cls._eelbrain_concatenate(p_results) for p_results in zip(*values)]
-            elif field.name == 'algorithm_version':
+            elif field.name in ('algorithm_version', 'eelbrain_version'):
                 values = set(values)
                 if len(values) == 1:
                     new_value = values.pop()
@@ -788,6 +792,8 @@ class Boosting:
         debug
             Add additional attributes to the returned result.
         """
+        from .. import __version__ as eelbrain_version
+
         if cross_fit is None:
             cross_fit = bool(self.data.splits.n_test)
         elif cross_fit and not self.data.splits.n_test:
@@ -905,7 +911,8 @@ class Boosting:
                     h_i, self._get_h_failed(i), 0,
                     self.data.basis, self.data.basis_window, None,
                     self.data.y.shape[1], self.data.y_info, self.data.ydims,
-                    algorithm_version=2, i_test=i, **evaluations_i)
+                    algorithm_version=2, eelbrain_version=eelbrain_version,
+                    i_test=i, **evaluations_i)
                 partition_results_list.append(result)
         else:
             partition_results_list = None
@@ -921,7 +928,7 @@ class Boosting:
             # advanced data properties
             self.data.y.shape[1], self.data.y_info, self.data.ydims,
             partition_results=partition_results_list,
-            algorithm_version=2,
+            algorithm_version=2, eelbrain_version=eelbrain_version,
             i_test=i_test, **evaluations)
 
 
