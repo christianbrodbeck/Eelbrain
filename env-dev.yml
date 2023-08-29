@@ -40,7 +40,7 @@ dependencies:
 - wxpython >= 4.0.3, != 4.1.0  # double install of libraries
 # building
 - setuptools >= 17
-- cython >= 0.21
+- cython >= 3
 # docs
 - sphinx >= 3
 - sphinx-gallery

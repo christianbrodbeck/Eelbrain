@@ -82,7 +82,7 @@ setup(
     python_requires='>=3.8',
     setup_requires=[
         "numpy >= 1.20",
-        "cython >= 0.21",
+        "cython >= 3",
     ],
     extras_require={
         'base': [

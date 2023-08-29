@@ -1,5 +1,5 @@
 # optimized statistics functions
-# cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
+# cython: boundscheck=False, wraparound=False, cdivision=True
 from cython.view cimport array as cvarray
 from libc.stdlib cimport malloc, free
 cimport numpy as np
@@ -220,7 +220,7 @@ def ss(
 cdef int zero_variance(
         const np.npy_float64[:,:] y,
         unsigned long i,
-):
+) noexcept:
     """Check whether a column of y has zero variance"""
     cdef:
         unsigned int case
@@ -237,7 +237,7 @@ cdef void _lm_betas(
         unsigned long i,
         const np.npy_float64[:,:] xsinv,
         double *betas,
-):
+) noexcept:
     """Fit a linear model
 
     Parameters
@@ -272,7 +272,7 @@ cdef double _lm_res_ss(
         const np.npy_float64[:,:] x,
         int df_x,
         double *betas,
-):
+) noexcept:
     """Residual sum squares
 
     Parameters
