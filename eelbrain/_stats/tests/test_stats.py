@@ -93,7 +93,7 @@ def test_lm_r():
     assert_allclose(t[:, 0], r_res[3][8:12])
 
 
-def test_variability():
+def test_dispersion():
     "Test variability functions"
     ds = datasets.get_loftus_masson_1994()
     y = ds['n_recalled'].x.astype(np.float64)

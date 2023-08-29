@@ -1,14 +1,16 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Statistics functions that work on numpy arrays."""
+from __future__ import annotations
+
 from dataclasses import dataclass
 import re
-from typing import Optional, Sequence, Union
+from typing import Literal, Sequence, Union
 
 import numpy as np
 import scipy.stats
 from scipy.linalg import inv
 
-from .._data_obj import Categorial, CellArg, Factor, Model, Parametrization, asfactor, asmodel
+from .._data_obj import CategorialArg, CellArg, Dataset, FactorArg, Model, Parametrization, asarray, ascategorial, asfactor, asmodel
 from . import opt
 from . import vector
 
@@ -19,7 +21,7 @@ FLOAT64 = np.dtype('float64')
 @dataclass
 class DispersionSpec:
     multiplier: float = 1
-    measure: str = 'SEM'  # Literal['SEM', 'CI']
+    measure: Literal['SEM', 'CI', 'SD'] = 'SEM'
 
     @classmethod
     def from_string(cls, string: Union[str, 'DispersionSpec']):
@@ -456,11 +458,12 @@ def ttest_t(p, df, tail=0):
 
 def dispersion(
         y: np.ndarray,
-        x: Optional[Categorial],
-        match: Factor,
-        spec: str,
-        pool: bool,
+        x: CategorialArg,
+        match: FactorArg,
+        spec: str = 'SEM',
+        pool: bool = None,
         cells: Sequence[CellArg] = None,
+        data: Dataset = None,
 ):
     """Calculate data dispersion measure
 
@@ -492,11 +495,16 @@ def dispersion(
         an estimate for every cell in x.
     """
     spec_ = DispersionSpec.from_string(spec)
+    y, n = asarray(y, data=data, return_n=True)
+    if match is not None:
+        match = asfactor(match, data=data, n=n)
     if x is None:
         if match is not None and match.df == len(match) - 1:
             raise ValueError("Can't calculate within-subject error because the match predictor explains all variability")
-    elif not pool and cells is None:
-        cells = x.cells
+    else:
+        x = ascategorial(x, data=data, n=n)
+        if not pool and cells is None:
+            cells = x.cells
 
     y = np.asarray(y, np.float64)
     if spec_.measure == 'SD':
