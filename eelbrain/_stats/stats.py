@@ -229,7 +229,7 @@ def rmssd(y):
     return np.sqrt(x)
 
 
-class SEM:
+class Dispersion:
 
     def __init__(self, y, x=None, match=None):
         """Standard error of the mean (SEM)
@@ -454,7 +454,7 @@ def ttest_t(p, df, tail=0):
     return t
 
 
-def variability(
+def dispersion(
         y: np.ndarray,
         x: Optional[Categorial],
         match: Factor,
@@ -462,7 +462,7 @@ def variability(
         pool: bool,
         cells: Sequence[CellArg] = None,
 ):
-    """Calculate data variability
+    """Calculate data dispersion measure
 
     Parameters
     ----------
@@ -506,11 +506,11 @@ def variability(
         if spec_.multiplier != 1:
             out *= spec_.multiplier
     elif pool or x is None:
-        out = SEM(y, x, match).get(spec_)
+        out = Dispersion(y, x, match).get(spec_)
     elif match is not None:
         raise NotImplementedError(f"{spec!r} unpooled with match")
     else:
-        out = np.array([SEM(y[x == cell]).get(spec_) for cell in cells])
+        out = np.array([Dispersion(y[x == cell]).get(spec_) for cell in cells])
 
     # return scalars for 1d-arrays
     if out.ndim == 0:

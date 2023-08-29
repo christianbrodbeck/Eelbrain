@@ -10,7 +10,7 @@ from ._data_obj import (
     ascategorial, asdataobject, assub,
     cellname, dataobj_repr,
 )
-from ._stats.stats import SEM, DispersionSpec, variability
+from ._stats.stats import Dispersion, DispersionSpec, dispersion
 from functools import cached_property
 from ._utils.numpy_utils import FULL_SLICE
 
@@ -368,7 +368,7 @@ class Celltable:
 
     @cached_property
     def _pooled_sem(self):
-        return SEM(self.y.x, self.x, self.match)
+        return Dispersion(self.y.x, self.x, self.match)
 
     def _get_dispersion(
             self,
@@ -385,7 +385,7 @@ class Celltable:
         if pool:
             sem = self._pooled_sem
         else:
-            sem = SEM(self.data[cell].x)
+            sem = Dispersion(self.data[cell].x)
         return sem.get(spec)
 
     def get_statistic(self, func=np.mean):
@@ -405,7 +405,7 @@ class Celltable:
             var_spec = func
 
             def func(y):
-                return variability(y, None, None, var_spec, False)
+                return dispersion(y, None, None, var_spec, False)
 
         return [func(self.data[cell].x) for cell in self.cells]
 
@@ -447,7 +447,7 @@ class Celltable:
         match = self.match if self.all_within else None
         if pool is None:
             pool = self.all_within
-        x = variability(self.y.x, self.x, match, error, pool)
+        x = dispersion(self.y.x, self.x, match, error, pool)
         if isinstance(self.y, NDVar):
             dims = self.y.dims[1:]
             if not pool:

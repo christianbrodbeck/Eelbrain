@@ -751,7 +751,7 @@ class _plt_barplot(_plt_uv_base):
             error_match = None
         else:
             error_match = ct.match
-        error_bars = stats.variability(ct.y.x, ct.x, error_match, error, pool_error, ct.cells)
+        error_bars = stats.dispersion(ct.y.x, ct.x, error_match, error, pool_error, ct.cells)
 
         # fig spacing
         plot_max = np.max(height + error_bars)
