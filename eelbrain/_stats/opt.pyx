@@ -30,14 +30,13 @@ def anova_full_fmaps(
     e_ms : array (n_effects, n_effects)
         Each row represents the expected MS of one effect.
     """
-    cdef Py_ssize_t i, i_beta, i_effect, i_effect_ms, i_start, i_stop, case
-    cdef size_t df, i_fmap
+    cdef Py_ssize_t i, i_beta, i_fmap, i_effect, i_effect_ms, i_start, i_stop, case, df
     cdef double v, ss, ms_denom
 
-    cdef unsigned long n_tests = y.shape[1]
-    cdef unsigned int n_cases = y.shape[0]
-    cdef unsigned int n_betas = x.shape[1]
-    cdef unsigned int n_effects = effects.shape[0]
+    cdef Py_ssize_t n_tests = y.shape[1]
+    cdef Py_ssize_t n_cases = y.shape[0]
+    cdef Py_ssize_t n_betas = x.shape[1]
+    cdef Py_ssize_t n_effects = effects.shape[0]
     cdef double *betas = <double *>malloc(sizeof(double) * n_betas)
     cdef double *mss = <double *>malloc(sizeof(double) * n_effects)
 
@@ -281,11 +280,11 @@ cdef double _lm_res_ss(
     betas : array (n_betas,)
         Fitted regression coefficients.
     """
-    cdef unsigned int case, i_beta
+    cdef Py_ssize_t case, i_beta
     cdef double predicted_y
 
     cdef double ss = 0
-    cdef unsigned int n_cases = y.shape[0]
+    cdef Py_ssize_t n_cases = y.shape[0]
 
     for case in range(n_cases):
         predicted_y = 0
@@ -463,14 +462,14 @@ def t_ind(
         const np.npy_int8[:] group,
 ):
     "Indpendent-samples t-test, assuming equal variance"
-    cdef unsigned long i, case
+    cdef Py_ssize_t i, case
     cdef double mean0, mean1, var
 
-    cdef unsigned long n_tests = y.shape[1]
-    cdef unsigned long n_cases = y.shape[0]
-    cdef unsigned long df = n_cases - 2
-    cdef unsigned long n0 = 0
-    cdef unsigned long n1 = 0
+    cdef Py_ssize_t n_tests = y.shape[1]
+    cdef Py_ssize_t n_cases = y.shape[0]
+    cdef Py_ssize_t df = n_cases - 2
+    cdef Py_ssize_t n0
+    cdef Py_ssize_t n1 = 0
 
     if group.shape[0] != n_cases:
         raise ValueError("length of group does not match n_cases in y")
@@ -511,7 +510,7 @@ def t_ind(
 def has_zero_variance(const np.npy_float64[:,:] y):
     "True if any data-columns have zero variance"
     cdef double value
-    cdef unsigned long case, i
+    cdef Py_ssize_t case, i
 
     for i in range(y.shape[1]):
         value = y[0, i]
