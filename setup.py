@@ -54,10 +54,10 @@ if IS_WINDOWS:
 else:
     open_mp_args = {
         **args,
-        'extra_compile_args': ['-Wno-unreachable-code', '-fopenmp'],
+        'extra_compile_args': ['-Wno-unreachable-code', '-fopenmp', '-O3', '-mavx'],
         'extra_link_args': ['-fopenmp'],
     }
-    args['extra_compile_args'] = ['-Wno-unreachable-code']
+    args['extra_compile_args'] = ['-Wno-unreachable-code', '-O3', '-mavx']
 ext = '.pyx' if cythonize else '.c'
 ext_cpp = '.pyx' if cythonize else '.cpp'
 extensions = [
