@@ -15,7 +15,6 @@ import operator
 from typing import Any, Callable, Literal, Sequence, Union
 
 import mne
-import numba
 import numpy as np
 import numpy
 from scipy import linalg, ndimage, signal, stats
@@ -31,6 +30,7 @@ from .._stats.connectivity import find_peaks as _find_peaks
 from .._trf._fit_metrics import error_for_indexes
 from .._utils import deprecate_ds_arg
 from .._utils.numpy_utils import aslice, newaxis
+from ._convolve import convolve_2d
 
 
 NDNumeric = Union[NDVar, Var, np.ndarray, float]
@@ -253,57 +253,25 @@ def convolve(h, x, ds=None, name=None):
                 msg += f"\nh: {dim1}\nx: {dim2}"
         raise DimensionMismatchError(msg)
     # output shape
-    x_only_shape = tuple(len(d) for d in x.get_dims(a.x_only))
-    h_only_shape = tuple(len(d) for d in h.get_dims(a.y_only))
-    shared_shape = tuple(len(d) for d in shared_dims)
-    out_shape = x_only_shape + h_only_shape + (x_time.nsamples,)
-    out = np.zeros(out_shape)
+    x_only_shape = [len(d) for d in x.get_dims(a.x_only)]
+    h_only_shape = [len(d) for d in h.get_dims(a.y_only)]
+    shared_shape = [len(d) for d in shared_dims]
+    out_shape = [*x_only_shape, *h_only_shape, x_time.nsamples]
+    out = np.empty(out_shape)
     # flatten arrays
     n_x_only = reduce(operator.mul, x_only_shape, 1)
     n_h_only = reduce(operator.mul, h_only_shape, 1)
     n_shared = reduce(operator.mul, shared_shape, 1)
-    x_flat = x.get_data(a.x_all).reshape((n_x_only, n_shared, x_time.nsamples))
-    h_flat = h.get_data(a.y_all).reshape((n_h_only, n_shared, len(h_time)))
+    x_flat = x.get_data(a.x_all).reshape((n_x_only, n_shared, x_time.nsamples)).astype(float, copy=False)
+    h_flat = h.get_data(a.y_all).reshape((n_h_only, n_shared, len(h_time))).astype(float, copy=False)
     out_flat = out.reshape((n_x_only, n_h_only, x_time.nsamples))
-    # tau as indixes
+    # convolve
     h_i_start = int(round(h_time.tmin / h_time.tstep))
-    h_i_max = int(round(h_time.tmax / h_time.tstep))
-    parallel_convolve(h_flat, x_flat, out_flat, h_i_start, h_i_max + 1)
+    segments = np.array(((0, x_time.nsamples),), np.int64)
+    x_pads = np.zeros((n_x_only, n_shared))
+    convolve_2d(h_flat, x_flat, x_pads, h_i_start, segments, out_flat)
     dims = x.get_dims(a.x_only) + h.get_dims(a.y_only) + (x_time,)
     return NDVar(out, dims, *op_name(x, name=name))
-
-
-@numba.njit(nogil=True, cache=True, parallel=True)
-def parallel_convolve(
-        h_flat: np.ndarray,  # n_h_only, n_shared, n_h_times
-        x_flat: np.ndarray,  # n_x_only, n_shared, n_x_times
-        out_flat: np.ndarray,  # n_x_only, n_h_only, n_x_times
-        i_start: int,
-        i_stop: int,
-):
-    # loop through x and h dimensions
-    out_indexes = [(ix, ih) for ix in range(len(x_flat)) for ih in range(len(h_flat))]
-    for i_out in numba.prange(len(out_indexes)):
-        i_x, i_h = out_indexes[i_out]
-        convolve_jit(h_flat[i_h], x_flat[i_x], out_flat[i_x, i_h], i_start, i_stop)
-
-
-@numba.njit(nogil=True, cache=True)
-def convolve_jit(
-        h: np.ndarray,  # n_h, n_h_times
-        x: np.ndarray,  # n_h, n_x_times
-        out: np.ndarray,  # n_x_times
-        i_start: int,
-        i_stop: int,
-):
-    n_times = x.shape[1]
-    for ih in range(h.shape[0]):
-        for it in range(n_times):
-            for i_tau, tau in enumerate(range(i_start, i_stop)):
-                it_tau = it + tau
-                if it_tau < 0 or it_tau >= n_times:
-                    continue
-                out[it_tau] += h[ih, i_tau] * x[ih, it]
 
 
 def correlation_coefficient(x, y, dim=None, name=None):

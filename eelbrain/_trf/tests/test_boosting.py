@@ -15,7 +15,7 @@ import scipy.stats
 from eelbrain import datasets, boosting, combine, convolve, correlation_coefficient, epoch_impulse_predictor, NDVar, UTS, Scalar
 
 from eelbrain.testing import assert_dataobj_equal
-from eelbrain._trf._boosting import Boosting, DeconvolutionData, Split, convolve as boosting_convolve
+from eelbrain._trf._boosting import Boosting, DeconvolutionData, Split, convolve_1d
 from eelbrain._trf._boosting_opt import boosting_fit
 
 
@@ -26,6 +26,19 @@ def assert_res_equal(res1, res):
     assert_array_equal(res1.h, res.h)
     assert res1.r == res.r
     assert res1.r_rank == res.r_rank
+
+
+def convolve_array(
+        h: np.ndarray,  # (n_stims, h_n_samples)
+        x: np.ndarray,  # (n_stims, n_samples)
+        x_pads: np.ndarray,  # (n_stims,)
+        h_i_start: int = 0,
+) -> np.ndarray:
+    n_x, n_times = x.shape
+    segments = np.array(((0, n_times),), np.int64)
+    out = np.empty(n_times)
+    convolve_1d(h, x, x_pads, h_i_start, segments, out)
+    return out
 
 
 def test_boosting():
@@ -274,7 +287,7 @@ def test_boosting_fit():
     h, history = boosting_fit(y, x, x_pads, split.train, split.validate, split.train_and_validate, tstart, tstop, 0.005, 0.005, 2)
     test_sse_history = [step.e_test for step in history]
     test_seg_len = int(floor(x.shape[1] / 40))
-    y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
+    y_pred = convolve_array(h, x[:, :test_seg_len], x_pads)
     r, rr = evaluate_kernel(y, y_pred, test_seg_len, h.shape[1] - 1)
 
     assert_allclose(test_sse_history, mat['Str_testE'][0])
@@ -292,7 +305,7 @@ def test_boosting_fit():
     h, history = boosting_fit(y, x, x_pads, split.train, split.validate, split.train_and_validate, tstart, tstop, 0.005, 0.005, 2)
     test_sse_history = [step.e_test for step in history]
     test_seg_len = int(floor(x.shape[1] / 40))
-    y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
+    y_pred = convolve_array(h, x[:, :test_seg_len], x_pads)
     r, rr = evaluate_kernel(y, y_pred, test_seg_len, h.shape[1] - 1)
 
     # svdboostV4pred multiplies error by number of predictors

@@ -23,16 +23,16 @@ from itertools import chain, repeat
 from math import ceil
 from operator import mul
 import time
-from typing import Any, Callable, List, Literal, Optional, Union, Tuple, Sequence
+from typing import Callable, List, Literal, Optional, Union, Tuple, Sequence
 import warnings
 
-import numba
 import numpy as np
 
 from .._config import CONFIG
 from .._data_obj import Case, Dataset, Dimension, SourceSpaceBase, NDVar, CategorialArg, NDVarArg, dataobj_repr
 from .._exceptions import OldVersionError
-from .._ndvar.ndvar import _concatenate_values, convolve_jit, set_connectivity, set_parc
+from .._ndvar.ndvar import _concatenate_values, set_connectivity, set_parc
+from .._ndvar._convolve import convolve_1d, convolve_2d
 from .._utils import PickleableDataClass, deprecate_ds_arg, user_activity
 from .shared import PredictorData, DeconvolutionData, Split, Splits, merge_segments
 from ._fit_metrics import get_evaluators
@@ -160,6 +160,7 @@ class BoostingResult(PickleableDataClass):
           - 0: Normalize ``x`` after applying basis
           - 1: Numba implementation
           - 2: Cython multiprocessing implementation (Eelbrain 0.38)
+          - 3: Cython based convolution (Eelbrain 0.40)
 
     eelbrain_version : int
         Version of Eelbrain with which the model was estimated.
@@ -469,7 +470,7 @@ class BoostingResult(PickleableDataClass):
                 h_array.append(h_data)
             h_array = np.concatenate(h_array, 1)
             # convolution
-            parallel_convolve_segments(h_array, x_array, x_pads, h_i_start, segments, y_pred)
+            convolve_2d(h_array, x_array, x_pads, h_i_start, segments, y_pred)
         # package output
         if name is None:
             name = self.y
@@ -867,7 +868,7 @@ class Boosting:
             for i_y, y_pred_i in enumerate(y_pred_iter):
                 # for cross-validation, different segments are predicted by different h:
                 for h, segments in hs:
-                    convolve_segments_jit(h[i_y], self.data.x, self.data.x_pads, self._i_start, segments, y_pred_i)
+                    convolve_1d(h[i_y], self.data.x, self.data.x_pads, self._i_start, segments, y_pred_i)
 
                 if evaluators_s:
                     for e in evaluators_s:
@@ -913,7 +914,7 @@ class Boosting:
                     h_i, self._get_h_failed(i), 0,
                     self.data.basis, self.data.basis_window, None,
                     self.data.y.shape[1], self.data.y_info, self.data.ydims,
-                    algorithm_version=2, eelbrain_version=eelbrain_version,
+                    algorithm_version=3, eelbrain_version=eelbrain_version,
                     i_test=i, **evaluations_i)
                 partition_results_list.append(result)
         else:
@@ -930,7 +931,7 @@ class Boosting:
             # advanced data properties
             self.data.y.shape[1], self.data.y_info, self.data.ydims,
             partition_results=partition_results_list,
-            algorithm_version=2, eelbrain_version=eelbrain_version,
+            algorithm_version=3, eelbrain_version=eelbrain_version,
             i_test=i_test, **evaluations)
 
 
@@ -1093,95 +1094,6 @@ def boosting(
     fit = Boosting(dec_data)
     fit.fit(tstart, tstop, selective_stopping, error, delta, mindelta)
     return fit.evaluate_fit(debug=debug, partition_results=partition_results)
-
-
-def convolve(
-        h: np.ndarray,  # (n_stims, h_n_samples)
-        x: np.ndarray,  # (n_stims, n_samples)
-        x_pads: np.ndarray,  # (n_stims,)
-        h_i_start: int,
-        segments: np.ndarray = None,  # (n_segments, 2)
-        out: np.ndarray = None,
-) -> np.ndarray:
-    """h * x with time axis matching x
-
-    Parameters
-    ----------
-    h
-        H.
-    x
-        X.
-    x_pads
-        Padding for x.
-    h_i_start
-        Time shift of the first sample of ``h``.
-    segments
-        Data segments.
-    out
-        Buffer for predicted ``y``.
-    """
-    n_x, n_times = x.shape
-    if segments is None:
-        segments = np.array(((0, n_times),), np.int64)
-    if out is None:
-        out = np.empty(n_times)
-    return convolve_segments_jit(h, x, x_pads, h_i_start, segments, out)
-
-
-@numba.njit(nogil=True, cache=True, parallel=True)
-def parallel_convolve_segments(
-        h_flat: np.ndarray,  # (n_h_only, n_shared, n_h_times)
-        x_flat: np.ndarray,  # (n_x_only, n_shared, n_x_times)
-        x_pads: np.ndarray,  # (n_x_only, n_shared)
-        h_i_start: int,  # offset of the first sample of h
-        segments: np.ndarray,  # (n_segments, 2)
-        out_flat: np.ndarray,  # (n_x_only, n_h_only, n_x_times)
-):
-    # loop through x and h dimensions
-    out_indexes = [(ix, ih) for ix in range(len(x_flat)) for ih in range(len(h_flat))]
-    for i_out in numba.prange(len(out_indexes)):
-        i_x, i_h = out_indexes[i_out]
-        convolve_segments_jit(h_flat[i_h], x_flat[i_x], x_pads[i_x], h_i_start, segments, out_flat[i_x, i_h])
-
-
-@numba.njit(nogil=True, cache=True)
-def convolve_segments_jit(
-        h: np.ndarray,  # (n_x, n_h_times)
-        x: np.ndarray,  # (n_x, n_x_times)
-        x_pads: np.ndarray,  # (n_x,)
-        h_i_start: int,  # offset of the first sample of h
-        segments: np.ndarray,  # (n_segments, 2)
-        out: np.ndarray,  # (n_x_times,)
-):
-    h_n_times = h.shape[1]
-    segments_start = segments[:, 0]
-    segments_stop = segments[:, 1]
-    for start, stop in zip(segments_start, segments_stop):
-        out[start: stop] = 0
-    h_i_stop = h_i_start + h_n_times
-
-    # padding
-    h_pad = np.sum(h * x_pads.reshape((-1, 1)), 0)
-    # padding for pre-
-    pad_head_n_times = max(0, h_n_times + h_i_start)
-    if pad_head_n_times:
-        pad_head = np.zeros(pad_head_n_times)
-        for i in range(min(pad_head_n_times, h_n_times)):
-            pad_head[:pad_head_n_times - i] += h_pad[- i - 1]
-    # padding for post-
-    pad_tail_n_times = -min(0, h_i_start)
-    if pad_tail_n_times:
-        pad_tail = np.zeros(pad_tail_n_times)
-        for i in range(pad_tail_n_times):
-            pad_tail[i:] += h_pad[i]
-
-    for start, stop in zip(segments_start, segments_stop):
-        if pad_head_n_times:
-            out[start: start + pad_head_n_times] += pad_head
-        if pad_tail_n_times:
-            out[stop - pad_tail_n_times: stop] += pad_tail
-        convolve_jit(h, x[:, start:stop], out[start:stop], h_i_start, h_i_stop)
-    return out
 
 
 def package_splits(splits: Sequence[np.ndarray]) -> np.ndarray:
