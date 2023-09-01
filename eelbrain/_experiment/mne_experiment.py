@@ -686,6 +686,7 @@ class MneExperiment(FileTree):
         self._register_compound('test_desc', ('epoch_visit', 'test', 'test_options'))
 
         # Define make handlers
+        self._bind_make('mri-dir', self._make_mri)
         self._bind_cache('cov-file', self.make_cov)
         self._bind_cache('src-file', self.make_src)
         self._bind_cache('fwd-file', self.make_fwd)
@@ -4834,6 +4835,17 @@ class MneExperiment(FileTree):
             stc = case['stcm']
             stc.save(path)
 
+    def _make_mri(self):
+        mri_sdir = Path(self.get('mri-sdir'))
+        if not mri_sdir.exists():
+            raise IOError(f"Cannot access MRI directory at {mri_sdir}")
+        mrisubject = self.get('mrisubject')
+        if mrisubject == 'fsaverage':
+            self._log.info(f"MRI for FSAverage is missing, trying to generate it.")
+            mne.create_default_subject(subjects_dir=mri_sdir)
+        else:
+            raise IOError(f"MRI for {mrisubject} is missing and cannot be created automatically")
+
     def make_plot_annot(self, surf='inflated', redo=False, **state):
         """Create a figure for the contents of an annotation file
 
@@ -5711,7 +5723,7 @@ class MneExperiment(FileTree):
                 else:
                     raise RuntimeError(f'src={src!r}')
                 voi.extend('%s-%s' % fmt for fmt in product(('Left', 'Right'), voi_lat))
-                mri_dir = self.get('mri-dir')
+                mri_dir = self.get('mri-dir', make=True)
                 sss = mne.setup_volume_source_space(subject, pos=float(param), bem=bem, mri=join(mri_dir, 'mri', 'aseg.mgz'), volume_label=voi, subjects_dir=mri_sdir)
                 sss = merge_volume_source_space(sss, name)
                 if special is None:
