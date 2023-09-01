@@ -3,7 +3,7 @@
 import inspect
 from itertools import chain
 import logging
-from typing import Any, Callable, Dict, Literal, Sequence, Union
+from typing import Any, Callable, Dict, Literal, Optional, Sequence, Union
 
 import numpy as np
 import scipy.linalg
@@ -583,14 +583,31 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
 class _plt_uv_base:
     """Base for barplot and boxplot -- x is categorial, y is scalar"""
 
-    def __init__(self, ax, ct, origin, pos, width, bottom, plot_max, top, test, tail, corr, par, trend, test_markers, horizontal=False):
+    def __init__(
+            self,
+            ax: matplotlib.axes.Axes,
+            ct: Celltable,
+            origin: Optional[float],
+            pos: Sequence[float],
+            width: Sequence[float],
+            bottom: float,
+            plot_max: float,
+            top: float,
+            test: Union[float, bool, None],
+            tail: int,
+            corr: test.MCCArg,
+            par: bool,
+            trend: str,
+            test_markers: bool,
+            horizontal: bool = False,
+    ):
         # pairwise tests
         y_unit = (plot_max - bottom) / 15
         if ct.x is None and test is True:
             test = 0.
         if test is True:
             if tail:
-                raise ValueError(f"tail={tail} for pairwise test")
+                raise ValueError(f"{tail=} for pairwise test")
             y_top = _mark_plot_pairwise(ax, ct, par, pos, plot_max, y_unit, corr, trend, test_markers, top=top)
         elif (test is False) or (test is None):
             y_top = plot_max + y_unit

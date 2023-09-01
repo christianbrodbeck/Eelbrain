@@ -5841,36 +5841,50 @@ class MneExperiment(FileTree):
         else:
             self.set(**dict(zip(field, next_)))
 
-    def plot_annot(self, parc=None, surf=None, views=None, hemi=None,
-                   borders=False, alpha=0.7, w=None, h=None, axw=None, axh=None,
-                   foreground=None, background=None, seeds=False, **state):
+    def plot_annot(
+            self,
+            parc: str = None,
+            surf: str = None,
+            views: Union[str, Sequence[str]] = None,
+            hemi: str = None,
+            borders: Union[bool, int] = False,
+            alpha: float = 0.7,
+            w: int = None,
+            h: int = None,
+            axw: int = None,
+            axh: int = None,
+            foreground: Any = None,
+            background: Any = None,
+            seeds: bool = False,
+            **state,
+    ):
         """Plot the annot file on which the current parcellation is based
 
         Parameters
         ----------
-        parc : None | str
+        parc
             Parcellation to plot. If None (default), use parc from the current
             state.
         surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
             Freesurfer surface to use as brain geometry.
-        views : str | sequence of str
+        views
             One or several views to show in the figure. The options are:
             ``'lateral', 'medial', 'ventral', 'dorsal', 'rostral', 'parietal',
             'frontal', 'caudal'``.
         hemi : 'lh' | 'rh' | 'both' | 'split'
             Which hemispheres to plot (default includes hemisphere with more
             than one label in the annot file).
-        borders : bool | int
+        borders
             Show only label borders (PySurfer Brain.add_annotation() argument).
-        alpha : scalar
+        alpha
             Alpha of the annotation (1=opaque, 0=transparent, default 0.7).
-        axw : int
+        axw
             Figure width per hemisphere.
         foreground : mayavi color
             Figure foreground color (i.e., the text color).
         background : mayavi color
             Figure background color.
-        seeds : bool
+        seeds
             Plot seeds as points (only applies to seeded parcellations).
         ...
             State parameters.
