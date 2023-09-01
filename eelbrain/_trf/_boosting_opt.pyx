@@ -22,7 +22,7 @@ cdef double square(double x) noexcept nogil:
 
 cdef void l1_for_delta(
         FLOAT64 * y_error,
-        FLOAT64 [:] x,
+        FLOAT64 * x,
         double x_pad,  # pad x outside valid convolution area
         INT64 [:,:] indexes,  # training segment indexes
         double delta,
@@ -68,7 +68,7 @@ cdef void l1_for_delta(
 
 cdef void l2_for_delta(
         FLOAT64 * y_error,
-        FLOAT64 [:] x,
+        FLOAT64 * x,
         double x_pad,  # pad x outside valid convolution area
         INT64 [:,:] indexes,  # training segment indexes
         double delta,
@@ -391,13 +391,13 @@ cdef void generate_options(
     cdef:
         double e_add, e_sub, e_new, x_pad
         Py_ssize_t i_stim, i_time, new_sign
-        FLOAT64 [:] x_stim
+        FLOAT64 * x_stim
 
     step.e_train = inf
     for i_stim in range(n_x):
         if x_active[i_stim] == 0:
             continue
-        x_stim = x[i_stim]
+        x_stim = &x[i_stim, 0]
         x_pad = x_pads[i_stim]
         for i_time in range(i_start_by_x[i_stim], i_stop_by_x[i_stim]):
             # +/- delta
@@ -528,6 +528,7 @@ def boosting_fit(
         Py_ssize_t n_times_h = np.max(i_stop_by_x) - i_start
         FLOAT64[:, :] h = np.empty((n_x, n_times_h))
 
+    x = np.asarray(x, order='C')
     result = boosting_run(y, x, x_pads, h, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, i_start, n_times_h)
     out = []
     step = result.history
