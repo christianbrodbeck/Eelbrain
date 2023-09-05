@@ -1,38 +1,15 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from contextlib import ContextDecorator
 import os
-import platform
 import sys
 
 IS_OSX = sys.platform == 'darwin'
-IS_MACOS_ARM = IS_OSX and platform.processor() == 'arm'
 IS_WINDOWS = os.name == 'nt'
 
-if IS_OSX and not IS_MACOS_ARM:  # Causes segfault on ARM
-    from . import macos as c
+if IS_OSX:
+    from .macos import user_activity
 else:
-    from . import dummy_os as c
-
-
-class ActivityContext(ContextDecorator):
-    """Context disabling idle sleep and App Nap"""
-    def __init__(self, options, message):
-        self.n_processes = 0
-        self.options = options
-        self.message = message
-
-    def __enter__(self):
-        if self.n_processes == 0 and IS_OSX:
-            self._activity = c.begin_activity(self.options, self.message)
-        self.n_processes += 1
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.n_processes -= 1
-        if self.n_processes == 0 and IS_OSX:
-            c.end_activity(self._activity)
-
-
-user_activity = ActivityContext(c.NSActivityUserInitiated, 'Eelbrain user activity')
+    def user_activity(func):
+        return func
 
 
 def restore_main_spec():

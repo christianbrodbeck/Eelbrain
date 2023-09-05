@@ -6,9 +6,11 @@ channels:
 - conda-forge
 dependencies:
 - python >= 3.8
+# packaging
 - pip
 - packaging
 - twine
+# Scientific Python base
 - libblas=*=*mkl  # openblas produces incorrect results for ICA in iMac Pro
 - libcblas
 - libclang
@@ -20,6 +22,8 @@ dependencies:
 - pymatreader
 - pyarrow
 - pillow
+# OS integration
+- appnope
 - psutil
 # mne-python
 - mne >= 0.19
