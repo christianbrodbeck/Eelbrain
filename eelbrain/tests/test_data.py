@@ -737,7 +737,7 @@ def test_factor():
     # cell order
     assert Factor('ab').cells == ('a', 'b')
     # alphabetical if labels is unspecified
-    assert Factor('ba').cells == ('a', 'b')
+    assert Factor('ba').cells == ('b', 'a')
     # follow labels arg
     a = np.tile(np.arange(3), 3)
     f = Factor(a, labels={2: 'a', 1: 'b', 0: 'c'})

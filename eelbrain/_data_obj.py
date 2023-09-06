@@ -2333,9 +2333,9 @@ class Factor(_Effect):
     .name : None | str
         The Factor's name.
     .cells : tuple of str
-        Ordered names of all cells. Order is determined by the order of the
-        ``labels`` argument. if ``labels`` is not specified, the order is
-        initially alphabetical.
+        Ordered names of all cells. Order is determined 1) by the order of
+        cells in the ``labels`` argument, and 2) for cells that do not occur in
+        ``labels`` it is determined by first occurrence in ``x``.
     .random : bool
         Whether the factor represents a random or fixed effect (for ANOVA).
 
@@ -2395,12 +2395,12 @@ class Factor(_Effect):
         if isinstance(x, Factor):
             # translate label keys to x codes
             labels = {x._codes[src]: dst for src, dst in labels.items() if src in x._codes}
-            if default is None:  # fill in missing labels from x
+            # add labels that are not in `labels`
+            if default is None:  # from x
                 labels.update({code: label for code, label in x._labels.items() if code not in labels})
             else:  # use default
                 labels.update({code: default for code in x._labels if code not in labels})
             x = x.x
-        ordered_cells = list(labels.values())
 
         if isinstance(x, np.ndarray) and x.dtype.kind in 'ifb':
             assert x.ndim == 1
@@ -2441,11 +2441,8 @@ class Factor(_Effect):
             if highest_code >= 2**32:
                 raise RuntimeError("Too many categories in this Factor")
 
-        # sort previously unsorted labels alphabetically
-        unordered_cells = [v for v in labels.values() if v not in ordered_cells]
-        labels = chain(ordered_cells, sorted(unordered_cells))
         # redefine labels for new codes
-        labels = {codes[label]: label for label in labels if label in codes}
+        labels = {codes[label]: label for label in labels.values() if label in codes}
 
         if not (isinstance(repeat, int) and repeat == 1):
             x_ = x_.repeat(repeat)

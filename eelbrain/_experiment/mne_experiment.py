@@ -4365,7 +4365,11 @@ class MneExperiment(FileTree):
                     cells = ['No comment']
                 comments = [e.comment for e in evoked]
                 if comments != cells:
-                    raise RuntimeError(f"Error reading cached evoked: {comments=}, {cells=}")
+                    if set(comments) == set(cells):
+                        index = [comments.index(cell) for cell in cells]
+                        evoked = [evoked[i] for i in index]
+                    else:
+                        raise RuntimeError(f"Error reading cached evoked: {comments=}, {cells=}")
                 ds['evoked'] = evoked
                 return ds
             self._log.debug("Evoked outdated (%s)", evoked[0].info['description'])
