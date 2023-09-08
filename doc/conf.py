@@ -253,7 +253,6 @@ intersphinx_mapping = {
     'nilearn': ('https://nilearn.github.io', None),
     'numpy': ('https://numpy.org/doc/stable', None),
     'pandas': ('https://pandas.pydata.org/docs', None),
-    'pyarrow': ('https://arrow.apache.org/docs/python', None),
     'rpy2': ('https://rpy2.github.io/doc', None),
     'scipy': ('https://docs.scipy.org/doc/scipy', None),
     'surfer': ('https://pysurfer.github.io', None),
