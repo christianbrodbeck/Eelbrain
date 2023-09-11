@@ -376,7 +376,7 @@ class DeconvolutionData:
 
         self.time = x_data.time_dim
         self.segments = x_data.segments
-        self.shortest_segment_n_times = x_data.n_times
+        self.shortest_segment_n_times = np.min(np.diff(x_data.segments, axis=1))
         self.in_place = in_place
         # y
         self.y = y_data  # (n_signals, n_times)
