@@ -693,23 +693,25 @@ class Boosting:
             if any(start >= stop for start, stop in zip(self.tstart, self.tstop)):
                 raise ValueError(f"Some tstart > tstop: {tstart=} and {tstop=}")
             n_xs = [reduce(mul, map(len, xdims), 1) for _, xdims, _ in self.data._x_meta]
-            tstart = [t for t, n in zip(tstart, n_xs) for _ in range(n)]
-            tstop = [t for t, n in zip(tstop, n_xs) for _ in range(n)]
+            tstart_by_x = [t for t, n in zip(tstart, n_xs) for _ in range(n)]
+            tstop_by_x = [t for t, n in zip(tstop, n_xs) for _ in range(n)]
         else:
             if tstart >= tstop:
                 raise ValueError(f"{tstart=} > {tstop=}")
             self.tstart = self.tstart_h = tstart
             self.tstop = tstop
-            tstart = [tstart] * n_x
-            tstop = [tstop] * n_x
+            tstart_by_x = [tstart] * n_x
+            tstop_by_x = [tstop] * n_x
 
         # TRF extent in indices
         tstep = self.data.time.tstep
-        i_start_by_x = np.asarray([int(round(t / tstep)) for t in tstart], np.int64)
-        i_stop_by_x = np.asarray([int(ceil(t / tstep)) for t in tstop], np.int64)
+        i_start_by_x = np.asarray([int(round(t / tstep)) for t in tstart_by_x], np.int64)
+        i_stop_by_x = np.asarray([int(ceil(t / tstep)) for t in tstop_by_x], np.int64)
         self._i_start = i_start = np.min(i_start_by_x)
         i_stop = np.max(i_stop_by_x)
         h_n_times = i_stop - i_start
+        if np.max(h_n_times) > self.data.shortest_segment_n_times:
+            raise ValueError(f"{tstart=}, {tstop=}: kernel longer than shortest data segment")
 
         if len(self.data.segments) == 1:
             self.n_skip = h_n_times - 1
