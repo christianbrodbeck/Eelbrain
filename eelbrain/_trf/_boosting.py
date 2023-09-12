@@ -161,6 +161,9 @@ class BoostingResult(PickleableDataClass):
           - 1: Numba implementation
           - 2: Cython multiprocessing implementation (Eelbrain 0.38)
 
+    eelbrain_version : int
+        Version of Eelbrain with which the model was estimated.
+
 
     Examples
     --------
@@ -214,12 +217,11 @@ class BoostingResult(PickleableDataClass):
     partition_results: List[BoostingResult] = None
     # store the version of the boosting algorithm with which model was fit
     version: int = 14  # file format (updates when re-saving)
-    algorithm_version: int = -1  # does not change when re'saving
+    algorithm_version: int = -1  # do not change when re-saving
+    eelbrain_version: int = '< 0.39.6'  # do not change when re-saving
     # debug parameters
     y_pred: NDVar = None
-    fit: Any = None  # scanpydoc can't handle undocumented 'Boosting'
-    # Legacy attributes (pickled objects may have these attributes)
-    prefit: str = None
+    fit: Boosting = None
 
     def __post_init__(self):
         if self.splits is None:
@@ -236,6 +238,8 @@ class BoostingResult(PickleableDataClass):
                 state['partitions_arg'] = state.pop('n_partitions_arg')
             if version < 9:
                 state['residual'] = state.pop('fit_error')
+                if state.pop('prefit', None):
+                    raise IOError('Boosting result used the prefit functionality that has been removed. Use an older version of eelbrain to open this result.')
             if version < 11:
                 for key in ['partitions_arg', 'h', 'isnan', 'y_info']:
                     state[f'_{key}'] = state.pop(key, None)
@@ -249,6 +253,9 @@ class BoostingResult(PickleableDataClass):
             if version < 14:
                 # state[f"y_{state['error']}_scale"] = state.pop('y_scale')
                 state[f"{state['error']}_residual"] = state.pop('residual')
+            if version < 15:
+                if state.pop('prefit', None):
+                    raise IOError('Boosting result used the prefit functionality that has been removed. Use an older version of eelbrain to open this result.')
         PickleableDataClass.__setstate__(self, state)
 
     def __repr__(self):
@@ -585,7 +592,7 @@ class BoostingResult(PickleableDataClass):
                 if not all(v is not None for v in values):
                     raise ValueError(f'partition_results avaiable for some but not all part-results')
                 new_value = [cls._eelbrain_concatenate(p_results) for p_results in zip(*values)]
-            elif field.name == 'algorithm_version':
+            elif field.name in ('algorithm_version', 'eelbrain_version'):
                 values = set(values)
                 if len(values) == 1:
                     new_value = values.pop()
@@ -686,23 +693,25 @@ class Boosting:
             if any(start >= stop for start, stop in zip(self.tstart, self.tstop)):
                 raise ValueError(f"Some tstart > tstop: {tstart=} and {tstop=}")
             n_xs = [reduce(mul, map(len, xdims), 1) for _, xdims, _ in self.data._x_meta]
-            tstart = [t for t, n in zip(tstart, n_xs) for _ in range(n)]
-            tstop = [t for t, n in zip(tstop, n_xs) for _ in range(n)]
+            tstart_by_x = [t for t, n in zip(tstart, n_xs) for _ in range(n)]
+            tstop_by_x = [t for t, n in zip(tstop, n_xs) for _ in range(n)]
         else:
             if tstart >= tstop:
                 raise ValueError(f"{tstart=} > {tstop=}")
             self.tstart = self.tstart_h = tstart
             self.tstop = tstop
-            tstart = [tstart] * n_x
-            tstop = [tstop] * n_x
+            tstart_by_x = [tstart] * n_x
+            tstop_by_x = [tstop] * n_x
 
         # TRF extent in indices
         tstep = self.data.time.tstep
-        i_start_by_x = np.asarray([int(round(t / tstep)) for t in tstart], np.int64)
-        i_stop_by_x = np.asarray([int(ceil(t / tstep)) for t in tstop], np.int64)
+        i_start_by_x = np.asarray([int(round(t / tstep)) for t in tstart_by_x], np.int64)
+        i_stop_by_x = np.asarray([int(ceil(t / tstep)) for t in tstop_by_x], np.int64)
         self._i_start = i_start = np.min(i_start_by_x)
         i_stop = np.max(i_stop_by_x)
         h_n_times = i_stop - i_start
+        if np.max(h_n_times) > self.data.shortest_segment_n_times:
+            raise ValueError(f"{tstart=}, {tstop=}: kernel longer than shortest data segment")
 
         if len(self.data.segments) == 1:
             self.n_skip = h_n_times - 1
@@ -785,6 +794,8 @@ class Boosting:
         debug
             Add additional attributes to the returned result.
         """
+        from .. import __version__ as eelbrain_version
+
         if cross_fit is None:
             cross_fit = bool(self.data.splits.n_test)
         elif cross_fit and not self.data.splits.n_test:
@@ -842,7 +853,7 @@ class Boosting:
 
             # predicted y
             if debug:
-                y_pred_iter = y_pred = np.empty(self.data.y.shape)
+                self.y_pred = y_pred_iter = y_pred = np.empty(self.data.y.shape)
             elif n_vecs:
                 y_pred = np.empty((n_vec, *self.data.y.shape[1:]))
                 y_pred_iter = chain.from_iterable(repeat(tuple(y_pred), n_vecs))
@@ -902,7 +913,8 @@ class Boosting:
                     h_i, self._get_h_failed(i), 0,
                     self.data.basis, self.data.basis_window, None,
                     self.data.y.shape[1], self.data.y_info, self.data.ydims,
-                    algorithm_version=2, i_test=i, **evaluations_i)
+                    algorithm_version=2, eelbrain_version=eelbrain_version,
+                    i_test=i, **evaluations_i)
                 partition_results_list.append(result)
         else:
             partition_results_list = None
@@ -918,7 +930,7 @@ class Boosting:
             # advanced data properties
             self.data.y.shape[1], self.data.y_info, self.data.ydims,
             partition_results=partition_results_list,
-            algorithm_version=2,
+            algorithm_version=2, eelbrain_version=eelbrain_version,
             i_test=i_test, **evaluations)
 
 

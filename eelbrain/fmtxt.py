@@ -1393,6 +1393,23 @@ class Table(FMTextElement):
         self.caption(caption)
         self._active_row = None
 
+    @classmethod
+    def from_columns(
+            cls,
+            columns: Sequence[Sequence[FMTextLike]],
+            column_spec: str = None,
+            rules: bool = True,
+            title: FMTextLike = None,
+            caption: FMTextLike = None,
+    ):
+        "Generate a Table from a list of columns"
+        if column_spec is None:
+            column_spec = 'l' * len(columns)
+        table = cls(column_spec, rules, title, caption)
+        for row in zip(*columns):
+            table.cells(*row)
+        return table
+
     @property
     def shape(self):
         return len(self.rows), self.n_columns

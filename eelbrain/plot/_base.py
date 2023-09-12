@@ -82,7 +82,7 @@ from functools import cached_property, reduce
 from itertools import chain, cycle, repeat
 from logging import getLogger
 import math
-from numbers import Number
+from numbers import Real
 import os
 import re
 import time
@@ -116,7 +116,7 @@ from ._utils import adjust_hsv
 
 
 # constants
-POINT = 0.013888888888898
+POINT = 0.013888888888898  # inches
 
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}
@@ -216,7 +216,7 @@ class AxisScale:
     """
     def __init__(
             self,
-            v: Union[NDVar, Var, Number, str, 'PlotData'],
+            v: Union[NDVar, Var, Real, str, 'PlotData'],
             label: Union[bool, str, Sequence[str]] = True,
     ):
         if isinstance(v, str):
@@ -224,7 +224,7 @@ class AxisScale:
             meas = None
             unit = v
             scale = UNIT_FORMAT.get(v, 1)
-        elif isinstance(v, Number):
+        elif isinstance(v, Real):
             data_unit = None
             meas = None
             unit = None
@@ -459,7 +459,13 @@ def find_fig_contours(epochs, vlims, contours_arg):
     return out
 
 
-def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
+def find_fig_vlims(
+        plots: Sequence[Sequence[NDVar]],
+        vmax: Union[dict, float] = None,
+        vmin: Union[dict, float] = None,
+        cmaps: dict = None,
+        unmask: bool = True,
+):
     """Find vmin and vmax parameters for every (meas, cmap) combination
 
     Parameters
@@ -474,6 +480,8 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
         None, -vmax is used.
     cmaps : dict
         If provided, vlims will be fixed to match symmetric or 0-based cmaps.
+    unmask
+        Also consider masked values for limits.
 
     Returns
     -------
@@ -499,7 +507,7 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
             if vmax is None:
                 meas_ndvars = [v for v in ndvars if v.info.get('meas') == meas]
                 for ndvar in meas_ndvars:
-                    _, vmax_ = find_vlim_args(ndvar)
+                    _, vmax_ = find_vlim_args(ndvar, unmask=unmask)
                     vmax = vmax_ if vmax is None else max(vmax, vmax_)
 
             vlims[meas] = (vmin, vmax)
@@ -508,7 +516,7 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
     # for other meas, fill in data limits
     for ndvar in ndvars:
         meas = ndvar.info.get('meas')
-        vmin, vmax = find_vlim_args(ndvar)
+        vmin, vmax = find_vlim_args(ndvar, unmask=unmask)
         if meas in vlims:
             vmin_, vmax_ = vlims[meas]
             vmin = vmin if vmin_ is None else min(vmin, vmin_)
@@ -2829,7 +2837,7 @@ class ColorBarMixin:
     def __init__(
             self,
             param_func: Callable = None,  # function to get cmap, vmin, vmax
-            data: Union[NDVar, Var, Number, str, 'PlotData'] = None,  # to infer unit
+            data: Union[NDVar, Var, Real, str, 'PlotData'] = None,  # to infer unit
             mappable: Any = None,  # matplotlib mappable object
             default_kwargs: dict = None,  # default parameters for plotting colorbar
     ):
@@ -3536,24 +3544,23 @@ class CategorialAxisMixin:
                 tick_labels = [labels_[cell] for cell in cells]
             else:
                 tick_labels = ticks
-            if isinstance(rotation, Number):
+            if isinstance(rotation, Real):
                 if rotation:
                     ax.tick_params(axis, pad=0)
 
                 if rotation == -90:
-                    offset = -matplotlib.rcParams['xtick.labelsize'] / 4
+                    offset = -mpl_font_size('xtick.labelsize') / 4
                 elif 0 < rotation < 90:
                     kwargs['ha'] = 'right'
-                    offset = matplotlib.rcParams['xtick.labelsize']
+                    offset = mpl_font_size('xtick.labelsize')
                 elif -90 < rotation < 0:
                     kwargs['ha'] = 'left'
                     kwargs['rotation_mode'] = 'anchor'
                     if rotation < -60:
-                        offset = matplotlib.rcParams['xtick.labelsize'] * ((-rotation - 60) / 90)
+                        offset = mpl_font_size('xtick.labelsize') * ((-rotation - 60) / 90)
             self.__axis_obj.set_ticks(tick_pos, tick_labels, rotation=rotation, **kwargs)
             if offset:
-                dx = offset / matplotlib.rcParams['figure.dpi']
-                offset_transform = matplotlib.transforms.ScaledTranslation(dx, 0, ax.figure.dpi_scale_trans)
+                offset_transform = matplotlib.transforms.ScaledTranslation(offset, 0, ax.figure.dpi_scale_trans)
                 for label in ax.xaxis.get_majorticklabels():
                     label.set_transform(label.get_transform() + offset_transform)
         elif ticks is False:

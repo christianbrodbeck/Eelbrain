@@ -33,6 +33,9 @@ BIBTEX_CACHE = DIR / 'bibtex.pickle'
 DST = DIR.parent / 'publications.bib'
 OBSOLETE = """
 Qm4WZWrznhEJ
+OdvLIq-CqsUJ
+VLeSaj8CLlcJ
+ZnxohaAY4fEJ
 """.split()
 BIORXIV_OBSOLETE = """
 10.1101/326785

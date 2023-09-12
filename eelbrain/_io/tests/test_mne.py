@@ -9,7 +9,7 @@ import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 import pytest
 
-from eelbrain import load
+from eelbrain import datasets, load
 from eelbrain.testing import assert_dataobj_equal, requires_mne_sample_data, requires_mne_testing_data, file_path
 
 
@@ -29,6 +29,10 @@ def test_load_fiff_mne():
     evoked_path = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis-no-filter-ave.fif')
     cov_path = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis-cov.fif')
     mri_sdir = os.path.join(data_path, 'subjects')
+
+    # make sure forward solution exists
+    if not os.path.exists(fwd_path):
+        datasets.get_mne_sample(src='ico')
 
     mne_evoked = mne.read_evokeds(evoked_path, 'Left Auditory')
     mne_fwd = mne.read_forward_solution(fwd_path)

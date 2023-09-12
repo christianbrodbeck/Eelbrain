@@ -23,6 +23,105 @@
             ]
         }
     },
+    "-tv45cKsZl4J": {
+        "title": "Linear modeling of brain activity during selective attention to continuous speech: the critical role of the N1 effect in event-related potentials to acoustic edges",
+        "result_id": "-tv45cKsZl4J",
+        "link": "https://www.biorxiv.org/content/10.1101/2023.07.14.548994.abstract",
+        "snippet": "Recent work in the field of neural speech tracking provided evidence for a cortical representation of speech through superposition of event-related responses to acoustic edges, an idea \u2026",
+        "publication_info": {
+            "summary": "A Mai, SA Hillyard, DJ Strauss - bioRxiv, 2023 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "SA Hillyard",
+                    "link": "https://scholar.google.com/citations?user=DDmnS3YAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=DDmnS3YAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "DDmnS3YAAAAJ"
+                }
+            ]
+        }
+    },
+    "0S4CEDCrVlIJ": {
+        "title": "Beyond linear neural envelope tracking: a mutual information approach",
+        "result_id": "0S4CEDCrVlIJ",
+        "link": "https://iopscience.iop.org/article/10.1088/1741-2552/acbe1d/meta",
+        "snippet": "Objective. The human brain tracks the temporal envelope of speech, which contains essential cues for speech understanding. Linear models are the most common tool to study neural \u2026",
+        "publication_info": {
+            "summary": "P De Clercq, J Vanthornhout\u2026 - Journal of Neural \u2026, 2023 - iopscience.iop.org",
+            "authors": [
+                {
+                    "name": "P De Clercq",
+                    "link": "https://scholar.google.com/citations?user=cqOHtmwAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=cqOHtmwAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "cqOHtmwAAAAJ"
+                },
+                {
+                    "name": "J Vanthornhout",
+                    "link": "https://scholar.google.com/citations?user=I0EdEu0AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=I0EdEu0AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "I0EdEu0AAAAJ"
+                }
+            ]
+        }
+    },
+    "0aw8R8F5ZScJ": {
+        "title": "Cortical tracking of continuous speech under bimodal divided attention",
+        "result_id": "0aw8R8F5ZScJ",
+        "link": "https://direct.mit.edu/nol/article-abstract/4/2/318/114548",
+        "snippet": "Speech processing often occurs amid competing inputs from other modalities, for example, listening to the radio while driving. We examined the extent to which dividing attention \u2026",
+        "publication_info": {
+            "summary": "Z Xie, C Brodbeck, B Chandrasekaran - Neurobiology of Language, 2023 - direct.mit.edu",
+            "authors": [
+                {
+                    "name": "Z Xie",
+                    "link": "https://scholar.google.com/citations?user=SueOAUEAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=SueOAUEAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "SueOAUEAAAAJ"
+                },
+                {
+                    "name": "C Brodbeck",
+                    "link": "https://scholar.google.com/citations?user=m2x515IAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=m2x515IAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "m2x515IAAAAJ"
+                }
+            ]
+        }
+    },
+    "1KMzh56-QbIJ": {
+        "title": "Neural tracking of linguistic and acoustic speech representations decreases with advancing age",
+        "result_id": "1KMzh56-QbIJ",
+        "type": "Html",
+        "link": "https://www.sciencedirect.com/science/article/pii/S1053811922009624",
+        "snippet": "Background: Older adults process speech differently, but it is not yet clear how aging affects different levels of processing natural, continuous speech, both in terms of bottom-up acoustic \u2026",
+        "publication_info": {
+            "summary": "M Gillis, J Kries, M Vandermosten, T Francart - NeuroImage, 2023 - Elsevier",
+            "authors": [
+                {
+                    "name": "M Gillis",
+                    "link": "https://scholar.google.com/citations?user=_3DlZ_EAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=_3DlZ_EAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "_3DlZ_EAAAAJ"
+                },
+                {
+                    "name": "J Kries",
+                    "link": "https://scholar.google.com/citations?user=qYgR5kpDKXcC&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=qYgR5kpDKXcC&engine=google_scholar_author&hl=en",
+                    "author_id": "qYgR5kpDKXcC"
+                },
+                {
+                    "name": "M Vandermosten",
+                    "link": "https://scholar.google.com/citations?user=E953CPEAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=E953CPEAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "E953CPEAAAAJ"
+                },
+                {
+                    "name": "T Francart",
+                    "link": "https://scholar.google.com/citations?user=rv2nwCEAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=rv2nwCEAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "rv2nwCEAAAAJ"
+                }
+            ]
+        }
+    },
     "1mBiR_V67roJ": {
         "title": "The effect of stimulus intensity on neural envelope tracking",
         "result_id": "1mBiR_V67roJ",
@@ -102,6 +201,29 @@
                     "link": "https://scholar.google.com/citations?user=LLq-Ti4AAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=LLq-Ti4AAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "LLq-Ti4AAAAJ"
+                }
+            ]
+        }
+    },
+    "3OfOFKNRbCgJ": {
+        "title": "A dynamic generative model can extract interpretable oscillatory components from multichannel neurophysiological recordings",
+        "result_id": "3OfOFKNRbCgJ",
+        "link": "https://www.biorxiv.org/content/10.1101/2023.07.26.550594.abstract",
+        "snippet": "Modern neurophysiological recordings are performed using multichannel sensor arrays that are able to record activity in an increasingly high number of channels numbering in the \u2026",
+        "publication_info": {
+            "summary": "P Das, M He, PL Purdon - bioRxiv, 2023 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "P Das",
+                    "link": "https://scholar.google.com/citations?user=1s8bdnEAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=1s8bdnEAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "1s8bdnEAAAAJ"
+                },
+                {
+                    "name": "PL Purdon",
+                    "link": "https://scholar.google.com/citations?user=UER-mbQAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=UER-mbQAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "UER-mbQAAAAJ"
                 }
             ]
         }
@@ -241,7 +363,7 @@
         "link": "https://elifesciences.org/articles/72056",
         "snippet": "Speech processing is highly incremental. It is widely accepted that human listeners continuously use the linguistic context to anticipate upcoming concepts, words, and phonemes. \u2026",
         "publication_info": {
-            "summary": "C Brodbeck, S Bhattasali, AALC Heredia, P Resnik\u2026 - ELife, 2022 - elifesciences.org",
+            "summary": "C Brodbeck, S Bhattasali, AALC Heredia, P Resnik\u2026 - Elife, 2022 - elifesciences.org",
             "authors": [
                 {
                     "name": "C Brodbeck",
@@ -267,11 +389,10 @@
     "7guE0xXNjXAJ": {
         "title": "Neural correlates of modal displacement and discourse-updating under (un) certainty",
         "result_id": "7guE0xXNjXAJ",
-        "type": "Html",
-        "link": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7810261/",
+        "link": "https://www.eneuro.org/content/8/1/ENEURO.0290-20.2020.abstract",
         "snippet": "A hallmark of human thought is the ability to think about not just the actual world but also about alternative ways the world could be. One way to study this contrast is through language. \u2026",
         "publication_info": {
-            "summary": "M Tulling, R Law, A Cournane, L Pylkk\u00e4nen - Eneuro, 2021 - ncbi.nlm.nih.gov",
+            "summary": "M Tulling, R Law, A Cournane, L Pylkk\u00e4nen - Eneuro, 2021 - eneuro.org",
             "authors": [
                 {
                     "name": "M Tulling",
@@ -303,10 +424,10 @@
     "7w3_G4qWqWUJ": {
         "title": "Heard or understood? Neural tracking of language features in a comprehensible story, an incomprehensible story and a word list",
         "result_id": "7w3_G4qWqWUJ",
-        "link": "https://www.biorxiv.org/content/10.1101/2022.11.22.517477.abstract",
+        "link": "https://www.eneuro.org/content/10/7/ENEURO.0075-23.2023.abstract",
         "snippet": "Speech comprehension is a complex neural process on which relies on activation and integration of multiple brain regions. In the current study, we evaluated whether speech \u2026",
         "publication_info": {
-            "summary": "M Gillis, J Vanthornhout, T Francart - bioRxiv, 2022 - biorxiv.org",
+            "summary": "M Gillis, J Vanthornhout, T Francart - eneuro, 2023 - eneuro.org",
             "authors": [
                 {
                     "name": "M Gillis",
@@ -406,6 +527,24 @@
                     "link": "https://scholar.google.com/citations?user=pr8YcVIAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=pr8YcVIAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "pr8YcVIAAAAJ"
+                }
+            ]
+        }
+    },
+    "A44Ihx4BuNEJ": {
+        "title": "The effects of data quantity on performance of temporal response function analyses of natural speech processing",
+        "result_id": "A44Ihx4BuNEJ",
+        "type": "Html",
+        "link": "https://www.frontiersin.org/articles/10.3389/fnins.2022.963629/full",
+        "snippet": "In recent years, temporal response function (TRF) analyses of neural activity recordings evoked by continuous naturalistic stimuli have become increasingly popular for characterizing \u2026",
+        "publication_info": {
+            "summary": "J Mesik, M Wojtczak - Frontiers in Neuroscience, 2023 - frontiersin.org",
+            "authors": [
+                {
+                    "name": "M Wojtczak",
+                    "link": "https://scholar.google.com/citations?user=HGob-WUAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=HGob-WUAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "HGob-WUAAAAJ"
                 }
             ]
         }
@@ -512,10 +651,10 @@
     "DydMiMelnaYJ": {
         "title": "A tradeoff between acoustic and linguistic feature encoding in spoken language comprehension",
         "result_id": "DydMiMelnaYJ",
-        "link": "https://www.biorxiv.org/content/10.1101/2022.08.17.504234.abstract",
+        "link": "https://elifesciences.org/articles/82386",
         "snippet": "When we comprehend language from speech, the phase of the neural response aligns with particular features of the speech input, resulting in a phenomenon referred to as neural \u2026",
         "publication_info": {
-            "summary": "F Tezcan, H Weissbart, AE Martin - bioRxiv, 2022 - biorxiv.org",
+            "summary": "F Tezcan, H Weissbart, AE Martin - Elife, 2023 - elifesciences.org",
             "authors": [
                 {
                     "name": "F Tezcan",
@@ -559,10 +698,11 @@
     "ERvT26o8AlUJ": {
         "title": "Age-related changes in'cortical'1/f dynamics are explained by cardiac activity",
         "result_id": "ERvT26o8AlUJ",
-        "link": "https://www.biorxiv.org/content/10.1101/2022.11.07.515423.abstract",
+        "type": "Pdf",
+        "link": "https://scholar.archive.org/work/cl52uktllvdxvhg65zolnqzkt4/access/wayback/https://www.biorxiv.org/content/biorxiv/early/2022/11/07/2022.11.07.515423.full.pdf",
         "snippet": "The power of electrophysiologically measured cortical activity decays 1/fX. The slope of this decay (ie the spectral exponent) is modulated by various factors such as age, cognitive \u2026",
         "publication_info": {
-            "summary": "F Schmidt, SK Danboeck, E Trinka, G Demarchi\u2026 - bioRxiv, 2022 - biorxiv.org",
+            "summary": "F Schmidt, SK Danb\u00f6ck, E Trinka, G Demarchi\u2026 - 2022 - scholar.archive.org",
             "authors": [
                 {
                     "name": "F Schmidt",
@@ -571,7 +711,7 @@
                     "author_id": "jD0R7UYAAAAJ"
                 },
                 {
-                    "name": "SK Danboeck",
+                    "name": "SK Danb\u00f6ck",
                     "link": "https://scholar.google.com/citations?user=6s-AmMwAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=6s-AmMwAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "6s-AmMwAAAAJ"
@@ -581,24 +721,6 @@
                     "link": "https://scholar.google.com/citations?user=GiarXIUAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=GiarXIUAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "GiarXIUAAAAJ"
-                }
-            ]
-        }
-    },
-    "EXVd1t6JJs8J": {
-        "title": "The effects of data quantity on performance of temporal response function analyses of natural speech processing",
-        "result_id": "EXVd1t6JJs8J",
-        "type": "Html",
-        "link": "https://www.frontiersin.org/articles/10.3389/fnins.2022.963629/full",
-        "snippet": "In recent years, temporal response function (TRF) analyses of neural activity recordings evoked by continuous naturalistic stimuli have become increasingly popular for characterizing \u2026",
-        "publication_info": {
-            "summary": "J Mesik, M Wojtczak - Frontiers in Neuroscience, 2023 - frontiersin.org",
-            "authors": [
-                {
-                    "name": "M Wojtczak",
-                    "link": "https://scholar.google.com/citations?user=HGob-WUAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=HGob-WUAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "HGob-WUAAAAJ"
                 }
             ]
         }
@@ -667,25 +789,25 @@
             ]
         }
     },
-    "FSefJe40PsgJ": {
-        "title": "In vitro testing: in vitro toxicity testing with bivalve mollusc and fish cells for the risk assessment of nanoparticles in the aquatic environment",
-        "result_id": "FSefJe40PsgJ",
-        "link": "https://www.taylorfrancis.com/chapters/edit/10.1201/9781315158761-3/vitro-testing-alberto-katsumiti-miren-cajaraville",
-        "snippet": "Given the diverse types of nanoparticles (NPs) present in the market, in vitro techniques have been recommended as a tool for environmental risk assessment (ERA) of NPs. This \u2026",
+    "JCCLbB4_HV0J": {
+        "title": "Cortical Responses Time-Locked to Continuous Speech in the High-Gamma Band Depend on Selective Attention",
+        "result_id": "JCCLbB4_HV0J",
+        "link": "https://www.biorxiv.org/content/10.1101/2023.07.20.549567.abstract",
+        "snippet": "Auditory cortical responses to speech obtained by magnetoencephalography (MEG) show robust speech tracking in the high-gamma band (70-200 Hz), but little is currently known \u2026",
         "publication_info": {
-            "summary": "A Katsumiti, MP Cajaraville - Ecotoxicology of Nanoparticles in \u2026, 2019 - taylorfrancis.com",
+            "summary": "V Commuri, JP Kulasingham, JZ Simon - bioRxiv, 2023 - biorxiv.org",
             "authors": [
                 {
-                    "name": "A Katsumiti",
-                    "link": "https://scholar.google.com/citations?user=NhI65A8AAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=NhI65A8AAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "NhI65A8AAAAJ"
+                    "name": "JP Kulasingham",
+                    "link": "https://scholar.google.com/citations?user=IApEm-QAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=IApEm-QAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "IApEm-QAAAAJ"
                 },
                 {
-                    "name": "MP Cajaraville",
-                    "link": "https://scholar.google.com/citations?user=P1gRmZcAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=P1gRmZcAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "P1gRmZcAAAAJ"
+                    "name": "JZ Simon",
+                    "link": "https://scholar.google.com/citations?user=pr8YcVIAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=pr8YcVIAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "pr8YcVIAAAAJ"
                 }
             ]
         }
@@ -807,7 +929,7 @@
         }
     },
     "MS6CBQ-8ViAJ": {
-        "title": "Auditory cortical generators of the Frequency Following Response are modulated by intermodal attention",
+        "title": "Auditory cortical generators of the frequency following response are modulated by intermodal attention",
         "result_id": "MS6CBQ-8ViAJ",
         "type": "Html",
         "link": "https://www.sciencedirect.com/science/article/pii/S1053811919307761",
@@ -935,6 +1057,35 @@
             ]
         }
     },
+    "OdvLIq-CqsUJ": {
+        "title": "Age-related changes in \u201ccortical\u201d 1/f dynamics are linked to cardiac activity",
+        "result_id": "OdvLIq-CqsUJ",
+        "link": "https://www.biorxiv.org/content/10.1101/2022.11.07.515423.abstract",
+        "snippet": "The power of electrophysiologically measured cortical activity decays 1/f X . The slope of this decay (ie the spectral exponent) is modulated by various factors such as age, cognitive \u2026",
+        "publication_info": {
+            "summary": "F Schmidt, SK Danb\u00f6ck, E Trinka, G Demarchi\u2026 - bioRxiv, 2022 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "F Schmidt",
+                    "link": "https://scholar.google.com/citations?user=jD0R7UYAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=jD0R7UYAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "jD0R7UYAAAAJ"
+                },
+                {
+                    "name": "SK Danb\u00f6ck",
+                    "link": "https://scholar.google.com/citations?user=6s-AmMwAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=6s-AmMwAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "6s-AmMwAAAAJ"
+                },
+                {
+                    "name": "G Demarchi",
+                    "link": "https://scholar.google.com/citations?user=GiarXIUAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=GiarXIUAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "GiarXIUAAAAJ"
+                }
+            ]
+        }
+    },
     "PWh77B7XZdsJ": {
         "title": "Neuro-current response functions: A unified approach to MEG source analysis under the continuous stimuli paradigm",
         "result_id": "PWh77B7XZdsJ",
@@ -942,7 +1093,7 @@
         "link": "https://www.sciencedirect.com/science/article/pii/S105381192030015X",
         "snippet": "Characterizing the neural dynamics underlying sensory processing is one of the central areas of investigation in systems and cognitive neuroscience. Neuroimaging techniques such as \u2026",
         "publication_info": {
-            "summary": "P Das, C Brodbeck, JZ Simon, B Babadi - NeuroImage, 2020 - Elsevier",
+            "summary": "P Das, C Brodbeck, JZ Simon, B Babadi - Neuroimage, 2020 - Elsevier",
             "authors": [
                 {
                     "name": "P Das",
@@ -1046,42 +1197,6 @@
             ]
         }
     },
-    "Q_15uAoI904J": {
-        "title": "Neural tracking of linguistic and acoustic speech representations decreases with advancing age",
-        "result_id": "Q_15uAoI904J",
-        "type": "Html",
-        "link": "https://www.sciencedirect.com/science/article/pii/S1053811922009624",
-        "snippet": "Background: Older adults process speech differently, but it is not yet clear how aging affects different levels of processing natural, continuous speech, both in terms of bottom-up acoustic \u2026",
-        "publication_info": {
-            "summary": "M Gillis, J Kries, M Vandermosten, T Francart - NeuroImage, 2023 - Elsevier",
-            "authors": [
-                {
-                    "name": "M Gillis",
-                    "link": "https://scholar.google.com/citations?user=_3DlZ_EAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=_3DlZ_EAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "_3DlZ_EAAAAJ"
-                },
-                {
-                    "name": "J Kries",
-                    "link": "https://scholar.google.com/citations?user=qYgR5kpDKXcC&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=qYgR5kpDKXcC&engine=google_scholar_author&hl=en",
-                    "author_id": "qYgR5kpDKXcC"
-                },
-                {
-                    "name": "M Vandermosten",
-                    "link": "https://scholar.google.com/citations?user=E953CPEAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=E953CPEAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "E953CPEAAAAJ"
-                },
-                {
-                    "name": "T Francart",
-                    "link": "https://scholar.google.com/citations?user=rv2nwCEAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=rv2nwCEAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "rv2nwCEAAAAJ"
-                }
-            ]
-        }
-    },
     "QbLbNt-8It4J": {
         "title": "Language in context: Characterizing the comprehension of referential expressions with MEG",
         "result_id": "QbLbNt-8It4J",
@@ -1154,6 +1269,47 @@
             ]
         }
     },
+    "SnFlXj1cS10J": {
+        "title": "Hemispheric asymmetries in auditory cortex reflect discriminative responses to temporal details or summary statistics of stationary sounds.",
+        "result_id": "SnFlXj1cS10J",
+        "link": "https://www.biorxiv.org/content/10.1101/2023.08.03.551829.abstract",
+        "snippet": "\u2026 Source estimates were imported in eelbrain from MNE-Python for each subject, 376 experiment, and duration. A cluster-based permutation test for paired samples was 377 used to test \u2026",
+        "publication_info": {
+            "summary": "M Berto, P Reisinger, E Ricciardi, N Weisz, D Bottari - bioRxiv, 2023 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "M Berto",
+                    "link": "https://scholar.google.com/citations?user=RSyKOL0AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=RSyKOL0AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "RSyKOL0AAAAJ"
+                },
+                {
+                    "name": "P Reisinger",
+                    "link": "https://scholar.google.com/citations?user=bVSeXAoAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=bVSeXAoAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "bVSeXAoAAAAJ"
+                },
+                {
+                    "name": "E Ricciardi",
+                    "link": "https://scholar.google.com/citations?user=wST2W4MAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=wST2W4MAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "wST2W4MAAAAJ"
+                },
+                {
+                    "name": "N Weisz",
+                    "link": "https://scholar.google.com/citations?user=C1ao7w4AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=C1ao7w4AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "C1ao7w4AAAAJ"
+                },
+                {
+                    "name": "D Bottari",
+                    "link": "https://scholar.google.com/citations?user=fxeO0DkAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=fxeO0DkAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "fxeO0DkAAAAJ"
+                }
+            ]
+        }
+    },
     "Svsg-PgBZwYJ": {
         "title": "The size-dependent cytotoxicity of amorphous silica nanoparticles: a systematic review of in vitro studies",
         "result_id": "Svsg-PgBZwYJ",
@@ -1194,6 +1350,48 @@
                     "link": "https://scholar.google.com/citations?user=sqUEF0MAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=sqUEF0MAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "sqUEF0MAAAAJ"
+                }
+            ]
+        }
+    },
+    "TuCxI8dXO-MJ": {
+        "title": "Conformal in-ear bioelectronics for visual and auditory brain-computer interfaces",
+        "result_id": "TuCxI8dXO-MJ",
+        "type": "Html",
+        "link": "https://www.nature.com/articles/s41467-023-39814-6",
+        "snippet": "\u2026 The TRF and the discrimination problem were implemented by eelbrain 58 . For the backward classification, we followed the procedure 46 , which involved calculating the correlation \u2026",
+        "publication_info": {
+            "summary": "Z Wang, N Shi, Y Zhang, N Zheng, H Li, Y Jiao\u2026 - Nature \u2026, 2023 - nature.com",
+            "authors": [
+                {
+                    "name": "Z Wang",
+                    "link": "https://scholar.google.com/citations?user=awC9gv0AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=awC9gv0AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "awC9gv0AAAAJ"
+                },
+                {
+                    "name": "N Shi",
+                    "link": "https://scholar.google.com/citations?user=l6Kd6n0AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=l6Kd6n0AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "l6Kd6n0AAAAJ"
+                },
+                {
+                    "name": "Y Zhang",
+                    "link": "https://scholar.google.com/citations?user=1cfEuJAAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=1cfEuJAAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "1cfEuJAAAAAJ"
+                },
+                {
+                    "name": "N Zheng",
+                    "link": "https://scholar.google.com/citations?user=knMAbVAAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=knMAbVAAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "knMAbVAAAAAJ"
+                },
+                {
+                    "name": "H Li",
+                    "link": "https://scholar.google.com/citations?user=6yX-EOkAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=6yX-EOkAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "6yX-EOkAAAAJ"
                 }
             ]
         }
@@ -1286,8 +1484,49 @@
             ]
         }
     },
+    "VLeSaj8CLlcJ": {
+        "title": "Tracking the behavioral and neural dynamics of semantic representations through negation",
+        "result_id": "VLeSaj8CLlcJ",
+        "link": "https://www.biorxiv.org/content/10.1101/2022.10.14.512299.abstract",
+        "snippet": "Combining words and composing meanings is at the basis of human language. However, how the brain constructs meaning online is not well understood. We develop an approach to \u2026",
+        "publication_info": {
+            "summary": "A Zuanazzi, P Ripoll\u00e9s, WM Lin, L Gwilliams, JR King\u2026 - bioRxiv, 2022 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "A Zuanazzi",
+                    "link": "https://scholar.google.com/citations?user=vztswb4AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=vztswb4AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "vztswb4AAAAJ"
+                },
+                {
+                    "name": "P Ripoll\u00e9s",
+                    "link": "https://scholar.google.com/citations?user=za76NZAAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=za76NZAAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "za76NZAAAAAJ"
+                },
+                {
+                    "name": "WM Lin",
+                    "link": "https://scholar.google.com/citations?user=S5OJ5NYAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=S5OJ5NYAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "S5OJ5NYAAAAJ"
+                },
+                {
+                    "name": "L Gwilliams",
+                    "link": "https://scholar.google.com/citations?user=fmfkdsAAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=fmfkdsAAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "fmfkdsAAAAAJ"
+                },
+                {
+                    "name": "JR King",
+                    "link": "https://scholar.google.com/citations?user=XZOgIwEAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=XZOgIwEAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "XZOgIwEAAAAJ"
+                }
+            ]
+        }
+    },
     "VtdECzskIhAJ": {
-        "title": "Early Form-Based Morphological Decomposition in Tagalog: MEG Evidence from Reduplication, Infixation, and Circumfixation",
+        "title": "Early form-based morphological decomposition in Tagalog: MEG evidence from reduplication, infixation, and circumfixation",
         "result_id": "VtdECzskIhAJ",
         "link": "https://direct.mit.edu/nol/article-abstract/3/2/235/108565",
         "snippet": "Neuro- and psycholinguistic experimentation supports the early decomposition of morphologically complex words within the ventral processing stream, which MEG has localized to the \u2026",
@@ -1363,47 +1602,6 @@
                     "link": "https://scholar.google.com/citations?user=gwygyfgAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=gwygyfgAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "gwygyfgAAAAJ"
-                }
-            ]
-        }
-    },
-    "WggXy0t0YvEJ": {
-        "title": "Tracking the neural dynamics of semantic composition through negation",
-        "result_id": "WggXy0t0YvEJ",
-        "link": "https://www.biorxiv.org/content/10.1101/2022.10.14.512299.abstract",
-        "snippet": "Combining words and composing meanings is at the basis of human language. However, how the brain constructs meaning online is not well understood. We develop an approach to \u2026",
-        "publication_info": {
-            "summary": "A Zuanazzi, P Ripoll\u00e9s, WM Lin, L Gwilliams, JR King\u2026 - bioRxiv, 2022 - biorxiv.org",
-            "authors": [
-                {
-                    "name": "A Zuanazzi",
-                    "link": "https://scholar.google.com/citations?user=vztswb4AAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=vztswb4AAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "vztswb4AAAAJ"
-                },
-                {
-                    "name": "P Ripoll\u00e9s",
-                    "link": "https://scholar.google.com/citations?user=za76NZAAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=za76NZAAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "za76NZAAAAAJ"
-                },
-                {
-                    "name": "WM Lin",
-                    "link": "https://scholar.google.com/citations?user=S5OJ5NYAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=S5OJ5NYAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "S5OJ5NYAAAAJ"
-                },
-                {
-                    "name": "L Gwilliams",
-                    "link": "https://scholar.google.com/citations?user=fmfkdsAAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=fmfkdsAAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "fmfkdsAAAAAJ"
-                },
-                {
-                    "name": "JR King",
-                    "link": "https://scholar.google.com/citations?user=XZOgIwEAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=XZOgIwEAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "XZOgIwEAAAAJ"
                 }
             ]
         }
@@ -1521,6 +1719,45 @@
             ]
         }
     },
+    "Zbo1wD4LWK8J": {
+        "title": "Prediction tendency, eye movements, and attention in a unified framework of neural speech tracking",
+        "result_id": "Zbo1wD4LWK8J",
+        "link": "https://www.biorxiv.org/content/10.1101/2023.06.27.546746.abstract",
+        "snippet": "Auditory speech comprehension is a multi-faceted process in which attention, prediction, and sensorimotor integration (via active sensing) interact with or complement each other. \u2026",
+        "publication_info": {
+            "summary": "J Schubert, Q Gehmacher, F Schmidt, T Hartmann\u2026 - bioRxiv, 2023 - biorxiv.org"
+        }
+    },
+    "ZnxohaAY4fEJ": {
+        "title": "Heard or understood?",
+        "result_id": "ZnxohaAY4fEJ",
+        "type": "Pdf",
+        "link": "https://scholar.archive.org/work/ttzhuyph7jhn7flog6bogjfdeq/access/wayback/https://www.biorxiv.org/content/biorxiv/early/2022/11/22/2022.11.22.517477.full.pdf",
+        "snippet": "Speech comprehension is a complex neural process that relies on the activation and integration of 24 different brain regions. Bottom-up and top-down processes allow speech \u2026",
+        "publication_info": {
+            "summary": "M Gillis, J Vanthornhout, T Francart - scholar.archive.org",
+            "authors": [
+                {
+                    "name": "M Gillis",
+                    "link": "https://scholar.google.com/citations?user=_3DlZ_EAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=_3DlZ_EAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "_3DlZ_EAAAAJ"
+                },
+                {
+                    "name": "J Vanthornhout",
+                    "link": "https://scholar.google.com/citations?user=I0EdEu0AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=I0EdEu0AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "I0EdEu0AAAAJ"
+                },
+                {
+                    "name": "T Francart",
+                    "link": "https://scholar.google.com/citations?user=rv2nwCEAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=rv2nwCEAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "rv2nwCEAAAAJ"
+                }
+            ]
+        }
+    },
     "aADnZp0CBmAJ": {
         "title": "Neural Tracking Measures of Speech Intelligibility: Manipulating Intelligibility while Keeping Acoustics Unchanged",
         "result_id": "aADnZp0CBmAJ",
@@ -1553,11 +1790,11 @@
     "aPjEwTCwSEsJ": {
         "title": "Rapid transformation from auditory to linguistic representations of continuous speech",
         "result_id": "aPjEwTCwSEsJ",
-        "type": "Html",
-        "link": "https://www.sciencedirect.com/science/article/pii/S096098221831409X",
+        "type": "Pdf",
+        "link": "https://www.cell.com/current-biology/pdf/S0960-9822(18)31409-X.pdf",
         "snippet": "During speech perception, a central task of the auditory cortex is to analyze complex acoustic patterns to allow detection of the words that encode a linguistic message [1]. It is generally \u2026",
         "publication_info": {
-            "summary": "C Brodbeck, LE Hong, JZ Simon - Current Biology, 2018 - Elsevier",
+            "summary": "C Brodbeck, LE Hong, JZ Simon - Current Biology, 2018 - cell.com",
             "authors": [
                 {
                     "name": "C Brodbeck",
@@ -1642,11 +1879,10 @@
     "cVICkj-gyZoJ": {
         "title": "Composition within and between languages in the bilingual mind: MEG evidence from Korean/English bilinguals",
         "result_id": "cVICkj-gyZoJ",
-        "type": "Html",
-        "link": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8570682/",
+        "link": "https://www.eneuro.org/content/8/6/ENEURO.0084-21.2021.abstract",
         "snippet": "The ability of the human brain to build complex expressions from simpler parts is fascinating, but the ability of the bilingual brain to do so is perhaps even more remarkable. When highly \u2026",
         "publication_info": {
-            "summary": "SF Phillips, L Pylkk\u00e4nen - Eneuro, 2021 - ncbi.nlm.nih.gov",
+            "summary": "SF Phillips, L Pylkk\u00e4nen - eneuro, 2021 - eneuro.org",
             "authors": [
                 {
                     "name": "SF Phillips",
@@ -1670,7 +1906,7 @@
         "link": "https://www.sciencedirect.com/science/article/pii/S1053811922007984",
         "snippet": "\u2026 The analysis was conducted using \"eelbrain\", an open source Python module for accessible statistical analysis of MEG and EEG data (v0.31.7, https://github.com/ christianbrodbeck/\u2026",
         "publication_info": {
-            "summary": "L Schwartz, J Levy, Y Endevelt-Shapira, A Djalovski\u2026 - NeuroImage, 2022 - Elsevier",
+            "summary": "L Schwartz, J Levy, Y Endevelt-Shapira, A Djalovski\u2026 - Neuroimage, 2022 - Elsevier",
             "authors": [
                 {
                     "name": "J Levy",
@@ -1729,12 +1965,12 @@
         }
     },
     "cg12tTakALsJ": {
-        "title": "Time-locked Cortical Processing of Speech in Complex Environments",
+        "title": "Time-Locked Cortical Processing of Speech in Complex Environments",
         "result_id": "cg12tTakALsJ",
-        "link": "https://drum.lib.umd.edu/handle/1903/28410",
+        "link": "https://search.proquest.com/openview/8f993d5560296ea4accdec32d8932875/1?pq-origsite=gscholar&cbl=18750&diss=y",
         "snippet": "Our ability to communicate using speech depends on complex, rapid processing mechanisms in the human brain. These cortical processes make it possible for us to easily understand \u2026",
         "publication_info": {
-            "summary": "JP Kulasingham - 2021 - drum.lib.umd.edu",
+            "summary": "JP Kulasingham - 2021 - search.proquest.com",
             "authors": [
                 {
                     "name": "JP Kulasingham",
@@ -1800,10 +2036,10 @@
         "title": "Bilaterally reduced rolandic beta band activity in minor stroke patients",
         "result_id": "gEpWQu5P0hwJ",
         "type": "Html",
-        "link": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8996122/",
-        "snippet": "Stroke patients with hemiparesis display decreased beta band (13\u201325 Hz) rolandic activity, correlating to impaired motor function. However, clinically, patients without significant \u2026",
+        "link": "https://www.frontiersin.org/articles/10.3389/fneur.2022.819603/full",
+        "snippet": "Stroke patients with hemiparesis display decreased beta band (13-25 Hz) rolandic activity, correlating to impaired motor function. However, clinically, patients without significant \u2026",
         "publication_info": {
-            "summary": "JP Kulasingham, C Brodbeck, S Khan\u2026 - Frontiers in \u2026, 2022 - ncbi.nlm.nih.gov",
+            "summary": "JP Kulasingham, C Brodbeck, S Khan\u2026 - Frontiers in \u2026, 2022 - frontiersin.org",
             "authors": [
                 {
                     "name": "JP Kulasingham",
@@ -1913,10 +2149,10 @@
         "title": "Cortical tracking of voice pitch in the presence of multiple speakers depends on selective attention",
         "result_id": "ixMq9TJ_SpYJ",
         "type": "Html",
-        "link": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9393379/",
-        "snippet": "Voice pitch carries linguistic and non-linguistic information. Previous studies have described cortical tracking of voice pitch in clean speech, with responses reflecting both pitch strength \u2026",
+        "link": "https://www.frontiersin.org/articles/10.3389/fnins.2022.828546/full",
+        "snippet": "Voice pitch carries linguistic as well as non-linguistic information. Previous studies have described cortical tracking of voice pitch in clean speech, with responses reflecting both pitch \u2026",
         "publication_info": {
-            "summary": "C Brodbeck, JZ Simon - Frontiers in neuroscience, 2022 - ncbi.nlm.nih.gov",
+            "summary": "C Brodbeck, JZ Simon - Frontiers in neuroscience, 2022 - frontiersin.org",
             "authors": [
                 {
                     "name": "C Brodbeck",
@@ -2058,25 +2294,31 @@
             ]
         }
     },
-    "lC-KuCZxkksJ": {
-        "title": "Cortical tracking of continuous speech under bimodal divided attention",
-        "result_id": "lC-KuCZxkksJ",
-        "link": "https://direct.mit.edu/nol/article-abstract/4/2/318/114548",
-        "snippet": "Speech processing often occurs amid competing inputs from other modalities, for example, listening to the radio while driving. We examined the extent to which dividing attention \u2026",
+    "lovxdtqizYgJ": {
+        "title": "Neural envelope tracking predicts speech intelligibility and hearing aid benefit in children with hearing loss",
+        "result_id": "lovxdtqizYgJ",
+        "link": "https://www.biorxiv.org/content/10.1101/2023.07.03.547477.abstract",
+        "snippet": "Early assessment of hearing aid benefit is crucial, as the extent to which hearing aids provide audible speech information predicts speech and language outcomes. A growing body of \u2026",
         "publication_info": {
-            "summary": "Z Xie, C Brodbeck, B Chandrasekaran - Neurobiology of Language, 2023 - direct.mit.edu",
+            "summary": "T Van Hirtum, B Somers, B Dieudonn\u00e9, E Verschueren\u2026 - bioRxiv, 2023 - biorxiv.org",
             "authors": [
                 {
-                    "name": "Z Xie",
-                    "link": "https://scholar.google.com/citations?user=SueOAUEAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=SueOAUEAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "SueOAUEAAAAJ"
+                    "name": "B Somers",
+                    "link": "https://scholar.google.com/citations?user=2vUkEAEAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=2vUkEAEAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "2vUkEAEAAAAJ"
                 },
                 {
-                    "name": "C Brodbeck",
-                    "link": "https://scholar.google.com/citations?user=m2x515IAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=m2x515IAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "m2x515IAAAAJ"
+                    "name": "B Dieudonn\u00e9",
+                    "link": "https://scholar.google.com/citations?user=wK6bfgsAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=wK6bfgsAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "wK6bfgsAAAAJ"
+                },
+                {
+                    "name": "E Verschueren",
+                    "link": "https://scholar.google.com/citations?user=U9KAQnoAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=U9KAQnoAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "U9KAQnoAAAAJ"
                 }
             ]
         }
@@ -2277,7 +2519,7 @@
     "qup-7vP0kAcJ": {
         "title": "Cortical speech tracking is related to individual prediction tendencies",
         "result_id": "qup-7vP0kAcJ",
-        "link": "https://academic.oup.com/cercor/advance-article-abstract/doi/10.1093/cercor/bhac528/6975346",
+        "link": "https://academic.oup.com/cercor/article-abstract/33/11/6608/6975346",
         "snippet": "Listening can be conceptualized as a process of active inference, in which the brain forms internal models to integrate auditory information in a complex interaction of bottom-up and top-\u2026",
         "publication_info": {
             "summary": "J Schubert, F Schmidt, Q Gehmacher\u2026 - Cerebral \u2026, 2023 - academic.oup.com",
@@ -2318,6 +2560,15 @@
                     "author_id": "ER1DHXcAAAAJ"
                 }
             ]
+        }
+    },
+    "rAZLgftLyykJ": {
+        "title": "From Letters to Concepts: Examining the Brain Systems That Support Word Recognition and Composition in Reading",
+        "result_id": "rAZLgftLyykJ",
+        "link": "https://search.proquest.com/openview/f646a07b5293992715ea963d3d2a05bd/1?pq-origsite=gscholar&cbl=18750&diss=y",
+        "snippet": "Abstract Language comprehension involves a dynamic interplay between recognizing individual units of meaning (eg, words) and composing more complex meanings from their \u2026",
+        "publication_info": {
+            "summary": "G Flick - 2023 - search.proquest.com"
         }
     },
     "sbu-V1MdbqcJ": {
@@ -2472,29 +2723,6 @@
             ]
         }
     },
-    "uX8c_LpxGisJ": {
-        "title": "Beyond linear neural envelope tracking: a mutual information approach",
-        "result_id": "uX8c_LpxGisJ",
-        "link": "https://iopscience.iop.org/article/10.1088/1741-2552/acbe1d/meta",
-        "snippet": "Objective. The human brain tracks the temporal envelope of speech, which contains essential cues for speech understanding. Linear models are the most common tool to study neural \u2026",
-        "publication_info": {
-            "summary": "P De Clercq, J Vanthornhout\u2026 - Journal of Neural \u2026, 2023 - iopscience.iop.org",
-            "authors": [
-                {
-                    "name": "P De Clercq",
-                    "link": "https://scholar.google.com/citations?user=cqOHtmwAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=cqOHtmwAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "cqOHtmwAAAAJ"
-                },
-                {
-                    "name": "J Vanthornhout",
-                    "link": "https://scholar.google.com/citations?user=I0EdEu0AAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=I0EdEu0AAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "I0EdEu0AAAAJ"
-                }
-            ]
-        }
-    },
     "ukwb-Ph8q9UJ": {
         "title": "Automatic access to verb continuations on the lexical and categorical levels: evidence from MEG",
         "result_id": "ukwb-Ph8q9UJ",
@@ -2515,11 +2743,10 @@
     "wFY0b9Iive0J": {
         "title": "Language in context: MEG evidence for modality-general and-specific responses to reference resolution",
         "result_id": "wFY0b9Iive0J",
-        "type": "Html",
-        "link": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5200920/",
+        "link": "https://www.eneuro.org/content/3/6/ENEURO.0145-16.2016.short",
         "snippet": "Successful language comprehension critically depends on our ability to link linguistic expressions to the entities they refer to. Without reference resolution, newly encountered language \u2026",
         "publication_info": {
-            "summary": "C Brodbeck, L Gwilliams, L Pylkk\u00e4nen - Eneuro, 2016 - ncbi.nlm.nih.gov",
+            "summary": "C Brodbeck, L Gwilliams, L Pylkk\u00e4nen - Eneuro, 2016 - eneuro.org",
             "authors": [
                 {
                     "name": "C Brodbeck",
@@ -2574,12 +2801,17 @@
     "xgoUWQYzdnoJ": {
         "title": "Cortical networks for recognition of speech with simultaneous talkers",
         "result_id": "xgoUWQYzdnoJ",
-        "type": "Pdf",
-        "link": "https://psyarxiv.com/vea5y/download",
-        "snippet": "\u2022 Twenty-five listeners complete a 3-AFC speech recognition task with two simultaneous talkers during fMRI scanning; the two talkers utter identical phrases (\u201cUnison\u201d condition) or \u2026",
+        "link": "https://www.sciencedirect.com/science/article/pii/S0378595523001685",
+        "snippet": "The relative contributions of superior temporal vs. inferior frontal and parietal networks to recognition of speech in a background of competing speech remain unclear, although the \u2026",
         "publication_info": {
-            "summary": "C Herrera, N Whittle, MR Leek, C Brodbeck, G Lee\u2026 - PsyArXiV, 2021 - psyarxiv.com",
+            "summary": "C Herrera, N Whittle, MR Leek, C Brodbeck, G Lee\u2026 - Hearing Research, 2023 - Elsevier",
             "authors": [
+                {
+                    "name": "C Herrera",
+                    "link": "https://scholar.google.com/citations?user=pLqdnAMAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=pLqdnAMAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "pLqdnAMAAAAJ"
+                },
                 {
                     "name": "C Brodbeck",
                     "link": "https://scholar.google.com/citations?user=m2x515IAAAAJ&hl=en&num=20&oi=sra",
@@ -2669,7 +2901,7 @@
         "title": "Hearing loss is associated with delayed neural responses to continuous speech",
         "result_id": "zqmQw-zIIykJ",
         "link": "https://onlinelibrary.wiley.com/doi/abs/10.1111/ejn.15644",
-        "snippet": "\u2026 He helped us with applying the Eelbrain toolbox, which accelerated this research project.\u2026 (a) To estimate TRFs, we used the Eelbrain toolbox (Brodbeck, 2020). The toolbox estimates \u2026",
+        "snippet": "We investigated the impact of hearing loss on the neural processing of speech. Using a forward modelling approach, we compared the neural responses to continuous speech of 14 \u2026",
         "publication_info": {
             "summary": "M Gillis, L Decruy, J Vanthornhout\u2026 - European Journal of \u2026, 2022 - Wiley Online Library",
             "authors": [
@@ -2694,7 +2926,7 @@
         "link": "https://www.biorxiv.org/content/10.1101/2022.04.22.489224.abstract",
         "snippet": "Listening can be conceptualized as a process of active inference, in which the brain forms internal models to predict and integrate auditory information in a complex interaction of bottom-\u2026",
         "publication_info": {
-            "summary": "J Schubert, F Schmidt, Q Gehmacher, A Bresgen\u2026 - bioRxiv, 2022 - biorxiv.org",
+            "summary": "J Schubert, F Schmidt, Q Gehmacher, A Bresgen\u2026 - BioRxiv, 2022 - biorxiv.org",
             "authors": [
                 {
                     "name": "F Schmidt",

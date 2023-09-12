@@ -68,8 +68,6 @@ objects:
 
    save.pickle
    load.unpickle
-   save.arrow
-   load.arrow
    load.update_subjects_dir
    load.convert_pickle_protocol
 

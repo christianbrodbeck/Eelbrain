@@ -12,7 +12,7 @@ import mne
 from nibabel.freesurfer import read_annot
 import numpy as np
 
-from .._data_obj import NDVar, SourceSpace
+from .._data_obj import NDVar, SourceSpace, UTS
 from .._types import PathArg
 from .._stats.testnd import NDTest, NDDifferenceTest, MultiEffectNDTest
 from .._utils import deprecated
@@ -562,7 +562,9 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
     brain = Brain(subject, hemi, surf, title, cortex, views=views, w=w, h=h, axw=axw, axh=axh, foreground=foreground, background=background, subjects_dir=subjects_dir, name=name, pos=pos, source_space=source)
 
     if ndvar is not None:
-        if ndvar.x.dtype.kind in 'ui':
+        if ndvar.x.dtype.kind == 'b':
+            brain.add_ndvar_label(ndvar, cmap, False)
+        elif ndvar.x.dtype.kind in 'ui':
             brain.add_ndvar_annotation(ndvar, cmap, False)
         else:
             brain.add_ndvar(ndvar, cmap, vmin, vmax, smoothing_steps, colorbar, time_label)
@@ -1143,16 +1145,24 @@ class SequencePlotter:
     --------
     Plot an evoked response or TRF (i.e., a time by source :class:`NDVar`)
     in 50 ms bins between 0 and 300 ms. Use the :meth:`~NDVar.extrema` method to
-    plot peak activity in each time bin::
+    plot peak activity in each time bin. This will plot the most extreme
+    value including its sign, and thus show positive and negative effects::
 
+        # Bin the data
         ndvar_binned = ndvar.bin(step=0.050, start=0, stop=0.3, func='extrema')
+        # Initialize the SequencePlotter and set parameters for visualizing the brain
         sp = plot.brain.SequencePlotter()
         sp.set_brain_args(surf='smoothwm')
+        # Add the data to be plotted
         sp.add_ndvar(ndvar_binned)
+        # Generate the figure with multiple brain plots
         p = sp.plot_table(view='lateral')
+        # Save as you would normally
         p.save('Figure.pdf')
 
-    Plot specific time points in an evoked response or TRF (``ndvar``)::
+    Plot specific time points in an evoked response or TRF (``ndvar``). To do
+    this, simply add mutiple data objects. Make sure to pass a colormap or
+    ``vmax`` parameter to make the color-scale consistent between plots::
 
         cmap = plot.soft_threshold_colormap('xpolar-a', 0.0001, 0.010)
         sp = plot.brain.SequencePlotter()
@@ -1161,16 +1171,28 @@ class SequencePlotter:
             sp.add_ndvar(ndvar.sub(time=t), cmap=cmap, label=f'{int(t*1000)} ms')
         p = sp.plot_table(view='lateral', orientation='vertical')
 
-    Plot a test result::
+    Visualize a test result, by separately adding condition means and a
+    difference map that is masked by significance::
 
-        res = testnd.TTestRelated('srcm', 'condition')
+        res = testnd.TTestRelated('srcm', 'condition', 'a', 'b', match='subject', data=data)
         vmax = 3  # explicitly set vmax to make sure that the color-maps agree
         sp = plot.brain.SequencePlotter()
         sp.set_brain_args(surf='inflated')
         sp.add_ndvar(res.c1_mean, vmax=vmax, label='a')
-        sp.add_ndvar(res.c0_mean, vmax=vmax, label = 'b')
+        sp.add_ndvar(res.c0_mean, vmax=vmax, label='b')
         sp.add_ndvar(res.masked_difference(), vmax=vmax, label='a - b')
         p = sp.plot_table(view='lateral', orientation='vertical')
+
+    Plot a source by time test result, showing how a difference map evolves
+    over time::
+
+        res = testnd.TTestRelated('srcm', 'condition', 'a', 'b', match='subject', data=data)
+        difference = res.masked_difference()
+        binned = difference.bin(step=0.200, start=0.200, stop=1.00, func='extrema')
+        sp = plot.brain.SequencePlotter()
+        sp.add_ndvar(binned)
+        p = sp.plot_table(view='lateral', title='a = b')
+
     """
     max_n_bins = 25
 
@@ -1184,6 +1206,7 @@ class SequencePlotter:
         self._subject = subject
         self._subjects_dir = subjects_dir
         self._frame_dim = None
+        self._frame_labels = None
         self._bin_kind: SPLayer = SPLayer.UNDEFINED
         self._frame_order = None
         self._brain_args = {}
@@ -1353,7 +1376,7 @@ class SequencePlotter:
             if static:
                 kind = SPLayer.OVERLAY
             elif self._frame_dim:
-                raise ValueError(f"static={static!r} when adding to plot with dimension {self._frame_dim}")
+                raise ValueError(f"{static=} when adding to plot with dimension {self._frame_dim}")
             else:
                 kind = SPLayer.ITEM
                 self._bin_kind = SPLayer.ITEM
@@ -1362,9 +1385,9 @@ class SequencePlotter:
         elif self._bin_kind == SPLayer.ITEM:
             raise ValueError(f"Can't add 2d NDVar to SequencePlotter with multiple NDVars")
         elif index is not None:
-            raise TypeError(f"index={index!r}")
+            raise TypeError(f"{index=}")
         elif static:
-            raise ValueError(f"static={static!r} for multi-dimensional NDVar")
+            raise ValueError(f"{static=} for multi-dimensional NDVar")
         else:
             self._bin_kind = SPLayer.SEQUENCE
             if self._frame_dim is None:
@@ -1373,9 +1396,14 @@ class SequencePlotter:
                 self._frame_dim = frame_dim
             elif frame_dim != self._frame_dim:
                 raise ValueError(f"New axis {frame_dim} is incompatible with previously set axis {self._frame_dim}")
-
-            if label is None and 'bins' in ndvar.info:
-                label = ndvar.info['bins']
+            if self._frame_labels is None and 'bins' in ndvar.info:
+                bins = ndvar.info['bins']
+                if isinstance(bins[0], str):
+                    self._frame_labels = bins
+                elif isinstance(frame_dim, UTS):
+                    fmt, _, unit = frame_dim._axis_format(True, '__unit__')
+                    self._frame_labels = [f'{t0*1000:.0f} - {t1*1000:.0f}' for t0, t1 in bins]
+                    self._frame_labels[0] = f'{self._frame_labels[0]} {unit}'
 
             layer = SequencePlotterLayer(SPLayer.SEQUENCE, ndvar, args, kwargs, label)
 
@@ -1425,7 +1453,7 @@ class SequencePlotter:
         if isinstance(res, MultiEffectNDTest):
             iterator = zip(res.p, res._statistic_map, res.effects)
         elif isinstance(res, NDVar):
-            iterator = [res, None, res.name]
+            iterator = ([res, None, res.name],)
         else:
             if isinstance(res, NDDifferenceTest):
                 desc = res.difference.name
@@ -1467,7 +1495,9 @@ class SequencePlotter:
                         label = items[0]
                     labels.append(label)
             else:
-                if self._frame_dim is None:
+                if self._frame_labels is not None:
+                    return self._frame_labels
+                elif self._frame_dim is None:
                     labels = []
                 elif self._frame_order is None:
                     labels = list(self._frame_dim)
@@ -1542,7 +1572,7 @@ class SequencePlotter:
             Pull the two hemispheres of the same plot closer together (movement
             in inches).
         ...
-            Layout parameters for the figure.
+            Also accepts :ref:`general-layout-parameters`.
 
         Returns
         -------

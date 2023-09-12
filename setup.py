@@ -49,15 +49,20 @@ Version(version)  # check that it's a valid version
 
 # Cython extensions
 args = {'define_macros': [("NPY_NO_DEPRECATED_API", "NPY_1_11_API_VERSION")]}
+if IS_WINDOWS:
+    open_mp_args = {**args, 'extra_compile_args': '/openmp'}
+else:
+    open_mp_args = {
+        **args,
+        'extra_compile_args': ['-Wno-unreachable-code', '-fopenmp'],
+        'extra_link_args': ['-fopenmp'],
+    }
+    args['extra_compile_args'] = ['-Wno-unreachable-code']
 ext = '.pyx' if cythonize else '.c'
 ext_cpp = '.pyx' if cythonize else '.cpp'
-if IS_WINDOWS:
-    open_mp = dict(extra_compile_args=['/openmp'])
-else:
-    open_mp = dict(extra_compile_args=['-fopenmp'], extra_link_args=['-fopenmp'])
 extensions = [
     Extension('eelbrain._data_opt', [f'eelbrain/_data_opt{ext}'], **args),
-    Extension('eelbrain._trf._boosting_opt', [f'eelbrain/_trf/_boosting_opt{ext}'], **open_mp, **args),
+    Extension('eelbrain._trf._boosting_opt', [f'eelbrain/_trf/_boosting_opt{ext}'], **open_mp_args),
     Extension('eelbrain._stats.connectivity_opt', [f'eelbrain/_stats/connectivity_opt{ext}'], **args),
     Extension('eelbrain._stats.opt', [f'eelbrain/_stats/opt{ext}'], **args),
     Extension('eelbrain._stats.vector', [f'eelbrain/_stats/vector{ext_cpp}'], include_dirs=['dsyevh3C'], **args),

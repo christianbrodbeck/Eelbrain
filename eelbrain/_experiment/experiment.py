@@ -128,7 +128,7 @@ class TreeModel:
     """
     owner = None  # email address as string (for notification)
     _auto_debug = False  # in notification block
-    _fmt_pattern = re.compile(r'\{([\w-]+)\}')
+    _fmt_pattern = re.compile(r'\{([\w-]+)}')
     # a dictionary of static templates (i.e., templates that do not have any hooks)
     _templates = {}
     defaults = {}

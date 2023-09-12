@@ -4361,12 +4361,7 @@ class NDVar(Named):
 
         # apply mask
         if mask is not None and isinstance(x, np.ma.MaskedArray):
-            if x.mask.any():
-                mask_index = x.mask
-                x = x.data.copy()
-                x[mask_index] = mask
-            else:
-                x = x.data
+            x = x.filled(mask)
 
         # insert axes
         if dims is not None and len(dims) > len(dims_):
@@ -4607,29 +4602,27 @@ class NDVar(Named):
 
     def unmask(
             self,
-            masked: Union[float, str] = None,
+            fill_value: Union[float, str] = None,
             name: str = None,
     ):
         """Remove mask from a masked ``NDVar``
 
         Parameters
         ----------
-        masked
-            What to do to the previously masked values; can be the name of any
+        fill_value
+            Vakue to fill in for previously masked values; can be the name of any
             numpy method, derived from the previously unmasked values (e.g.,
             ``mean`` or ``max``).
         name : str
             Name of the output NDVar (default is the current name).
         """
         if isinstance(self.x, np.ma.masked_array):
-            x: np.ndarray = self.x.data
-            if masked is not None:
-                if isinstance(masked, str):
-                    new_value = getattr(self.x.compressed(), masked)()
-                else:
-                    new_value = masked
-                x = x.copy()
-                x[self.x.mask] = new_value
+            if fill_value is None:
+                x = self.x.data
+            else:
+                if isinstance(fill_value, str):
+                    fill_value = getattr(self.x.compressed(), fill_value)()
+                x = self.x.filled(fill_value)
         else:
             x = self.x
         if name is None:
@@ -10789,12 +10782,15 @@ class UTS(Dimension):
         if self.unit == 's' and (v := self.plot_s_as_ms):
             s_to_ms = -v < self.tmax < v and -v < self.tmin < v
 
-        if label is True:
+        if label is True or label == '__unit__':
             if s_to_ms:
                 unit = 'ms'
             else:
                 unit = self.unit
-            label = f"{self.name.capitalize()} [{unit}]"
+            if label == '__unit__':
+                label = unit
+            else:
+                label = f"{self.name.capitalize()} [{unit}]"
 
         if s_to_ms:
             if scalar:

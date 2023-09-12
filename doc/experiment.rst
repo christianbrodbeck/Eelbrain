@@ -46,19 +46,21 @@ The pipeline expects input files in a strictly determined folder/file structure.
 In the schema below, curly brackets indicate slots that the pipeline will replace with specific
 names, for example ``{subject}`` will be replaced with each specific subject's name::
 
-    root
-    mri-sdir                                /mri
-    mri-dir                                    /{subject}
-    meg-sdir                                /meg
-    meg-dir                                    /{subject}
-    trans-file                                       /{subject}-trans.fif
-    raw-file                                         /{subject}_{session}-raw.fif
+    Root
+    MRI directory                      /mri
+    MRI subject                           /{subject}
+    M/EEG directory                    /{data_dir}
+    M/EEG subject                         /{subject}
+    trans-file                               /{subject}-trans.fif
+    raw-file                                 /{subject}_{session}-raw.fif
 
 
-The first step in working with the pipeline consists in:
+The first step in setting up the pipeline consists in:
 
- - Arranging the files in the expected file structure
+ - Arranging the files in the expected file structure (MRI and ``trans-file`` are optional and only needed for source localization)
  - Defining an :class:`MneExperiment` subclass with the parameters required to find those files
+
+The ``{data_dir}`` directory in which the pipeline looks for the raw data is determined by the :attr:`MneExperiment.data_dir` attribute. By default it is ``'meg'``, but it can be changed, for example, to ``'eeg'``. This is merely to make the filenames less confusing when e.g. working with EEG data, it does not influence the analysis in any other way.
 
 The ``{session}`` refers to the name of the recording session. The name of one or several recording session(s) has to be specified on an :class:`MneExperiment` subclass, using the  :attr:`MneExperiment.sessions` attribute. Those names will be used to find the raw data files, by filling in the ``raw-file`` template from above::
 
@@ -69,7 +71,6 @@ The ``{session}`` refers to the name of the recording session. The name of one o
         sessions = 'words'
 
 
-In order to change the directory in which to look for the raw data, use :attr:`MneExperiment.data_dir` (for example, to call the directory ``eeg`` instead of ``meg``).
 
 The final step to locating the files is providing the ``root`` location when initializing that subclass::
 
@@ -77,7 +78,7 @@ The final step to locating the files is providing the ``root`` location when ini
     e = WordExperiment("/files")
 
 
-If the files are in the right order, the pipeline will determine the subject names based on the names of the folders inside ``meg-sdir``. Only names matching a specific expression will be considered, for example "R" followed by 3 digits. This expression can be customized in :attr:`MneExperiment.subject_re`.
+If the files are in the right order, the pipeline will determine the subject names based on the names of the folders inside the M/EEG directory. Only names matching a specific expression will be considered, for example "R" followed by 3 digits. This expression can be customized in :attr:`MneExperiment.subject_re`.
 
 If that all works, and assuming the first subject is named "R0001", the pipeline will look for data at the following locations:
 
@@ -118,13 +119,13 @@ Pre-processing
 Make sure an appropriate pre-processing pipeline is defined as
 :attr:`MneExperiment.raw`.
 
-To inspect raw data for a given pre-processing stage use::
+To inspect raw data for a given pre-processing step use::
 
     >>> e.set(raw='1-40')
     >>> y = e.load_raw(ndvar=True)
     >>> p = plot.TopoButterfly(y, xlim=10, w=0)
 
-Which will plot a 10 s excerpt and allow scrolling through the data.
+Which will plot a 10 s excerpt and allow scrolling through the rest of the data.
 
 
 .. _MneExperiment-events:
@@ -333,6 +334,7 @@ Basic setup
 -----------
 
 .. py:attribute:: MneExperiment.owner
+   :type: str
 
 Set :attr:`MneExperiment.owner` to your email address if you want to be able to
 receive notifications. Whenever you run a sequence of commands ``with
@@ -348,6 +350,7 @@ will send you an email as soon as the report is finished (or the program
 encountered an error)
 
 .. py:attribute:: MneExperiment.auto_delete_results
+   :type: bool
 
 Whenever a :class:`MneExperiment` instance is initialized with a valid
 ``root`` path, it checks whether changes in the class definition invalidate
@@ -356,6 +359,7 @@ the deletion of invalidated results. Set :attr:`auto_delete_results` to ``True``
 to delete them automatically without interrupting initialization.
 
 .. py:attribute:: MneExperiment.auto_delete_cache
+   :type: bool
 
 :class:`MneExperiment` caches various intermediate results. By default, if a
 change in the experiment definition would make cache files invalid, the outdated
@@ -367,32 +371,39 @@ When using this option, set :attr:`MneExperiment.screen_log_level` to
 ``'debug'`` to learn about what change caused the cache to be invalid.
 
 .. py:attribute:: MneExperiment.screen_log_level
+   :type: str
 
 Determines the amount of information displayed on the screen while using
 an :class:`MneExperiment` (see :mod:`logging`).
 
-.. py:attribute:: MneExperiment.defaults : Dict[str, str]
+.. py:attribute:: MneExperiment.defaults
+   :type: Dict[str, str]
 
 The defaults dictionary can contain default settings for
 experiment analysis parameters (see :ref:`state-parameters`), e.g.::
 
-    defaults = {'epoch': 'my_epoch',
-                'cov': 'noreg',
-                'raw': '1-40'}
+    defaults = {
+        'epoch': 'my_epoch',
+        'cov': 'noreg',
+        'raw': '1-40',
+    }
 
 
 Finding files
 -------------
 
-.. py:attribute:: MneExperiemnt.sessions : str | Sequence[str]
+.. py:attribute:: MneExperiment.sessions
+   :type: str | Sequence[str]
 
 The name, or a list of names of the raw data files (see :ref:`MneExperiment-filestructure`).
 
-.. py:attribute:: MneExperiemnt.data_dir : str
+.. py:attribute:: MneExperiment.data_dir
+   :type: str
 
 Folder name for the raw data directory. By default, this is ``meg``, i.e., the experiment will look for raw files at ``root/meg/{subject}/{subject}_{session}-raw.fif``. After setting ``data_dir = 'eeg'``, the experiment will look at ``root/eeg/{subject}/{subject}_{session}-raw.fif``.
 
-.. py:attribute:: MneExperiment.subject_re : str
+.. py:attribute:: MneExperiment.subject_re
+   :type: str
 
 Subjects are identified on initialization by looking for folders in the data directory (``meg`` by default) whose name matches the :attr:`.MneExperiment.subject_re` regular expression. By default, this is ``'(R|A|Y|AD|QP)(\d{3,})$'``, which matches R-numbers like ``R1234``, but also numbers prefixed by ``A``, ``Y``, ``AD`` or ``QP`` (for information about how to define a different regular expression, see :mod:`re`).
 
@@ -403,19 +414,23 @@ Reading files
 .. note::
     Gain more control over reading files through adding a :class:`RawPipe` to :attr:`MneExperiment.raw`.
 
-.. py:attribute:: MneExperiment.stim_channel : str | Sequence of str
+.. py:attribute:: MneExperiment.stim_channel
+   :type: str | Sequence[str]
 
 By default, events are loaded from all stim channels; use this parameter to restrict events to one or several stim channels.
 
-.. py:attribute:: MneExperiment.merge_triggers : int
+.. py:attribute:: MneExperiment.merge_triggers
+   :type: int
 
 Use a non-default ``merge`` parameter for :func:`.load.mne.events`.
 
-.. py:attribute:: MneExperiment.trigger_shift : float | Dict[str, float]
+.. py:attribute:: MneExperiment.trigger_shift
+   :type: float | Dict[str, float]
 
 Set this attribute to shift all trigger times by a constant (in seconds). For example, with ``trigger_shift = 0.03`` a trigger that originally occurred 35.10 seconds into the recording will be shifted to 35.13. If the trigger delay differs between subjects, this attribute can also be a dictionary mapping subject names to shift values, e.g. ``trigger_shift = {'R0001': 0.02, 'R0002': 0.05, ...}``.
 
-.. py:attribute:: MneExperiment.meg_system : str
+.. py:attribute:: MneExperiment.meg_system
+   :type: str
 
 Specify the MEG system used to acquire the data so that the right sensor neighborhood graph can be loaded. This is usually automatic, but is needed for KIT files convert with with :mod:`mne` < 0.13. Equivalent to the ``sysname`` parameter in :func:`.load.mne.epochs_ndvar` etc. For example, for data from NYU New York, the correct value is ``meg_system="KIT-157"``.
 
@@ -446,13 +461,12 @@ The raw data that constitutes the input to the pipeline can be accessed in a pip
 Each subsequent preprocessing step is defined with its input as first argument
 (``source``).
 
-For example, the following definition sets up a pipeline using TSSS, a band-pass
+For example, the following definition sets up a pipeline for MEG, using TSSS, a band-pass
 filter and ICA::
 
     class Experiment(MneExperiment):
 
         sessions = 'session'
-
         raw = {
             'tsss': RawMaxwell('raw', st_duration=10., ignore_ref=True, st_correlation=0.9, st_only=True),
             '1-40': RawFilter('tsss', 1, 40),
@@ -462,8 +476,25 @@ filter and ICA::
 To use the ``raw --> TSSS --> 1-40 Hz band-pass`` pipeline, use ``e.set(raw="1-40")``. 
 To use ``raw --> TSSS --> 1-40 Hz band-pass --> ICA``, select ``e.set(raw="ica")``.
 
+The following is an example for EEG using band-pass filter, ICA and re-referencing::
+
+    class Experiment(MneExperiment):
+
+        data_dir = 'eeg'
+        sessions = ['stories', 'tones']
+        raw = {
+            '1-20': RawFilter('raw', 1, 20, cache=False),
+            'ica': RawICA('1-20', 'stories'),
+            'reref': RawReReference('ica', ['A1', 'A2'], 'A2')
+            # Use the ICA with a high pass filter with a lower cutuff frequency:
+            '0.2-20': RawFilter('raw', 0.2, 20, cache=False),
+            '0.2-20ica': RawApplyICA('0.2-20', 'ica'),
+            '0.2reref': RawReReference('0.2-20ica', ['A1', 'A2'], 'A2'),
+        }
+
+
 .. note::
-    Continuous files take up a lot of hard drive space. By default, files for most pre-processing steps are cached This can be controlled with the ``cache`` parameter. To delete files correspoding to a specific step (e.g., ``raw='1-40'``), use the :meth:`MneExperiment.rm` method::
+    Continuous files take up a lot of hard drive space. By default, files for most pre-processing steps are cached. This can be controlled with the ``cache`` parameter. To delete files correspoding to a specific step (e.g., ``raw='1-40'``), use the :meth:`MneExperiment.rm` method::
 
         >>> e.rm('cached-raw-file', True, raw='1-40')
 

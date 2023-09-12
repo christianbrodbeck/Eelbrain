@@ -11,9 +11,13 @@ from warnings import warn
 from .notebooks import tqdm
 
 
-LOG_LEVELS = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO,
-              'WARNING': logging.WARNING, 'ERROR': logging.ERROR,
-              'CRITICAL': logging.CRITICAL}
+LOG_LEVELS = {
+    'DEBUG': logging.DEBUG,
+    'INFO': logging.INFO,
+    'WARNING': logging.WARNING,
+    'ERROR': logging.ERROR,
+    'CRITICAL': logging.CRITICAL,
+}
 
 
 def as_list(item):

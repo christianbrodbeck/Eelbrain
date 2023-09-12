@@ -686,6 +686,7 @@ class MneExperiment(FileTree):
         self._register_compound('test_desc', ('epoch_visit', 'test', 'test_options'))
 
         # Define make handlers
+        self._bind_make('mri-dir', self._make_mri)
         self._bind_cache('cov-file', self.make_cov)
         self._bind_cache('src-file', self.make_src)
         self._bind_cache('fwd-file', self.make_fwd)
@@ -3896,7 +3897,7 @@ class MneExperiment(FileTree):
                     if not return_data:
                         return res
                 elif not make:
-                    raise IOError(f"The requested test {desc} is cached with samples={res.samples}, but you request samples={samples}; Set make=True to perform the test.")
+                    raise IOError(f"The requested test {desc} is cached with samples={res.samples}, but you requested {samples=}; Set make=True to compute the test with the new number of samples.")
                 else:
                     res = None
         elif not make and exists(dst):
@@ -3918,11 +3919,11 @@ class MneExperiment(FileTree):
             if not isinstance(parc, str):
                 raise TypeError(f"parc needs to be set for ROI test (data={data.string!r})")
             elif mask is not None:
-                raise TypeError(f"mask={mask!r}: invalid for data={data.string!r}")
+                raise TypeError(f"{mask=}: invalid for data={data.string!r}")
         elif parc is not None:
-            raise TypeError(f"parc={parc!r}: invalid for data={data.string!r}")
+            raise TypeError(f"{parc=}: invalid for data={data.string!r}")
         elif mask is not None:
-            raise TypeError(f"mask={mask!r}: invalid for data={data.string!r}")
+            raise TypeError(f"{mask=}: invalid for data={data.string!r}")
 
         do_test = res is None
         if do_test:
@@ -4834,6 +4835,17 @@ class MneExperiment(FileTree):
             stc = case['stcm']
             stc.save(path)
 
+    def _make_mri(self):
+        mri_sdir = Path(self.get('mri-sdir'))
+        if not mri_sdir.exists():
+            raise IOError(f"Cannot access MRI directory at {mri_sdir}")
+        mrisubject = self.get('mrisubject')
+        if mrisubject == 'fsaverage':
+            self._log.info(f"MRI for FSAverage is missing, trying to generate it.")
+            mne.create_default_subject(subjects_dir=mri_sdir)
+        else:
+            raise IOError(f"MRI for {mrisubject} is missing and cannot be created automatically")
+
     def make_plot_annot(self, surf='inflated', redo=False, **state):
         """Create a figure for the contents of an annotation file
 
@@ -5711,7 +5723,7 @@ class MneExperiment(FileTree):
                 else:
                     raise RuntimeError(f'src={src!r}')
                 voi.extend('%s-%s' % fmt for fmt in product(('Left', 'Right'), voi_lat))
-                mri_dir = self.get('mri-dir')
+                mri_dir = self.get('mri-dir', make=True)
                 sss = mne.setup_volume_source_space(subject, pos=float(param), bem=bem, mri=join(mri_dir, 'mri', 'aseg.mgz'), volume_label=voi, subjects_dir=mri_sdir)
                 sss = merge_volume_source_space(sss, name)
                 if special is None:
@@ -5841,36 +5853,50 @@ class MneExperiment(FileTree):
         else:
             self.set(**dict(zip(field, next_)))
 
-    def plot_annot(self, parc=None, surf=None, views=None, hemi=None,
-                   borders=False, alpha=0.7, w=None, h=None, axw=None, axh=None,
-                   foreground=None, background=None, seeds=False, **state):
+    def plot_annot(
+            self,
+            parc: str = None,
+            surf: str = None,
+            views: Union[str, Sequence[str]] = None,
+            hemi: str = None,
+            borders: Union[bool, int] = False,
+            alpha: float = 0.7,
+            w: int = None,
+            h: int = None,
+            axw: int = None,
+            axh: int = None,
+            foreground: Any = None,
+            background: Any = None,
+            seeds: bool = False,
+            **state,
+    ):
         """Plot the annot file on which the current parcellation is based
 
         Parameters
         ----------
-        parc : None | str
+        parc
             Parcellation to plot. If None (default), use parc from the current
             state.
         surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
             Freesurfer surface to use as brain geometry.
-        views : str | sequence of str
+        views
             One or several views to show in the figure. The options are:
             ``'lateral', 'medial', 'ventral', 'dorsal', 'rostral', 'parietal',
             'frontal', 'caudal'``.
         hemi : 'lh' | 'rh' | 'both' | 'split'
             Which hemispheres to plot (default includes hemisphere with more
             than one label in the annot file).
-        borders : bool | int
+        borders
             Show only label borders (PySurfer Brain.add_annotation() argument).
-        alpha : scalar
+        alpha
             Alpha of the annotation (1=opaque, 0=transparent, default 0.7).
-        axw : int
+        axw
             Figure width per hemisphere.
         foreground : mayavi color
             Figure foreground color (i.e., the text color).
         background : mayavi color
             Figure background color.
-        seeds : bool
+        seeds
             Plot seeds as points (only applies to seeded parcellations).
         ...
             State parameters.
@@ -6605,7 +6631,7 @@ class MneExperiment(FileTree):
             elif mask:
                 raise ValueError("Can't specify mask together with parc")
             elif pmin is None or pmin == 'tfce':
-                raise NotImplementedError(f"Threshold-free test (pmin={pmin!r}) is not implemented for parcellation (parc parameter). Use a mask instead, or do a cluster-based test.")
+                raise NotImplementedError(f"Threshold-free test ({pmin=}) is not implemented for parcellation (parc parameter). Use a mask instead, or do a cluster-based test.")
             else:
                 folder = parc
                 kwargs['parc'] = parc

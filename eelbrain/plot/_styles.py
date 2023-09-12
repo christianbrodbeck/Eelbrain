@@ -293,8 +293,11 @@ def colors_for_oneway(
     else:
         cm = mpl.colormaps.get_cmap(cmap)
         if locations is None:
-            imax = n - 1
-            locations = (i / imax for i in range(n))
+            if n == 1:
+                locations = [0.5]
+            else:
+                imax = n - 1
+                locations = (i / imax for i in range(n))
         colors = (cm(x) for x in locations)
     return dict(zip(cells, colors))
 

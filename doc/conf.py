@@ -44,7 +44,6 @@ extensions = [
     'sphinx.ext.napoleon',  # https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html
     'sphinxcontrib.bibtex',  # https://sphinxcontrib-bibtex.readthedocs.io
     'sphinx_gallery.gen_gallery',  # https://sphinx-gallery.github.io
-    # 'scanpydoc',  # https://github.com/theislab/scanpydoc
     'sphinx_rtd_theme',  # https://sphinx-rtd-theme.readthedocs.io/
 ]
 # enable to have all methods documented on the same page as a class:
@@ -254,7 +253,6 @@ intersphinx_mapping = {
     'nilearn': ('https://nilearn.github.io', None),
     'numpy': ('https://numpy.org/doc/stable', None),
     'pandas': ('https://pandas.pydata.org/docs', None),
-    'pyarrow': ('https://arrow.apache.org/docs/python', None),
     'rpy2': ('https://rpy2.github.io/doc', None),
     'scipy': ('https://docs.scipy.org/doc/scipy', None),
     'surfer': ('https://pysurfer.github.io', None),

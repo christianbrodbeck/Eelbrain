@@ -362,7 +362,7 @@ class RawSource(RawPipe):
 
 class CachedRawPipe(RawPipe):
 
-    _bad_chs_affect_cache: bool= False
+    _bad_chs_affect_cache: bool = False
     source: RawPipe = None  # set on linking
 
     def __init__(self, source, cache=True):
@@ -520,10 +520,10 @@ class RawFilter(CachedRawPipe):
         l_freq, h_freq = self.args
         if l_freq and l_freq > (raw.info["highpass"] or 0):
             with raw.info._unlock():
-                raw.info["highpass"] = float[l_freq]
+                raw.info["highpass"] = float(l_freq)
         if h_freq and h_freq < (raw.info["lowpass"] or raw.info['sfreq']):
             with raw.info._unlock():
-                raw.info["lowpass"] = float[h_freq]
+                raw.info["lowpass"] = float(h_freq)
         return raw
 
 
@@ -727,7 +727,7 @@ class RawICA(CachedRawPipe):
         if exists(path):
             ica = mne.preprocessing.read_ica(path)
             if not self._check_ica_channels(ica, raw):
-                self.log.info("Raw %s for subject=%r: ICA channels mismatch data channels", self.name, subject)
+                self.log.info("Raw %s for subject=%r: ICA channels mismatch data channels, recomputing ICA...", self.name, subject)
             else:
                 mtimes = [self.source.mtime(subject, recording, self._bad_chs_affect_cache) for recording in recordings]
                 if all(mtimes) and getmtime(path) > max(mtimes):
