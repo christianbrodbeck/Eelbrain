@@ -520,10 +520,10 @@ class RawFilter(CachedRawPipe):
         l_freq, h_freq = self.args
         if l_freq and l_freq > (raw.info["highpass"] or 0):
             with raw.info._unlock():
-                raw.info["highpass"] = float[l_freq]
+                raw.info["highpass"] = float(l_freq)
         if h_freq and h_freq < (raw.info["lowpass"] or raw.info['sfreq']):
             with raw.info._unlock():
-                raw.info["lowpass"] = float[h_freq]
+                raw.info["lowpass"] = float(h_freq)
         return raw
 
 
