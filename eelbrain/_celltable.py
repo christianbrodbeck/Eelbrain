@@ -122,7 +122,7 @@ class Celltable:
                         raise ValueError(f"{cat=}: categories can only be specified as None if all cells in x are used, but there are more than {len(cat)} cells: {x.cells}")
 
                 # make sure all categories are in data
-                if missing := [c for c in cat if c not in x.cells]:
+                if missing := [repr(c) for c in cat if c not in x.cells]:
                     raise ValueError(f"{cat=} contains categories that are not in the data: {', '.join(missing)}")
 
                 # apply cat
