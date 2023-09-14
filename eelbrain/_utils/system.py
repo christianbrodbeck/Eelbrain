@@ -8,8 +8,7 @@ IS_WINDOWS = os.name == 'nt'
 if IS_OSX:
     from .macos import user_activity
 else:
-    def user_activity(func):
-        return func
+    from .null_os import user_activity
 
 
 def restore_main_spec():
