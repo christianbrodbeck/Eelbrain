@@ -30,15 +30,16 @@ def anova_full_fmaps(
     e_ms : array (n_effects, n_effects)
         Each row represents the expected MS of one effect.
     """
-    cdef Py_ssize_t i, i_beta, i_fmap, i_effect, i_effect_ms, i_start, i_stop, case, df
-    cdef double v, ss, ms_denom
+    cdef:
+        Py_ssize_t i, i_beta, i_fmap, i_effect, i_effect_ms, i_start, i_stop, case, df
+        double v, ss, ms_denom
 
-    cdef Py_ssize_t n_tests = y.shape[1]
-    cdef Py_ssize_t n_cases = y.shape[0]
-    cdef Py_ssize_t n_betas = x.shape[1]
-    cdef Py_ssize_t n_effects = effects.shape[0]
-    cdef double *betas = <double *>malloc(sizeof(double) * n_betas)
-    cdef double *mss = <double *>malloc(sizeof(double) * n_effects)
+        Py_ssize_t n_tests = y.shape[1]
+        Py_ssize_t n_cases = y.shape[0]
+        Py_ssize_t n_betas = x.shape[1]
+        Py_ssize_t n_effects = effects.shape[0]
+        double *betas = <double *>malloc(sizeof(double) * n_betas)
+        double *mss = <double *>malloc(sizeof(double) * n_effects)
 
     for i in range(n_tests):
         if zero_variance(y, i) == 1:
@@ -100,17 +101,18 @@ def anova_fmaps(const np.npy_float64[:,:] y,
     df_res : int
         Df of the residuals.
     """
-    cdef unsigned long i
-    cdef unsigned int df, i_beta, i_effect, i_effect_ms, i_effect_beta, i_fmap, case
-    cdef double v, SS, MS, MS_res, MS_den
+    cdef:
+        unsigned long i
+        unsigned int df, i_beta, i_effect, i_effect_ms, i_effect_beta, i_fmap, case
+        double v, SS, MS, MS_res, MS_den
 
-    cdef unsigned long n_tests = y.shape[1]
-    cdef unsigned int n_cases = y.shape[0]
-    cdef unsigned int n_betas = x.shape[1]
-    cdef unsigned int n_effects = effects.shape[0]
-    cdef double *betas = <double *>malloc(sizeof(double) * n_betas)
-    cdef double [:,:] values = cvarray((n_cases, n_betas), sizeof(double), "d")
-    cdef double *predicted_y = <double *>malloc(sizeof(double) * n_cases)
+        unsigned long n_tests = y.shape[1]
+        unsigned int n_cases = y.shape[0]
+        unsigned int n_betas = x.shape[1]
+        unsigned int n_effects = effects.shape[0]
+        double *betas = <double *>malloc(sizeof(double) * n_betas)
+        double [:,:] values = cvarray((n_cases, n_betas), sizeof(double), "d")
+        double *predicted_y = <double *>malloc(sizeof(double) * n_cases)
 
     for i in range(n_tests):
         if zero_variance(y, i) == 1:
@@ -163,12 +165,13 @@ def sum_square(
     out : array (n_tests,)
         container for output.
     """
-    cdef unsigned long i
-    cdef unsigned int case
-    cdef double ss
+    cdef:
+        unsigned long i
+        unsigned int case
+        double ss
 
-    cdef unsigned long n_tests = y.shape[1]
-    cdef unsigned int n_cases = y.shape[0]
+        unsigned long n_tests = y.shape[1]
+        unsigned int n_cases = y.shape[0]
 
     for i in range(n_tests):
         ss = 0
@@ -191,12 +194,13 @@ def ss(
     out : array (n_tests,)
         container for output.
     """
-    cdef unsigned long i
-    cdef unsigned int case
-    cdef double mean, ss_
+    cdef:
+        unsigned long i
+        unsigned int case
+        double mean, ss_
 
-    cdef unsigned long n_tests = y.shape[1]
-    cdef unsigned int n_cases = y.shape[0]
+        unsigned long n_tests = y.shape[1]
+        unsigned int n_cases = y.shape[0]
 
     for i in range(n_tests):
         # find mean
@@ -218,8 +222,9 @@ cdef int zero_variance(
         unsigned long i,
 ):
     """Check whether a column of y has zero variance"""
-    cdef unsigned int case
-    cdef double ref_value = y[0, i]
+    cdef:
+        unsigned int case
+        double ref_value = y[0, i]
 
     for case in range(1, y.shape[0]):
         if y[case, i] != ref_value:
@@ -246,11 +251,12 @@ cdef void _lm_betas(
     betas : array (n_betas,)
         Output container.
     """
-    cdef unsigned int i_beta, case
-    cdef double beta
+    cdef:
+        unsigned int i_beta, case
+        double beta
 
-    cdef unsigned int n_cases = y.shape[0]
-    cdef unsigned int df_x = xsinv.shape[0]
+        unsigned int n_cases = y.shape[0]
+        unsigned int df_x = xsinv.shape[0]
 
     # betas = xsinv * y
     for i_beta in range(df_x):
@@ -280,11 +286,12 @@ cdef double _lm_res_ss(
     betas : array (n_betas,)
         Fitted regression coefficients.
     """
-    cdef Py_ssize_t case, i_beta
-    cdef double predicted_y
+    cdef:
+        Py_ssize_t case, i_beta
+        double predicted_y
 
-    cdef double ss = 0
-    cdef Py_ssize_t n_cases = y.shape[0]
+        double ss = 0
+        Py_ssize_t n_cases = y.shape[0]
 
     for case in range(n_cases):
         predicted_y = 0
@@ -314,14 +321,13 @@ def lm_res(
     res : array (n_cases, n_tests)
         Container for output.
     """
-    cdef unsigned long i
-    cdef unsigned int i_beta, case
-    cdef double predicted_y, SS_res
-
-    cdef unsigned long n_tests = y.shape[1]
-    cdef unsigned int n_cases = y.shape[0]
-    cdef unsigned int df_x = xsinv.shape[0]
-    cdef double *betas = <double *>malloc(sizeof(double) * df_x)
+    cdef:
+        Py_ssize_t i, i_beta, case
+        double predicted_y, SS_res
+        Py_ssize_t n_tests = y.shape[1]
+        Py_ssize_t n_cases = y.shape[0]
+        Py_ssize_t df_x = xsinv.shape[0]
+        double *betas = <double *>malloc(sizeof(double) * df_x)
 
     for i in range(n_tests):
         _lm_betas(y, i, xsinv, betas)
@@ -355,12 +361,12 @@ def lm_res_ss(
     ss : array (n_tests,)
         Container for output.
     """
-    cdef unsigned long i
-
-    cdef unsigned long n_tests = y.shape[1]
-    cdef unsigned int n_cases = y.shape[0]
-    cdef unsigned int df_x = xsinv.shape[0]
-    cdef double *betas = <double *>malloc(sizeof(double) * df_x)
+    cdef:
+        unsigned long i
+        unsigned long n_tests = y.shape[1]
+        unsigned int n_cases = y.shape[0]
+        unsigned int df_x = xsinv.shape[0]
+        double *betas = <double *>malloc(sizeof(double) * df_x)
 
     for i in range(n_tests):
         _lm_betas(y, i, xsinv, betas)
@@ -384,7 +390,6 @@ def t_1samp(
     """
     cdef unsigned long i, case
     cdef double mean, denom
-
     cdef unsigned long n_tests = y.shape[1]
     cdef unsigned long n_cases = y.shape[0]
     cdef double div = (n_cases - 1) * n_cases
@@ -425,13 +430,13 @@ def t_1samp_perm(
     sign : array (n_cases,)
         The randomly asigned sign for each case.
     """
-    cdef unsigned long i, case
-    cdef double mean, denom
-
-    cdef unsigned long n_tests = y.shape[1]
-    cdef unsigned int n_cases = y.shape[0]
-    cdef double div = (n_cases - 1) * n_cases
-    cdef double *case_buffer = <double *>malloc(sizeof(double) * n_cases)
+    cdef:
+        unsigned long i, case
+        double mean, denom
+        unsigned long n_tests = y.shape[1]
+        unsigned int n_cases = y.shape[0]
+        double div = (n_cases - 1) * n_cases
+        double *case_buffer = <double *>malloc(sizeof(double) * n_cases)
 
     for i in range(n_tests):
         for case in range(n_cases):
@@ -462,14 +467,14 @@ def t_ind(
         const np.npy_int8[:] group,
 ):
     "Indpendent-samples t-test, assuming equal variance"
-    cdef Py_ssize_t i, case
-    cdef double mean0, mean1, var
-
-    cdef Py_ssize_t n_tests = y.shape[1]
-    cdef Py_ssize_t n_cases = y.shape[0]
-    cdef Py_ssize_t df = n_cases - 2
-    cdef Py_ssize_t n0
-    cdef Py_ssize_t n1 = 0
+    cdef:
+        Py_ssize_t i, case
+        double mean0, mean1, var
+        Py_ssize_t n_tests = y.shape[1]
+        Py_ssize_t n_cases = y.shape[0]
+        Py_ssize_t df = n_cases - 2
+        Py_ssize_t n0
+        Py_ssize_t n1 = 0
 
     if group.shape[0] != n_cases:
         raise ValueError("length of group does not match n_cases in y")
@@ -509,8 +514,9 @@ def t_ind(
 
 def has_zero_variance(const np.npy_float64[:,:] y):
     "True if any data-columns have zero variance"
-    cdef double value
-    cdef Py_ssize_t case, i
+    cdef:
+        double value
+        Py_ssize_t case, i
 
     for i in range(y.shape[1]):
         value = y[0, i]

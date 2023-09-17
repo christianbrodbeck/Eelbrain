@@ -146,12 +146,12 @@ cdef double error_for_indexes_c(
 
 
 def boosting_runs(
-        FLOAT64[:,:] y,  # (n_y, n_times)
-        FLOAT64[:,:] x,  # (n_x, n_times)
+        FLOAT64 [:,:] y,  # (n_y, n_times)
+        FLOAT64 [:,::1] x,  # (n_x, n_times)
         FLOAT64 [:] x_pads,  # (n_x,)
-        INT64[:,:,:] split_train,
-        INT64[:,:,:] split_validate,
-        INT64[:,:,:] split_train_and_validate,
+        INT64 [:,:,:] split_train,
+        INT64 [:,:,:] split_validate,
+        INT64 [:,:,:] split_train_and_validate,
         INT64 [:] i_start_by_x,  # (n_x,) kernel start index
         INT64 [:] i_stop_by_x, # (n_x,) kernel stop index
         double delta,
@@ -478,9 +478,9 @@ def boosting_fit(
         FLOAT64 [:] y,  # (n_times,)
         FLOAT64 [:,:] x,  # (n_x, n_times)
         FLOAT64 [:] x_pads,  # (n_x,)
-        INT64[:,:] split_train,
-        INT64[:,:] split_validate,
-        INT64[:,:] split_train_and_validate,
+        INT64 [:,:] split_train,
+        INT64 [:,:] split_validate,
+        INT64 [:,:] split_train_and_validate,
         INT64 [:] i_start_by_x,  # (n_x,) kernel start index
         INT64 [:] i_stop_by_x, # (n_x,) kernel stop index
         double delta,
