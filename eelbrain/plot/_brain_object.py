@@ -1,6 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """PySurfer Brain subclass to embed in Eelbrain"""
-from distutils.version import LooseVersion
 from functools import cached_property, partial
 import os
 import sys
@@ -61,11 +60,6 @@ OTHER_HEMI = {'lh': 'rh', 'rh': 'lh'}
 # default size
 BRAIN_H = 250
 BRAIN_W = 300
-
-
-def assert_can_save_movies():
-    if LooseVersion(surfer.__version__) < LooseVersion('0.6'):
-        raise ImportError("Saving movies requires PySurfer 0.6")
 
 
 def get_source_dim(ndvar):

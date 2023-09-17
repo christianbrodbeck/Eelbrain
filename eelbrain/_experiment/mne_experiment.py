@@ -4621,7 +4621,6 @@ class MneExperiment(FileTree):
         if not redo and self._result_file_mtime(dst, data, group is None):
             return
 
-        plot._brain.assert_can_save_movies()
         if group is None:
             ds = self.load_evoked_stc(subject, baseline, src_baseline)
             y = ds['src']
@@ -4746,7 +4745,6 @@ class MneExperiment(FileTree):
             if not redo and self._result_file_mtime(dst, data, group is None):
                 return
 
-            plot._brain.assert_can_save_movies()
             if group is None:
                 ds = self.load_epochs_stc(subject, baseline, src_baseline, cat=cat)
                 y = 'src'
