@@ -1,6 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 "Internet communication utilities"
-from distutils.version import LooseVersion
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import keyring
@@ -8,9 +7,7 @@ from keyring.errors import KeyringError
 from pathlib import Path
 import smtplib
 import socket
-import sys
 import traceback
-import xmlrpc.client
 
 from .system import user_activity
 from .. import fmtxt
@@ -23,24 +20,6 @@ NOOB_ADDRESS = 'n00b.eelbrain@gmail.com'
 
 class KeychainError(Exception):
     "Error retrieving password from Keychain"
-
-
-def check_for_update():
-    """Check whether a new version of Eelbrain is available
-
-    Prints a message if an update is available on the Python package index, does
-    nothing otherwise.
-    """
-    current = sys.modules['eelbrain'].__version__
-    if current == 'dev':
-        print("Using Eelbrain development version")
-        return
-    pypi = xmlrpc.client.ServerProxy('https://pypi.python.org/pypi')
-    versions = pypi.package_releases('eelbrain')
-    newest = versions[-1]
-    if LooseVersion(newest) > LooseVersion(current):
-        print("New Eelbrain version available: %s (currently installed is %s)" %
-              (newest, current))
 
 
 def get_smtpserver(password, new_password=False):
