@@ -241,6 +241,8 @@ class ColorList(EelFigure):
         Shape for color samples (default 'box').
     markersize
         Size of markers in points.
+    label_position
+        Whether to place labels to the left or right of the colors.
     ...
         Also accepts :ref:`general-layout-parameters`.
 
@@ -258,7 +260,10 @@ class ColorList(EelFigure):
             h: float = None,
             shape: Literal['box', 'line', 'marker'] = 'box',
             markersize: float = None,
+            label_position: Literal['left', 'right'] = 'right',
             **kwargs):
+        if label_position not in ('left', 'right'):
+            raise ValueError(f"{label_position=}")
         if cells is None:
             cells = colors.keys()
         elif isinstance(cells, Iterator):
@@ -277,13 +282,20 @@ class ColorList(EelFigure):
         if labels is None:
             labels = {cell: cellname(cell) for cell in cells}
         elif not isinstance(labels, dict):
-            raise TypeError(f"labels={labels!r}")
+            raise TypeError(f"{labels=}")
 
         layout = Layout(0, 1.5, 2, False, h=h, **kwargs)
         EelFigure.__init__(self, None, layout)
 
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
+
+        if label_position == 'right':
+            x = 1.1
+            ha = 'left'
+        else:
+            x = -0.1
+            ha = 'right'
 
         n = len(cells)
         self.labels = []
@@ -299,11 +311,15 @@ class ColorList(EelFigure):
                 ax.scatter(0.5, y, markersize, **styles[cell].scatter_args)
             else:
                 raise ValueError(f"{shape=}")
-            h = ax.text(1.1, y, labels.get(cell, cell), va='center', ha='left', zorder=2)
+            h = ax.text(x, y, labels.get(cell, cell), va='center', ha=ha, zorder=2)
             self.labels.append(h)
 
         ax.set_ylim(0, n)
-        ax.set_xlim(0, n * self._layout.w / self._layout.h)
+        width = n * self._layout.w / self._layout.h
+        if label_position == 'right':
+            ax.set_xlim(0, width)
+        else:
+            ax.set_xlim(-width + 1, 1)
 
         self._draw_hooks.append(self.__update_frame)
         self._ax = ax
