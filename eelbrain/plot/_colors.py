@@ -404,7 +404,7 @@ class ColorBar(EelFigure):
             ticks: Union[int, Dict[float, str], Sequence[float]] = None,
             threshold: float = None,
             ticklocation: Literal['auto', 'top', 'bottom', 'left', 'right'] = 'auto',
-            background: ColorArg = 'white',
+            background: ColorArg = None,
             tight: bool = True,
             h: float = None,
             w: float = None,
@@ -560,26 +560,16 @@ class ColorBar(EelFigure):
             axis.label.set_rotation(0)
             axis.label.set_va('center')
 
+        if background is not None:
+            ax.set_facecolor(background)
+
         self._contours = [contour_func(c, c='k') for c in contours]
-        self._draw_hooks.append(self.__fix_alpha)
         self._draw_hooks.append(self.__update_bar_tickness)
 
-        self._background = background
         self._colorbar = colorbar
         self._orientation = orientation
         self._width = width
         self._show()
-
-    def __fix_alpha(self):
-        # fix cmaps with alpha https://stackoverflow.com/q/15003353/166700
-        if self._background is not False:
-            lut = self._colorbar.solids.get_facecolor()
-            bg_color = to_rgb(self._background)
-            lut[:, :3] *= lut[:, 3:]
-            lut[:, :3] += (1 - lut[:, 3:]) * bg_color
-            lut[:, 3] = 1.
-            self._colorbar.solids.set_facecolor(lut)
-            return True
 
     def _tight(self):
         # make sure ticklabels have space
