@@ -6547,7 +6547,7 @@ class MneExperiment(FileTree):
             if isinstance(self._parcs.get(name), SeededParc):
                 return parc
             else:
-                raise ValueError("No seeded parc with name %r" % name)
+                raise ValueError(f"{parc=}: No parcellation named '{parc}' and no seeded parcellation named '{name}'")
         else:
             raise ValueError(f"{parc=}")
 

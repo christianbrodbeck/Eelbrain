@@ -224,7 +224,7 @@ def convolve(h, x, ds=None, name=None):
         is_single = False
 
     if isinstance(h, NDVar) != is_single:
-        raise TypeError(f"h={h}: needs to match x")
+        raise TypeError(f"{h=}: needs to match x")
 
     if not is_single:
         assert len(h) == len(x)
@@ -240,7 +240,7 @@ def convolve(h, x, ds=None, name=None):
     x_time = x.get_dim('time')
     h_time = h.get_dim('time')
     if x_time.tstep != h_time.tstep:
-        raise ValueError(f"h={h}: incompatible time axis (unequel tstep; x: {x_time.tstep} h: {h_time.tstep})")
+        raise ValueError(f"{h=}: incompatible time axis (unequel tstep; x: {x_time.tstep} h: {h_time.tstep})")
 
     # initialize output
     a = Alignement(h, x, 'time')

@@ -343,7 +343,7 @@ class ANOVA(Test):
             if 'subject' in items:
                 items.remove('subject')
             elif not between_items:
-                raise DefinitionError(f"x={x!r} without model: for mixed ANOVA, 'subject' needs to be in x; for between-subject ANOVA, model needs to be set explicitly")
+                raise DefinitionError(f"{x=} without model: for mixed ANOVA, 'subject' needs to be in x; for between-subject ANOVA, model needs to be set explicitly")
             model = '%'.join(items)
         else:
             model_items = list(filter(None, (item.strip() for item in model.split('%'))))

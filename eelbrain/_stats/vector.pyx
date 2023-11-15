@@ -1,5 +1,5 @@
 # Author: Proloy Das <proloy@umd.edu>
-# cython: language_level=3, boundscheck=False, wraparound=False
+# cython: boundscheck=False, wraparound=False
 # distutils: language = c++
 # setuptools: include_dirs = dsyevh3C/
 """
@@ -225,7 +225,7 @@ def t2_stat_rotated(
     return out
 
 
-cdef max(double* x, int n):
+cdef max(double* x, int n) noexcept:
     cdef int i
     cdef double max_elem = x[0]
     for i in range(1, n):

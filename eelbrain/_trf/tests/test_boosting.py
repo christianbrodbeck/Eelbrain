@@ -159,7 +159,7 @@ def test_boosting_epochs():
     p0 = p0.smooth('time', .05, 'hamming')
     # 1d
     for tstart, basis in product((-0.1, 0.1, 0), (0, 0.05)):
-        print(f"tstart={tstart}, basis={basis}")
+        print(f"{tstart=}, {basis=}")
         res = boosting('uts', [p0, p1], tstart, 0.6, model='A', data=ds, basis=basis, partitions=3, debug=True)
         assert res.r == approx(0.238, abs=2e-3)
         y = convolve(res.h_scaled, [p0, p1], name='predicted')

@@ -496,8 +496,7 @@ class _BalancedMixedNDANOVA(_BalancedNDANOVA):
         self._e_ms_array = _hopkins_ems_array(x)
 
     def _map_balanced(self, y, flat_f_map, x_full, xsinv):
-        anova_full_fmaps(y, x_full, xsinv, flat_f_map, self._effect_to_beta,
-                         self._e_ms_array)
+        anova_full_fmaps(y, x_full, xsinv, flat_f_map, self._effect_to_beta, self._e_ms_array)
 
 
 class _IncrementalNDANOVA(_NDANOVA):

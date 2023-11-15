@@ -7,8 +7,9 @@ from tqdm import tqdm, trange
 
 def use_inline_backend():
     "Check whether matplotlib is using an inline backend, e.g. for notebooks"
-    backend = matplotlib.get_backend()
-    return backend.endswith('inline') or backend == 'nbAgg'
+    # matplotlib.get_backend() also initializes backend
+    backend = dict.__getitem__(matplotlib.rcParams, 'backend')
+    return isinstance(backend, str) and (backend.endswith('inline') or backend == 'nbAgg')
 
 
 # import inline tqdm

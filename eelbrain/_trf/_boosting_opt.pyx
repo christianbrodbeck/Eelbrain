@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-# cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
+# cython: boundscheck=False, wraparound=False, cdivision=True
 from libc.math cimport fabs
 from cython.parallel import prange
 from libc.stdlib cimport malloc, free
@@ -15,7 +15,7 @@ ctypedef np.float64_t FLOAT64
 cdef double inf = float('inf')
 
 
-cdef double square(double x) nogil:
+cdef double square(double x) noexcept nogil:
     # cf. https://github.com/scikit-image/scikit-image/issues/3026
     return x * x
 
@@ -29,7 +29,7 @@ cdef void l1_for_delta(
         int shift,  # TRF element offset
         double* e_add,
         double* e_sub,
-    ) nogil:
+    ) noexcept nogil:
     cdef:
         double d
         Py_ssize_t i, seg_i, seg_start, seg_stop, conv_start, conv_stop
@@ -75,7 +75,7 @@ cdef void l2_for_delta(
         int shift,
         double* e_add,
         double* e_sub,
-    ) nogil:
+    ) noexcept nogil:
     cdef:
         double d
         Py_ssize_t i, seg_i, seg_start, seg_stop, conv_start, conv_stop
@@ -125,7 +125,7 @@ cdef double error_for_indexes_c(
         FLOAT64 * x,
         INT64[:,:] indexes,  # (n_segments, 2)
         int error,  # 1 --> l1; 2 --> l2
-) nogil:
+) noexcept nogil:
     cdef:
         Py_ssize_t seg_i, i
         double out = 0
@@ -146,12 +146,12 @@ cdef double error_for_indexes_c(
 
 
 def boosting_runs(
-        FLOAT64[:,:] y,  # (n_y, n_times)
-        FLOAT64[:,:] x,  # (n_x, n_times)
+        FLOAT64 [:,:] y,  # (n_y, n_times)
+        FLOAT64 [:,::1] x,  # (n_x, n_times)
         FLOAT64 [:] x_pads,  # (n_x,)
-        INT64[:,:,:] split_train,
-        INT64[:,:,:] split_validate,
-        INT64[:,:,:] split_train_and_validate,
+        INT64 [:,:,:] split_train,
+        INT64 [:,:,:] split_validate,
+        INT64 [:,:,:] split_train_and_validate,
         INT64 [:] i_start_by_x,  # (n_x,) kernel start index
         INT64 [:] i_stop_by_x, # (n_x,) kernel stop index
         double delta,
@@ -197,7 +197,7 @@ ctypedef struct BoostingRunResult:
     BoostingStep *history
 
 
-cdef BoostingRunResult * boosting_run_result(int failed, BoostingStep *history) nogil:
+cdef BoostingRunResult * boosting_run_result(int failed, BoostingStep *history) noexcept nogil:
     result = <BoostingRunResult*> malloc(sizeof(BoostingRunResult))
     result.failed = failed
     result.history = history
@@ -206,7 +206,7 @@ cdef BoostingRunResult * boosting_run_result(int failed, BoostingStep *history) 
 
 cdef void free_history(
         BoostingRunResult *result,
-) nogil:
+) noexcept nogil:
     cdef:
         BoostingStep *step
         BoostingStep *step_i
@@ -235,7 +235,7 @@ cdef BoostingRunResult * boosting_run(
         int selective_stopping,
         Py_ssize_t i_start,
         Py_ssize_t n_times_h,
-) nogil:
+) noexcept nogil:
     cdef:
         int out
         Py_ssize_t n_x = x.shape[0]
@@ -387,7 +387,7 @@ cdef void generate_options(
         int error,  # ID of the error function (l1/l2)
         double delta,
         Py_ssize_t n_x,
-    ) nogil:
+    ) noexcept nogil:
     cdef:
         double e_add, e_sub, e_new, x_pad
         Py_ssize_t i_stim, i_time, new_sign
@@ -429,7 +429,7 @@ cdef void update_error(
         INT64 [:,:] indexes,  # segment indexes
         double delta,
         Py_ssize_t shift,
-    ) nogil:
+    ) noexcept nogil:
     cdef:
         Py_ssize_t i, seg_i, seg_start, seg_stop, conv_start, conv_stop
 
@@ -478,9 +478,9 @@ def boosting_fit(
         FLOAT64 [:] y,  # (n_times,)
         FLOAT64 [:,:] x,  # (n_x, n_times)
         FLOAT64 [:] x_pads,  # (n_x,)
-        INT64[:,:] split_train,
-        INT64[:,:] split_validate,
-        INT64[:,:] split_train_and_validate,
+        INT64 [:,:] split_train,
+        INT64 [:,:] split_validate,
+        INT64 [:,:] split_train_and_validate,
         INT64 [:] i_start_by_x,  # (n_x,) kernel start index
         INT64 [:] i_stop_by_x, # (n_x,) kernel stop index
         double delta,

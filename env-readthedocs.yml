@@ -4,7 +4,7 @@ channels:
 dependencies:
 - python >= 3.8
 - setuptools >=17
-- cython >=0.21
+- cython >=3
 - colormath >=2.1
 - docutils <0.17  # https://stackoverflow.com/a/68008428/166700
 - keyring >=5

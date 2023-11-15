@@ -1534,7 +1534,7 @@ class SequencePlotter:
     def plot_table(
             self,
             hemi: Literal['lh', 'rh', 'both'] = None,
-            view: Union[str, Sequence] = ('lateral', 'medial'),
+            view: Union[str, Sequence[str]] = ('lateral', 'medial'),
             orientation: Literal['horizontal', 'vertical'] = None,
             labels: Union[bool, Sequence[str]] = True,
             mode: Literal['rgb', 'rgba'] = 'rgb',
