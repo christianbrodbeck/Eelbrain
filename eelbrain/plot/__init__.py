@@ -3,7 +3,7 @@
 
 from .._colorspaces import two_step_colormap, unambiguous_color
 
-from ._base import reset_rc, subplots
+from ._base import subplots
 from ._colors import ColorBar, ColorGrid, ColorList
 from ._decorations import figure_outline, mark_difference
 from ._figure import Figure
