@@ -48,9 +48,6 @@ p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, w=2)
 matplotlib.style.use('bmh')
 p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, w=2)
 
-matplotlib.style.use('seaborn')
-p = plot.Boxplot('fltvar', 'A % B', match='rm', data=ds, w=2)
-
 ###############################################################################
 # ``rcParams``
 # ^^^^^^^^^^^^
