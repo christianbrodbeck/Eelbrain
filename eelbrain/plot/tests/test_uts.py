@@ -116,7 +116,7 @@ def test_uts():
 
     # axtitle from Factor
     ds1 = ds[:3]
-    p = plot.UTS('uts', xax='.case', axtitle=ds1['rm'], data=ds1, ncol=1, w=2)
+    p = plot.UTS('uts', xax='.case', axtitle=ds1['rm'], data=ds1, columns=1, w=2)
     p.close()
 
 

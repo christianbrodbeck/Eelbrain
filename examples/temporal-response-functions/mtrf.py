@@ -84,7 +84,7 @@ p.set_time(.150)
 # --------------
 # Compare model quality through the correlation between measured and predicted
 # responses:
-plot.Topomap([res.r, res_onset.r], w=4, h=2, ncol=2, axtitle=['envelope', 'envelope + onset'])
+plot.Topomap([res.r, res_onset.r], w=4, h=2, columns=2, axtitle=['envelope', 'envelope + onset'])
 
 
 ###############################################################################

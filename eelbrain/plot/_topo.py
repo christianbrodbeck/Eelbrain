@@ -308,7 +308,7 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         n_bins = len(time)
         n_rows = bin_data.n_plots
         kwargs.setdefault('tight', False)
-        layout = Layout(n_bins * n_rows, 1, 1.5, nrow=n_rows, ncol=n_bins, **kwargs)
+        layout = Layout(n_bins * n_rows, 1, 1.5, rows=n_rows, columns=n_bins, **kwargs)
         EelFigure.__init__(self, plot_data.frame_title, layout)
         self._plots.extend(repeat(None, n_bins * n_rows))
 
@@ -1009,8 +1009,8 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
         plot_data = PlotData.from_args(y, ('time', 'sensor'), xax, data, sub).for_plot(PlotType.IMAGE)
 
         # create figure
-        if 'ncol' not in kwargs and 'nrow' not in kwargs:
-            kwargs['nrow'] = 1
+        if 'columns' not in kwargs and 'rows' not in kwargs:
+            kwargs['rows'] = 1
         layout = Layout(plot_data.plot_used, 1.5, 3, tight=False, **kwargs)
         EelFigure.__init__(self, plot_data.frame_title, layout)
         all_plots = []
@@ -1032,15 +1032,15 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
             kw = dict(left=x_frame_l, right=1 - x_frame_r, bottom=.05, top=.9, wspace=.1, hspace=.3)
             if gridspec_kw:
                 kw.update(gridspec_kw)
-            gs = self.figure.add_gridspec(layout.nrow * 2, layout.ncol * ntopo, **kw)
-            if layout.nrow == 1:
+            gs = self.figure.add_gridspec(layout.rows * 2, layout.columns * ntopo, **kw)
+            if layout.rows == 1:
                 for col, used in enumerate(plot_data.plot_used):
                     if not used:
                         continue
                     self.figure.add_subplot(gs[0, col*ntopo:(col+1)*ntopo], picker=True)
                     for j in range(ntopo):
                         self.figure.add_subplot(gs[1, col*ntopo+j], picker=True, xticks=[], yticks=[])
-            elif layout.ncol == 1:
+            elif layout.columns == 1:
                 for row, used in enumerate(plot_data.plot_used):
                     if not used:
                         continue
@@ -1048,7 +1048,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
                     for j in range(ntopo):
                         self.figure.add_subplot(gs[row*2+1, j], picker=True, xticks=[], yticks=[])
             else:
-                raise ValueError("Layout with multiple columns and rows; set either ncol=1 or nrow=1")
+                raise ValueError("Layout with multiple columns and rows; set either columns=1 or rows=1")
             self.axes = self.figure.axes
 
         # im_array plots

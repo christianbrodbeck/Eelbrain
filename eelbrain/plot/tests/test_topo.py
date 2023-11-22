@@ -33,16 +33,16 @@ def test_plot_topomap():
     p = plot.Topomap('topo', 'predictability', data=ds, axw=2)
     assert_titles_visible(p)
     p.close()
-    p = plot.Topomap('topo', 'predictability % long', data=ds, axw=2, ncol=2)
+    p = plot.Topomap('topo', 'predictability % long', data=ds, axw=2, columns=2)
     assert_titles_visible(p)
     p.close()
-    p = plot.Topomap('topo', 'predictability % long', data=ds, axw=2, ncol=2, title='Topomap Plot Title')
+    p = plot.Topomap('topo', 'predictability % long', data=ds, axw=2, columns=2, title='Topomap Plot Title')
     assert_titles_visible(p)
     p.close()
 
     # axtitles from array
     index = np.array([1, 3, 2])
-    p = plot.Topomap(ds[index, 'topo'], '.case', nrow=1, axh=2, h=2.4, axtitle=index)
+    p = plot.Topomap(ds[index, 'topo'], '.case', rows=1, axh=2, h=2.4, axtitle=index)
     p.close()
 
 

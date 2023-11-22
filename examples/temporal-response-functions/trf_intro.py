@@ -29,7 +29,7 @@ trf = gaussian(0.200, 0.050, trf_time) - gaussian(0.300, 0.050, trf_time)
 # The response is the convolution of the stimulus with the TRF
 y = convolve(trf, x)
 
-plot_args = dict(ncol=1, axh=2, w=10, frame='t', legend=False, colors='r')
+plot_args = dict(columns=1, axh=2, w=10, frame='t', legend=False, colors='r')
 plot.UTS([x, trf, y], ylabel=['Stimulus (x)', 'TRF', 'Response (y)'], **plot_args)
 
 ###############################################################################
@@ -64,5 +64,5 @@ plot.UTS([x, trf, y], ylabel=['Stimulus (x)', 'TRF', 'Response (y)'], **plot_arg
 # coordinate descent algorithm:
 
 fit = boosting(y, x, 0.000, 0.500, basis=0.050, partitions=2)
-plot_args = {**plot_args, 'ncol': 3}
+plot_args = {**plot_args, 'columns': 3}
 plot.UTS([trf, fit.h, None], axtitle=["Model TRF", "Reconstructed TRF"], **plot_args)

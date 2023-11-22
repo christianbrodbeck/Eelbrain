@@ -1875,7 +1875,7 @@ class EelFigure(MatplotlibFigure):
                     bottom = max([spec.rowspan.stop for spec in subplotspecs])
                     show_ticklabels = [spec.rowspan.stop == bottom for spec in subplotspecs]
                 else:
-                    first = len(axes) - min(self._layout.ncol, nax)
+                    first = len(axes) - min(self._layout.columns, nax)
                     show_ticklabels = [i >= first for i in range(len(axes))]
             elif ticklabels == 'left':
                 if all(isinstance(ax, matplotlib.axes.SubplotBase) for ax in axes):
@@ -1883,7 +1883,7 @@ class EelFigure(MatplotlibFigure):
                     left = min([spec.colspan.start for spec in subplotspecs])
                     show_ticklabels = [spec.colspan.start == left for spec in subplotspecs]
                 else:
-                    ncol = self._layout.ncol or nax
+                    ncol = self._layout.columns or nax
                     show_ticklabels = [i % ncol == 0 for i in range(len(axes))]
             elif ticklabels == 'all':
                 show_ticklabels = [True] * nax
@@ -2329,8 +2329,8 @@ class Layout(BaseLayout):
             w: float = None,
             axh: float = None,
             axw: float = None,
-            nrow: int = None,
-            ncol: int = None,
+            rows: int = None,
+            columns: int = None,
             dpi: float = None,
             margins: Dict[str, float] = None,
             show: bool = True,
@@ -2364,9 +2364,9 @@ class Layout(BaseLayout):
             Height of the axes.
         axw
             Width of the axes.
-        nrow
+        rows
             Set a limit to the number of rows (default is no limit).
-        ncol
+        columns
             Set a limit to the number of columns (defaut is no limit). If
             neither nrow or ncol is specified, a square layout is preferred.
         dpi
@@ -2438,75 +2438,75 @@ class Layout(BaseLayout):
             elif h is None:
                 h = w / ax_aspect
         elif nax == 1:
-            ncol = ncol or 1
-            nrow = nrow or 1
-        elif nrow is None and ncol is None:
+            columns = columns or 1
+            rows = rows or 1
+        elif rows is None and columns is None:
             if w and axw:
                 trim = 'row'
-                ncol = math.floor(w / axw)
+                columns = math.floor(w / axw)
             elif h and axh:
                 trim = 'col'
-                nrow = math.floor(h / axh)
+                rows = math.floor(h / axh)
             elif w:
                 trim = 'row'
                 if axh:
-                    ncol = round(w / (axh * ax_aspect))
+                    columns = round(w / (axh * ax_aspect))
                 else:
-                    ncol = round(w / (axh_default * ax_aspect))
-                ncol = max(1, min(nax, ncol))
+                    columns = round(w / (axh_default * ax_aspect))
+                columns = max(1, min(nax, columns))
             elif h:
                 trim = 'col'
                 if axw:
-                    nrow = round(h / (axw / ax_aspect))
+                    rows = round(h / (axw / ax_aspect))
                 else:
-                    nrow = round(h / axh_default)
-                nrow = max(1, min(nax, nrow))
+                    rows = round(h / axh_default)
+                rows = max(1, min(nax, rows))
             elif axh or axw:
                 trim = 'row'
                 if not axh:
                     axh = axw / ax_aspect
-                nrow = min(nax, math.floor(defaults['maxh'] / axh))
+                rows = min(nax, math.floor(defaults['maxh'] / axh))
             else:
                 trim = 'row'
                 # default: minimum number of columns (max number of rows)
                 hspace = margins.get('hspace', 0)
                 maxh = defaults['maxh'] - margins.get('top', 0) - margins.get('bottom', 0) + hspace
                 axh_with_space = axh_default + hspace
-                nrow = min(nax, math.floor(maxh / axh_with_space))
-                ncol = math.ceil(nax / nrow)
+                rows = min(nax, math.floor(maxh / axh_with_space))
+                columns = math.ceil(nax / rows)
                 # test width
                 wspace = margins.get('wspace', 0)
                 maxw = defaults['maxw'] - margins.get('left', 0) - margins.get('right', 0) + wspace
                 axw_with_space = axh_default * ax_aspect + wspace
-                if ncol * axw_with_space > maxw:
+                if columns * axw_with_space > maxw:
                     # nrow/ncol proportional to (maxh / axh) / (maxw / axw)
                     ratio = (maxh / axh_with_space) / (maxw / axw_with_space)
                     # nax = ncol * (ncol * ratio)
                     # ncol = sqrt(nax / ratio)
-                    ncol = math.floor(math.sqrt(nax / ratio))
-                    nrow = math.ceil(nax / ncol)
-                    axh = (maxh - nrow * hspace) / nrow
+                    columns = math.floor(math.sqrt(nax / ratio))
+                    rows = math.ceil(nax / columns)
+                    axh = (maxh - rows * hspace) / rows
                     axw = axh * ax_aspect
 
         if nax:
-            if nrow is None:
-                nrow = math.ceil(nax / ncol)
-            elif ncol is None:
-                ncol = math.ceil(nax / nrow)
+            if rows is None:
+                rows = math.ceil(nax / columns)
+            elif columns is None:
+                columns = math.ceil(nax / rows)
 
             if trim == 'row':
-                if (nrow * ncol) - nax >= ncol:
-                    nrow -= 1
+                if (rows * columns) - nax >= columns:
+                    rows -= 1
             elif trim == 'col':
-                if (nrow * ncol) - nax >= nrow:
-                    nrow -= 1
+                if (rows * columns) - nax >= rows:
+                    rows -= 1
 
             if axw:
                 axh_default = axw / ax_aspect
             elif w:
-                axh_default = w / ncol / ax_aspect
-            h_dim = LayoutDim(nrow, h, axh, margins.get('top'), margins.get('hspace'), margins.get('bottom'), axh_default, self._default_margins['top'], self._default_margins['hspace'], self._default_margins['bottom'])
-            w_dim = LayoutDim(ncol, w, axw, margins.get('left'), margins.get('wspace'), margins.get('right'), h_dim.ax * ax_aspect, self._default_margins['left'], self._default_margins['wspace'], self._default_margins['right'])
+                axh_default = w / columns / ax_aspect
+            h_dim = LayoutDim(rows, h, axh, margins.get('top'), margins.get('hspace'), margins.get('bottom'), axh_default, self._default_margins['top'], self._default_margins['hspace'], self._default_margins['bottom'])
+            w_dim = LayoutDim(columns, w, axw, margins.get('left'), margins.get('wspace'), margins.get('right'), h_dim.ax * ax_aspect, self._default_margins['left'], self._default_margins['wspace'], self._default_margins['right'])
             h = h_dim.total
             w = w_dim.total
             axh = h_dim.ax
@@ -2517,10 +2517,10 @@ class Layout(BaseLayout):
             h_is_implicit = w_is_implicit = False
 
         if h_is_implicit:
-            hspace = 0 if nrow is None else margins['hspace'] * (nrow - 1)
+            hspace = 0 if rows is None else margins['hspace'] * (rows - 1)
             h += margins['bottom'] + hspace + margins['top']
         if w_is_implicit:
-            wspace = 0 if ncol is None else margins['wspace'] * (ncol - 1)
+            wspace = 0 if columns is None else margins['wspace'] * (columns - 1)
             w += margins['left'] + wspace + margins['right']
 
         BaseLayout.__init__(self, h, w, dpi, tight, show, run, title, **kwargs)
@@ -2528,8 +2528,8 @@ class Layout(BaseLayout):
         self.axes = axes
         self.axh = axh
         self.axw = axw
-        self.nrow = nrow
-        self.ncol = ncol
+        self.rows = rows
+        self.columns = columns
         self.frame = frame
         self.yaxis = yaxis
         self.share_axes = share_axes
@@ -2566,7 +2566,7 @@ class Layout(BaseLayout):
         axes = []
         kwargs = {}
         for i in self.axes:
-            ax = figure.add_subplot(self.nrow, self.ncol, i + 1, autoscale_on=self.autoscale, **kwargs)
+            ax = figure.add_subplot(self.rows, self.columns, i + 1, autoscale_on=self.autoscale, **kwargs)
             axes.append(ax)
             if self.share_axes:
                 kwargs.update(sharex=ax, sharey=ax)
@@ -2616,7 +2616,7 @@ class ImLayout(Layout):
     def _make_axes(self, figure):
         axes = []
         for i in self.axes:
-            ax = figure.add_subplot(self.nrow, self.ncol, i + 1, autoscale_on=self.autoscale)
+            ax = figure.add_subplot(self.rows, self.columns, i + 1, autoscale_on=self.autoscale)
             axes.append(ax)
         return axes
 
@@ -2634,7 +2634,7 @@ class VariableAspectLayout(BaseLayout):
 
     Parameters
     ----------
-    nrow
+    rows
         Number of rows.
     axh_default
         Default row height.
@@ -2652,7 +2652,7 @@ class VariableAspectLayout(BaseLayout):
     """
     def __init__(
             self,
-            nrow: int,
+            rows: int,
             axh_default: float,
             w_default: float,
             aspect: Sequence[Optional[float]] = (None, 1),
@@ -2674,12 +2674,12 @@ class VariableAspectLayout(BaseLayout):
         if axh and h:
             raise ValueError("h and axh can not be specified both at the same time")
         elif h:
-            axh = h / nrow
+            axh = h / rows
         elif axh:
-            h = nrow * axh
+            h = rows * axh
         else:
             axh = axh_default
-            h = nrow * axh
+            h = rows * axh
 
         if w is None:
             w = w_default
@@ -2690,10 +2690,10 @@ class VariableAspectLayout(BaseLayout):
             ax_frames = [True] * len(aspect)
 
         BaseLayout.__init__(self, h, w, dpi, False, show, run, title, **kwargs)
-        self.nax = nrow * len(aspect)
+        self.nax = rows * len(aspect)
         self.axh = axh
-        self.nrow = nrow
-        self.ncol = len(aspect)
+        self.rows = rows
+        self.columns = len(aspect)
         self.share_axes = False
         self.row_titles = row_titles
         self.aspect = aspect
@@ -2712,13 +2712,13 @@ class VariableAspectLayout(BaseLayout):
         top_buffer = text_buffer * (1 + 2 * bool(self.title))
 
         # rectangle base in inches
-        axh = (h - bottom_buffer - top_buffer) / self.nrow
+        axh = (h - bottom_buffer - top_buffer) / self.rows
         axws = [None if a is None else a * axh for a in self.aspect]
         fixed = sum(axw for axw in axws if axw is not None)
         w_free = (w - fixed - left_buffer) / self.n_flexible
         widths = [w_free if axw is None else axw for axw in axws]
         lefts = (sum(widths[:i]) + left_buffer for i in range(len(widths)))
-        bottoms = (i * axh + bottom_buffer for i in range(self.nrow - 1, -1, -1))
+        bottoms = (i * axh + bottom_buffer for i in range(self.rows - 1, -1, -1))
 
         # convert to figure coords
         height = axh / h
@@ -2750,8 +2750,8 @@ class VariableAspectLayout(BaseLayout):
 
 
 def subplots(
-        nrows: int = 1,
-        ncols: int = 1,
+        rows: int = 1,
+        columns: int = 1,
         axh: float = None,
         axw: float = None,
         h: float = None,
@@ -2770,9 +2770,9 @@ def subplots(
 
     Parameters
     ----------
-    nrows
+    rows
         Number of subplot rows.
-    ncols
+    columns
         Number of subplot columns.
     axh
         Height of each axes.
@@ -2804,7 +2804,7 @@ def subplots(
     from matplotlib import pyplot
 
     margins = {'left': left, 'bottom': bottom, 'right': right, 'top': top, 'wspace': wspace, 'hspace': hspace}
-    layout = Layout(nrows*ncols, 1, 2, False, None, h, w, axh, axw, nrows, ncols, None, margins)
+    layout = Layout(rows * columns, 1, 2, False, None, h, w, axh, axw, rows, columns, None, margins)
     gridspec_kw = {
         'left': layout.margins['left'] / layout.w,
         'right': 1 - layout.margins['right'] / layout.w,
@@ -2815,7 +2815,7 @@ def subplots(
         'hspace': layout.margins['hspace'] / layout.axh,
         'height_ratios': height_ratios,
     }
-    return pyplot.subplots(layout.nrow, layout.ncol, figsize=(layout.w, layout.h), gridspec_kw=gridspec_kw, **kwargs)
+    return pyplot.subplots(layout.rows, layout.columns, figsize=(layout.w, layout.h), gridspec_kw=gridspec_kw, **kwargs)
 
 
 class ColorBarMixin:

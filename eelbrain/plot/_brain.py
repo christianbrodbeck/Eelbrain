@@ -636,7 +636,7 @@ class ImageTable(ColorBarMixin, EelFigure):
         default_margins = {}
         if row_labels:
             default_margins['left'] = 0.3
-        layout = ImLayout(n_rows * n_columns, 4/3, 2, margins, default_margins, title, column_labels, nrow=n_rows, ncol=n_columns, autoscale=True, **kwargs)
+        layout = ImLayout(n_rows * n_columns, 4/3, 2, margins, default_margins, title, column_labels, rows=n_rows, columns=n_columns, autoscale=True, **kwargs)
         EelFigure.__init__(self, None, layout)
 
         self._n_rows = n_rows
@@ -743,7 +743,7 @@ class _BinTable(EelFigure, ColorBarMixin):
         n_hemis = (data.source.lh_n > 0) + (data.source.rh_n > 0)
         n_rows = len(views) * n_hemis
 
-        layout = ImLayout(n_rows * n_columns, 4/3, 2, margins, {'bottom': 0.5}, title, nrow=n_rows, ncol=n_columns, **kwargs)
+        layout = ImLayout(n_rows * n_columns, 4/3, 2, margins, {'bottom': 0.5}, title, rows=n_rows, columns=n_columns, **kwargs)
         EelFigure.__init__(self, None, layout)
 
         res_w = int(layout.axw * layout.dpi)
@@ -762,7 +762,7 @@ class _BinTable(EelFigure, ColorBarMixin):
         # time labels
         y = 0.25 / layout.h
         for i, label in enumerate(header):
-            x = (0.5 + i) / layout.ncol
+            x = (0.5 + i) / layout.columns
             self.figure.text(x, y, label, va='center', ha='center')
 
         ColorBarMixin.__init__(self, lambda: cmap_params, data)
@@ -1825,7 +1825,7 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
         name = brain_data.name
 
     # butterfly-plot
-    p = Butterfly(bfly_data, vmin=vmin, vmax=vmax, xlim=xlim, h=h, w=w, ncol=1, name=name, color='black', ylabel=hemis, axtitle=False)
+    p = Butterfly(bfly_data, vmin=vmin, vmax=vmax, xlim=xlim, h=h, w=w, columns=1, name=name, color='black', ylabel=hemis, axtitle=False)
 
     # Brain plot
     brain_h = h * p._layout.dpi
