@@ -8,7 +8,7 @@ import logging
 from os import makedirs, remove
 from os.path import basename, dirname, exists, getmtime, join, splitext
 from pathlib import Path
-from typing import Callable, Collection, Dict, List, Literal, Sequence, Tuple, Union
+from typing import Any, Callable, Collection, Dict, List, Literal, Sequence, Tuple, Union
 
 import mne
 from scipy import signal
@@ -592,16 +592,21 @@ class RawICA(CachedRawPipe):
 
     Parameters
     ----------
-    source : str
+    source
         Name of the raw pipe to use for input data.
-    session : str | sequence of str
+    session
         Session(s) to use for estimating ICA components.
-    method : str
+    method
         Method for ICA decomposition (default: ``'extended-infomax'``; see
         :class:`mne.preprocessing.ICA`).
-    random_state : int
+    random_state
         Set the random state for ICA decomposition to make results reproducible
         (default 0, see :class:`mne.preprocessing.ICA`).
+    fit_kwargs
+        A dictionary with keyword arguments that should be passed to
+        :meth:`mne.preprocessing.ICA.fit`. This includes
+        ``reject={'mag': 5e-12, 'grad': 5000e-13, 'eeg': 300e-6}`` unless
+        a different value for ``reject`` is specified here.
     cache : bool
         Cache the resulting raw files (default ``False``).
     ...
@@ -636,12 +641,14 @@ class RawICA(CachedRawPipe):
             session: Union[str, Sequence[str]],
             method: str = 'extended-infomax',
             random_state: int = 0,
+            fit_kwargs: Dict[str, Any] = None,
             cache: bool = False,
             **kwargs,
     ):
         CachedRawPipe.__init__(self, source, cache)
         self.session = tuple_arg('session', session, allow_none=False)
         self.kwargs = {'method': method, 'random_state': random_state, **kwargs}
+        self.fit_kwargs = dict(fit_kwargs) if fit_kwargs else {}
 
     def _link(self, name, pipes, root, raw_dir, cache_path, log):
         out = CachedRawPipe._link(self, name, pipes, root, raw_dir, cache_path, log)
@@ -649,7 +656,10 @@ class RawICA(CachedRawPipe):
         return out
 
     def _as_dict(self, args: Sequence[str] = ()):
-        return CachedRawPipe._as_dict(self, [*args, 'session', 'kwargs'])
+        out = CachedRawPipe._as_dict(self, [*args, 'session', 'kwargs'])
+        if self.fit_kwargs:
+            out['fit_kwargs'] = self.fit_kwargs
+        return out
 
     def load_bad_channels(
             self,
@@ -755,8 +765,9 @@ class RawICA(CachedRawPipe):
 
         ica = mne.preprocessing.ICA(**kwargs)
         # reject presets from meeg-preprocessing
+        fit_kwargs = {'reject': {'mag': 5e-12, 'grad': 5000e-13, 'eeg': 300e-6}, **self.fit_kwargs}
         with user_activity:
-            ica.fit(raw, reject={'mag': 5e-12, 'grad': 5000e-13, 'eeg': 300e-6})
+            ica.fit(raw, **fit_kwargs)
         if MNE_VERSION >= V0_24:
             ica.save(path, overwrite=True)
         else:
