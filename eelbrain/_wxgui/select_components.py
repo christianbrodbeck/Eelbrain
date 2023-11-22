@@ -109,9 +109,12 @@ class Document(FileDocument):
             data: Union[Dataset, mne.BaseEpochs],
             sysname: str,
             connectivity: Union[str, Sequence] = None,
+            drop_epochs_std: float = None,  # drop epochs with high signal (e.g. 10)
     ):
         FileDocument.__init__(self, path)
+        self._ndvar_args = dict(sysname=sysname, connectivity=connectivity)
         self.saved = True
+        self._explained_variance = {}
 
         if isinstance(data, mne.BaseEpochs):
             ds = Dataset({'epochs': data})
@@ -120,15 +123,34 @@ class Document(FileDocument):
         else:
             raise TypeError(f'data={data!r}')
 
+        # Exclude extreme epochs
+        epochs_ndvar = self.as_ndvar(ds['epochs'])
+        if drop_epochs_std:
+            variance = epochs_ndvar.var('sensor').max('time')
+            index = np.arange(len(variance))
+            while True:
+                sub_variance = variance[index]
+                sub_variance -= sub_variance.mean()
+                sub_variance /= sub_variance.std()
+                print(f"Max variance: {sub_variance.max()} STD...")
+                if sub_variance.max() > drop_epochs_std:
+                    mask = sub_variance <= drop_epochs_std
+                    print(f"Excluding {np.sum(~mask)} epochs > {drop_epochs_std} STD: {index[~mask]}...")
+                    index = index[mask]
+                else:
+                    break
+            ds = ds[index]
+            epochs_ndvar = epochs_ndvar[index]
+
+        # Read ICA
         self.ica = ica = mne.preprocessing.read_ica(path)
         if LooseVersion(mne.__version__) < LooseVersion('0.16'):
             ica.pre_whitener_ = ica._pre_whitener
 
-        self._ndvar_args = dict(sysname=sysname, connectivity=connectivity)
         self.accept = np.ones(self.ica.n_components_, bool)
         self.accept[ica.exclude] = False
         self.epochs = epochs = ds['epochs']
-        self.epochs_ndvar = self.as_ndvar(epochs)
+        self.epochs_ndvar = epochs_ndvar
         self.ds = ds
         # for 3d-data, pick magnetometers
         picks = _picks(ica.info, None, 'bads')
