@@ -7,7 +7,6 @@ import os
 from operator import mul
 from pathlib import Path
 import shutil
-import sys
 import tempfile
 
 import mne

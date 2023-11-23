@@ -101,7 +101,7 @@ def powerlaw_psd_gaussian(exponent, size, rng, fmin=0):
     si[...,0] = 0
     
     # Combine power + corrected phase to Fourier components
-    s  = sr + 1J * si
+    s = sr + 1J * si
     
     # Transform to real time series & scale to unit variance
     y = irfft(s, n=samples, axis=-1) / sigma
