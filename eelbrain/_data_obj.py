@@ -116,7 +116,7 @@ from warnings import warn
 import numpy
 from matplotlib.ticker import FixedLocator, Formatter, FormatStrFormatter, FuncFormatter
 import mne
-from mne.source_space import label_src_vertno_sel
+from .mne_fixes.legacy_api import label_src_vertno_sel
 import nibabel
 from nibabel.freesurfer import read_annot, read_geometry
 import numpy as np
