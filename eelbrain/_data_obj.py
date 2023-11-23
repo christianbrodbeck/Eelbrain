@@ -10589,7 +10589,7 @@ class VolumeSourceSpace(SourceSpaceBase):
         voxel_coords = mne.transforms.apply_trans(mri_to_voxel, coordinates)
         voxel_coords = np.round(voxel_coords).astype(int)
         x, y, z = voxel_coords.T
-        data = mgz.get_data()
+        data = numpy.asanyarray(mgz.dataobj)
         x = data[x, y, z]
         labels = mne_utils.get_volume_source_space_labels()
         return Factor(x, labels=labels, name=parc)
