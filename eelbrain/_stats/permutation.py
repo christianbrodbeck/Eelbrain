@@ -10,8 +10,6 @@ from .._utils import intervals
 from . import vector
 
 
-# Keep local RNG independent of public RNG
-RNG = random.Random()
 _YIELD_ORIGINAL = 0
 # for testing purposes, yield original order instead of permutations
 
@@ -210,25 +208,24 @@ def resample(y, samples=10000, replacement=False, unit=None):
         yield out
 
 
-def random_seeds(samples):
+def random_seeds(samples: int):
     """Sequence of seeds for permutation based on random numbers
 
     Parameters
     ----------
-    samples : int
+    samples
         Number of samples to yield.
 
     Returns
     -------
-    sign : array of int8  (n,)
-        Sign for each case (``1`` or ``-1``; ``sign`` is the same array object
-        but its content modified in every iteration).
+    samples : array of uint32  (samples,)
+        A random unsigned integer to serve as seed.
     """
     rng = np.random.RandomState(0)
     return rng.randint(2**32, size=samples, dtype=np.uint32)
 
 
-def _sample_xi_by_rejection(n, seed):
+def _sample_xi_by_rejection(n: int, rng: np.random.RandomState):
     """Return a sample (or samples) from the distribution p(x) = 2 * np.sin(x/2) ** 2 / pi
 
     See [1]_ for why samples from this distribution is required to sample
@@ -238,22 +235,21 @@ def _sample_xi_by_rejection(n, seed):
 
     Parameters
     ----------
-    n : int
+    n
         Number of the samples.
-    seed : int
-        Seed for the random state.
+    rng
+        Random generator.
 
     Returns
     -------
     ndarray
         samples drawn from the distribution
     """
-    RNG.seed(seed)  # could lead to conflict with threading
     samples = np.empty(n)
     i = 0
     while i < n:
-        z = RNG.random() * pi
-        u = RNG.random() * 2 / pi
+        z = rng.random() * pi
+        u = rng.random() * 2 / pi
 
         if u <= 2 * sin(z / 2) ** 2 / pi:
             samples[i] = z
@@ -280,5 +276,5 @@ def rand_rotation_matrices(n: int, seed: int):
     rng = np.random.RandomState(seed)
     phi = np.arccos(rng.uniform(-1, 1, n))
     theta = rng.uniform(0, 2 * pi, n)
-    xi = _sample_xi_by_rejection(n, seed)
+    xi = _sample_xi_by_rejection(n, rng)
     return vector.rotation_matrices(phi, theta, xi, np.empty((n, 3, 3)))
