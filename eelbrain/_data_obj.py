@@ -116,7 +116,7 @@ from warnings import warn
 import numpy
 from matplotlib.ticker import FixedLocator, Formatter, FormatStrFormatter, FuncFormatter
 import mne
-from mne.source_space import label_src_vertno_sel
+from .mne_fixes.legacy_api import label_src_vertno_sel
 import nibabel
 from nibabel.freesurfer import read_annot, read_geometry
 import numpy as np
@@ -4544,7 +4544,7 @@ class NDVar(Named):
             op = f'log{base:g}('
         return NDVar(x, self.dims, *op_name(self, op, name=name))
 
-    def mask(self, mask, name=None, missing=None):
+    def mask(self, mask, name=None, missing=None, fill_value=None):
         """Create a masked version of this NDVar (see :class:`numpy.ma.MaskedArray`)
 
         Parameters
@@ -4557,6 +4557,9 @@ class NDVar(Named):
             Whether to mask values that are outside of ``mask`` (i.e., when
             ``mask``'s dimensions only cover part of the NDVar).
             The default is to raise a ``ValueError`` if ``mask`` is missing values.
+        fill_value
+            Value to substitute for masked values if necessary
+            (see :class:`numpy.ma.MaskedArray`).
 
         See Also
         --------
@@ -4597,7 +4600,7 @@ class NDVar(Named):
                     old_index = dim._array_index(mask_dim),
                     x_new[FULL_AXIS_SLICE * ax + old_index] = x_mask
                     x_mask = x_new
-        x = np.ma.MaskedArray(self.x, x_mask)
+        x = np.ma.MaskedArray(self.x, x_mask, fill_value=fill_value)
         return NDVar(x, self.dims, name or self.name, self.info)
 
     def unmask(
@@ -10586,7 +10589,7 @@ class VolumeSourceSpace(SourceSpaceBase):
         voxel_coords = mne.transforms.apply_trans(mri_to_voxel, coordinates)
         voxel_coords = np.round(voxel_coords).astype(int)
         x, y, z = voxel_coords.T
-        data = mgz.get_data()
+        data = numpy.asanyarray(mgz.dataobj)
         x = data[x, y, z]
         labels = mne_utils.get_volume_source_space_labels()
         return Factor(x, labels=labels, name=parc)

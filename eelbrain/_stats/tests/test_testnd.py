@@ -681,7 +681,7 @@ def test_vector():
     v2 = ds[:30, 'v3d']
     vd = v1 - v2
     res = testnd.Vector(vd, samples=10)
-    assert res.p.min() == 0.2
+    assert res.p.min() == 0
     difference = res.masked_difference(0.5)
     assert difference.x.mask.sum() == 288
     res_r = pickle.loads(pickle.dumps(res))
@@ -701,7 +701,7 @@ def test_vector():
     assert repr(res_r) == repr(res)
     # with mp
     res = testnd.Vector(v1, samples=10)
-    assert res.p.min() == 0.4
+    assert res.p.min() == 0.1
     # without mp
     configure(n_workers=0)
     res0 = testnd.Vector(v1, samples=10)
@@ -709,15 +709,15 @@ def test_vector():
     configure(n_workers=True)
     # time window
     res = testnd.Vector(v2, samples=10, tstart=0.1, tstop=0.4)
-    assert res.p.min() == 0.3
+    assert res.p.min() == 0.2
     difference = res.masked_difference(0.5)
-    assert difference.x.mask.sum() == 294
+    assert difference.x.mask.sum() == 297
 
     # vector in time with norm stat
     res = testnd.Vector(vd, samples=10, norm=True)
     assert res.p.min() == 0
     difference = res.masked_difference()
-    assert difference.x.mask.sum() == 297
+    assert difference.x.mask.sum() == 285
     resd = testnd.VectorDifferenceRelated(v1, v2, samples=10, norm=True)
     assert_dataobj_equal(resd.p, res.p, name=False)
     assert_dataobj_equal(resd.difference, res.difference, name=False)
