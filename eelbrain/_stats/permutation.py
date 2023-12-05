@@ -248,7 +248,7 @@ def _sample_xi_by_rejection(n, seed):
     ndarray
         samples drawn from the distribution
     """
-    RNG.seed(seed)  # could lead to conflict with threading
+    RNG.seed(int(seed))  # could lead to conflict with threading
     samples = np.empty(n)
     i = 0
     while i < n:
