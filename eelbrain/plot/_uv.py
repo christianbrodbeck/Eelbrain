@@ -386,6 +386,11 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         names of Dataset variables
     ...
         Also accepts :ref:`general-layout-parameters`.
+
+    Attributes
+    ----------
+    bars
+        The bars returned by :meth:`matplotlib.axes.Axes.bar`.
     """
     @deprecate_ds_arg
     def __init__(
@@ -435,6 +440,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         p = _plt_barplot(self._ax, ct, error, pool_error, styles, bottom, top, origin, pos, width, color, edgec, ec, test, tail, par, trend, corr, test_markers)
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
+        self.bars = p.bars
 
         CategorialAxisMixin.__init__(self, self._ax, 'x', self._layout, xlabel, ct.x, xticks, labels, xtick_delim, p.pos, ct.cells, xtick_rotation, p.origin)
         YLimMixin.__init__(self, (p,))
@@ -760,6 +766,7 @@ class _plt_barplot(_plt_uv_base):
                 if style.hatch:
                     bar.set_hatch(style.hatch)
 
+        self.bars = bars
         _plt_uv_base.__init__(self, ax, ct, origin, pos, width, bottom, plot_max, top, test, tail, corr, par, trend, test_markers, horizontal)
 
 
