@@ -628,12 +628,11 @@ Parcellations (:attr:`parcs`)
 
 .. py:attribute:: MneExperiment.parcs
 
-The parcellation determines how the brain surface is divided into regions.
+A parcellation determines how the brain surface is divided into regions.
 A number of standard parcellations are automatically defined (see
 :ref:`state-parc` below). Additional parcellations can be defined in
 the :attr:`MneExperiment.parcs` dictionary with ``{name: parc_definition}``
-entries. There are a couple of different ways in which parcellations can be
-defined, described below.
+entries.
 
 
 .. autosummary::
@@ -837,30 +836,37 @@ string as in ``e.set(inv='fixed-1-MNE')``.
 ---------------------------------
 
 The parcellation determines how the brain surface is divided into regions.
-There are a number of built-in parcellations:
+Parcellations included with FreeSurfer can directly be used:
 
 - FreeSurfer Parcellations: ``aparc.a2005s``, ``aparc.a2009s``, ``aparc``, ``aparc.DKTatlas``, ``PALS_B12_Brodmann``, ``PALS_B12_Lobes``, ``PALS_B12_OrbitoFrontal``, ``PALS_B12_Visuotopic``.
-- ``cortex``: All sources in cortex, based on the FreeSurfer "cortex" label.
-- ``lobes``: Modified version of ``PALS_B12_Lobes`` in which the limbic lobe is merged into the other 4 lobes.
-- ``lobes-op``: One large region encompassing occipital and parietal lobe in each hemisphere.
-- ``lobes-ot``: One large region encompassing occipital and temporal lobe in each hemisphere.
 
 Additional parcellation can be defined in the :attr:`MneExperiment.parcs`
 attribute. Parcellations are used in different contexts:
 
-- When loading source space data, the current ``parc`` state determines the parcellation of the souce space (change the state parameter with ``e.set(parc='aparc')``).
+- When loading source space data, the current ``parc`` state determines the parcellation of the source space (change the state parameter with ``e.set(parc='aparc')``).
 - When loading tests, setting the ``parc`` parameter treats each label as a
   separate ROI. For spatial cluster-based tests that means that no clusters can
   cross the boundary between two labels. On the other hand, using the ``mask``
   parameter treats all named labels as connected surface, but discards any
   sources labeled as ``"unknown"``. For example, loading a test with
-  ``mask='lobes'`` will perform a whole-brain test on the cortex, while
+  ``mask='PALS_B12_Lobes'`` will perform a whole-brain test on the cortex, while
   discarding subcortical sources.
 
 Parcellations are set with their name, with the expception of
 :class:`SeededParc`: for those, the name is followed by the radious in mm, for
 example, to use seeds defined in a parcellation named ``'myparc'`` with a radius
 of 25 mm around the seed, use ``e.set(parc='myparc-25')``.
+
+A few additional parcellations that provide homogeneous masks are included
+for backwards compatibility. For future work, it is recommended to build
+such masks from ``aparc`` or another parcellation with more fine-grained
+subdivision into labels.
+
+- ``cortex``: All sources in cortex, based on the FreeSurfer "cortex" label.
+- ``lobes``: Modified version of ``PALS_B12_Lobes`` in which the limbic lobe is merged into the other 4 lobes.
+- ``lobes-op``: One large region encompassing occipital and parietal lobe in each hemisphere.
+- ``lobes-ot``: One large region encompassing occipital and temporal lobe in each hemisphere.
+
 
 
 .. _state-connectivity:

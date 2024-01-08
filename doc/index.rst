@@ -1,11 +1,11 @@
-.. image:: https://zenodo.org/badge/3651023.svg
-   :target: https://zenodo.org/badge/latestdoi/3651023
-
 .. image:: https://img.shields.io/conda/vn/conda-forge/eelbrain.svg
    :target: https://github.com/christianbrodbeck/Eelbrain/wiki/Installing
 
 .. image:: https://img.shields.io/conda/pn/conda-forge/eelbrain.svg
    :target: https://anaconda.org/conda-forge/eelbrain
+
+.. image:: https://zenodo.org/badge/3651023.svg
+   :target: https://zenodo.org/badge/latestdoi/3651023
 
 |
 
@@ -54,9 +54,9 @@ and incorporates icons from the `Tango Desktop Project <http://tango.freedesktop
 
 ----
 
-Eelbrain is maintained by `Christian Brodbeck <http://christianbrodbeck.net>`_.
+Eelbrain is maintained by `Christian Brodbeck <http://christianbrodbeck.net>`_
+at `McMaster University <https://www.mcmaster.ca>`_.
 Current funding:
-`University of Connecticut <https://uconn.edu>`_ (2021-);
 `NSF <http://nsf.gov>`_ `2207770 <https://www.nsf.gov/awardsearch/showAward?AWD_ID=2207770>`_ (2023-);
 `NSF <http://nsf.gov>`_ `2043903 <https://www.nsf.gov/awardsearch/showAward?AWD_ID=2043903>`_ (2021-);
 Past funding:

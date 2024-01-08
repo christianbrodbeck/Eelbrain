@@ -238,20 +238,23 @@ def label_from_annot(sss, subject, subjects_dir, parc=None, color=(0, 0, 0)):
         raise RuntimeError("No vertices left")
 
 
-def labels_from_clusters(clusters, names=None):
+def labels_from_clusters(
+        clusters: NDVar,
+        names: Union[Sequence[str], str] = None,
+) -> List[Union[mne.Label, mne.BiHemiLabel]]:
     """Create Labels from source space clusters
 
     Parameters
     ----------
-    clusters : NDVar
+    clusters
         NDVar which is non-zero on the cluster. Can have a case dimension to
         define multiple labels (one label per case).
-    names : None | list of str | str
-        Label names corresponding to clusters (default is "cluster%i").
+    names
+        Label names corresponding to the clusters (default is "cluster%i").
 
     Returns
     -------
-    labels : list of mne.Label
+    labels
         One label for each cluster.
 
     See Also
@@ -279,10 +282,9 @@ def labels_from_clusters(clusters, names=None):
         clusters_index = (clusters_index,)
 
     if names is None:
-        names = ("cluster%i" % i for i in range(n_clusters))
+        names = (f"cluster{i}" for i in range(n_clusters))
     elif len(names) != n_clusters:
-        err = "Number of names difference from number of clusters."
-        raise ValueError(err)
+        raise ValueError("The number of names is different from the number of clusters.")
 
     colors = _n_colors(n_clusters)
     labels = []
@@ -290,17 +292,13 @@ def labels_from_clusters(clusters, names=None):
         lh_vertices = source.lh_vertices[cluster.x[:source.lh_n]]
         rh_vertices = source.rh_vertices[cluster.x[source.lh_n:]]
         if len(lh_vertices) and len(rh_vertices):
-            lh = Label(lh_vertices, hemi='lh', name=name + '-lh',
-                       subject=subject, color=color).fill(source_space)
-            rh = Label(rh_vertices, hemi='rh', name=name + '-rh',
-                       subject=subject, color=color).fill(source_space)
+            lh = Label(lh_vertices, hemi='lh', name=name + '-lh', subject=subject, color=color).fill(source_space)
+            rh = Label(rh_vertices, hemi='rh', name=name + '-rh', subject=subject, color=color).fill(source_space)
             label = BiHemiLabel(lh, rh, name, color)
         elif len(lh_vertices):
-            label = Label(lh_vertices, hemi='lh', name=name + '-lh',
-                          subject=subject, color=color).fill(source_space)
+            label = Label(lh_vertices, hemi='lh', name=name + '-lh', subject=subject, color=color).fill(source_space)
         elif len(rh_vertices):
-            label = Label(rh_vertices, hemi='rh', name=name + '-lh',
-                          subject=subject, color=color).fill(source_space)
+            label = Label(rh_vertices, hemi='rh', name=name + '-lh', subject=subject, color=color).fill(source_space)
         else:
             raise ValueError("Empty Cluster")
         labels.append(label)

@@ -3411,10 +3411,7 @@ class NDPermutationDistribution:
         Clusters only have stable ids for thresholded cluster distributions.
         """
         if self.kind != 'cluster':
-            raise RuntimeError(
-                f'Only cluster-based tests have clusters with stable ids, this '
-                f'is a {self.kind} distribution. Use the .find_clusters() '
-                f'method instead with maps=True.')
+            raise RuntimeError(f'Only cluster-based tests have clusters with stable ids, this is a {self.kind} distribution. Instead, use .find_clusters() with maps=True, which will add the cluster map to the table returned by that function.')
         elif cluster_id not in self._cids:
             raise ValueError(f'No cluster with id {cluster_id!r}')
 
