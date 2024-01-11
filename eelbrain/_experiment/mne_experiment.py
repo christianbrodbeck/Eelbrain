@@ -35,7 +35,7 @@ from .._io.pickle import update_subjects_dir
 from .._names import INTERPOLATE_CHANNELS
 from .._meeg import new_rejection_ds
 from .._mne import morph_source_space, shift_mne_epoch_trigger, find_source_subject, label_from_annot
-from ..mne_fixes import write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg
+from ..mne_fixes import write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg, suppress_mne_warning
 from ..mne_fixes._trans import hsp_equal, mrk_equal
 from ..mne_fixes._source_space import merge_volume_source_space, prune_volume_source_space, restrict_volume_source_space
 from ..mne_fixes._version import MNE_VERSION, V1
@@ -2112,6 +2112,7 @@ class MneExperiment(FileTree):
         path = self.get('edf-file', fmatch=False, **kwargs)
         return load.eyelink.Edf(path)
 
+    @suppress_mne_warning
     def load_epochs(
             self,
             subjects: SubjectArg = None,
@@ -4424,6 +4425,7 @@ class MneExperiment(FileTree):
         mne.write_forward_solution(dst, fwd, True)
         return dst
 
+    @suppress_mne_warning
     def make_ica_selection(
             self,
             epoch: str = None,
@@ -4469,8 +4471,7 @@ class MneExperiment(FileTree):
         subject = self.get('subject')
         pipe = self._get_ica_pipe(state)
         bads = pipe.load_bad_channels(subject, self.get('recording'))
-        with self._temporary_state, warnings.catch_warnings():
-            warnings.filterwarnings('ignore', 'The measurement information indicates a low-pass', RuntimeWarning)
+        with self._temporary_state:
             if epoch is None:
                 if session is None:
                     session = pipe.session
