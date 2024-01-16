@@ -1,8 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plots for color/style legends"""
 from collections.abc import Iterator
+import colorsys
 from itertools import chain
-from typing import Any, Dict, Literal, Sequence, Union
+from typing import Any, Dict, Literal, Sequence, Tuple, Union
 
 import numpy as np
 import matplotlib
@@ -624,3 +625,20 @@ class ColorBar(EelFigure):
             height = x[1]
         ax.set_position((xmin, ymin, width, height))
         return True
+
+
+def adjust_hls(
+        color: Any,
+        hue: float = 0,
+        lightness: float = 0,
+        saturation: float = 0,
+) -> Tuple[float, float, float, float]:
+    *rgb, alpha = matplotlib.colors.to_rgba(color)
+    h, l, s = colorsys.rgb_to_hls(*rgb)
+    if hue:
+        h = (h + hue) % 1
+    if lightness:
+        l = max(0, min(1, l + lightness))
+    if saturation:
+        s = max(0, min(1, s + saturation))
+    return *colorsys.hls_to_rgb(h, l, s), alpha
