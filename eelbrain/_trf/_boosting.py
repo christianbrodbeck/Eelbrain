@@ -219,7 +219,7 @@ class BoostingResult(PickleableDataClass):
     # store the version of the boosting algorithm with which model was fit
     version: int = 14  # file format (updates when re-saving)
     algorithm_version: int = -1  # do not change when re-saving
-    eelbrain_version: int = '< 0.39.6'  # do not change when re-saving
+    eelbrain_version: int = '< 0.40'  # do not change when re-saving
     # debug parameters
     y_pred: NDVar = None
     fit: Boosting = None
