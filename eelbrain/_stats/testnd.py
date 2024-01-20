@@ -619,7 +619,7 @@ class TContrastRelated(NDTest):
 
 
 class Correlation(NDTest):
-    """Mass-univariate correlation
+    """Mass-univariate Pearson correlation significance test
 
     Parameters
     ----------
