@@ -6234,7 +6234,7 @@ class Dataset(dict):
 
         columns = {}
         if count:
-            columns['#'] = range(self.n_cases)
+            columns['#'] = numpy.arange(self.n_cases)[cases]
         for key in keys:
             data_obj = self[cases, key]
             if isinstance(data_obj, Factor):
