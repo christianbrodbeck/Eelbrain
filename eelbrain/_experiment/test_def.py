@@ -484,7 +484,7 @@ class TestDims:
             self._to_ndvar = None
             self.y_name = 'srcm' if self.morph else 'src'
         else:
-            raise RuntimeError(f"dim={dim!r}")
+            raise RuntimeError(f"{string=} ({dim=})")
         setattr(self, dim, aggregate or True)
         if sum(map(bool, (self.source, self.sensor))) != 1:
             raise ValueError(f"data={string!r}: invalid test dimension description")

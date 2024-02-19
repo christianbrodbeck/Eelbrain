@@ -4990,7 +4990,7 @@ class MneExperiment(FileTree):
         rej = self.get('rej', **state)
         rej_args = self._artifact_rejection[rej]
         if rej_args['kind'] != 'manual':
-            raise ValueError(f"rej={rej!r}; Epoch rejection is not manual")
+            raise ValueError(f"{rej=}; Epoch rejection is not manual")
 
         epoch = self._epochs[self.get('epoch')]
         if not isinstance(epoch, PrimaryEpoch):
@@ -5009,7 +5009,7 @@ class MneExperiment(FileTree):
             elif overwrite is None:
                 raise IOError(self.format("A rejection file already exists for {subject}, epoch {epoch}, rej {rej}. Set the overwrite parameter to specify how to handle existing files."))
             else:
-                raise TypeError(f"overwrite={overwrite!r}")
+                raise TypeError(f"{overwrite=}")
 
         ndvar = data is None
         ds = self.load_epochs(ndvar=ndvar, reject=False, trigger_shift=False, samplingrate=samplingrate, decim=decim)
@@ -5037,7 +5037,7 @@ class MneExperiment(FileTree):
                         if re.match('planar[12]', key):
                             auto_dict[key] = grad_threshold
                 elif missing:
-                    raise ValueError(f"auto={auto!r}: channel types {enumeration(missing)} not in data")
+                    raise ValueError(f"{auto=}: channel types {enumeration(missing)} not in data")
             else:
                 auto_dict = {y_name: auto}
             # create rejection
