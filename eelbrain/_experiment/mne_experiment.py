@@ -4938,7 +4938,7 @@ class MneExperiment(FileTree):
     def make_epoch_selection(
             self,
             samplingrate: int = None,
-            data: str = None,
+            data: str = 'sensor',
             auto: Union[float, dict] = None,
             overwrite: bool = None,
             decim: int = None,
@@ -4992,6 +4992,11 @@ class MneExperiment(FileTree):
         if rej_args['kind'] != 'manual':
             raise ValueError(f"{rej=}; Epoch rejection is not manual")
 
+        if data == 'grad':
+            raise NotImplementedError("Epoch selection for vector data; use data='planar1' and data='planar2'")
+        data = TestDims.coerce(data)
+        assert data.sensor is True
+
         epoch = self._epochs[self.get('epoch')]
         if not isinstance(epoch, PrimaryEpoch):
             if isinstance(epoch, SecondaryEpoch):
@@ -5011,9 +5016,8 @@ class MneExperiment(FileTree):
             else:
                 raise TypeError(f"{overwrite=}")
 
-        ndvar = data is None
-        ds = self.load_epochs(ndvar=ndvar, reject=False, trigger_shift=False, samplingrate=samplingrate, decim=decim)
-        if data is None:
+        ds = self.load_epochs(ndvar=True, data=data, reject=False, trigger_shift=False, samplingrate=samplingrate, decim=decim)
+        if data._to_ndvar is None:
             ch_types = ['meg', 'mag', 'grad', 'planar1', 'planar2', 'eeg']
             ch_types = [t for t in ch_types if t in ds]
             if len(ch_types) > 1 and not auto:
@@ -5021,11 +5025,8 @@ class MneExperiment(FileTree):
             elif not ch_types:
                 raise RuntimeError("No data found")
             y_name = ch_types.pop()
-        elif data == 'grad':
-            raise NotImplementedError("Epoch selection for vector data; use data='planar1' and data='planar2'")
         else:
-            y_name = data
-            ds[data] = load.mne.epochs_ndvar(ds['epochs'], data=data)
+            y_name = data.y_name
 
         if auto is not None:
             if isinstance(auto, dict):

@@ -469,13 +469,13 @@ class TestDims:
         if m is None:
             raise ValueError(f"data={string!r}: invalid test dimension description")
         dim, aggregate = m.groups()
-        if dim == 'meg':
+        if dim in ('meg', 'mag'):
             self._to_ndvar = ('mag',)
-            self.y_name = 'meg'
+            self.y_name = 'meg'  # see .load_epochs()
             dim = 'sensor'
-        elif dim == 'eeg':
-            self._to_ndvar = ('eeg',)
-            self.y_name = 'eeg'
+        elif dim in ('eeg', 'planar1', 'planar2'):
+            self._to_ndvar = (dim,)
+            self.y_name = dim
             dim = 'sensor'
         elif dim == 'sensor':
             self._to_ndvar = None
