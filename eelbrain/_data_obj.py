@@ -3055,6 +3055,20 @@ class Factor(_Effect):
             raise RuntimeError("Factor.sort_cells comparing %s and %s" % (old, new))
         self._labels = {self._codes[cell]: cell for cell in new_order}
 
+    def lower(self, name: str = None) -> Factor:
+        "All labels to lower-case"
+        labels = {code: label.lower() for code, label in self._labels.items()}
+        if name is None:
+            name = self.name
+        return Factor(self.x, name, self.random, labels=labels)
+
+    def upper(self, name: str = None) -> Factor:
+        "All labels to upper-case"
+        labels = {code: label.upper() for code, label in self._labels.items()}
+        if name is None:
+            name = self.name
+        return Factor(self.x, name, self.random, labels=labels)
+
     def startswith(self, substr: str) -> np.ndarray:
         """An index that is true for all cases whose name starts with ``substr``
 

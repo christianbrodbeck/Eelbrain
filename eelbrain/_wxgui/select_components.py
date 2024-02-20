@@ -9,7 +9,6 @@
 #  - listens to Document changes
 #  - issues commands to Model
 from collections import defaultdict
-from distutils.version import LooseVersion
 from itertools import repeat
 from math import ceil
 from operator import itemgetter
@@ -144,9 +143,6 @@ class Document(FileDocument):
 
         # Read ICA
         self.ica = ica = mne.preprocessing.read_ica(path)
-        if LooseVersion(mne.__version__) < LooseVersion('0.16'):
-            ica.pre_whitener_ = ica._pre_whitener
-
         self.accept = np.ones(self.ica.n_components_, bool)
         self.accept[ica.exclude] = False
         self.epochs = epochs = ds['epochs']

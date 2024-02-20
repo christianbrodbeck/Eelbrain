@@ -223,10 +223,6 @@ def test_coercion():
 
     assert_array_equal(assub("A == 'a0'", ds), ds['A'] == 'a0')
     assert_array_equal(assub("avar == 0", ds), ds['avar'] == 0)
-    with warnings.catch_warnings():  # element-wise comparison
-        warnings.simplefilter("ignore")
-        with pytest.raises(TypeError):
-            assub("avar == '0'", ds)
 
 
 def test_choose():

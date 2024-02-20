@@ -35,7 +35,7 @@ from .._io.pickle import update_subjects_dir
 from .._names import INTERPOLATE_CHANNELS
 from .._meeg import new_rejection_ds
 from .._mne import morph_source_space, shift_mne_epoch_trigger, find_source_subject, label_from_annot
-from ..mne_fixes import write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg
+from ..mne_fixes import write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg, suppress_mne_warning
 from ..mne_fixes._trans import hsp_equal, mrk_equal
 from ..mne_fixes._source_space import merge_volume_source_space, prune_volume_source_space, restrict_volume_source_space
 from ..mne_fixes._version import MNE_VERSION, V1
@@ -2112,6 +2112,7 @@ class MneExperiment(FileTree):
         path = self.get('edf-file', fmatch=False, **kwargs)
         return load.eyelink.Edf(path)
 
+    @suppress_mne_warning
     def load_epochs(
             self,
             subjects: SubjectArg = None,
@@ -4424,6 +4425,7 @@ class MneExperiment(FileTree):
         mne.write_forward_solution(dst, fwd, True)
         return dst
 
+    @suppress_mne_warning
     def make_ica_selection(
             self,
             epoch: str = None,
@@ -4469,8 +4471,7 @@ class MneExperiment(FileTree):
         subject = self.get('subject')
         pipe = self._get_ica_pipe(state)
         bads = pipe.load_bad_channels(subject, self.get('recording'))
-        with self._temporary_state, warnings.catch_warnings():
-            warnings.filterwarnings('ignore', 'The measurement information indicates a low-pass', RuntimeWarning)
+        with self._temporary_state:
             if epoch is None:
                 if session is None:
                     session = pipe.session
@@ -4621,7 +4622,6 @@ class MneExperiment(FileTree):
         if not redo and self._result_file_mtime(dst, data, group is None):
             return
 
-        plot._brain.assert_can_save_movies()
         if group is None:
             ds = self.load_evoked_stc(subject, baseline, src_baseline)
             y = ds['src']
@@ -4746,7 +4746,6 @@ class MneExperiment(FileTree):
             if not redo and self._result_file_mtime(dst, data, group is None):
                 return
 
-            plot._brain.assert_can_save_movies()
             if group is None:
                 ds = self.load_epochs_stc(subject, baseline, src_baseline, cat=cat)
                 y = 'src'
@@ -4938,7 +4937,7 @@ class MneExperiment(FileTree):
     def make_epoch_selection(
             self,
             samplingrate: int = None,
-            data: str = None,
+            data: str = 'sensor',
             auto: Union[float, dict] = None,
             overwrite: bool = None,
             decim: int = None,
@@ -4990,7 +4989,12 @@ class MneExperiment(FileTree):
         rej = self.get('rej', **state)
         rej_args = self._artifact_rejection[rej]
         if rej_args['kind'] != 'manual':
-            raise ValueError(f"rej={rej!r}; Epoch rejection is not manual")
+            raise ValueError(f"{rej=}; Epoch rejection is not manual")
+
+        if data == 'grad':
+            raise NotImplementedError("Epoch selection for vector data; use data='planar1' and data='planar2'")
+        data = TestDims.coerce(data)
+        assert data.sensor is True
 
         epoch = self._epochs[self.get('epoch')]
         if not isinstance(epoch, PrimaryEpoch):
@@ -5009,11 +5013,10 @@ class MneExperiment(FileTree):
             elif overwrite is None:
                 raise IOError(self.format("A rejection file already exists for {subject}, epoch {epoch}, rej {rej}. Set the overwrite parameter to specify how to handle existing files."))
             else:
-                raise TypeError(f"overwrite={overwrite!r}")
+                raise TypeError(f"{overwrite=}")
 
-        ndvar = data is None
-        ds = self.load_epochs(ndvar=ndvar, reject=False, trigger_shift=False, samplingrate=samplingrate, decim=decim)
-        if data is None:
+        ds = self.load_epochs(ndvar=True, data=data, reject=False, trigger_shift=False, samplingrate=samplingrate, decim=decim)
+        if data._to_ndvar is None:
             ch_types = ['meg', 'mag', 'grad', 'planar1', 'planar2', 'eeg']
             ch_types = [t for t in ch_types if t in ds]
             if len(ch_types) > 1 and not auto:
@@ -5021,11 +5024,8 @@ class MneExperiment(FileTree):
             elif not ch_types:
                 raise RuntimeError("No data found")
             y_name = ch_types.pop()
-        elif data == 'grad':
-            raise NotImplementedError("Epoch selection for vector data; use data='planar1' and data='planar2'")
         else:
-            y_name = data
-            ds[data] = load.mne.epochs_ndvar(ds['epochs'], data=data)
+            y_name = data.y_name
 
         if auto is not None:
             if isinstance(auto, dict):
@@ -5037,7 +5037,7 @@ class MneExperiment(FileTree):
                         if re.match('planar[12]', key):
                             auto_dict[key] = grad_threshold
                 elif missing:
-                    raise ValueError(f"auto={auto!r}: channel types {enumeration(missing)} not in data")
+                    raise ValueError(f"{auto=}: channel types {enumeration(missing)} not in data")
             else:
                 auto_dict = {y_name: auto}
             # create rejection

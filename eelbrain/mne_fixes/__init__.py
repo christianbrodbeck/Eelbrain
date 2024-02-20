@@ -30,7 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 # import this first for a chance to reverse mne's non-standard logging practice
-from ._logging import CaptureLog, reset_logger
+from ._logging import CaptureLog, reset_logger, suppress_mne_warning
 
 from ._dss import dss
 from ._freesurfer import rename_mri

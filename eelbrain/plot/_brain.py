@@ -24,11 +24,6 @@ from ._colors import ColorList
 from ._utsnd import Butterfly
 
 
-def assert_can_save_movies():
-    from ._brain_object import assert_can_save_movies
-    assert_can_save_movies()
-
-
 def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
           hemi=None, views=('lat', 'med'), w=None, h=None, axw=None, axh=None,
           foreground=None, background=None, parallel=True, cortex='classic',

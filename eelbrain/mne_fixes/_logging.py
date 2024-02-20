@@ -6,8 +6,10 @@ if Eelbrain is the primary import (i.e., it is imported before mne) and if the
 user has not stored another configuration.
 """
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+import functools
 from logging import WARNING, FileHandler, Formatter, StreamHandler, getLogger
 import sys
+import warnings
 first_mne_import = 'mne' not in sys.modules
 
 import mne
@@ -64,3 +66,12 @@ class CaptureLog:
         logger.removeHandler(self.handler)
         if self._old_level is not None:
             logger.setLevel(self._old_level)
+
+
+def suppress_mne_warning(func):
+    @functools.wraps(func)
+    def new_func(*args, **kwargs):
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', 'The measurement information indicates a low-pass frequency', RuntimeWarning, 'mne')
+            return func(*args, **kwargs)
+    return new_func

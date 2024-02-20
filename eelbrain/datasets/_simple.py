@@ -1,5 +1,4 @@
 """Some basic example datasets for testing."""
-from distutils.version import LooseVersion
 from itertools import product
 from pathlib import Path
 import shutil
@@ -290,8 +289,6 @@ def get_mne_sample(
         fixed = True
         pick_ori = None
     elif ori == 'vector':
-        if LooseVersion(mne.__version__) < LooseVersion('0.17'):
-            raise RuntimeError(f'mne version {mne.__version__}; vector source estimates require mne 0.17')
         loose = 1
         fixed = False
         pick_ori = 'vector'

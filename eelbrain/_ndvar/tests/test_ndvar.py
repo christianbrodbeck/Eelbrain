@@ -42,19 +42,35 @@ def test_convolve():
     # convolve is also tested in test_boosting.py
     ds = datasets._get_continuous()
 
-    h1 = ds['h1']
-    h2 = ds['h2']
-    x1 = ds['x1']
+    h1d = ds['h1']
+    h2d = ds['h2']
+    x1d = ds['x1']
+    x2d = ds['x2']
 
-    xc = convolve(h1, x1)
-    xc_np = np.convolve(h1.x, x1.x)
-    assert_allclose(xc.x, xc_np[:100], atol=1e-14)
+    # 1d
+    xc = convolve(h1d, x1d)
+    xc_np = np.convolve(h1d.x, x1d.x)
+    assert_array_equal(xc.x, xc_np[:100])
+
+    # 2d
+    xc = convolve(h2d, x2d)
+    xc_np = np.convolve(h2d.x[0], x2d.x[0]) + np.convolve(h2d.x[1], x2d.x[1])
+    assert_allclose(xc.x, xc_np[:100])
 
     # add dimension through kernel
-    xc = convolve(h2, x1)
-    xc_np = np.vstack((np.convolve(h2.x[0], x1.x)[:100],
-                       np.convolve(h2.x[1], x1.x)[:100]))
-    assert_allclose(xc.x, xc_np, atol=1e-14)
+    xc = convolve(h2d, x1d)
+    xc_np = np.vstack((np.convolve(h2d.x[0], x1d.x), np.convolve(h2d.x[1], x1d.x)))
+    assert_array_equal(xc.x, xc_np[:, :100])
+
+    # add dimension through x
+    xc = convolve(h1d, x2d)
+    xc_np = np.vstack((np.convolve(h1d.x, x2d.x[0]), np.convolve(h1d.x, x2d.x[1])))
+    assert_array_equal(xc.x, xc_np[:, :100])
+
+    # 2 predictors
+    xc = convolve([h1d, h2d], [x1d, x2d])
+    xc_np = np.convolve(h1d.x, x1d.x) + np.convolve(h2d.x[0], x2d.x[0]) + np.convolve(h2d.x[1], x2d.x[1])
+    assert_allclose(xc.x, xc_np[:100])
 
 
 def test_correlation_coefficient():

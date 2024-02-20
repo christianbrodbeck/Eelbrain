@@ -54,15 +54,16 @@ if IS_WINDOWS:
 else:
     open_mp_args = {
         **args,
-        'extra_compile_args': ['-Wno-unreachable-code', '-fopenmp'],
+        'extra_compile_args': ['-Wno-unreachable-code', '-fopenmp', '-O3', '-mavx'],
         'extra_link_args': ['-fopenmp'],
     }
-    args['extra_compile_args'] = ['-Wno-unreachable-code']
+    args['extra_compile_args'] = ['-Wno-unreachable-code', '-O3', '-mavx']
 ext = '.pyx' if cythonize else '.c'
 ext_cpp = '.pyx' if cythonize else '.cpp'
 extensions = [
     Extension('eelbrain._data_opt', [f'eelbrain/_data_opt{ext}'], **args),
     Extension('eelbrain._trf._boosting_opt', [f'eelbrain/_trf/_boosting_opt{ext}'], **open_mp_args),
+    Extension('eelbrain._ndvar._convolve', [f'eelbrain/_ndvar/_convolve{ext}'], **open_mp_args),
     Extension('eelbrain._stats.connectivity_opt', [f'eelbrain/_stats/connectivity_opt{ext}'], **args),
     Extension('eelbrain._stats.opt', [f'eelbrain/_stats/opt{ext}'], **args),
     Extension('eelbrain._stats.vector', [f'eelbrain/_stats/vector{ext_cpp}'], include_dirs=['dsyevh3C'], **args),

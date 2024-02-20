@@ -1,5 +1,5 @@
-from distutils.version import LooseVersion
 from logging import getLogger
+import packaging.version
 import select
 import sys
 from threading import Thread
@@ -41,7 +41,7 @@ class App(wx.App):
         self.SetAppDisplayName("Eelbrain")
 
         # register in IPython
-        if CONFIG['prompt_toolkit'] and 'IPython' in sys.modules and LooseVersion(sys.modules['IPython'].__version__) >= LooseVersion('5'):
+        if CONFIG['prompt_toolkit'] and 'IPython' in sys.modules and packaging.version.parse(sys.modules['IPython'].__version__) >= packaging.version.parse('5'):
             import IPython.core.error
 
             if CONFIG['prompt_toolkit'] == 'eelbrain':
