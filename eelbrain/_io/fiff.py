@@ -829,7 +829,7 @@ def sensor_dim(
             try:
                 index = np.array([names.index(name) for name in ch_names])
                 c_matrix = c_matrix[index][:, index]
-            except IndexError:
+            except ValueError:
                 missing = [name for name in ch_names if name not in names]
                 raise IndexError(f"{connectivity=} is missing channels {', '.join(missing)}")
             # Add superfluous channels as unconnected nodes?
