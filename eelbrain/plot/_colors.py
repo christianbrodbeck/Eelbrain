@@ -320,8 +320,8 @@ class ColorList(EelFigure):
         fig_bb = self.figure.get_window_extent()
         x_max = max(h.get_window_extent().x1 for h in self.labels)
         w0, h0 = self._frame.GetSize()
-        new_w = w0 + (x_max - fig_bb.x1) + 5
-        self._frame.SetSize((new_w, h0))
+        new_w = w0 + (x_max - fig_bb.x1) + 4
+        self._frame.SetSize(int(new_w), h0)
         # adjust x-limits
         n = len(self.labels)
         ax_bb = self._ax.get_window_extent()
