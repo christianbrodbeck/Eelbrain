@@ -7,7 +7,7 @@ from typing import Any
 
 from .._data_obj import Dataset, NDVar, Var, SourceSpaceBase, ismodelobject
 from .._types import PathArg
-from .._utils import tqdm, ui
+from .._utils import IS_WINDOWS, tqdm, ui
 
 
 class EelUnpickler(Unpickler):
@@ -17,8 +17,7 @@ class EelUnpickler(Unpickler):
         if module.startswith('eelbrain.'):
             if module == 'eelbrain.vessels.data':
                 module = 'eelbrain._data_obj'
-                class_names = {'var': 'Var', 'factor': 'Factor', 'ndvar': 'NDVar',
-                               'datalist': 'Datalist', 'dataset': 'Dataset'}
+                class_names = {'var': 'Var', 'factor': 'Factor', 'ndvar': 'NDVar', 'datalist': 'Datalist', 'dataset': 'Dataset'}
                 name = class_names[name]
             elif module.startswith('eelbrain.data.'):
                 if module.startswith('eelbrain.data.load'):
@@ -28,7 +27,10 @@ class EelUnpickler(Unpickler):
                 elif module.startswith('eelbrain.data.data_obj'):
                     module = module.replace('.data.data_obj', '._data_obj')
                 else:
-                    raise NotImplementedError("%r / %r" % (module, name))
+                    raise NotImplementedError(f"{module=}, {name=}")
+        elif module.startswith('pathlib'):
+            if name == 'WindowsPath' and not IS_WINDOWS:
+                name = 'Path'
 
         return Unpickler.find_class(self, module, name)
 
