@@ -1272,7 +1272,7 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
         info = _info.for_meg(vmax)
     elif data == 'eeg':
         info = _info.for_eeg(vmax)
-    elif data == 'grad':
+    elif data in ('grad', 'planar1', 'planar2'):
         info = _info.for_meg(vmax, unit='T/cm')
     else:
         raise ValueError(f"{data=}")
