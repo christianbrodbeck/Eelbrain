@@ -9775,7 +9775,7 @@ class SourceSpaceBase(Dimension):
         self.vertices = [np.asarray(vertices_i, int) for vertices_i in vertices]
         self.subject = subject
         self.src = src
-        self._subjects_dir = subjects_dir
+        self._subjects_dir = str(subjects_dir)
         self._filename = filename
         # secondary attributes (also set when unpickling)
         self._init_secondary()
