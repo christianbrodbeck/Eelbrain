@@ -2747,7 +2747,7 @@ class MneExperiment(FileTree):
 
             if cat:
                 if not model:
-                    raise TypeError(f"{cat=}: Can't set cat when model is ''")
+                    raise TypeError(f"{cat=} with {model=}: the cat parameter only applies when a model is specified")
                 model = ds.eval(model)
                 idx = model.isin(cat)
                 ds = ds.sub(idx)
