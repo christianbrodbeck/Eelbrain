@@ -5261,7 +5261,7 @@ class MneExperiment(FileTree):
             (default is the end of the epoch).
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
-            temporal clusters (default 1000).
+            temporal clusters.
         baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).

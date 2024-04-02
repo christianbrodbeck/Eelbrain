@@ -64,7 +64,7 @@ The ``{data_dir}`` directory in which the pipeline looks for the raw data is det
 
 The ``{session}`` refers to the name of the recording session. The name of one or several recording session(s) has to be specified on an :class:`MneExperiment` subclass, using the  :attr:`MneExperiment.sessions` attribute. Those names will be used to find the raw data files, by filling in the ``raw-file`` template from above::
 
-    from eelbrain import *
+    from eelbrain.pipeline import *
 
     class WordExperiment(MneExperiment):
 

@@ -740,13 +740,13 @@ def assub(sub, data=None, return_n=False):
         return (None, None) if return_n else None
     elif isinstance(sub, str):
         if data is None:
-            raise TypeError(f"sub={sub!r}: parameter was specified as string, but no Dataset was specified")
+            raise TypeError(f"{sub=}: parameter was specified as string, but no Dataset was specified")
         sub = data.eval(sub)
 
     if isinstance(sub, Var):
         sub = sub.x
     elif not isinstance(sub, np.ndarray):
-        raise TypeError(f"sub={sub!r}: needs to be Var or array")
+        raise TypeError(f"{sub=}: needs to be Var or array")
 
     if return_n:
         n = len(sub) if sub.dtype.kind == 'b' else None
