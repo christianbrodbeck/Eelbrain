@@ -26,9 +26,9 @@ def load_wav(
         shown to select one.
     name
         NDVar name (default is the file name).
-    backend : 'wave' | 'scipy'
-        Whether to read the file using the builtin :mod:`wave` module or through
-        :mod:`scipy.io.wavfile`.
+    backend : 'wave' | 'scipy' | 'librosa'
+        Whether to read the file using the builtin :mod:`wave` module,
+        :mod:`scipy.io.wavfile`, or :func:`librosa.load`.
 
     Returns
     -------
@@ -65,8 +65,12 @@ def load_wav(
     elif backend == 'scipy':
         from scipy.io import wavfile
         srate, data = wavfile.read(path)
+    elif backend == 'librosa':
+        import librosa
+        data, srate = librosa.load(path)
+        data = data.T
     else:
-        raise ValueError(f"backend={backend!r}")
+        raise ValueError(f"{backend=}")
 
     time = UTS(0, 1. / srate, data.shape[0])
     if name is None:
