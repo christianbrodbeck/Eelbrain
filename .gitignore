@@ -44,3 +44,5 @@ doc/auto_examples
 .eggs
 
 *.html
+
+doc/scripts/cache-search.json

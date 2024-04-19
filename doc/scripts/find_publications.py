@@ -10,12 +10,14 @@ run find_publications.py with command
 
 """
 from argparse import ArgumentParser
+from collections import defaultdict
 import json
 from pathlib import Path
 import pickle
 import random
 import re
 import time
+from typing import List
 
 from eelbrain._utils import ask
 from pybtex.database import BibliographyData, parse_bytes, parse_file
@@ -26,6 +28,7 @@ import requests
 API_KEY_PATH = Path('~/.serpapi_key').expanduser()
 API_KEY = API_KEY_PATH.read_text().strip()
 DIR = Path(__file__).absolute().parent
+RAW_SEARCH_CACHE = DIR / 'cache-search.json'
 SEARCH_CACHE = DIR / 'cache.json'
 SELECTION_PATH = DIR / 'selection.json'
 BIBTEX_CACHE = DIR / 'bibtex.pickle'
@@ -47,7 +50,7 @@ BIORXIV_OBSOLETE = """
 ACRONYMS = ['EEG', 'MEG', 'MRI']
 
 
-def search():
+def download_entries() -> List:
     entries = []
     # download entries
     total_results = None
@@ -63,9 +66,27 @@ def search():
         start += num
         if start >= total_results:
             break
-    # write to file
+    return entries
+
+
+def search(cached: bool):
+    # Raw entry list from Google
+    if cached:
+        with RAW_SEARCH_CACHE.open('rt') as file:
+            entries = json.load(file)
+    else:
+        entries = download_entries()
+        with RAW_SEARCH_CACHE.open('wt') as file:
+            json.dump(entries, file)
+    # One entry per key
     entry_dict = {e['result_id']: e for e in entries}
-    assert len(entry_dict) == len(entries)
+    if len(entry_dict) != len(entries):
+        counter = defaultdict(list)
+        for e in entries:
+            counter[e['result_id']].append(e)
+        duplicates = {k: k_entries for k, k_entries in counter.items() if len(k_entries) > 1}
+        print("Warning: duplicate entries for keys\n" + '\n'.join([f" {k}: {len(k_entries)}" for k, k_entries in duplicates.items()]))
+        assert not duplicates
     for entry in entry_dict.values():
         entry.pop('position')
         entry.pop('inline_links')
@@ -223,9 +244,10 @@ def parse():
 if __name__ == '__main__':
     parser = ArgumentParser(description="Find publications that used Eelbrain on Google Scholar")
     parser.add_argument('task', choices=('search', 'select', 'download', 'parse'))
+    parser.add_argument('--cached', default=False, help="When searching, used cached entries")
     args = parser.parse_args()
     if args.task == 'search':
-        search()
+        search(args.cached)
     elif args.task == 'select':
         select()
     elif args.task == 'download':
