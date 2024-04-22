@@ -50,8 +50,8 @@ def _make_interpolator(inst, bad_channels):
     """
     logger = logging.getLogger(__name__)
 
-    bads_idx = np.zeros(len(inst.ch_names), dtype=np.bool)
-    goods_idx = np.zeros(len(inst.ch_names), dtype=np.bool)
+    bads_idx = np.zeros(len(inst.ch_names), dtype=bool)
+    goods_idx = np.zeros(len(inst.ch_names), dtype=bool)
 
     picks = mne.pick_types(inst.info, meg=False, eeg=True, exclude=[])
     bads_idx[picks] = [inst.ch_names[ch] in bad_channels for ch in picks]
