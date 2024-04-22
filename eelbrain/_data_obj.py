@@ -6087,7 +6087,7 @@ class Dataset(dict):
             caption = '; '.join(items)
         else:
             caption = None
-        return self.as_table(cases, '%.5g', midrule=True, title=title, caption=caption, lfmt=True)
+        return self.as_table(cases, '%.5g', midrule=True, count=True, title=title, caption=caption, lfmt=True)
 
     def __str__(self):
         if sum(isuv(i) or isdatalist(i) for i in self.values()) == 0:

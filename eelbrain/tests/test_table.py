@@ -72,15 +72,29 @@ def test_frequencies():
     "Test table.frequencies"
     ds = datasets.get_uts()
     freq = table.frequencies('YCat', 'A', data=ds)
-    assert str(freq) == 'A    c1   c2   c3\n-----------------\na0   10   10   10\na1   7    14   9 '
+    assert str(freq) == ('#   A    c1   c2   c3\n'
+                         '---------------------\n'
+                         '0   a0   10   10   10\n'
+                         '1   a1   7    14   9 ')
     freq = table.frequencies('YCat', 'A % B', data=ds)
-    assert str(freq) == 'A    B    c1   c2   c3\n----------------------\na0   b0   5    6    4 \na0   b1   5    4    6 \na1   b0   5    6    4 \na1   b1   2    8    5 '
+    assert str(freq) == ('#   A    B    c1   c2   c3\n'
+                         '--------------------------\n'
+                         '0   a0   b0   5    6    4 \n'
+                         '1   a0   b1   5    4    6 \n'
+                         '2   a1   b0   5    6    4 \n'
+                         '3   a1   b1   2    8    5 ')
     freq = table.frequencies('YCat % A', 'B', data=ds)
-    assert str(freq) == 'B    c1_a0   c1_a1   c2_a0   c2_a1   c3_a0   c3_a1\n--------------------------------------------------\nb0   5       5       6       6       4       4    \nb1   5       2       4       8       6       5    '
+    assert str(freq) == ('#   B    c1_a0   c1_a1   c2_a0   c2_a1   c3_a0   c3_a1\n'
+                         '------------------------------------------------------\n'
+                         '0   b0   5       5       6       6       4       4    \n'
+                         '1   b1   5       2       4       8       6       5    ')
     ds = Dataset()
     ds['n'] = Factor('xxxyyy')
     freq = table.frequencies('n', data=ds)
-    assert str(freq) == 'n   n_\n------\nx   3 \ny   3 '
+    assert str(freq) == ('#   n   n_\n'
+                         '----------\n'
+                         '0   x   3 \n'
+                         '1   y   3 ')
 
 
 def test_melt_ndvar():
