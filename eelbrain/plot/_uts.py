@@ -679,7 +679,7 @@ class _plt_uts_stat:
             y_main = layer.get_statistic(main)
             kwargs = layer.style.line_args
             if error == 'all':
-                lw = kwargs['linewidth'] or matplotlib.rcParams['lines.linewidth']
+                lw = kwargs.get('linewidth') or matplotlib.rcParams['lines.linewidth']
                 kwargs = {**kwargs, 'linewidth': lw * 2}
             self.main = ax.plot(x, y_main, label=label, clip_on=clip, **kwargs)
         elif error == 'all':

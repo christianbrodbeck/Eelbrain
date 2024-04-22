@@ -241,6 +241,8 @@ class ColorList(EelFigure):
         Shape for color samples (default 'box').
     markersize
         Size of markers in points.
+    linewidth
+        Linewidth when plotting colors as lines.
     label_position
         Whether to place labels to the left or right of the colors.
     ...
@@ -260,6 +262,7 @@ class ColorList(EelFigure):
             h: float = None,
             shape: Literal['box', 'line', 'marker'] = 'box',
             markersize: float = None,
+            linewidth: float = None,
             label_position: Literal['left', 'right'] = 'right',
             **kwargs):
         if label_position not in ('left', 'right'):
@@ -306,7 +309,7 @@ class ColorList(EelFigure):
                 patch = matplotlib.patches.Rectangle((0, bottom), 1, 1, ec='none', **styles[cell].patch_args)
                 ax.add_patch(patch)
             elif shape == 'line':
-                ax.plot([0, 1], [y, y], **styles[cell].line_args, markersize=markersize)
+                ax.plot([0, 1], [y, y], **styles[cell].line_args, markersize=markersize, linewidth=linewidth)
             elif shape == 'marker':
                 ax.scatter(0.5, y, markersize, **styles[cell].scatter_args)
             else:

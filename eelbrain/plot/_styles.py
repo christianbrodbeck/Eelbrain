@@ -72,7 +72,9 @@ class Style:
 
     @cached_property
     def line_args(self):
-        args = {'color': self.color, 'linestyle': self.linestyle, 'linewidth': self.linewidth, 'markerfacecolor': self.color, 'zorder': 2 + self.zorder}
+        args = {'color': self.color, 'linestyle': self.linestyle, 'markerfacecolor': self.color, 'zorder': 2 + self.zorder}
+        if self.linewidth is not None:
+            args['linewidth'] = self.linewidth
         if self.linemarker is True:
             args['marker'] = self.marker
         elif self.linemarker:
