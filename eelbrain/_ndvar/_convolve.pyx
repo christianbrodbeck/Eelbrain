@@ -1,12 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 # cython: boundscheck=False, wraparound=False, cdivision=True, initializedcheck=False
 
-cimport cython
 from cython.parallel cimport prange
-from cython.view cimport array as cvarray
 from libc.stdlib cimport malloc, free
 
-import numpy as np
 cimport numpy as np
 
 
@@ -53,9 +50,9 @@ cpdef int convolve_1d(
         FLOAT64 * pad_head
         FLOAT64 * pad_tail
 
-    # padding: sum(h * x_pads[:, None], 0)
+    # padding
     if pad_head_n_times or pad_tail_n_times:
-        # h_pad = pad * h
+        # out_pad: response to padding value
         out_pad = <FLOAT64*> malloc(sizeof(FLOAT64) * h_n_times)
         for i_t in range(h_n_times):
             out_pad[i_t] = 0
@@ -74,7 +71,7 @@ cpdef int convolve_1d(
                 for i_tau in range(min(i_t, h_n_times)):
                     pad_tail[i_t] += out_pad[i_tau]
 
-    for i in range(len(segments)):
+    for i in range(segments.shape[0]):
         start = segments[i, 0]
         stop = segments[i, 1]
         out[start: stop] = 0
