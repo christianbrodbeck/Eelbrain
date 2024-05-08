@@ -70,7 +70,7 @@ cpdef int convolve_1d(
             pad_tail = <FLOAT64*> malloc(sizeof(FLOAT64) * pad_tail_n_times)
             for i_t in range(pad_tail_n_times):
                 pad_tail[i_t] = 0
-                for i_tau in range(min(i_t, h_n_times)):
+                for i_tau in range(min(i_t+1, h_n_times)):
                     pad_tail[i_t] += out_pad[i_tau]
 
     for i in range(segments.shape[0]):
