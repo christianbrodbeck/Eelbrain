@@ -24,3 +24,8 @@ def test_convolve_1d():
     yt = numpy.array([0, 0, 1, 2, 0, 1.5])  # target
     convolve_1d(h, x, pad_0, 1, segments, yp)
     assert_equal(yp, yt)
+    # pad head
+    pad_1 = numpy.array([1], float)
+    yt = numpy.array([2, 1, 2, 0, 1.5, 3])  # target
+    convolve_1d(h, x, pad_1, 0, segments, yp)
+    assert_equal(yp, yt)

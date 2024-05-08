@@ -44,7 +44,7 @@ cpdef int convolve_1d(
         Py_ssize_t n_x = h.shape[0]
         Py_ssize_t h_n_times = h.shape[1]
         Py_ssize_t h_i_stop = h_i_start + h_n_times
-        Py_ssize_t pad_head_n_times = max(0, h_n_times + h_i_start)
+        Py_ssize_t pad_head_n_times = max(0, h_n_times + h_i_start - 1)
         Py_ssize_t pad_tail_n_times = -min(0, h_i_start)
         FLOAT64 * out_pad
         FLOAT64 * pad_head
