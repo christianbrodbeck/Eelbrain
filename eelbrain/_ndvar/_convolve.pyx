@@ -62,12 +62,14 @@ cpdef int convolve_1d(
         if pad_head_n_times:
             pad_head = <FLOAT64*> malloc(sizeof(FLOAT64) * pad_head_n_times)
             for i_t in range(pad_head_n_times):
+                pad_head[i_t] = 0
                 for i_tau in range(min(pad_head_n_times - i_t, h_n_times)):
                     pad_head[i_t] += out_pad[h_n_times - i_tau - 1]
         # padding for post-
         if pad_tail_n_times:
             pad_tail = <FLOAT64*> malloc(sizeof(FLOAT64) * pad_tail_n_times)
             for i_t in range(pad_tail_n_times):
+                pad_tail[i_t] = 0
                 for i_tau in range(min(i_t, h_n_times)):
                     pad_tail[i_t] += out_pad[i_tau]
 
