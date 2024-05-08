@@ -297,7 +297,7 @@ class PredictorData:
             x_data_is_copy = True
         else:
             shape = (-1, n_times_flat)
-            x_data = [xi.get_data(dimnames).reshape(shape) for xi, dimnames in zip(xs, x_dimnames)]
+            x_data = [np.ascontiguousarray(xi.get_data(dimnames).reshape(shape)) for xi, dimnames in zip(xs, x_dimnames)]
             if len(x_data) == 1:
                 x_data = x_data[0]
                 if copy:

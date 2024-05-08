@@ -2319,7 +2319,7 @@ class MneExperiment(FileTree):
             epochs_list = [ds['epochs']]
         info = epochs_list[0].info
 
-        data_to_ndvar = data.data_to_ndvar(info)
+        sensor_types = data.data_to_ndvar(info)
 
         # determine channels to interpolate
         bads_all = None
@@ -2348,7 +2348,7 @@ class MneExperiment(FileTree):
         # interpolate channels
         if reject and bads_individual:
             assert not variable_tmax
-            if 'mag' in data_to_ndvar:
+            if 'mag' in sensor_types:
                 interp_path = self.get('interp-file')
                 if exists(interp_path):
                     interp_cache = load.unpickle(interp_path)
@@ -2358,16 +2358,17 @@ class MneExperiment(FileTree):
                 _interpolate_bads_meg(ds['epochs'], bads_individual, interp_cache)
                 if len(interp_cache) > n_in_cache:
                     save.pickle(interp_cache, interp_path)
-            if 'eeg' in data_to_ndvar:
+            if 'eeg' in sensor_types:
                 _interpolate_bads_eeg(ds['epochs'], bads_individual)
 
         if ndvar:
+            ds.info['sensor_types'] = sensor_types
             pipe = self._raw[self.get('raw')]
             exclude = () if add_bads_to_info else 'bads'
-            for data_kind in data_to_ndvar:
+            for data_kind in sensor_types:
                 sysname = pipe.get_sysname(info, ds.info['subject'], data_kind)
                 connectivity = pipe.get_connectivity(data_kind)
-                if data_kind == 'mag' and 'planar1' not in data_to_ndvar:
+                if data_kind == 'mag' and 'planar1' not in sensor_types:
                     name = 'meg'
                 else:
                     name = data_kind
@@ -2746,7 +2747,7 @@ class MneExperiment(FileTree):
 
             if cat:
                 if not model:
-                    raise TypeError(f"{cat=}: Can't set cat when model is ''")
+                    raise TypeError(f"{cat=} with {model=}: the cat parameter only applies when a model is specified")
                 model = ds.eval(model)
                 idx = model.isin(cat)
                 ds = ds.sub(idx)
@@ -2767,12 +2768,13 @@ class MneExperiment(FileTree):
                 del ds['evoked']
             pipe = self._raw[self.get('raw')]
             info = evoked[0].info
-            for data_kind in data.data_to_ndvar(info):
-                sysname = pipe.get_sysname(info, subject, data_kind)
-                connectivity = pipe.get_connectivity(data_kind)
-                name = 'meg' if data_kind == 'mag' else data_kind
-                ds[name] = load.mne.evoked_ndvar(evoked, data=data_kind, sysname=sysname, connectivity=connectivity)
-                if data_kind != 'eog' and isinstance(data.sensor, str):
+            sensor_types = ds.info['sensor_types'] = data.data_to_ndvar(info)
+            for sensor_type in sensor_types:
+                sysname = pipe.get_sysname(info, subject, sensor_type)
+                connectivity = pipe.get_connectivity(sensor_type)
+                name = 'meg' if sensor_type == 'mag' else sensor_type
+                ds[name] = load.mne.evoked_ndvar(evoked, data=sensor_type, sysname=sysname, connectivity=connectivity)
+                if sensor_type != 'eog' and isinstance(data.sensor, str):
                     ds[name] = getattr(ds[name], data.sensor)('sensor')
 
         return ds
@@ -3953,6 +3955,9 @@ class MneExperiment(FileTree):
         else:
             if data.sensor:
                 res_data = self.load_evoked(True, baseline, True, test_obj.cat, samplingrate, data=data, vardef=test_obj.vars)
+                if len(res_data.info['sensor_types']) > 1:
+                    desc = ', '.join(res_data.info['sensor_types'])
+                    raise RuntimeError(f"Data contains more than one sensor type ({desc}). Mass-univariate tests are not designed for multiple sensor types. Use the data argument to perform test on one sensor type.")
             elif data.source:
                 res_data = self.load_evoked_stc(True, baseline, src_baseline, test_obj.cat, morph=True, mask=mask, vardef=test_obj.vars, samplingrate=samplingrate)
                 if smooth:
@@ -4360,7 +4365,11 @@ class MneExperiment(FileTree):
                     cells = ['No comment']
                 comments = [e.comment for e in evoked]
                 if comments != cells:
-                    raise RuntimeError(f"Error reading cached evoked: {comments=}, {cells=}")
+                    if set(comments) == set(cells):
+                        index = [comments.index(cell) for cell in cells]
+                        evoked = [evoked[i] for i in index]
+                    else:
+                        raise RuntimeError(f"Error reading cached evoked: {comments=}, {cells=}")
                 ds['evoked'] = evoked
                 return ds
             self._log.debug("Evoked outdated (%s)", evoked[0].info['description'])
@@ -5256,7 +5265,7 @@ class MneExperiment(FileTree):
             (default is the end of the epoch).
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
-            temporal clusters (default 1000).
+            temporal clusters.
         baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).

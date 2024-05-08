@@ -13,6 +13,23 @@ from eelbrain import datasets, load
 from eelbrain.testing import assert_dataobj_equal, requires_mne_sample_data, requires_mne_testing_data, file_path
 
 
+def test_load_events():
+    # simulate raw
+    data = np.random.random((2, 5000))
+    samplingrate = 500
+    info = mne.create_info(['Fp', 'Cz'], samplingrate, ['eeg', 'eeg'])
+    raw = mne.io.RawArray(data, info)
+    onset = [0.1, 1.2, 2.3, 4.63]
+    labels = ['test1', 'test2', 'test1', 'test2']
+    annotations = mne.Annotations(onset, 0.100, labels)
+    raw.set_annotations(annotations)
+
+    # test load events
+    events = load.mne.events(raw)
+    assert_array_equal(events['i_start'], [time * samplingrate for time in onset])
+    assert_array_equal(events['event'], labels)
+
+
 @requires_mne_testing_data
 def test_load_fiff_ctf():
     path = Path(mne.datasets.testing.data_path())

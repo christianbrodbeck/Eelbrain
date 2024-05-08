@@ -1256,8 +1256,7 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
     if data is None:
         data_set = {_guess_ndvar_data_type(e.info) for e in evoked}
         if len(data_set) > 1:
-            raise ValueError("Different Evoked objects contain different "
-                             "data types: %s" % ', '.join(data_set))
+            raise ValueError(f"Different Evoked objects contain different data types: {', '.join(data_set)}")
         data = data_set.pop()
 
     # MEG system
@@ -1273,10 +1272,10 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
         info = _info.for_meg(vmax)
     elif data == 'eeg':
         info = _info.for_eeg(vmax)
-    elif data == 'grad':
+    elif data in ('grad', 'planar1', 'planar2'):
         info = _info.for_meg(vmax, unit='T/cm')
     else:
-        raise ValueError("data=%s" % repr(data))
+        raise ValueError(f"{data=}")
 
     e0 = evoked[0]
     if len(evoked) == 1:

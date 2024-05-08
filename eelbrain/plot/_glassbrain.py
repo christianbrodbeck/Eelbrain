@@ -219,7 +219,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             warnings.filterwarnings('ignore', 'Trying to register the cmap', UserWarning)
             from nilearn.image import index_img
             from nilearn.plotting.displays import get_projector
-            from nilearn.plotting.img_plotting import _get_colorbar_and_data_ranges
+            from nilearn.plotting.img_plotting import get_colorbar_and_data_ranges
         if old_display is None:
             del os.environ['DISPLAY']
 
@@ -295,9 +295,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                     vmin = 0
                 cbar_vmin = cbar_vmax = None
             elif plot_abs:
-                cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(data, vmax, symmetric_cbar, (), 0)
+                cbar_vmin, cbar_vmax, vmin, vmax = get_colorbar_and_data_ranges(data, vmax=vmax, symmetric_cbar=symmetric_cbar)
             else:
-                cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(data, vmax, symmetric_cbar, ())
+                cbar_vmin, cbar_vmax, vmin, vmax = get_colorbar_and_data_ranges(data, vmax=vmax, symmetric_cbar=symmetric_cbar)
 
             # Deal with automatic settings of plot parameters
             if threshold == 'auto':
@@ -390,7 +390,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             for k, direction in enumerate(self._ndvar.space._directions):
                 vol = self._dir_imgs[k][t]
                 try:
-                    vol_data = np.squeeze(vol.get_data())
+                    vol_data = np.squeeze(vol.dataobj)
                     data_2d = display_ax.transform_to_2d(vol_data, vol.affine)
                     data_2d = np.squeeze(data_2d)
                 except IndexError:
@@ -663,7 +663,7 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     shape3d = src[0]['shape'][::-1]
     shape4d = (*shape3d, n_times)
     vol = np.zeros(shape4d)
-    mask = src[0]['inuse'].astype(np.bool)
+    mask = src[0]['inuse'].astype(bool)
     if data.shape[0] < mask.sum():
         mask[mask] = np.in1d(src[0]['vertno'], source.vertices[0], assume_unique=True)
     vol[mask.reshape(shape3d)] = data

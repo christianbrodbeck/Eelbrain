@@ -13,11 +13,6 @@ About MANIFEST.in:
 https://docs.python.org/2/distutils/sourcedist.html#manifest-template
 
 """
-# Setuptools bootstrap module
-# http://pythonhosted.org//setuptools/setuptools.html
-from ez_setup import use_setuptools
-use_setuptools('17')
-
 from packaging.version import Version
 import os
 import re

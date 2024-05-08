@@ -740,13 +740,13 @@ def assub(sub, data=None, return_n=False):
         return (None, None) if return_n else None
     elif isinstance(sub, str):
         if data is None:
-            raise TypeError(f"sub={sub!r}: parameter was specified as string, but no Dataset was specified")
+            raise TypeError(f"{sub=}: parameter was specified as string, but no Dataset was specified")
         sub = data.eval(sub)
 
     if isinstance(sub, Var):
         sub = sub.x
     elif not isinstance(sub, np.ndarray):
-        raise TypeError(f"sub={sub!r}: needs to be Var or array")
+        raise TypeError(f"{sub=}: needs to be Var or array")
 
     if return_n:
         n = len(sub) if sub.dtype.kind == 'b' else None
@@ -2333,9 +2333,9 @@ class Factor(_Effect):
     .name : None | str
         The Factor's name.
     .cells : tuple of str
-        Ordered names of all cells. Order is determined by the order of the
-        ``labels`` argument. if ``labels`` is not specified, the order is
-        initially alphabetical.
+        Ordered names of all cells. Order is determined 1) by the order of
+        cells in the ``labels`` argument, and 2) for cells that do not occur in
+        ``labels`` it is determined by first occurrence in ``x``.
     .random : bool
         Whether the factor represents a random or fixed effect (for ANOVA).
 
@@ -2395,12 +2395,12 @@ class Factor(_Effect):
         if isinstance(x, Factor):
             # translate label keys to x codes
             labels = {x._codes[src]: dst for src, dst in labels.items() if src in x._codes}
-            if default is None:  # fill in missing labels from x
+            # add labels that are not in `labels`
+            if default is None:  # from x
                 labels.update({code: label for code, label in x._labels.items() if code not in labels})
             else:  # use default
                 labels.update({code: default for code in x._labels if code not in labels})
             x = x.x
-        ordered_cells = list(labels.values())
 
         if isinstance(x, np.ndarray) and x.dtype.kind in 'ifb':
             assert x.ndim == 1
@@ -2441,11 +2441,8 @@ class Factor(_Effect):
             if highest_code >= 2**32:
                 raise RuntimeError("Too many categories in this Factor")
 
-        # sort previously unsorted labels alphabetically
-        unordered_cells = [v for v in labels.values() if v not in ordered_cells]
-        labels = chain(ordered_cells, sorted(unordered_cells))
         # redefine labels for new codes
-        labels = {codes[label]: label for label in labels if label in codes}
+        labels = {codes[label]: label for label in labels.values() if label in codes}
 
         if not (isinstance(repeat, int) and repeat == 1):
             x_ = x_.repeat(repeat)
@@ -6090,7 +6087,7 @@ class Dataset(dict):
             caption = '; '.join(items)
         else:
             caption = None
-        return self.as_table(cases, '%.5g', midrule=True, title=title, caption=caption, lfmt=True)
+        return self.as_table(cases, '%.5g', midrule=True, count=True, title=title, caption=caption, lfmt=True)
 
     def __str__(self):
         if sum(isuv(i) or isdatalist(i) for i in self.values()) == 0:
@@ -6256,7 +6253,7 @@ class Dataset(dict):
 
         columns = {}
         if count:
-            columns['#'] = range(self.n_cases)
+            columns['#'] = numpy.arange(self.n_cases)[cases]
         for key in keys:
             data_obj = self[cases, key]
             if isinstance(data_obj, Factor):
@@ -7917,15 +7914,15 @@ class Dimension:
     def __init__(
             self,
             name: str,
-            connectivity: Union[str, Sequence],
+            connectivity: ConnectivityArg,
     ):
         # requires __len__ to work
         self.name = name
         self._connectivity_type, self._connectivity = self._connectivity_arg(connectivity)
 
-    def _connectivity_arg(self, connectivity: Union[str, Sequence]):
+    def _connectivity_arg(self, connectivity: ConnectivityArg):
         if isinstance(connectivity, str):
-            if connectivity not in self._CONNECTIVITY_TYPES and connectivity != 'custom':
+            if connectivity not in self._CONNECTIVITY_TYPES:
                 raise ValueError(f"{connectivity=}")
             return connectivity, None
         elif len(connectivity) == 0:
@@ -7936,7 +7933,7 @@ class Dimension:
         else:
             return 'custom', self._coerce_connectivity(connectivity)
 
-    def _coerce_connectivity(self, connectivity: Sequence) -> np.ndarray:
+    def _coerce_connectivity(self, connectivity: ArrayLike) -> np.ndarray:
         connectivity = np.asarray(connectivity)
         if connectivity.dtype.kind != 'i':
             raise TypeError(f"connectivity array needs to be integer type, got {connectivity.dtype}")
@@ -8314,7 +8311,11 @@ class Case(Dimension):
     """
     _DIMINDEX_RAW_TYPES = INT_TYPES + (slice, list)
 
-    def __init__(self, n, connectivity='none'):
+    def __init__(
+            self,
+            n: int,
+            connectivity: ConnectivityArg = 'none',
+    ):
         Dimension.__init__(self, 'case', connectivity)
         self.n = int(n)
 
@@ -8419,18 +8420,20 @@ class Space(Dimension):
         'I': 'inferior',
     }
 
-    def __init__(self, directions, name='space'):
+    def __init__(
+            self,
+            directions: str,
+            name: str = 'space',
+    ):
         if not isinstance(directions, str):
-            raise TypeError("directions=%r" % (directions,))
+            raise TypeError(f"{directions=}")
         n = len(directions)
         all_directions = set(directions)
         if len(all_directions) != n:
-            raise ValueError("directions=%r contains duplicate direction"
-                             % (directions,))
+            raise ValueError(f"{directions=} contains duplicate direction")
         invalid = all_directions.difference(self._DIRECTIONS)
         if invalid:
-            raise ValueError("directions=%r contains invalid directions: %s"
-                             % (directions, ', '.join(map(repr, invalid))))
+            raise ValueError(f"{directions=} contains invalid directions: {', '.join(map(repr, invalid))}")
         Dimension.__init__(self, name, 'vector')
         self._directions = directions
 
@@ -8532,11 +8535,11 @@ class Categorial(Dimension):
 
     Parameters
     ----------
-    name : str
+    name
         Dimension name.
-    values : sequence of str
-        Names of the entries.
-    connectivity : str | list of (str, str) | array of int, (n_edges, 2)
+    values
+        Names of the levels.
+    connectivity
         Connectivity between elements. Can be specified as:
 
         - ``"none"`` for no connections
@@ -8550,13 +8553,17 @@ class Categorial(Dimension):
           ``uint32``, property checks are disabled to improve efficiency.
 
     """
-    def __init__(self, name, values, connectivity='none'):
+    def __init__(
+            self,
+            name: str,
+            values: Sequence[str],
+            connectivity: ConnectivityArg = 'none',
+    ):
         self.values = tuple(values)
         if len(set(self.values)) < len(self.values):
-            raise ValueError("Dimension can not have duplicate values")
+            raise ValueError(f"{values=}: Dimension can not have duplicate values")
         if not all(isinstance(x, str) for x in self.values):
-            raise ValueError("All Categorial values must be strings; got %r." %
-                             (self.values,))
+            raise ValueError(f"{values=}: All Categorial values must be strings")
         Dimension.__init__(self, name, connectivity)
 
     def _coerce_connectivity(self, connectivity):
@@ -8669,16 +8676,16 @@ class Scalar(Dimension):
 
     Parameters
     ----------
-    name : str
+    name
         Name fo the dimension.
-    values : array_like
+    values
         Scalar value for each sample of the dimension.
-    unit : str (optional)
+    unit
         Unit of the values.
-    tick_format : str (optional)
+    tick_format
         Format string for formatting axis tick labels ('%'-format, e.g. '%.0f'
         to round to nearest integer).
-    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
+    connectivity
         Connectivity between elements. Set to ``"none"`` for no connections or 
         ``"grid"`` to use adjacency in the sequence of elements as connection. 
         Set to :class:`numpy.ndarray` to specify custom connectivity. The array
@@ -8689,14 +8696,21 @@ class Scalar(Dimension):
     """
     _default_connectivity = 'grid'
 
-    def __init__(self, name, values, unit=None, tick_format=None, connectivity='grid'):
+    def __init__(
+            self,
+            name: str,
+            values: ArrayLike,
+            unit: str = None,
+            tick_format: str = None,
+            connectivity: ConnectivityArg = 'grid',
+    ):
         values = np.asarray(values)
         if values.ndim != 1:
-            raise ValueError(f"values.shape={values.shape}, needs to be one-dimensional")
+            raise ValueError(f"{values.shape=}, needs to be one-dimensional")
         elif np.any(np.diff(values) <= 0):
             raise ValueError("Values for Scalar must increase monotonically")
         elif tick_format and '%' not in tick_format:
-            raise ValueError(f"tick_format={tick_format}, needs to include '%'")
+            raise ValueError(f"{tick_format=}, needs to include '%'")
         self.values = values
         self.unit = unit
         self._axis_unit = unit
@@ -9744,11 +9758,21 @@ class SourceSpaceBase(Dimension):
     _ANNOT_PATH = os.path.join('{subjects_dir}', '{subject}', 'label', '{hemi}.{parc}.annot')
     _vertex_re = re.compile(r'([RL])(\d+)')
 
-    def __init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename):
+    def __init__(
+            self,
+            vertices: List[ArrayLike],
+            subject: str,
+            src: str,
+            subjects_dir: PathArg,
+            parc: Union[Factor, str],
+            connectivity: ConnectivityArg,
+            name: str,
+            filename: str,
+    ):
         self.vertices = [np.asarray(vertices_i, int) for vertices_i in vertices]
         self.subject = subject
         self.src = src
-        self._subjects_dir = subjects_dir
+        self._subjects_dir = str(subjects_dir)
         self._filename = filename
         # secondary attributes (also set when unpickling)
         self._init_secondary()
@@ -9759,15 +9783,15 @@ class SourceSpaceBase(Dimension):
             self.parc = None
         elif isinstance(parc, Factor):
             if len(parc) != self._n_vert:
-                raise ValueError(f"parc={parc!r}: wrong length {len(parc)} for SourceSpace with {self._n_vert} vertices")
+                raise ValueError(f"{parc=}: wrong length {len(parc)} for SourceSpace with {self._n_vert} vertices")
             self.parc = parc
         elif isinstance(parc, str):
             self.parc = self._read_parc(parc)
         else:
-            raise TypeError(f"parc={parc!r}: needs to be Factor or string")
+            raise TypeError(f"{parc=}: needs to be Factor or string")
 
     def _read_parc(self, parc: str) -> Factor:
-        raise NotImplementedError(f"parc={parc!r}: can't set parcellation from annotation files for {self.__class__.__name__}. Consider using a Factor instead.")
+        raise NotImplementedError(f"{parc=}: can't set parcellation from annotation files for {self.__class__.__name__}. Consider using a Factor instead.")
 
     def _init_secondary(self):
         # The source-space type is needed to determine connectivity
@@ -10180,21 +10204,25 @@ class SourceSpace(SourceSpaceBase):
 
     Parameters
     ----------
-    vertices : list of 2 int arrays
-        The vertex identities of the dipoles in the source space (left and
-        right hemisphere separately).
-    subject : str
+    vertices
+        The vertex identities of the dipoles in the source space.
+        Specified as a list of two integer arrays, identifying the vertices in
+        the left and the right hemisphere separately.
+        Can include an empty list in case no vertices are present in a
+        hemisphere.
+    subject
         The mri-subject name.
-    src : str
+    src
         The kind of source space used (e.g., 'ico-4'; only ``ico`` is currently
         supported.
-    subjects_dir : str
+    subjects_dir
         The path to the subjects_dir (needed to locate the source space
         file).
-    parc : None | str
+    parc
         Add a parcellation to the source space to identify vertex location.
         Only applies to ico source spaces, default is 'aparc'.
-    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
+        Use ``None`` to initialize without parcellation.
+    connectivity
         Connectivity between elements. Set to ``"none"`` for no connections or
         ``"grid"`` to use adjacency in the sequence of elements as connection.
         Set to :class:`numpy.ndarray` to specify custom connectivity. The array
@@ -10202,9 +10230,9 @@ class SourceSpace(SourceSpaceBase):
         connection [i, j] with i < j, with rows sorted in ascending order. If
         the array's dtype is uint32, property checks are disabled to improve
         efficiency.
-    name : str
+    name
         Dimension name (default ``"source"``).
-    filename : str
+    filename
         Filename template for the MNE source space file.
 
     Attributes
@@ -10230,7 +10258,17 @@ class SourceSpace(SourceSpaceBase):
     """
     _kinds = ('ico', 'oct')
 
-    def __init__(self, vertices, subject=None, src=None, subjects_dir=None, parc='aparc', connectivity='custom', name='source', filename='{subject}-{src}-src.fif'):
+    def __init__(
+            self,
+            vertices: List[ArrayLike],
+            subject: str = None,
+            src: str = None,
+            subjects_dir: PathArg = None,
+            parc: Union[Factor, str] = 'aparc',
+            connectivity: ConnectivityArg = 'custom',
+            name: str = 'source',
+            filename: str = '{subject}-{src}-src.fif',
+    ):
         SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename)
 
     def _init_secondary(self):
@@ -10537,8 +10575,7 @@ class VolumeSourceSpace(SourceSpaceBase):
     Parameters
     ----------
     vertices
-        List of 2 integer arrays. The vertex identities of the dipoles in the
-        source space (left and right hemisphere separately).
+        Integer array with vertex identities of the source space.
     subject
         The mri-subject name.
     src
@@ -10570,12 +10607,12 @@ class VolumeSourceSpace(SourceSpaceBase):
 
     def __init__(
             self,
-            vertices: Sequence[numpy.ndarray],
+            vertices: ArrayLike,
             subject: str = None,
             src: str = None,
             subjects_dir: PathArg = None,
             parc: str = None,
-            connectivity: Union[str, Sequence] = 'custom',
+            connectivity: ConnectivityArg = 'custom',
             name: str = 'source',
             filename: str = '{subject}-{src}-src.fif',
     ):
@@ -11130,6 +11167,7 @@ VarArg = Union[Var, str]
 NumericArg = Union[Var, NDVar, str]
 CategorialVariable = Union[Factor, Interaction, NestedEffect]
 CategorialArg = Union[CategorialVariable, str]
+ConnectivityArg = Union[Literal['grid', 'none', 'vector', 'custom'], ArrayLike]
 FactorArg = Union[Factor, str]
 CellArg = Union[str, Tuple[str, ...]]
 IndexArg = Union[Var, np.ndarray, str]

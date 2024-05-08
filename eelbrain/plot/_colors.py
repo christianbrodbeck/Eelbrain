@@ -1,8 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plots for color/style legends"""
 from collections.abc import Iterator
+import colorsys
 from itertools import chain
-from typing import Any, Dict, Literal, Sequence, Union
+from typing import Any, Dict, Literal, Sequence, Tuple, Union
 
 import numpy as np
 import matplotlib
@@ -241,6 +242,10 @@ class ColorList(EelFigure):
         Shape for color samples (default 'box').
     markersize
         Size of markers in points.
+    linewidth
+        Linewidth when plotting colors as lines.
+    label_position
+        Whether to place labels to the left or right of the colors.
     ...
         Also accepts :ref:`general-layout-parameters`.
 
@@ -258,7 +263,11 @@ class ColorList(EelFigure):
             h: float = None,
             shape: Literal['box', 'line', 'marker'] = 'box',
             markersize: float = None,
+            linewidth: float = None,
+            label_position: Literal['left', 'right'] = 'right',
             **kwargs):
+        if label_position not in ('left', 'right'):
+            raise ValueError(f"{label_position=}")
         if cells is None:
             cells = colors.keys()
         elif isinstance(cells, Iterator):
@@ -277,13 +286,20 @@ class ColorList(EelFigure):
         if labels is None:
             labels = {cell: cellname(cell) for cell in cells}
         elif not isinstance(labels, dict):
-            raise TypeError(f"labels={labels!r}")
+            raise TypeError(f"{labels=}")
 
         layout = Layout(0, 1.5, 2, False, h=h, **kwargs)
         EelFigure.__init__(self, None, layout)
 
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
+
+        if label_position == 'right':
+            x = 1.1
+            ha = 'left'
+        else:
+            x = -0.1
+            ha = 'right'
 
         n = len(cells)
         self.labels = []
@@ -294,16 +310,20 @@ class ColorList(EelFigure):
                 patch = matplotlib.patches.Rectangle((0, bottom), 1, 1, ec='none', **styles[cell].patch_args)
                 ax.add_patch(patch)
             elif shape == 'line':
-                ax.plot([0, 1], [y, y], **styles[cell].line_args, markersize=markersize)
+                ax.plot([0, 1], [y, y], **styles[cell].line_args, markersize=markersize, linewidth=linewidth)
             elif shape == 'marker':
                 ax.scatter(0.5, y, markersize, **styles[cell].scatter_args)
             else:
                 raise ValueError(f"{shape=}")
-            h = ax.text(1.1, y, labels.get(cell, cell), va='center', ha='left', zorder=2)
+            h = ax.text(x, y, labels.get(cell, cell), va='center', ha=ha, zorder=2)
             self.labels.append(h)
 
         ax.set_ylim(0, n)
-        ax.set_xlim(0, n * self._layout.w / self._layout.h)
+        width = n * self._layout.w / self._layout.h
+        if label_position == 'right':
+            ax.set_xlim(0, width)
+        else:
+            ax.set_xlim(-width + 1, 1)
 
         self._draw_hooks.append(self.__update_frame)
         self._ax = ax
@@ -320,8 +340,8 @@ class ColorList(EelFigure):
         fig_bb = self.figure.get_window_extent()
         x_max = max(h.get_window_extent().x1 for h in self.labels)
         w0, h0 = self._frame.GetSize()
-        new_w = w0 + (x_max - fig_bb.x1) + 5
-        self._frame.SetSize((new_w, h0))
+        new_w = w0 + (x_max - fig_bb.x1) + 4
+        self._frame.SetSize(int(new_w), h0)
         # adjust x-limits
         n = len(self.labels)
         ax_bb = self._ax.get_window_extent()
@@ -605,3 +625,20 @@ class ColorBar(EelFigure):
             height = x[1]
         ax.set_position((xmin, ymin, width, height))
         return True
+
+
+def adjust_hls(
+        color: Any,
+        hue: float = 0,
+        lightness: float = 0,
+        saturation: float = 0,
+) -> Tuple[float, float, float, float]:
+    *rgb, alpha = matplotlib.colors.to_rgba(color)
+    h, l, s = colorsys.rgb_to_hls(*rgb)
+    if hue:
+        h = (h + hue) % 1
+    if lightness:
+        l = max(0, min(1, l + lightness))
+    if saturation:
+        s = max(0, min(1, s + saturation))
+    return *colorsys.hls_to_rgb(h, l, s), alpha

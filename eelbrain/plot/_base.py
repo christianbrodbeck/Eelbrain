@@ -964,8 +964,8 @@ class StatLayer(Layer):
     def get_statistic(self, func: Callable = np.mean) -> np.ndarray:
         return self._apply_mask(self.ct._get_func(self.cell, func))
 
-    def get_dispersion(self, spec, pool) -> np.ndarray:
-        return self._apply_mask(self.ct._get_dispersion(self.cell, spec, pool))
+    def get_dispersion(self, spec, within_subject) -> np.ndarray:
+        return self._apply_mask(self.ct.variability(spec, within_subject, self.cell, True))
 
     def for_plot(self, plot_type: PlotType) -> Iterator['DataLayer']:
         if self.plot_type == plot_type:

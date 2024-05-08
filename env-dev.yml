@@ -62,5 +62,5 @@ dependencies:
 - mayavi >= 4.6.2  # conda-forge pinning faulty
 - vtk >= 8.1.1
 - pysurfer >= 0.9
-- nilearn
+- nilearn >=0.10.4
 - pyface != 7.2.0  # 7.2.0 causes RuntimeError: No traitsui.toolkits plugin could be loaded for wx

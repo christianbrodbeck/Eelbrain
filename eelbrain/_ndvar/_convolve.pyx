@@ -1,12 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 # cython: boundscheck=False, wraparound=False, cdivision=True, initializedcheck=False
 
-cimport cython
 from cython.parallel cimport prange
-from cython.view cimport array as cvarray
 from libc.stdlib cimport malloc, free
 
-import numpy as np
 cimport numpy as np
 
 
@@ -47,15 +44,15 @@ cpdef int convolve_1d(
         Py_ssize_t n_x = h.shape[0]
         Py_ssize_t h_n_times = h.shape[1]
         Py_ssize_t h_i_stop = h_i_start + h_n_times
-        Py_ssize_t pad_head_n_times = max(0, h_n_times + h_i_start)
+        Py_ssize_t pad_head_n_times = max(0, h_n_times + h_i_start - 1)
         Py_ssize_t pad_tail_n_times = -min(0, h_i_start)
         FLOAT64 * out_pad
         FLOAT64 * pad_head
         FLOAT64 * pad_tail
 
-    # padding: sum(h * x_pads[:, None], 0)
+    # padding
     if pad_head_n_times or pad_tail_n_times:
-        # h_pad = pad * h
+        # out_pad: response to padding value
         out_pad = <FLOAT64*> malloc(sizeof(FLOAT64) * h_n_times)
         for i_t in range(h_n_times):
             out_pad[i_t] = 0
@@ -65,16 +62,18 @@ cpdef int convolve_1d(
         if pad_head_n_times:
             pad_head = <FLOAT64*> malloc(sizeof(FLOAT64) * pad_head_n_times)
             for i_t in range(pad_head_n_times):
+                pad_head[i_t] = 0
                 for i_tau in range(min(pad_head_n_times - i_t, h_n_times)):
                     pad_head[i_t] += out_pad[h_n_times - i_tau - 1]
         # padding for post-
         if pad_tail_n_times:
             pad_tail = <FLOAT64*> malloc(sizeof(FLOAT64) * pad_tail_n_times)
             for i_t in range(pad_tail_n_times):
-                for i_tau in range(min(i_t, h_n_times)):
+                pad_tail[i_t] = 0
+                for i_tau in range(min(i_t+1, h_n_times)):
                     pad_tail[i_t] += out_pad[i_tau]
 
-    for i in range(len(segments)):
+    for i in range(segments.shape[0]):
         start = segments[i, 0]
         stop = segments[i, 1]
         out[start: stop] = 0

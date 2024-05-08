@@ -1306,7 +1306,22 @@ class SequencePlotter:
             label: str = None,
             **kwargs,
     ):
-        """"""
+        """Add a label to the plot.
+
+        Parameters
+        ----------
+        overlay
+            Plot the label as overlay over all plots in the sequence.
+        index
+            When adding separate frames (rows/columns), explicitly specify the
+            frame index (the default is to add a frame at the end; use -1 to
+            add an overlay to the most recent frame).
+        label
+            Label when adding multiple separate NDVars. Labels for bins when
+            adding ``ndvar`` with multiple bins.
+        ...
+            See :meth:`~._brain_object.Brain.add_label`
+        """
         self.set_brain(subject=mne_label.subject)
         if overlay:
             kind = SPLayer.OVERLAY
@@ -1423,7 +1438,7 @@ class SequencePlotter:
         ...
             See :meth:`~._brain_object.Brain.add_ndvar_label`
         overlay
-            Plot the label over all plots in the sequence.
+            Plot the label as overlay over all plots in the sequence.
         index
             When adding separate frames (rows/columns), explicitly specify the
             frame index (the default is to add a frame at the end; use -1 to

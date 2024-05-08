@@ -182,14 +182,29 @@ def _concatenate_values(
             return items
         elif isinstance(values[0][0], Dimension):
             return [_concatenate_values(items, dim, f'{key}[{i}') for i, items in enumerate(zip_longest(*values))]
+
+        equals = []
         for values_i in zip_longest(*values):
             value_i_0 = values_i[0]
             if isinstance(value_i_0, (NDVar, np.ndarray)):
                 equal = ((value_i_j == value_i_0).all() for value_i_j in values_i[1:])
             else:
                 equal = (value_i_j == value_i_0 for value_i_j in values_i[1:])
-            if not all(equal):
-                raise ValueError(f'Inconsistent values for {key}: {values}')
+            equals.append(all(equal))
+
+        # Error message
+        if not all(equals):
+            msg = [f'Inconsistent values for {key}:']
+            for equal, values_i in zip(equals, zip_longest(*values)):
+                prefix = '=' if equal else '≠'
+                if isinstance(values_i[0], NDVar):
+                    msg.append(f"{prefix}: {values_i[0].name}")
+                    for v in values_i:
+                        msg.append(f'  {v.x}')
+                else:
+                    desc = '  '.join(map(repr, values_i))
+                    msg.append(f"{prefix}: {desc}")
+            raise ValueError('\n'.join(msg))
     elif len(list(groupby(values))) > 1:
         raise ValueError(f'Inconsistent values for {key}: {values}')
     return values[0]

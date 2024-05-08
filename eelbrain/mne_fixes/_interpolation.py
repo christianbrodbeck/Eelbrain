@@ -10,7 +10,6 @@ try:
     from mne.forward import _map_meg_or_eeg_channels
 except ImportError:  # mne < 0.21
     from mne.forward import _map_meg_channels as _map_meg_or_eeg_channels
-from mne.io.pick import pick_types, pick_channels
 
 
 # mne 0.10 function
@@ -31,7 +30,7 @@ def get_channel_positions(self, picks=None):
         channels that are available are returned (bad channels excluded).
     """
     if picks is None:
-        picks = pick_types(self.info, meg=True, eeg=True)
+        picks = mne.pick_types(self.info, meg=True, eeg=True)
     chs = self.info['chs']
     pos = np.array([chs[k]['loc'][:3] for k in picks])
     n_zero = np.sum(np.sum(np.abs(pos), axis=1) == 0)
@@ -51,10 +50,10 @@ def _make_interpolator(inst, bad_channels):
     """
     logger = logging.getLogger(__name__)
 
-    bads_idx = np.zeros(len(inst.ch_names), dtype=np.bool)
-    goods_idx = np.zeros(len(inst.ch_names), dtype=np.bool)
+    bads_idx = np.zeros(len(inst.ch_names), dtype=bool)
+    goods_idx = np.zeros(len(inst.ch_names), dtype=bool)
 
-    picks = pick_types(inst.info, meg=False, eeg=True, exclude=[])
+    picks = mne.pick_types(inst.info, meg=False, eeg=True, exclude=[])
     bads_idx[picks] = [inst.ch_names[ch] in bad_channels for ch in picks]
     goods_idx[picks] = True
     goods_idx[bads_idx] = False
@@ -190,7 +189,7 @@ def make_interpolators(interp_cache, keys, bads, epochs):
     logger = logging.getLogger(__name__)
     logger.debug("Making %i of %i interpolators" % (len(make), len(keys)))
     for key in make:
-        picks_good = pick_types(epochs.info, meg=True, ref_meg=False, exclude=key)
-        picks_bad = pick_channels(epochs.ch_names, key)
+        picks_good = mne.pick_types(epochs.info, meg=True, ref_meg=False, exclude=key)
+        picks_bad = mne.pick_channels(epochs.ch_names, key)
         interpolation = map_meg_channels(epochs, picks_good, picks_bad, 'accurate')
         interp_cache[bads, key] = picks_good, picks_bad, interpolation

@@ -93,7 +93,7 @@ def test_lm_r():
     assert_allclose(t[:, 0], r_res[3][8:12])
 
 
-def test_variability():
+def test_dispersion():
     "Test variability functions"
     ds = datasets.get_loftus_masson_1994()
     y = ds['n_recalled'].x.astype(np.float64)
@@ -105,35 +105,36 @@ def test_variability():
 
     # invalid spec
     with pytest.raises(ValueError):
-        stats.variability(y, 0, 0, '1mile', 0)
+        stats.dispersion(y, 0, 0, '1mile')
     with pytest.raises(ValueError):
-        stats.variability(y, 0, 0, 'ci7ci', 0)
+        stats.dispersion(y, 0, 0, 'ci7ci')
 
     # standard error
-    assert stats.variability(y, None, None, 'sem', False) == sem
-    assert stats.variability(y, None, None, '2sem', False) == 2 * sem
+    assert stats.dispersion(y, None, None, 'sem') == sem
+    assert stats.dispersion(y, None, None, '2sem') == 2 * sem
     # within subject standard-error
     target = scipy.stats.sem(stats.residuals(y[:, None], match), 0, len(match.cells))[0]
-    assert stats.variability(y, None, match, 'sem', True) == pytest.approx(target)
-    assert stats.variability(y, None, match, 'sem', False) == pytest.approx(target)
+    assert stats.dispersion(y, None, match, 'sem') == pytest.approx(target)
     # one data point per match cell
     n = match.df + 1
     with pytest.raises(ValueError):
-        stats.variability(y[:n], None, match[:n], 'sem', True)
+        stats.dispersion(y[:n], None, match[:n], 'sem')
 
     target = np.array([scipy.stats.sem(y[x == cell], 0, 1) for cell in x.cells])
-    es = stats.variability(y, x, None, 'sem', False)
+    es = stats.dispersion(y, x, None, 'sem')
     assert_allclose(es, target)
 
-    stats.variability(y, x, None, 'sem', True)
+    stats.dispersion(y, x, None, 'sem', pool=True)
 
     # confidence intervals
-    assert stats.variability(y, None, None, '95%ci', False) == pytest.approx(ci)
-    assert stats.variability(y, x, None, '95%ci', True) == pytest.approx(3.86, abs=1e-2)  # L&M: 3.85
-    assert stats.variability(y, x, match, '95%ci', True) == pytest.approx(0.52, abs=1e-2)
+    assert stats.dispersion(y, None, None, '95%ci') == pytest.approx(ci)
+    assert stats.dispersion(y, x, None, '95%ci', pool=True) == pytest.approx(3.86, abs=1e-2)  # L&M: 3.85
+    assert stats.dispersion(y, x, match, '95%ci') == pytest.approx(0.52, abs=1e-2)
 
-    assert_equal(stats.variability(y, x, None, '95%ci', False)[::-1],
-                 stats.variability(y, x, None, '95%ci', False, x.cells[::-1]))
+    assert_equal(
+        stats.dispersion(y, x, None, '95%ci')[::-1],
+        stats.dispersion(y, x, None, '95%ci', x.cells[::-1])
+    )
 
 
 def test_t_1samp():
