@@ -8,6 +8,8 @@
 build
 develop-eggs
 downloads
+doc/sg_execution_times.rst
+doc-build
 eggs
 fake-eggs
 parts
