@@ -20,6 +20,7 @@ use_setuptools('17')
 
 from packaging.version import Version
 import os
+from pathlib import Path
 import re
 from setuptools import setup, find_packages, Extension
 
@@ -33,14 +34,12 @@ except ImportError:
     cythonize = False
 
 
-DESC = """
-GitHub: https://github.com/christianbrodbeck/Eelbrain
-"""
 IS_WINDOWS = os.name == 'nt'
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
 
 # version must be in X.X.X format, e.g., "0.0.3dev"
-with open('eelbrain/__init__.py') as fid:
-    text = fid.read()
+text = (this_directory / 'eelbrain' / '__init__.py').read_text()
 match = re.search(r"__version__ = '([.\w]+)'", text)
 if match is None:
     raise ValueError("No valid version string found in:\n\n" + text)
@@ -73,7 +72,8 @@ setup(
     author="Christian Brodbeck",
     author_email='christianbrodbeck@nyu.edu',
     license='BSD (3-clause)',
-    long_description=DESC,
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     python_requires='>=3.8',
     setup_requires=[
         "numpy >= 1.20",
