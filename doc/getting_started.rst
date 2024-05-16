@@ -11,10 +11,22 @@ Getting Started
 Documentation
 -------------
 
-For an introduction to Eelbrain, see :ref:`exa-intro` and the other :ref:`examples`.
-For a tutorial on using Eelbrain for analyzing an experiment with temporal response function, see
-`this preprint <https://doi.org/10.1101/2021.08.01.454687>`_.
-For details of all the functionality see the API :ref:`reference`.
+Documentation can be found here:
+
+* :ref:`exa-intro` to the fundamental Eelbrain data types.
+* :ref:`examples` demonstrating different applications.
+* `Eelbrain, a Python toolkit for time-continuous analysis with temporal response functions <https://doi.org/10.7554/eLife.85012>`_: A tutorial on using Eelbrain for analyzing an EEG experiment with temporal response functions. Including a `GitHub repoitory <https://github.com/Eelbrain/Alice>`_ with code to reproduce all figures in the paper.
+* :ref:`experiment-class-guide` for step-by-step instructions on setting up a M/EEG experiment pipeline.
+* :ref:`reference` on API and details of all the functionality.
+
+
+Getting help
+------------
+
+To get help, you may want to check (and contribute to):
+
+* The Eelbrian `wiki <https://github.com/christianbrodbeck/Eelbrain/wiki>`_.
+* GitHub `Dicussions <https://github.com/christianbrodbeck/Eelbrain/discussions>`_.
 
 
 Interacting with other Python libraries
