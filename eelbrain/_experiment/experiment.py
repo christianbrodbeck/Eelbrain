@@ -607,7 +607,7 @@ class TreeModel:
 
         return string
 
-    def _copy_state(self):
+    def _copy_state(self) -> (dict, dict):
         """Copy of the state that can be used with ``._restore_state()``"""
         return self._fields.copy(), self._field_values.copy()
 
