@@ -2,14 +2,24 @@
 Installing
 **********
 
-Advanced
---------
+Basic Installation
+------------------
 
-Eelbrain can be installed as pre-compiled library from `conda-forge <https://conda-forge.org>`_::
+Eelbrain can be installed as pre-compiled library from `conda-forge <https://conda-forge.org>`_:
+
+.. code-block:: bash
 
     $ conda install -c conda-forge eelbrain
 
-Eelbrain source code is also hosted on the Python Package Index (`PyPI <https://pypi.org/project/eelbrain/>`_) but installing from PyPI requires local compilation::
+or:
+
+.. code-block:: bash
+
+    $ mamba install eelbrain
+
+Eelbrain source code is also hosted on the Python Package Index (`PyPI <https://pypi.org/project/eelbrain/>`_), but installing from PyPI requires local compilation:
+
+.. code-block:: bash
 
     $ pip install eelbrain
 
@@ -18,37 +28,47 @@ Eelbrain source code is also hosted on the Python Package Index (`PyPI <https://
     For more installing options, including pre-releases, see the `wiki <https://github.com/christianbrodbeck/Eelbrain/wiki/Installing>`_.
 
 
-Beginner
---------
+Full Setup
+----------
 
 The recommended tool for deploying Eelbrain is the `Mamba <https://mamba.readthedocs.io/en/latest/index.html>`_ package manager:
 
 1. `Install Mamba <https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html>`_.
 
-2. Create an environment containing Eelbrain along with other libraries required for a project. An example environment is provided in the `Alice <https://github.com/Eelbrain/Alice>`_ repository's `environment.yml <mamba env create --file=https://github.com/Eelbrain/Alice/raw/main/environment.yml>`_ file::
+2. Create an environment containing Eelbrain along with other libraries required for a project. An example environment is provided in the `Alice <https://github.com/Eelbrain/Alice>`_ repository's `environment.yml <https://github.com/Eelbrain/Alice/blob/main/environment.yml>`_ file:
+
+.. code-block:: bash
 
     $ mamba env create --file=https://github.com/Eelbrain/Alice/raw/main/environment.yml
 
 
-By default, this new environment will be called ``eelbrain`` (as specified in the `environment.yml <mamba env create --file=https://github.com/Eelbrain/Alice/raw/main/environment.yml>`_ file), and can be activated with the following command (note the change in the command line prefix)::
+By default, this new environment will be called ``eelbrain`` (as specified in the `environment.yml <https://github.com/Eelbrain/Alice/blob/main/environment.yml>`_ file), and can be activated with the following command (note the change in the command line prefix):
+
+.. code-block:: bash
 
     (base) $ mamba activate eelbrain
     (eelbrain) $
 
 
-Eelbrain can then be used from this environment, for example through `Jupyter Lab <https://jupyterlab.readthedocs.io/en/latest/>`_::
+Eelbrain can then be used from this environment, for example through `Jupyter Lab <https://jupyterlab.readthedocs.io/en/latest/>`_:
+
+.. code-block:: bash
 
     (eelbrain) $ jupyter lab
 
 
-In an existing environment, Eelbrain can generally be updated with the following command (assuming the target environment is currently active)::
+In an existing environment, Eelbrain can generally be updated with the following command (assuming the target environment is currently active):
+
+.. code-block:: bash
 
     (eelbrain) $ mamba update eelbrain
 
 
-The currently installed version can be displayed with the ``mamba list`` command::
+The currently installed version can be displayed with the ``mamba list`` command:
 
-    (eelbrain) ~/Code/Eelbrain % mamba list eelbrain
+.. code-block:: bash
+
+    (eelbrain) $ mamba list eelbrain
     # packages in environment at ~/miniforge3/envs/test:
     #
     # Name                    Version                   Build  Channel
