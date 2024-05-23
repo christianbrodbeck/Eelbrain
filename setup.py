@@ -1,18 +1,5 @@
-"""
-setup.py
-========
-
-This is the setup.py script for Eelbrain.
-
-http://docs.python.org/distutils/index.html
-https://setuptools.readthedocs.io/en/latest/setuptools.html
-
-
-About MANIFEST.in:
-
-https://docs.python.org/2/distutils/sourcedist.html#manifest-template
-
-"""
+# https://packaging.python.org/en/latest/
+# https://packaging.python.org/en/latest/guides/modernize-setup-py-project/
 from packaging.version import Version
 import os
 from pathlib import Path
@@ -69,7 +56,7 @@ setup(
     name='eelbrain',
     version=version,
     description="MEG/EEG analysis tools",
-    url="http://eelbrain.readthedocs.io",
+    url="https://eelbrain.readthedocs.io",
     author="Christian Brodbeck",
     author_email='christianbrodbeck@nyu.edu',
     license='BSD (3-clause)',
@@ -80,22 +67,23 @@ setup(
         "numpy >= 1.20",
         "cython >= 3",
     ],
+    install_requires=[
+        'appnope',
+        'colormath >= 2.1',
+        'keyring >= 5',
+        'matplotlib >= 3.6',
+        'mne >= 0.19',
+        'nibabel >= 2.5',
+        'numpy >= 1.20',
+        'pillow',
+        'pymatreader',
+        'scipy >= 1.5',
+        'tqdm >= 4.40',
+        'wxpython > 4.1.0',
+    ],
     extras_require={
-        'base': [
-            'colormath >= 2.1',
-            'keyring >= 5',
-            'mne >= 0.19',
-            'nibabel >= 2.5',
-            'pillow',
-            'tqdm >= 4.40',
-        ],
-        'full': [
-            'numpy >= 1.20',
-            'scipy >= 1.3',
-            'matplotlib >= 3.3.4',
-        ],
-        'plot.brain': [
-            'pysurfer[save_movie] >= 0.9',
+        'brain': [
+            'pysurfer[save_movie]',
         ],
     },
     include_dirs=[np.get_include()],

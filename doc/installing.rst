@@ -23,6 +23,12 @@ Eelbrain source code is also hosted on the Python Package Index (`PyPI <https://
 
     $ pip install eelbrain
 
+The default PYPI installation omits the optional dependencies which are required for creating `PySurfer <https://pysurfer.github.io>`_/`Mayavi <http://docs.enthought.com/mayavi/mayavi/>`_ based anatomical plots. In order to install these dependencies as well, use:
+
+.. code-block:: bash
+
+    $ pip install eelbrain[brain]
+
 
 .. SEEALSO::
     For more installing options, including pre-releases, see the `wiki <https://github.com/christianbrodbeck/Eelbrain/wiki/Installing>`_.
@@ -49,6 +55,8 @@ By default, this new environment will be called ``eelbrain`` (as specified in th
     (base) $ mamba activate eelbrain
     (eelbrain) $
 
+
+You will have to activate the environment every time you start a new shell session.
 
 Eelbrain can then be used from this environment, for example through `Jupyter Lab <https://jupyterlab.readthedocs.io/en/latest/>`_:
 
