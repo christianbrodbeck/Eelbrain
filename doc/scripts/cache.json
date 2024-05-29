@@ -1,4 +1,27 @@
 {
+    "-8UUshK3OykJ": {
+        "title": "Neural bases of proactive and predictive processing of meaningful sub-word units in speech comprehension",
+        "result_id": "-8UUshK3OykJ",
+        "link": "https://www.biorxiv.org/content/10.1101/2024.04.29.591610.abstract",
+        "snippet": "To comprehend speech, human brains identify meaningful units in the speech stream. But whereas the English 'She believed him.' has 3 words, the Arabic equivalent 'saddaqathu.' is a \u2026",
+        "publication_info": {
+            "summary": "S Matar, A Marantz - bioRxiv, 2024 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "S Matar",
+                    "link": "https://scholar.google.com/citations?user=scIFaNwAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=scIFaNwAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "scIFaNwAAAAJ"
+                },
+                {
+                    "name": "A Marantz",
+                    "link": "https://scholar.google.com/citations?user=LLq-Ti4AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=LLq-Ti4AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "LLq-Ti4AAAAJ"
+                }
+            ]
+        }
+    },
     "-cJ_wI_xKTkJ": {
         "title": "Memory for affixes in a long-lag priming paradigm",
         "result_id": "-cJ_wI_xKTkJ",
@@ -402,6 +425,12 @@
                     "author_id": "IApEm-QAAAAJ"
                 },
                 {
+                    "name": "H Innes-Brown",
+                    "link": "https://scholar.google.com/citations?user=zcH3NQwAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=zcH3NQwAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "zcH3NQwAAAAJ"
+                },
+                {
                     "name": "M Enqvist",
                     "link": "https://scholar.google.com/citations?user=0ojFbaUAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=0ojFbaUAAAAJ&engine=google_scholar_author&hl=en",
@@ -636,7 +665,7 @@
         "title": "Rapid visual form-based processing of (some) grammatical features in parallel reading: An EEG study in English",
         "result_id": "A5xKK--mx_4J",
         "link": "https://www.biorxiv.org/content/10.1101/2024.04.10.588861.abstract",
-        "snippet": "\u2026 -Python (Gramfort et al. 2013), and statistical analyses were conducted using MNE-Python and Eelbrain (Brodbeck et al. 2023). Raw \u2026 The second stage was carried out using Eelbrain. \u2026",
+        "snippet": "\u2026 The second stage was carried out using Eelbrain. \u2026 Eelbrain, a Python toolkit for time-continuous analysis with temporal response functions. Elife 12, e85012. doi:10.7554/eLife.85012 \u2026",
         "publication_info": {
             "summary": "D Dunagan, T Jordan, JT Hale, L Pylkk\u00c3\u012anen\u2026 - bioRxiv, 2024 - biorxiv.org",
             "authors": [
@@ -651,6 +680,29 @@
                     "link": "https://scholar.google.com/citations?user=sqUEF0MAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=sqUEF0MAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "sqUEF0MAAAAJ"
+                }
+            ]
+        }
+    },
+    "AnGUOA8iK-oJ": {
+        "title": "Auditory encoding of natural speech at subcortical and cortical levels is not indicative of cognitive decline",
+        "result_id": "AnGUOA8iK-oJ",
+        "link": "https://www.eneuro.org/content/11/5/ENEURO.0545-23.2024.abstract",
+        "snippet": "More and more patients worldwide are diagnosed with dementia, which emphasizes the urgent need for early detection markers. In this study, we built on the auditory hypersensitivity \u2026",
+        "publication_info": {
+            "summary": "E Bolt, N Giroud - Eneuro, 2024 - eneuro.org",
+            "authors": [
+                {
+                    "name": "E Bolt",
+                    "link": "https://scholar.google.com/citations?user=BXbE8jQAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=BXbE8jQAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "BXbE8jQAAAAJ"
+                },
+                {
+                    "name": "N Giroud",
+                    "link": "https://scholar.google.com/citations?user=Qdunw2MAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=Qdunw2MAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "Qdunw2MAAAAJ"
                 }
             ]
         }
@@ -739,6 +791,29 @@
                     "link": "https://scholar.google.com/citations?user=yGIs62YAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=yGIs62YAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "yGIs62YAAAAJ"
+                }
+            ]
+        }
+    },
+    "CLXrUtHl5n0J": {
+        "title": "Hypoactivation of ventromedial frontal cortex in major depressive disorder: an MEG study of the Reward Positivity",
+        "result_id": "CLXrUtHl5n0J",
+        "link": "https://www.biorxiv.org/content/10.1101/2024.04.18.590159.abstract",
+        "snippet": "Background: The Reward Positivity (RewP) is sensitive and specific electrophysiological marker of reward receipt. These characteristics make it a compelling candidate marker of \u2026",
+        "publication_info": {
+            "summary": "CJH Pirrung, G Singh, J Hogeveen, D Quinn\u2026 - bioRxiv, 2024 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "J Hogeveen",
+                    "link": "https://scholar.google.com/citations?user=MLoQQKgAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=MLoQQKgAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "MLoQQKgAAAAJ"
+                },
+                {
+                    "name": "D Quinn",
+                    "link": "https://scholar.google.com/citations?user=IQGOsb4AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=IQGOsb4AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "IQGOsb4AAAAJ"
                 }
             ]
         }
@@ -1018,7 +1093,6 @@
     "HKbIagUVda0J": {
         "title": "Predictors for estimating subcortical EEG responses to continuous speech",
         "result_id": "HKbIagUVda0J",
-        "type": "Html",
         "link": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0297826",
         "snippet": "Perception of sounds and speech involves structures in the auditory brainstem that rapidly process ongoing auditory stimuli. The role of these structures in speech processing can be \u2026",
         "publication_info": {
@@ -1362,7 +1436,7 @@
         "link": "https://www.biorxiv.org/content/10.1101/2022.11.07.515423.abstract",
         "snippet": "The power of electrophysiologically measured cortical activity decays 1/f X . The slope of this decay (ie the spectral exponent) is modulated by various factors such as age, cognitive \u2026",
         "publication_info": {
-            "summary": "F Schmidt, SK Danb\u00f6ck, E Trinka, G Demarchi\u2026 - bioRxiv, 2022 - biorxiv.org",
+            "summary": "F Schmidt, SK Danb\u00f6ck, E Trinka, DP Klein\u2026 - bioRxiv, 2022 - biorxiv.org",
             "authors": [
                 {
                     "name": "F Schmidt",
@@ -1381,12 +1455,6 @@
                     "link": "https://scholar.google.com/citations?user=FLbIDZoAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=FLbIDZoAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "FLbIDZoAAAAJ"
-                },
-                {
-                    "name": "G Demarchi",
-                    "link": "https://scholar.google.com/citations?user=GiarXIUAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=GiarXIUAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "GiarXIUAAAAJ"
                 }
             ]
         }
@@ -1394,7 +1462,6 @@
     "PWh77B7XZdsJ": {
         "title": "Neuro-current response functions: A unified approach to MEG source analysis under the continuous stimuli paradigm",
         "result_id": "PWh77B7XZdsJ",
-        "type": "Html",
         "link": "https://www.sciencedirect.com/science/article/pii/S105381192030015X",
         "snippet": "Characterizing the neural dynamics underlying sensory processing is one of the central areas of investigation in systems and cognitive neuroscience. Neuroimaging techniques such as \u2026",
         "publication_info": {
@@ -1714,7 +1781,6 @@
     "TuCxI8dXO-MJ": {
         "title": "Conformal in-ear bioelectronics for visual and auditory brain-computer interfaces",
         "result_id": "TuCxI8dXO-MJ",
-        "type": "Html",
         "link": "https://www.nature.com/articles/s41467-023-39814-6",
         "snippet": "\u2026 The TRF and the discrimination problem were implemented by eelbrain 58 . For the backward classification, we followed the procedure 46 , which involved calculating the correlation \u2026",
         "publication_info": {
@@ -2104,7 +2170,6 @@
     "YNQUCquZ7R4J": {
         "title": "Functional characterisation of letter-specific responses in time, space and current polarity using magnetoencephalography",
         "result_id": "YNQUCquZ7R4J",
-        "type": "Html",
         "link": "https://www.sciencedirect.com/science/article/pii/S105381191600166X",
         "snippet": "Recent neurophysiological evidence suggests that a hierarchical neural network of low-to-high level processing subserves written language comprehension. While a considerable \u2026",
         "publication_info": {
@@ -2134,7 +2199,6 @@
     "Ytbi5qiGnwAJ": {
         "title": "High gamma cortical processing of continuous speech in younger and older listeners",
         "result_id": "Ytbi5qiGnwAJ",
-        "type": "Html",
         "link": "https://www.sciencedirect.com/science/article/pii/S1053811920307771",
         "snippet": "\u2026 All brain plots show the maximum intensity projection of the voxels onto a 2-dimensional plane, with an overlaid \u2018fsaverage\u2019 brain schematic (implemented in eelbrain). Minimum norm \u2026",
         "publication_info": {
@@ -2280,7 +2344,6 @@
     "b0Z02KSJhZMJ": {
         "title": "Building words and phrases in the left temporal lobe",
         "result_id": "b0Z02KSJhZMJ",
-        "type": "Html",
         "link": "https://www.sciencedirect.com/science/article/pii/S0010945218301904",
         "snippet": "A central part of knowing a language is the ability to combine basic linguistic units to form complex representations. While our neurobiological understanding of how words combine into \u2026",
         "publication_info": {
@@ -2566,7 +2629,6 @@
     "gps1yA4Xp6MJ": {
         "title": "Neural speech restoration at the cocktail party: Auditory cortex recovers masked speech of both attended and ignored speakers",
         "result_id": "gps1yA4Xp6MJ",
-        "type": "Html",
         "link": "https://journals.plos.org/plosbiology/article?id=10.1371/journal.pbio.3000883",
         "snippet": "Humans are remarkably skilled at listening to one speaker out of an acoustic mixture of several speech sources. Two speakers are easily segregated, even without binaural cues, but \u2026",
         "publication_info": {
@@ -2629,7 +2691,15 @@
         "link": "https://search.proquest.com/openview/7246644f610d3414638e549f6fa861fa/1?pq-origsite=gscholar&cbl=18750&diss=y",
         "snippet": "During language comprehension, the brain typically converts a stream of sensory input into meaningful mental representations. But not all of the information the brain needs or uses is \u2026",
         "publication_info": {
-            "summary": "S Matar - 2022 - search.proquest.com"
+            "summary": "S Matar - 2022 - search.proquest.com",
+            "authors": [
+                {
+                    "name": "S Matar",
+                    "link": "https://scholar.google.com/citations?user=scIFaNwAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=scIFaNwAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "scIFaNwAAAAJ"
+                }
+            ]
         }
     },
     "hY_45DaNN7AJ": {
@@ -2644,10 +2714,10 @@
     "h_6AqLgvlkAJ": {
         "title": "Eye movements track prioritized auditory features in selective attention to natural speech",
         "result_id": "h_6AqLgvlkAJ",
-        "link": "https://www.biorxiv.org/content/10.1101/2023.01.23.525171.abstract",
-        "snippet": "Over the last decades, cognitive neuroscience has identified a distributed set of brain regions that are critical for attention - one of the key principles of adaptive behavior. A strong \u2026",
+        "link": "https://www.nature.com/articles/s41467-024-48126-2",
+        "snippet": "\u2026 Accordingly, we estimated TRFs using the Eelbrain toolkit 63 using the same time-lags as in the ocular speech tracking analysis from -100 - 550 ms. As the boosting architecture \u2026",
         "publication_info": {
-            "summary": "Q Gehmacher, J Schubert, F Schmidt, T Hartmann\u2026 - bioRxiv, 2023 - biorxiv.org",
+            "summary": "Q Gehmacher, J Schubert, F Schmidt\u2026 - Nature \u2026, 2024 - nature.com",
             "authors": [
                 {
                     "name": "F Schmidt",
@@ -2789,12 +2859,12 @@
         }
     },
     "kBuN8Hxa09wJ": {
-        "title": "Extending Subcortical EEG Responses to Continuous Speech to the Sound-Field",
+        "title": "Extending subcortical eeg responses to continuous speech to the sound-field",
         "result_id": "kBuN8Hxa09wJ",
-        "link": "https://www.biorxiv.org/content/10.1101/2023.11.08.566173.abstract",
-        "snippet": "\u2026 Data analysis was conducted in MATLAB (version R2021a) and 121 the Eelbrain Python \u2026 Eelbrain: A python toolkit for time-continuous analysis with temporal response functions. doi\u2026",
+        "link": "https://journals.sagepub.com/doi/abs/10.1177/23312165241246596",
+        "snippet": "The auditory brainstem response (ABR) is a valuable clinical tool for objective hearing assessment, which is conventionally detected by averaging neural responses to thousands of \u2026",
         "publication_info": {
-            "summary": "FL Bachmann, JP Kulasingham, K Eskelund, M Enqvist\u2026 - bioRxiv, 2023 - biorxiv.org",
+            "summary": "FL Bachmann, JP Kulasingham\u2026 - Trends in \u2026, 2024 - journals.sagepub.com",
             "authors": [
                 {
                     "name": "FL Bachmann",
@@ -2807,18 +2877,6 @@
                     "link": "https://scholar.google.com/citations?user=IApEm-QAAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=IApEm-QAAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "IApEm-QAAAAJ"
-                },
-                {
-                    "name": "K Eskelund",
-                    "link": "https://scholar.google.com/citations?user=CB1018YAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=CB1018YAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "CB1018YAAAAJ"
-                },
-                {
-                    "name": "M Enqvist",
-                    "link": "https://scholar.google.com/citations?user=0ojFbaUAAAAJ&hl=en&num=20&oi=sra",
-                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=0ojFbaUAAAAJ&engine=google_scholar_author&hl=en",
-                    "author_id": "0ojFbaUAAAAJ"
                 }
             ]
         }
@@ -2896,7 +2954,6 @@
     "l5V5RyufG_YJ": {
         "title": "MEG correlates of speech planning in simple vs. interactive picture naming in children and adults",
         "result_id": "l5V5RyufG_YJ",
-        "type": "Html",
         "link": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0292316",
         "snippet": "The picture naming task is common both as a clinical task and as a method to study the neural bases of speech production in the healthy brain. However, this task is not reflective of \u2026",
         "publication_info": {
@@ -3024,6 +3081,29 @@
                     "link": "https://scholar.google.com/citations?user=LLq-Ti4AAAAJ&hl=en&num=20&oi=sra",
                     "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=LLq-Ti4AAAAJ&engine=google_scholar_author&hl=en",
                     "author_id": "LLq-Ti4AAAAJ"
+                }
+            ]
+        }
+    },
+    "oSBcAEsITWYJ": {
+        "title": "Quick, Don't Move!: Wh-Movement and Wh-In-Situ Structures in Rapid Parallel Reading-EEG studies in English, Urdu, and Mandarin Chinese",
+        "result_id": "oSBcAEsITWYJ",
+        "link": "https://www.biorxiv.org/content/10.1101/2024.05.06.592830.abstract",
+        "snippet": "A fundamental question in the cognitive neuroscience of language is how grammatical representations are reflected in the organization and activity of the brain. This is challenging in \u2026",
+        "publication_info": {
+            "summary": "DA Chacon, DG Dunagan, J McLendon, H Khokhar\u2026 - bioRxiv, 2024 - biorxiv.org",
+            "authors": [
+                {
+                    "name": "DA Chacon",
+                    "link": "https://scholar.google.com/citations?user=p7-_00gAAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=p7-_00gAAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "p7-_00gAAAAJ"
+                },
+                {
+                    "name": "DG Dunagan",
+                    "link": "https://scholar.google.com/citations?user=lHw8-G8AAAAJ&hl=en&num=20&oi=sra",
+                    "serpapi_scholar_link": "https://serpapi.com/search.json?author_id=lHw8-G8AAAAJ&engine=google_scholar_author&hl=en",
+                    "author_id": "lHw8-G8AAAAJ"
                 }
             ]
         }
@@ -3346,7 +3426,6 @@
     "sn9W_cUDRqQJ": {
         "title": "Neural and developmental bases of processing language outside the here-and-now",
         "result_id": "sn9W_cUDRqQJ",
-        "type": "Html",
         "link": "https://search.proquest.com/openview/bae98a7cd0e7c6bbb436ed364ed00e8e/1?pq-origsite=gscholar&cbl=18750&diss=y",
         "snippet": "This dissertation investigates the neural bases and development of displacement, which is a language property that allows us to communicate about situations outside the here-and-now\u2026",
         "publication_info": {
@@ -3364,7 +3443,6 @@
     "t5g817um_mQJ": {
         "title": "Towards an ecologically valid neurobiology of bilingualism",
         "result_id": "t5g817um_mQJ",
-        "type": "Html",
         "link": "https://search.proquest.com/openview/f79d3946e65b72be4d17924229661815/1?pq-origsite=gscholar&cbl=18750&diss=y",
         "snippet": "More than half of the world\u2019s population is bilingual, yet the neural architecture allowing these individuals to successfully communicate in two languages and switch back and forth \u2026",
         "publication_info": {
@@ -3659,7 +3737,6 @@
     "zKlTI2V7FD4J": {
         "title": "Composing lexical versus functional adjectives: Evidence for uniformity in the left temporal lobe",
         "result_id": "zKlTI2V7FD4J",
-        "type": "Html",
         "link": "https://link.springer.com/article/10.3758/s13423-018-1469-y",
         "snippet": "\u2026 all conditions were randomly selected out using Eelbrain\u2019s parameter \u201cequalize-evoked-counts.\u201d Our spatiotemporal permutation clustering test was performed in Eelbrain 0.22.1 with a \u2026",
         "publication_info": {
