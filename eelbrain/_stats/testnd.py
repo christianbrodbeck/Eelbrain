@@ -1173,9 +1173,12 @@ class TTestIndependent(NDDifferenceTest):
         check_for_vector_dim(y)
 
         n1 = len(y1)
-        n = len(y)
-        n0 = n - n1
+        n0 = len(y0)
+        n = n1 + n0
         df = n - 2
+        if df < 1:
+            raise ValueError(f"Not enough cases for t-test: {n1=}, {n0=}, {df=}")
+
         groups = np.arange(n) < n1
         groups.dtype = np.int8
         tmap = stats.t_ind(y.x, groups)
