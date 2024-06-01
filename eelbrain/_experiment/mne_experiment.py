@@ -3413,7 +3413,8 @@ class MneExperiment(FileTree):
             if len(epoch_params.sessions) != 1:
                 raise ValueError(f"{epoch=}: epoch has multiple session")
             ds = self.load_epochs(add_bads=add_bads, epoch=epoch, reject=False, decim=1, **state)
-            data = concatenate(ds['meg'])
+            key = ds.info['sensor_types'][0]
+            data = concatenate(ds[key])
         else:
             data = self.load_raw(ndvar=True, add_bads=add_bads, **state)
         n_corr = neighbor_correlation(data)
