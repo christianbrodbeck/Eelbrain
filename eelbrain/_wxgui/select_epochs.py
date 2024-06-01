@@ -1545,20 +1545,17 @@ class FindNoisyChannelsDialog(EelbrainDialog):
 
         # flat channels
         sizer.Add(wx.StaticText(self, label="Threshold for flat channels:"))
-        msg = ("Invalid entry for flat channel threshold: {value}. Please "
-               "specify a number > 0.")
+        msg = "Invalid entry for flat channel threshold: {value}. Please specify a number > 0."
         validator = REValidator(POS_FLOAT_PATTERN, msg, False)
         ctrl = wx.TextCtrl(self, value=str(flat), validator=validator)
-        ctrl.SetHelpText("A channel that does not deviate from 0 by more than "
-                         "this value is considered flat.")
+        ctrl.SetHelpText("A channel that does not deviate from 0 by more than this value is considered flat.")
         ctrl.SelectAll()
         sizer.Add(ctrl)
         self.flat_ctrl = ctrl
 
         # flat channels in average
         sizer.Add(wx.StaticText(self, label="Threshold for flat channels in average:"))
-        msg = ("Invalid entry for average flat channel threshold: {value}. Please "
-               "specify a number > 0.")
+        msg = "Invalid entry for average flat channel threshold: {value}. Please specify a number > 0."
         validator = REValidator(POS_FLOAT_PATTERN, msg, False)
         ctrl = wx.TextCtrl(self, value=str(flat_average), validator=validator)
         ctrl.SetHelpText("A channel that does not deviate from 0 by more than "
@@ -1569,13 +1566,10 @@ class FindNoisyChannelsDialog(EelbrainDialog):
 
         # Correlation
         sizer.Add(wx.StaticText(self, label="Threshold for channel to neighbor correlation:"))
-        msg = ("Invalid entry for channel neighbor correlation: {value}. Please "
-               "specify a number > 0.")
+        msg = "Invalid entry for channel neighbor correlation: {value}. Please specify a number > 0."
         validator = REValidator(POS_FLOAT_PATTERN, msg, False)
         ctrl = wx.TextCtrl(self, value=str(corr), validator=validator)
-        ctrl.SetHelpText("A channel is considered noisy if the average of the "
-                         "correlation with its neighbors is smaller than this "
-                         "value.")
+        ctrl.SetHelpText("A channel is considered noisy if the average of the correlation with its neighbors is smaller than this value.")
         sizer.Add(ctrl)
         self.mincorr_ctrl = ctrl
 
@@ -1621,8 +1615,7 @@ class FindNoisyChannelsDialog(EelbrainDialog):
         if self.do_report.GetValue() or self.do_apply.GetValue():
             event.Skip()
         else:
-            wx.MessageBox("Specify at least one action (report or apply)",
-                          "No Command Selected", wx.ICON_EXCLAMATION)
+            wx.MessageBox("Specify at least one action (report or apply)", "No Command Selected", wx.ICON_EXCLAMATION)
 
     def OnSetDefault(self, event):
         self.flat_ctrl.SetValue('1e-13')
@@ -1631,16 +1624,11 @@ class FindNoisyChannelsDialog(EelbrainDialog):
 
     def StoreConfig(self):
         config = self.Parent.config
-        config.WriteFloat("FindNoisyChannels/flat",
-                          float(self.flat_ctrl.GetValue()))
-        config.WriteFloat("FindNoisyChannels/flat_average",
-                          float(self.flat_average_ctrl.GetValue()))
-        config.WriteFloat("FindNoisyChannels/mincorr",
-                          float(self.mincorr_ctrl.GetValue()))
-        config.WriteBool("FindNoisyChannels/do_report",
-                         self.do_report.GetValue())
-        config.WriteBool("FindNoisyChannels/do_apply",
-                         self.do_apply.GetValue())
+        config.WriteFloat("FindNoisyChannels/flat", float(self.flat_ctrl.GetValue()))
+        config.WriteFloat("FindNoisyChannels/flat_average", float(self.flat_average_ctrl.GetValue()))
+        config.WriteFloat("FindNoisyChannels/mincorr", float(self.mincorr_ctrl.GetValue()))
+        config.WriteBool("FindNoisyChannels/do_report", self.do_report.GetValue())
+        config.WriteBool("FindNoisyChannels/do_apply", self.do_apply.GetValue())
         config.Flush()
 
 
@@ -1655,9 +1643,7 @@ class LayoutDialog(EelbrainDialog):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        sizer.Add(wx.StaticText(self, wx.ID_ANY, "Layout: number of rows and "
-                                "columns (e.g., '5 7')\n"
-                                "or number of epochs (e.g., '35'):"))
+        sizer.Add(wx.StaticText(self, wx.ID_ANY, "Layout: number of rows and columns (e.g., '5 7')\nor number of epochs (e.g., '35'):"))
         self.text = wx.TextCtrl(self, wx.ID_ANY, "%i %i" % (rows, columns))
         self.text.SelectAll()
         sizer.Add(self.text)
