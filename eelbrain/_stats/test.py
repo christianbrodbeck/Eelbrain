@@ -737,9 +737,13 @@ class TTestIndependent(TTest):
     ):
         y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, data, sub)
 
-        n1, n0 = len(y1), len(y0)
+        n1 = len(y1)
+        n0 = len(y0)
         n = n1 + n0
         df = n - 2
+        if df < 1:
+            raise ValueError(f"Not enough cases for t-test: {n1=}, {n0=}, {df=}")
+
         groups = np.arange(n) < n1
         c1_data, c0_data = y[groups], y[~groups]
         c1_mean, c0_mean = c1_data.mean(), c0_data.mean()
