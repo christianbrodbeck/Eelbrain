@@ -71,7 +71,7 @@ def find_peaks(x, connectivity, out=None):
         Boolean array which is True only on local maxima.
     """
     if out is None:
-        out = np.empty(x.shape, np.bool8)
+        out = np.empty(x.shape, bool)
     elif out.dtype.kind != 'b':
         raise TypeError(f"{out.dtype=}, needs to be array of boolean type")
     elif out.shape != x.shape:
@@ -132,7 +132,7 @@ def find_peaks(x, connectivity, out=None):
                 outsa = out.swapaxes(0, ax)
             axlen = len(xsa)
 
-            kernel = np.empty(xsa.shape[1:], dtype=np.bool8)
+            kernel = np.empty(xsa.shape[1:], bool)
 
             diff = np.diff(xsa, 1, 0)
 

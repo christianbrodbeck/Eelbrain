@@ -10358,7 +10358,7 @@ class SourceSpace(SourceSpaceBase):
             rh_idx = self._array_index_hemilabel(arg.rh)
             return np.hstack((lh_idx, rh_idx))
         elif isinstance(arg, mne.Label):
-            idx = np.zeros(len(self), dtype=np.bool8)
+            idx = np.zeros(len(self), bool)
             idx_part = self._array_index_hemilabel(arg)
             if arg.hemi == 'lh':
                 idx[:self.lh_n] = idx_part

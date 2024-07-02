@@ -220,7 +220,7 @@ def test_clusterdist():
 
     # test connecting sensors
     logging.info("TEST:  connecting sensors")
-    bin_map = np.zeros(shape[1:], dtype=np.bool8)
+    bin_map = np.zeros(shape[1:], bool)
     bin_map[:3, :3, :2] = True
     pmap = np.random.normal(0, 1, shape[1:])
     np.clip(pmap, -1, 1, pmap)
@@ -236,7 +236,7 @@ def test_clusterdist():
 
     # test connecting many sensors
     logging.info("TEST:  connecting sensors")
-    bin_map = np.zeros(shape[1:], dtype=np.bool8)
+    bin_map = np.zeros(shape[1:], bool)
     bin_map[:3, :3] = True
     pmap = np.random.normal(0, 1, shape[1:])
     np.clip(pmap, -1, 1, pmap)
@@ -249,7 +249,7 @@ def test_clusterdist():
 
     # test keeping sensors separate
     logging.info("TEST:  keeping sensors separate")
-    bin_map = np.zeros(shape[1:], dtype=np.bool8)
+    bin_map = np.zeros(shape[1:], bool)
     bin_map[:3, :3, 0] = True
     bin_map[:3, :3, 2] = True
     pmap = np.random.normal(0, 1, shape[1:])
