@@ -889,7 +889,7 @@ class Number(FMTextElement):
     def _get_core(self, env):
         if np.isnan(self.content):
             return 'NaN'
-        elif isinstance(self.content, (bool, np.bool_, np.bool8)):
+        elif isinstance(self.content, (bool, np.bool_)):
             return str(self.content)
         else:
             fmt = env.get('fmt', self.fmt)

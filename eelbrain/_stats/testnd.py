@@ -2569,7 +2569,7 @@ def label_clusters(stat_map, threshold, tail, connectivity, criteria):
         criterion.
     """
     cmap = np.empty(stat_map.shape, np.uint32)
-    bin_buff = np.empty(stat_map.shape, np.bool8)
+    bin_buff = np.empty(stat_map.shape, bool)
     cmap_flat = flatten(cmap, connectivity)
 
     if tail == 0:
@@ -2700,7 +2700,7 @@ def _label_clusters_binary(bin_map, cmap, cmap_flat, connectivity, criteria):
 def tfce(stat_map, tail, connectivity, dh=0.1):
     tfce_im = np.empty(stat_map.shape, np.float64)
     tfce_im_1d = flatten_1d(tfce_im)
-    bin_buff = np.empty(stat_map.shape, np.bool8)
+    bin_buff = np.empty(stat_map.shape, bool)
     int_buff = np.empty(stat_map.shape, np.uint32)
     int_buff_flat = flatten(int_buff, connectivity)
     int_buff_1d = flatten_1d(int_buff)
@@ -2770,7 +2770,7 @@ class TFCEProcessor(StatMapProcessor):
         self.dh = dh
 
         # Pre-allocate memory buffers used for cluster processing
-        self._bin_buff = np.empty(shape, np.bool8)
+        self._bin_buff = np.empty(shape, bool)
         self._int_buff = np.empty(shape, np.uint32)
         self._tfce_im = np.empty(shape, np.float64)
         self._tfce_im_1d = flatten_1d(self._tfce_im)
@@ -2800,7 +2800,7 @@ class ClusterProcessor(StatMapProcessor):
         self.criteria = criteria
 
         # Pre-allocate memory buffers used for cluster processing
-        self._bin_buff = np.empty(shape, np.bool8)
+        self._bin_buff = np.empty(shape, bool)
 
         self._cmap = np.empty(shape, np.uint32)
         self._cmap_flat = flatten(self._cmap, connectivity)
@@ -3579,7 +3579,7 @@ class NDPermutationDistribution:
         if self.samples:
             p = ds.add_empty_var('p')
 
-        bin_buff = np.empty(peak_map.shape, np.bool8)
+        bin_buff = np.empty(peak_map.shape, bool)
         for i, id_ in enumerate(peak_ids):
             idx = np.equal(peak_map, id_, bin_buff)
             v[i] = param_map[idx][0]
@@ -3620,7 +3620,7 @@ class NDPermutationDistribution:
                 n_larger = np.sum(dist >= np.abs(cluster_v[:, None]), 1)
                 cluster_p = n_larger / self.samples
 
-                c_mask = np.empty(self.shape, dtype=np.bool8)
+                c_mask = np.empty(self.shape, bool)
                 for i, cid in enumerate(cids):
                     np.equal(cluster_map, cid, c_mask)
                     cpmap[c_mask] = cluster_p[i]
@@ -3649,7 +3649,7 @@ class NDPermutationDistribution:
                 cpmap += 1
             else:
                 dist = self._aggregate_dist(**sub)
-                idx = np.empty(stat_map.shape, dtype=np.bool8)
+                idx = np.empty(stat_map.shape, bool)
                 actual = stat_map.x if self.dims else stat_map
                 for v in dist:
                     cpmap += np.greater_equal(v, actual, idx)
