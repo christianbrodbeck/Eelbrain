@@ -422,7 +422,7 @@ def test_t_contrast():
 def test_labeling():
     "Test cluster labeling"
     shape = (4, 20)
-    pmap = np.empty(shape, np.float_)
+    pmap = np.empty(shape, float)
     edges = np.array([(0, 1), (0, 3), (1, 2), (2, 3)], np.uint32)
     conn = Connectivity((
         Scalar('graph', range(4), connectivity=edges),
