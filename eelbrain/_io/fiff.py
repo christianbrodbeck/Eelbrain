@@ -249,8 +249,11 @@ def events(
                 elif feature != 'step':
                     raise ValueError(f"{feature=}")
                 event_list.append(events)
-            events = np.concatenate(event_list, axis=0)
-            events = events[np.argsort(events[:, 0])]
+            if len(event_list):
+                events = np.concatenate(event_list, axis=0)
+                events = events[np.argsort(events[:, 0])]
+            else:
+                events = np.empty((0, 3))
             event_ids = getattr(raw, 'event_id', None)
 
         if event_ids:
