@@ -1,5 +1,4 @@
 """Eelbrain GUIs"""
-from ._wxgui.select_components import select_components
 
 
 def run(block=False):
