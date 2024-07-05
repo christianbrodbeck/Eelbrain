@@ -20,6 +20,8 @@ Introduction
 
 The :class:`MneExperiment` class is a template for an MEG/EEG analysis pipeline. The pipeline is adapted to a specific experiment by creating a subclass, and specifying properties of the experiment as attributes.
 
+The input to the pipeline are the raw M/EEG data files and, optionally, MRI files for source localization. The pipeline manages the complete analysis up to mass-univariate group-level tests in sensor or source space, and it provides an interface for preprocessing steps that require user intervention like ICA. It also allows access to the data at any stage of the pipeline. It automatically caches intermediate results to make access to these data fast and efficient.
+
 Once set up, an :class:`MneExperiment` subclass instance provides access into the pipeline at different stages of analysis through its methods:
 
  - ``.load_...`` methods are for loading data.
@@ -27,7 +29,7 @@ Once set up, an :class:`MneExperiment` subclass instance provides access into th
  - ``.show_...`` methods are for retrieving and displaying information at different stages.
  - ``.plot_...`` methods are for generating plots of the data.
 
-An :class:`MneExperiment` instance has a state, which determines what data and settings it is currently using. Not all settings are always relevant. For example, :ref:`state-subject` is relevenat for steps applied separately to each subject, like :meth:`~MneExperiment.make_ica_selection`, whereas :ref:`state-group` defines the group of subjects in group level analysis, such as in :meth:`~MneExperiment.load_test`. For more information, see :ref:`state-parameters`.
+An :class:`MneExperiment` instance has a state, which determines what data and settings it is currently using. Not all settings are always relevant. For example, :ref:`state-subject` is relevant for steps applied separately to each subject, like :meth:`~MneExperiment.make_ica_selection`, whereas :ref:`state-group` defines the group of subjects in group level analysis, such as in :meth:`~MneExperiment.load_test`. For more information, see :ref:`state-parameters`.
 
 
 Step by Step
@@ -42,49 +44,52 @@ Step by Step
 Setting up the file structure
 -----------------------------
 
+The first steps for setting up the pipeline are:
+
+- Arranging the input data files in the expected file structure
+- Defining an :class:`MneExperiment` subclass with the parameters required to find those files
+
 The pipeline expects input files in a strictly determined folder/file structure.
 In the schema below, curly brackets indicate slots that the pipeline will replace with specific
-names, for example ``{subject}`` will be replaced with each specific subject's name::
+names. For example, ``{subject}`` will be replaced with each specific subject's name::
 
-    Root
-    MRI directory                      /mri
-    MRI subject                           /{subject}
+    Root                            {root}
     M/EEG directory                    /{data_dir}
     M/EEG subject                         /{subject}
     trans-file                               /{subject}-trans.fif
     raw-file                                 /{subject}_{session}-raw.fif
+    MRI directory                      /mri
+    MRI subject                           /{subject}
 
 
-The first step in setting up the pipeline consists in:
+``{data_dir}``, the directory in which the pipeline looks for the raw data, is determined by the :attr:`MneExperiment.data_dir` attribute. By default it is ``'meg'``, but it can be changed, for example, to ``'eeg'``. This is merely to make the filenames less confusing when e.g. working with EEG data, it does not influence the analysis in any other way.
 
- - Arranging the files in the expected file structure (MRI and ``trans-file`` are optional and only needed for source localization)
- - Defining an :class:`MneExperiment` subclass with the parameters required to find those files
+``MRI`` files (including ``trans-file``) are optional and only needed for source localization. The ``{root}/mri/{subject}`` directories are `FreeSurfer <https://surfer.nmr.mgh.harvard.edu>`_ subject directories. They either contain the files created by FreeSurfer's `recon-all <https://surfer.nmr.mgh.harvard.edu/fswiki/recon-all>`_ command, or are created by the MNE-Python coregistration utility for scaled template brains. A corresponding ``trans-file`` is created with the MNE-Python coregistration utility in either case (see more information on using `structural MRIs <https://github.com/christianbrodbeck/Eelbrain/wiki/Coregistration%3A-Structural-MRI>`_ or the `fsaverage template brain <https://github.com/christianbrodbeck/Eelbrain/wiki/Coregistration%3A-Template-Brain>`_).
 
-The ``{data_dir}`` directory in which the pipeline looks for the raw data is determined by the :attr:`MneExperiment.data_dir` attribute. By default it is ``'meg'``, but it can be changed, for example, to ``'eeg'``. This is merely to make the filenames less confusing when e.g. working with EEG data, it does not influence the analysis in any other way.
-
-The ``{session}`` refers to the name of the recording session. The name of one or several recording session(s) has to be specified on an :class:`MneExperiment` subclass, using the  :attr:`MneExperiment.sessions` attribute. Those names will be used to find the raw data files, by filling in the ``raw-file`` template from above::
+``{session}`` refers to the name of the recording session. The name of one or several recording session(s) has to be specified on an :class:`MneExperiment` subclass, using the  :attr:`MneExperiment.sessions` attribute. Those names will be used to find the raw data files, by filling in the ``raw-file`` template::
 
     from eelbrain.pipeline import *
 
-    class WordExperiment(MneExperiment):
+    class MyExperiment(MneExperiment):
 
+        data_dir = 'eeg'
         sessions = 'words'
 
 
 
-The final step to locating the files is providing the ``root`` location when initializing that subclass::
+The final step to locating the files is providing the ``{root}`` location when initializing that subclass, for example::
 
 
-    e = WordExperiment("/files")
+    e = MyExperiment("~/Data/Experiment")
 
 
-If the files are in the right order, the pipeline will determine the subject names based on the names of the folders inside the M/EEG directory. Only names matching a specific expression will be considered, for example "R" followed by 3 digits. This expression can be customized in :attr:`MneExperiment.subject_re`.
+The pipeline will then determine the subject names based on the names of the folders inside the M/EEG directory. Only names matching a specific expression will be considered, for example "S" followed by 3 or more digits. This expression can be customized in :attr:`MneExperiment.subject_re`.
 
-If that all works, and assuming the first subject is named "R0001", the pipeline will look for data at the following locations:
+Assuming a subject is named "S001", the pipeline will look for data at the following locations:
 
-- The FreeSurfer MRI-directory at ``/files/mri/R0001``
-- The raw data file at ``/files/meg/R0001/R0001_words-raw.fif`` (the session is called "words" which is specified in ``WordExperiment.sessions``)
-- The trans-file from the coregistration at ``/files/meg/R0001/R0001-trans.fif``
+- The raw data file at ``~/Data/Experiment/meg/S001/S001_words-raw.fif`` (the session is called "words" which is specified in ``MyExperiment.sessions``)
+- The trans-file from the coregistration at ``~/Data/Experiment/meg/S001/S001-trans.fif``
+- The FreeSurfer MRI-directory at ``~/Data/Experiment/mri/S001``
 
 The setup can be tested using :meth:`MneExperiment.show_subjects`, which shows
 a list of the subjects and corresponding MRIs that were discovered::
@@ -99,7 +104,7 @@ a list of the subjects and corresponding MRIs that were discovered::
 
 
 .. note::
-    To specify an alternative input data format, replace ``MneExperiment.raw["raw"]`` with a custom :class:`RawSource` instance.
+    The default input format for M/EEG data is the FIFF format (``*-raw.fif`` files). To specify an alternative input data format, see :attr:`MneExperiment.raw`.
 
 
 .. py:attribute:: MneExperiment.visits
@@ -140,7 +145,7 @@ Initially, events are only labeled with the trigger ID. Use the
 Events are represented as :class:`Dataset` objects and can be inspected with
 corresponding methods and functions, for example::
 
-    >>> e = WordExperiment("/files")
+    >>> e = MyExperiment("~/Data/Experiment")
     >>> data = e.load_events()
     >>> data.head()
     >>> print(table.frequencies('trigger', data=data))
@@ -427,7 +432,7 @@ Use a non-default ``merge`` parameter for :func:`.load.mne.events`.
 .. py:attribute:: MneExperiment.trigger_shift
    :type: float | Dict[str, float]
 
-Set this attribute to shift all trigger times by a constant (in seconds). For example, with ``trigger_shift = 0.03`` a trigger that originally occurred 35.10 seconds into the recording will be shifted to 35.13. If the trigger delay differs between subjects, this attribute can also be a dictionary mapping subject names to shift values, e.g. ``trigger_shift = {'R0001': 0.02, 'R0002': 0.05, ...}``.
+Set this attribute to shift all trigger times by a constant (in seconds). For example, with ``trigger_shift = 0.03`` a trigger that originally occurred 35.10 seconds into the recording will be shifted to 35.13. If the trigger delay differs between subjects, this attribute can also be a dictionary mapping subject names to shift values, e.g. ``trigger_shift = {'S001': 0.02, 'S002': 0.05, ...}``.
 
 .. py:attribute:: MneExperiment.meg_system
    :type: str
@@ -441,8 +446,7 @@ Pre-processing (raw)
 .. py:attribute:: MneExperiment.raw
 
 Define a pre-processing pipeline as a series of linked processing steps
-(:mod:`mne` refers to data that is not time-locked to specific events as
-:class:`~mne.io.Raw`, with filenames matching ``*-raw.fif``):
+(:mod:`mne` refers to continuous data that is not time-locked to a specific event as :class:`~mne.io.Raw`, with filenames matching ``*-raw.fif``):
 
 .. autosummary::
    :toctree: generated
@@ -457,12 +461,9 @@ Define a pre-processing pipeline as a series of linked processing steps
    RawReReference
 
 
-The raw data that constitutes the input to the pipeline can be accessed in a pipe named ``"raw"``
-Each subsequent preprocessing step is defined with its input as first argument
-(``source``).
-
-For example, the following definition sets up a pipeline for MEG, using TSSS, a band-pass
-filter and ICA::
+Each preprocessing step is defined as a named entry with its input as first argument (``source``).
+The raw data that constitutes the input to the pipeline can be accessed as ``"raw"``
+For example, the following definition sets up a pipeline for MEG, using TSSS, a band-pass filter and ICA::
 
     class Experiment(MneExperiment):
 
@@ -486,7 +487,7 @@ The following is an example for EEG using band-pass filter, ICA and re-referenci
             '1-20': RawFilter('raw', 1, 20, cache=False),
             'ica': RawICA('1-20', 'stories'),
             'reref': RawReReference('ica', ['A1', 'A2'], 'A2')
-            # Use the ICA with a high pass filter with a lower cutuff frequency:
+            # Use the same ICA, but with a high pass filter with a lower cutoff frequency:
             '0.2-20': RawFilter('raw', 0.2, 20, cache=False),
             '0.2-20ica': RawApplyICA('0.2-20', 'ica'),
             '0.2reref': RawReReference('0.2-20ica', ['A1', 'A2'], 'A2'),
@@ -494,7 +495,7 @@ The following is an example for EEG using band-pass filter, ICA and re-referenci
 
 
 .. note::
-    Continuous files take up a lot of hard drive space. By default, files for most pre-processing steps are cached. This can be controlled with the ``cache`` parameter. To delete files correspoding to a specific step (e.g., ``raw='1-40'``), use the :meth:`MneExperiment.rm` method::
+    Continuous files take up a lot of hard drive space. By default, files for most pre-processing steps are cached. This can be controlled with the ``cache`` parameter: set ``cache=False`` to avoid caching. To delete files corresponding to a specific step (e.g., ``raw='1-40'``), use the :meth:`MneExperiment.rm` method::
 
         >>> e.rm('cached-raw-file', True, raw='1-40')
 
