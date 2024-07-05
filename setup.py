@@ -73,11 +73,17 @@ setup(
         'pymatreader',
         'scipy >= 1.5',
         'tqdm >= 4.40',
-        'wxpython > 4.1.0',
     ],
     extras_require={
         'brain': [
             'pysurfer[save_movie]',
+        ],
+        'gui': [
+            'wxpython > 4.1.0',
+        ],
+        'full': [
+            'pysurfer[save_movie]',
+            'wxpython > 4.1.0',
         ],
     },
     include_dirs=[np.get_include()],
