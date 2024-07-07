@@ -514,13 +514,13 @@ class MneExperiment(FileTree):
         ########################################################################
         # sessions
         if not self.sessions:
-            raise TypeError("The MneExperiment.sessions parameter needs to be specified. The session name is contained in your raw data files. For example if your file is named `R0026_mysession-raw.fif` your session name is 'mysession' and you should set MneExperiment.sessions to 'mysession'.")
+            raise TypeError(f"The {self.__class__.__name__}.sessions attribute needs to be specified. The session name is contained in your raw data files. For example if your file is named `R0026_mysession-raw.fif` your session name is 'mysession' and you should set {self.__class__.__name__}.sessions to 'mysession'.")
         elif isinstance(self.sessions, str):
             self._sessions = (self.sessions,)
         elif isinstance(self.sessions, Sequence):
             self._sessions = tuple(self.sessions)
         else:
-            raise TypeError(f"MneExperiment.sessions={self.sessions!r}; needs to be a string or a tuple")
+            raise TypeError(f"{self.__class__.__name__}.sessions={self.sessions!r}; needs to be a string or a tuple")
         self._visits = (self.visits,) if isinstance(self.visits, str) else tuple(self.visits)
 
         ########################################################################
