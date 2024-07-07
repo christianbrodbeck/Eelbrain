@@ -5,31 +5,9 @@ from typing import Literal
 
 from eelbrain import NDVar, Scalar, UTS
 from eelbrain._utils import tqdm
-from numba import njit, prange
 import numpy
 
-
-@njit(parallel=True)
-def aggregate_left(xf: numpy.ndarray, n_samples: int, step: float, n_window: int):
-    xf **= 2
-    out = numpy.empty(n_samples)
-    for i in prange(n_samples):
-        start = int(round(i * step))
-        out[i] = xf[start: start + n_window].mean()
-    return out
-
-
-@njit(parallel=True)
-def aggregate_right(xf: numpy.ndarray, n_samples: int, step: float, n_window: int):
-    xf **= 2
-    out = numpy.empty(n_samples)
-    for i in prange(n_samples):
-        stop = int(round(i * step)) + 1
-        start = stop - n_window
-        if start < 0:
-            start = 0
-        out[i] = xf[start: stop].mean()
-    return out
+from ._gammatone import aggregate_left, aggregate_right
 
 
 def gammatone_bank(
@@ -40,7 +18,7 @@ def gammatone_bank(
         tstep: float = None,
         integration_cycles: float = None,
         integration_window: float = None,
-        location: Literal['left', 'right', 'center'] = 'right',
+        location: Literal['left', 'right'] = 'right',
         name: str = None,
 ) -> NDVar:
     """Gammatone filterbank response
@@ -67,10 +45,9 @@ def gammatone_bank(
 
         - ``right``: gammatone sample at end of integration window (default)
         - ``left``: gammatone sample at beginning of integration window
-        - ``center``: gammatone sample at center of integration window
 
         Since gammatone filter response depends on ``integration_window``, the
-        filter response will be delayed relative to the analytic envlope. To
+        filter response will be delayed relative to the analytic envelope. To
         prevent this delay, use `location='left'`
     pad
         Pad output to match time axis of input.
@@ -114,15 +91,17 @@ def gammatone_bank(
     # based on gammatone library gtgram, rewritten to reduce memory footprint
     output_n_samples = floor(len(wave) * wav.time.tstep / tstep)
     output_step = tstep / wav.time.tstep
-    output_data = numpy.empty((n, output_n_samples))
+    output_data = numpy.zeros((n, output_n_samples))
     disable = n * output_n_samples < 200_000  # 100 bands * 2 s * 1000 Hz
     for i, cf, window in tqdm(zip(range(n-1, -1, -1), cfs, integration_window_lens), "Gammatone filterbank", total=len(cfs), unit='band', disable=disable):
         fcoefs = numpy.flipud(make_erb_filters(fs, cf))
         xf = erb_filterbank(wave, fcoefs)
+        xf **= 2
         if location == 'left':
-            output_data[i] = aggregate_left(xf[0], output_n_samples, output_step, window)
+            aggregate_left(xf[0], output_n_samples, output_step, window, output_data[i])
         else:
-            output_data[i] = aggregate_right(xf[0], output_n_samples, output_step, window)
+            aggregate_right(xf[0], output_n_samples, output_step, window, output_data[i])
+        output_data[i] /= window
     output_data = numpy.sqrt(output_data, out=output_data)
     # package output
     freq_dim = Scalar('frequency', cfs[::-1], 'Hz')
