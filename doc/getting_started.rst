@@ -16,7 +16,7 @@ Documentation can be found here:
 * :ref:`exa-intro` to the fundamental Eelbrain data types.
 * :ref:`examples` demonstrating different applications.
 * `Eelbrain, a Python toolkit for time-continuous analysis with temporal response functions <https://doi.org/10.7554/eLife.85012>`_: A tutorial on using Eelbrain for analyzing an EEG experiment with temporal response functions. Including a `GitHub repoitory <https://github.com/Eelbrain/Alice>`_ with code to reproduce all figures in the paper.
-* :ref:`experiment-class-guide` for step-by-step instructions on setting up a M/EEG experiment pipeline.
+* :ref:`experiment-class-guide` for step-by-step instructions on setting up a M/EEG group level analysis pipeline.
 * :ref:`reference` on API and details of all the functionality.
 
 

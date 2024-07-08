@@ -1,3 +1,5 @@
+.. _examples-mass-univariate-statistics:
+
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 Mass-Univariate Statistics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^

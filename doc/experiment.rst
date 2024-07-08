@@ -10,6 +10,7 @@ The :class:`MneExperiment` Pipeline
      - :class:`MneExperiment` class reference for details on all available methods
      - `Pipeline wiki page <https://github.com/christianbrodbeck/Eelbrain/wiki/MNE-Pipeline>`_
        for additional information
+     - `TRFExperiment <https://github.com/Eelbrain/Alice/tree/pipeline/pipeline>`_: an experimental extension of the pipeline to Temporal Response Function analysis
 
 .. contents:: Contents
    :local:
@@ -18,18 +19,29 @@ The :class:`MneExperiment` Pipeline
 Introduction
 ============
 
-The :class:`MneExperiment` class is a template for an MEG/EEG analysis pipeline. The pipeline is adapted to a specific experiment by creating a subclass, and specifying properties of the experiment as attributes.
+The :class:`MneExperiment` pipeline manages the following analysis steps:
 
-The input to the pipeline are the raw M/EEG data files and, optionally, MRI files for source localization. The pipeline manages the complete analysis up to mass-univariate group-level tests in sensor or source space, and it provides an interface for preprocessing steps that require user intervention like ICA. It also allows access to the data at any stage of the pipeline. It automatically caches intermediate results to make access to these data fast and efficient.
+#. Preprocessing
+#. Epoching
+#. Optional source localization
+#. Mass univariate group-level statistics
 
-Once set up, an :class:`MneExperiment` subclass instance provides access into the pipeline at different stages of analysis through its methods:
+The input to the pipeline are the raw M/EEG data files and, optionally, MRI files for source localization.
+The first three steps are based on :mod:`mne` functions; statistics are based on Eelbrain functions.
+The pipeline automatizes the complete analysis, and provides an interface for preprocessing steps that require user intervention like ICA.
+It allows access to the data at any intermediate stage, to allow for customizing the analysis.
+It caches intermediate results to make access to these data fast and efficient.
+
+:class:`MneExperiment` is a template for the pipeline.
+This template is adapted to a specific experiment by specifying properties of the experiment as attributes (technically, by creating a `subclass <https://docs.python.org/3/tutorial/classes.html>`_).
+An instance of this pipeline then provides access to different analysis stages through its methods:
 
  - ``.load_...`` methods are for loading data.
  - ``.make_...`` methods are for generating various intermediate results. Most of these methods don't have to be called by the user, but they are used internally when needed. The exception are those that require user input, like ICA component selection, which are mentioned below.
  - ``.show_...`` methods are for retrieving and displaying information at different stages.
  - ``.plot_...`` methods are for generating plots of the data.
 
-An :class:`MneExperiment` instance has a state, which determines what data and settings it is currently using. Not all settings are always relevant. For example, :ref:`state-subject` is relevant for steps applied separately to each subject, like :meth:`~MneExperiment.make_ica_selection`, whereas :ref:`state-group` defines the group of subjects in group level analysis, such as in :meth:`~MneExperiment.load_test`. For more information, see :ref:`state-parameters`.
+For example, :meth:`MneExperiment.load_test` can be used to load a mass-univariate test result directly, without a need to explicitly load data at intermediate stages. However, :meth:`MneExperiment.load_epochs` allows loading the corresponding data epochs, to perform a different analysis that may not be implemented in the pipeline.
 
 
 Step by Step
@@ -675,8 +687,11 @@ smoothing_steps : ``None`` | :class:`int`
 State Parameters
 ================
 
-These are parameters that can be set after an :class:`MneExperiment` has been
-initialized to affect the analysis, for example::
+An :class:`MneExperiment` instance has a state, which determines what data and settings it is currently using.
+Not all settings are always relevant.
+For example, :ref:`state-subject` is relevant for steps applied separately to each subject, like :meth:`~MneExperiment.make_ica_selection`, whereas :ref:`state-group` defines the group of subjects in group level analysis, such as in :meth:`~MneExperiment.load_test`.
+
+State Parameters can be set after an :class:`MneExperiment` has been initialized to affect the analysis, for example::
 
     >>> my_experiment = MneExperiment()
     >>> my_experiment.set(raw='1-40', cov='noreg')
