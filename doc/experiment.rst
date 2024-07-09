@@ -127,6 +127,45 @@ a list of the subjects and corresponding MRIs that were discovered::
     corresponding `wiki page <https://github.com/christianbrodbeck/Eelbrain/
     wiki/MneExperiment-analysis-options#multiple-visits>`_.
 
+Setting up the analysis code
+----------------------------
+
+It is recommended to organize analysis scripts in a dedicated folder.
+For example, we will assume that all analysis scripts will be saved in a directory called ``~/Code/MyProject``.
+This makes it easy to keep track of the history of this folder, for example using `Git <https://git-scm.com>`_.
+
+You will want to access the :class:`MneExperiment` subclass (``MyExperiment`` above) from different locations (for instance, from a terminal to do artifact rejection, and from different Jupyter Notebooks to pursue different analyses).
+Thus, it makes sense to define the experiment subclass in a separate Python file, and ``run`` or ``import`` that file as needed.
+IN the example above, the following would be saved in ``~/Code/MyProject/my_experiment.py``::
+
+    from eelbrain.pipeline import *
+
+    class MyExperiment(MneExperiment):
+
+        data_dir = 'eeg'
+        sessions = 'words'
+
+    e = MyExperiment("~/Data/Experiment")
+
+
+From a terminal, this could then be used as follows::
+
+    ~/Code/MyProject $ eelbrain  # eelbrain on macOS; iPython on Linux
+    In [1]: run my_experiment.py
+    In [2]: e.show_subjects()
+    #    subject   mri
+    -----------------------------------------
+    0    R0026     R0026
+    1    R0040     fsaverage * 0.92
+    2    R0176     fsaverage * 0.954746600461
+    ...
+
+
+Similarly, you can ``run my_experiment.py`` in the first cell of a Jupyter Notebook that is saved in the same folder.
+
+.. note::
+    If your project contains Jupyter Notebooks, consider `Jupytext <https://jupytext.readthedocs.io/>`_ to efficiently track those notebooks in Git.
+
 
 .. _MneExperiment-preprocessing:
 
