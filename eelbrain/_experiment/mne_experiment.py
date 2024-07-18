@@ -2135,7 +2135,7 @@ class MneExperiment(FileTree):
             **state,
     ) -> Dataset:
         """
-        Load a Dataset with epochs for a given epoch definition
+        Load a :class:`Dataset` with epochs for a given epoch definition
 
         Parameters
         ----------
@@ -2149,8 +2149,10 @@ class MneExperiment(FileTree):
             epoch's baseline specification. The default is to not apply baseline
             correction.
         ndvar
-            Convert epochs to an NDVar (named 'meg' for MEG data and 'eeg' for
-            EEG data). Use 'both' to include NDVar and MNE Epochs.
+            Convert epochs to :class:`NDVar` (using keys ``'meg'`` for MEG data and
+            ``'eeg'`` for EEG data in the returned :class:`Dataset`).
+            With ``ndvar=False``, include :class:`mne.Epochs` with key ``'epochs'``.
+            Use ``'both'`` to include both NDVar and :class:`mne.Epochs`.
         add_bads
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the bad channels file. Alternatively,
@@ -5836,6 +5838,16 @@ class MneExperiment(FileTree):
         field : str | list of str
             The field for which the value should be changed (default 'subject').
             Can also contain multiple fields, e.g. ``['subject', 'session']``.
+
+        Example
+        -------
+        >>> raw_01 = e.load_raw()  # raw for S01
+        >>> e.next()
+        subject: S01 -> S03
+        >>> raw_03 = e.load_raw()  # raw for S03
+        >>> e.next()
+        subject: S03 -> S04
+
         """
         if isinstance(field, str):
             current = self.get(field)

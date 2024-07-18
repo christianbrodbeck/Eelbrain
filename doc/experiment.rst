@@ -37,6 +37,7 @@ This template is adapted to a specific experiment by specifying properties of th
 An instance of this pipeline then provides access to different analysis stages through its methods:
 
  - ``.load_...`` methods are for loading data.
+   Most of these return Eelbrain data types by default, but they can be used to load :mod:`mne` objects by setting ``ndvar=False`` (e.g., :meth:`MneExperiment.load_epochs`).
  - ``.make_...`` methods are for generating various intermediate results. Most of these methods don't have to be called by the user, but they are used internally when needed. The exception are those that require user input, like ICA component selection, which are mentioned below.
  - ``.show_...`` methods are for retrieving and displaying information at different stages.
  - ``.plot_...`` methods are for generating plots of the data.
@@ -251,17 +252,24 @@ channels. To plot the average before trial rejection, use::
 The neighbor correlation can also be quantified, using::
 
     >>> nc = neighbor_correlation(concatenate(data['meg']))
+    # Plot topographical map of the neighbor correlation
+    >>> plot.Topomap(nc)
+    # Check for channels whose average correlation with its neighbors is < 0.3
     >>> nc.sensor.names[nc < 0.3]
     Datalist(['MEG 099'])
+    # Remove that channel
+    >>> e.make_bad_channels(['MEG 099'])
 
-A simple way to cycle through subjects when performing a given pre-processing
+
+A simple way to cycle through subjects when performing a manual pre-processing
 step is :meth:`MneExperiment.next`.
+
 If a general threshold is adequate, the selection of bad channels based on
 neighbor-correlation can be automated using the
 :meth:`MneExperiment.make_bad_channels_neighbor_correlation` method::
 
     >>> for subject in e:
-    ...     e.make_bad_channels_neighbor_correlation()
+    ...     e.make_bad_channels_neighbor_correlation(0.3)
 
 
 ICA
