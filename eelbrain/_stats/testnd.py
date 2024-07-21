@@ -1801,6 +1801,7 @@ class ANOVA(MultiEffectNDTest):
 
     Examples
     --------
+    Mass-univariate :ref:`exa-mu-anova` example.
     For information on model specification see the univariate
     :class:`~eelbrain.test.ANOVA` examples.
     """

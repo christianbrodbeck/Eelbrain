@@ -25,6 +25,7 @@ def simulate_erp(
         snr: float = 0.2,
         sensor: Sensor = None,
         time: UTS = None,
+        short_long: bool = False,
 ) -> Dataset:
     """Simulate event-related EEG data
 
@@ -40,6 +41,8 @@ def simulate_erp(
         Sensor dimension.
     time
         Time dimension.
+    short_long
+        Create bimodal distribution of word length for categorial analysis.
 
     Examples
     --------
@@ -67,10 +70,18 @@ def simulate_erp(
         rng.uniform(0, 0.3, n_trials // 2),
         rng.uniform(0.8, 1.0, n_trials // 2),
     ])
-    rng.shuffle(cloze_x)
+    # Word length (number of characters)
+    if short_long:
+        assert not n_trials % 4
+        n_condition = n_trials // 4
+        params = [(4, 1.5), (8, 2), (4, 1.5), (8, 2)]
+        n_chars = np.concatenate([rng.normal(loc, scale, n_condition) for loc, scale in params])
+        n_chars = np.clip(n_chars, 2, None)
+    else:
+        rng.shuffle(cloze_x)
+        n_chars = rng.uniform(3, 7, n_trials)
     cloze = Var(cloze_x)
-    # Word complexity (number of characters)
-    n_chars = Var(np.round(rng.uniform(3, 7, n_trials)).astype(int))
+    n_chars = Var(np.round(n_chars)).astype(int)
 
     # Generate topography
     n400_topo = -2.0 * _topo(sensor, 'Cz')
@@ -84,7 +95,7 @@ def simulate_erp(
     # 130 ms
     tc = gaussian(0.130, 0.025, time)
     topo = _topo(sensor, 'O1') + _topo(sensor, 'O2') - 0.5 * _topo(sensor, 'Cz')
-    signal += (2 + n_chars * 0.25) * tc * topo
+    signal += (n_chars * 0.5) * tc * topo
     # 195 ms
     amp = Var(rng.normal(0.8, 1, n_trials))
     tc = gaussian(0.195, 0.015, time)
@@ -122,4 +133,6 @@ def simulate_erp(
     ds['cloze'] = Var(cloze_x)
     ds['predictability'] = Factor(cloze_x > 0.5, labels={True: 'high', False: 'low'})
     ds['n_chars'] = Var(n_chars)
+    if short_long:
+        ds['length'] = Factor(['short', 'long'], repeat=n_condition, tile=2)
     return ds

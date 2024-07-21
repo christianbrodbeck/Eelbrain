@@ -91,7 +91,8 @@ example_order = {
     ],
     'mass-univariate-statistics': [
         'permutation-statistics.py',
-        'sensor-cluster-based-ttest.py',
+        'sensor-ttest.py',
+        'sensor-anova.py',
         'sensor-lm.py',
         'sensor-two-stage.py',
         'compare-topographies.py',

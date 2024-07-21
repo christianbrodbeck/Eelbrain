@@ -13,8 +13,8 @@ Eelbrain |version|
 ==================
 `Open-source <https://github.com/christianbrodbeck/Eelbrain>`_ `Python <https://www.python.org>`_ toolkit for MEG and EEG data analysis, including:
 
-* Mass-univariate permutation tests
-* Temporal Response Function estimator for fitting single-trial time series models
+* Mass-univariate :ref:`permutation tests<examples>`
+* `Temporal Response Function <https://doi.org/10.7554/eLife.85012>`_ estimator for fitting single-trial time series models
 * :ref:`Pipeline<experiment-class-guide>` for M/EEG group level analysis
 
 
