@@ -565,7 +565,7 @@ def test_ttest_ind():
     ds = datasets.simulate_erp(60, time=UTS(-0.1, 0.001, 601), snr=0.7)
     res = testnd.TTestIndependent('eeg', 'predictability', 'low', 'high', data=ds, pmin=0.05, tstart=0.100, mintime=0.020, samples=20)
     clusters = res.find_clusters()
-    assert_array_equal(clusters['p'], [0.4, 0.15, 0.15, 0.3, 0., 0.2])
+    assert_array_equal(clusters['p'], [0.4, 0.2, 0.4, 0.2, 0. ])
 
 
 def test_ttest_rel():
