@@ -3563,6 +3563,8 @@ class CategorialAxisMixin:
         if n > 1:
             bbs = [l.get_window_extent(self.figure.canvas.renderer) for l in labels]
             overlap = max(bbs[i].x1 - bbs[i + 1].x0 for i in range(n - 1))
+            if overlap <= 0:
+                return False
             extend = n * (overlap + 10)
             w, h = self._frame.GetSize()
             w += int(extend)
