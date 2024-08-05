@@ -7,6 +7,7 @@ http://matplotlib.sourceforge.net/examples/user_interfaces/index.html
 
 '''
 from logging import getLogger
+import math
 import tempfile
 
 import numpy as np
@@ -58,6 +59,7 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
             overridden. Defaults to rc ``figure.autolayout``.
         """
         self.figure = Figure(*args, **kwargs)
+        self.original_size_inches = self.figure.get_size_inches()
         FigureCanvasWxAgg.__init__(self, parent, wx.ID_ANY, self.figure)
         self.Bind(wx.EVT_ENTER_WINDOW, self.ChangeCursor)
         self._background = None
@@ -70,6 +72,14 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
     def _on_key_up(self, event):
         # Override to avoid system chime
         KeyEvent("key_release_event", self, self._get_key(event), *self._mpl_coords(), guiEvent=event)._process()
+
+    def SizeToFigure(self):
+        "Adjust the Panel size to the size implied when the figure was created"
+        w, h = self.original_size_inches
+        dpi = self.figure.dpi / self.hidpi
+        w = math.ceil(w * dpi)
+        h = math.ceil(h * dpi)
+        self.SetSize((w, h))
 
     def CanCopy(self):
         return True
@@ -141,10 +151,7 @@ class CanvasFrame(EelbrainFrame):
         self._pos_arg = pos
 
         # set up the canvas
-        self.sizer = sizer = wx.BoxSizer(wx.VERTICAL)
-        self.SetSizer(sizer)
         self.canvas = FigureCanvasPanel(self, **kwargs)
-        sizer.Add(self.canvas, 1, wx.EXPAND)
         self.figure = self.canvas.figure
 
         if statusbar:
@@ -159,7 +166,11 @@ class CanvasFrame(EelbrainFrame):
         if mpl_toolbar:
             self.add_mpl_toolbar()
 
-        self.Fit()
+        # Fit frame size to the intended figure size
+        self.canvas.SizeToFigure()
+        frame_size = self.ClientToWindowSize(self.canvas.GetSize())
+        self.SetSize(frame_size)
+
         self._eelfigure = eelfigure
         self.Bind(wx.EVT_CLOSE, self.OnClose)
 
@@ -199,7 +210,6 @@ class CanvasFrame(EelbrainFrame):
         if self._pos_arg == wx.DefaultPosition:
             rect = self.GetRect()
             display_w, display_h = wx.DisplaySize()
-            # print(self.Rect.Right)
             dx = -rect.Left if rect.Right > display_w else 0
             dy = -rect.Top + 22 if rect.Bottom > display_h else 0
             if dx or dy:
