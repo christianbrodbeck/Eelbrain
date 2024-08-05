@@ -819,7 +819,7 @@ class Frame(FileFrame):
             self._mean_plot.set_data(self._get_page_mean_seg())
             axes.append(self._mean_ax)
 
-        self.canvas.redraw(axes=axes)
+        self.canvas.redraw(axes)
 
     def GoToEpoch(self, i):
         for page, epochs in enumerate(self._segs_by_page):
@@ -1038,7 +1038,7 @@ class Frame(FileFrame):
         if self._plot_topo:
             tseg = self._get_ax_data(ax.ax_idx, event.xdata)
             self._topo_plot.set_data([tseg])
-            self.canvas.redraw(axes=[self._topo_ax])
+            self.canvas.redraw([self._topo_ax])
             self._topo_plot_info_str = ("Topomap: %s,  t = %s ms,  marked: %s" %
                                         (desc, x, ', '.join(self._mark)))
 

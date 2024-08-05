@@ -61,6 +61,7 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
         FigureCanvasWxAgg.__init__(self, parent, wx.ID_ANY, self.figure)
         self.Bind(wx.EVT_ENTER_WINDOW, self.ChangeCursor)
         self._background = None
+        self.hidpi = self.GetContentScaleFactor()
 
     def _on_key_down(self, event):
         # Override to avoid system chime
@@ -103,21 +104,19 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
     def CopyAsPNG(self):
         self.Copy_to_Clipboard()
 
-    def _to_matplotlib_event(self, event, name='wx-event', button=None, key=None):
+    def _to_matplotlib_event(self, event: wx.MouseEvent):
         """Convert wxPython event to Matplotlib event
 
         - Sets axes and position but ignores source
         - cf. matplotlib.backends.backend_wx._FigureCanvasWxBase
         """
-        x = event.GetX()
-        y = self.figure.bbox.height - event.GetY()
-        return MouseEvent(name, self.figure.canvas, x, y, button, key, guiEvent=event)
+        x = event.GetX() * self.hidpi
+        y = (self.GetSize().GetHeight() - event.GetY()) * self.hidpi
+        return MouseEvent('wx-event', self.figure.canvas, x, y, guiEvent=event)
 
-    def redraw(self, axes=set(), artists=()):
-        # FIXME:  redraw artist instead of whole axes
-        if artists:
-            axes.update(artist.axes for artist in artists)
-        elif not axes:
+    def redraw(self, axes=()):
+        # https://matplotlib.org/stable/users/explain/animations/blitting.html
+        if not axes:
             return
         elif self._background is None:
             raise RuntimeError("Background not captured")
@@ -125,10 +124,7 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
         self.restore_region(self._background)
         for ax in axes:
             ax.draw_artist(ax)
-            self.blit(ax.get_window_extent())
-        # for artist in artists:
-        #     artist.axes.draw_artist(artist.axes)
-        #     self.blit(artist.axes.get_window_extent())
+        self.blit(self.figure.bbox)
 
     def store_canvas(self):
         self._background = self.copy_from_bbox(self.figure.bbox)

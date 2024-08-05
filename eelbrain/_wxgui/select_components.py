@@ -750,7 +750,7 @@ class Frame(SharedToolsMenu, FileFrame):
 
         if IS_OSX:
             try:
-                self.canvas.redraw(axes=axes)
+                self.canvas.redraw(axes)
             except AttributeError:
                 self.canvas.draw()
         else:
