@@ -1,4 +1,10 @@
 """Eelbrain GUIs"""
+from typing import Sequence, Tuple, Union
+
+import mne
+
+from ._data_obj import Dataset
+from ._types import ColorArg, PathArg
 
 
 def run(block=False):
@@ -15,6 +21,64 @@ def run(block=False):
     from ._wxgui import run
 
     run(block)
+
+
+def select_components(
+        path: PathArg,
+        data: Union[Dataset, mne.io.BaseRaw],
+        sysname: str = None,
+        connectivity: Union[str, Sequence] = None,
+        decim: int = None,
+        debug: bool = False,
+):
+    """GUI for selecting ICA-components
+
+    Parameters
+    ----------
+    path
+        Path to the ICA file.
+    data
+        Data to use for displying component time course during source selection.
+        Can be specified as :class:`mne.io.Raw` object with continuous data, or
+        as :class:`Dataset` with epoched data (``data['epochs']`` should contain
+        an :class:`mne.Epochs` object).
+        Optionally, ``data['index']`` can provide labels to display for epochs
+        (the default is ``range(n_epochs)``).
+        Further :class:`Factor` can be used to plot condition averages.
+    sysname
+        Optional, to define sensor connectivity.
+    connectivity
+        Optional, to define sensor connectivity (see
+        :func:`eelbrain.load.mne.sensor_dim`).
+    decim
+        Decimate the data for display (only applies when data is a ``Raw``
+        object; default is to approximate 100 Hz samplingrate).
+
+    Notes
+    -----
+    The ICA object does not need to be computed on the same data that is in
+    ``ds``. For example, the ICA can be computed on a raw file but component
+    selection done using the epochs that will be analyzed.
+
+    .. note::
+        If the terminal becomes unresponsive after closing the GUI, try
+        disabling ``prompt_toolkit`` with :func:`configure`:
+        ``eelbrain.configure(prompt_toolkit=False)``.
+    """
+    from ._wxgui.app import get_app
+    from ._wxgui.select_components import TEST_MODE, Document, Frame, Model
+
+    get_app()  # make sure app is created
+    doc = Document(path, data, sysname, connectivity, decim=decim)
+    model = Model(doc)
+    frame = Frame(model)
+    frame.Show()
+    frame.Raise()
+    if TEST_MODE:
+        return frame
+    run()
+    if debug:
+        return frame
 
 
 def select_epochs(
