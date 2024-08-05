@@ -157,7 +157,7 @@ class Document(FileDocument):
         self.components = NDVar(data[:, picks], (ic_dim, self.epochs_ndvar.sensor), 'components', {'meas': 'component', 'cmap': 'xpolar'})
 
         # sources
-        data = ica.get_sources(epochs).get_data()
+        data = ica.get_sources(epochs).get_data(copy=False)
         self.sources = NDVar(data, ('case', ic_dim, self.epochs_ndvar.time), 'sources', {'meas': 'component', 'cmap': 'xpolar'})
 
         # find unique epoch labels

@@ -157,7 +157,7 @@ def shift_mne_epoch_trigger(
         cropped so that only time points with information on all the epochs
         are contained in ``shifted_epochs``.
     """
-    data = epochs.get_data()
+    data = epochs.get_data(copy=False)
     tstep = 1. / epochs.info['sfreq']
     shifts = [int(round(x / tstep)) for x in trigger_shift]
     if min_shift is None:
