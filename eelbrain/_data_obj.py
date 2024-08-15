@@ -8677,7 +8677,7 @@ class Scalar(Dimension):
     Parameters
     ----------
     name
-        Name fo the dimension.
+        Name of the dimension.
     values
         Scalar value for each sample of the dimension.
     unit
@@ -8901,8 +8901,7 @@ class Scalar(Dimension):
                 raise IndexError(f"{error.args[0]}: Ambiguous index for {self._dimname()}")
         elif isinstance(arg, np.ndarray) and arg.dtype.kind == self.values.dtype.kind:
             if np.setdiff1d(arg, self.values):
-                raise IndexError("Index %r includes values not in dimension: %s" %
-                                 (arg, np.setdiff1d(arg, self.values)))
+                raise IndexError(f"Index {arg!r} includes values not in dimension: {np.setdiff1d(arg, self.values)}")
             return np.digitize(arg, self.values, True)
         else:
             return Dimension._array_index(self, arg)
