@@ -342,9 +342,9 @@ def correlation_coefficient(x, y, dim=None, name=None):
     # correlation coefficient
     z_x = stats.zscore(x_data, -1, 1)
     z_y = stats.zscore(y_data, -1, 1)
-    z_y *= z_x
-    out = z_y.sum(-1)
-    out /= z_y.shape[-1] - 1
+    xy = z_y * z_x
+    out = xy.sum(-1)
+    out /= xy.shape[-1] - 1
 
     if np.isscalar(out):
         return float(out)
