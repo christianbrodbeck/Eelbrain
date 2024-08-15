@@ -8732,6 +8732,10 @@ class Categorial(Dimension):
                 raise IndexError(arg)
         elif isinstance(arg, self.__class__):
             return [self._array_index(v) for v in arg.values]
+        elif isinstance(arg, np.ndarray) and arg.dtype.kind == 'i':
+            return arg
+        elif isinstance(arg, Integral):
+            return arg
         else:
             return super(Categorial, self)._array_index(arg)
 
