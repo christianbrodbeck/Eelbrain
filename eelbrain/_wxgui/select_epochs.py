@@ -1233,7 +1233,7 @@ class Frame(FileFrame):
             self.config.WriteBool('Layout/show_topo', topo)
 
         if mean is None:
-            mean = self.config.ReadBool('Layout/show_mean', True)
+            mean = self.config.ReadBool('Layout/show_mean', False)
         else:
             mean = bool(mean)
             self.config.WriteBool('Layout/show_mean', mean)
@@ -1248,7 +1248,7 @@ class Frame(FileFrame):
                 if nplots == 1:
                     mean = False
                 elif nplots < 1:
-                    raise ValueError("nplots needs to be >= 1; got %r" % nplots)
+                    raise ValueError(f"{nplots=}: needs to be >= 1")
                 nax = nplots + bool(mean) + bool(topo)
                 nrow = math.ceil(math.sqrt(nax))
                 ncol = int(math.ceil(nax / nrow))
@@ -1263,8 +1263,7 @@ class Frame(FileFrame):
                 elif nax == 2:
                     mean = False
                 elif nax < 1:
-                    err = ("nplots=%s: Need at least one plot." % str(nplots))
-                    raise ValueError(err)
+                    raise ValueError(f"{nplots=}: Need at least one plot.")
                 n_per_page = nax - bool(topo) - bool(mean)
             self.config.WriteInt('Layout/n_rows', nrow)
             self.config.WriteInt('Layout/n_cols', ncol)
