@@ -36,13 +36,16 @@ It caches intermediate results to make access to these data fast and efficient.
 This template is adapted to a specific experiment by specifying properties of the experiment as attributes (technically, by creating a `subclass <https://docs.python.org/3/tutorial/classes.html>`_).
 An instance of this pipeline then provides access to different analysis stages through its methods:
 
- - ``.load_...`` methods are for loading data.
+ - ``.load_...`` methods are for loading data and results.
    Most of these return Eelbrain data types by default, but they can be used to load :mod:`mne` objects by setting ``ndvar=False`` (e.g., :meth:`MneExperiment.load_epochs`).
- - ``.make_...`` methods are for generating various intermediate results. Most of these methods don't have to be called by the user, but they are used internally when needed. The exception are those that require user input, like ICA component selection, which are mentioned below.
  - ``.show_...`` methods are for retrieving and displaying information at different stages.
  - ``.plot_...`` methods are for generating plots of the data.
+ - ``.make_...`` methods are for generating various intermediate results.
+   Most of these methods do not have to be called by the user, as they are invoked automatically when needed.
+   An exception are those that require user input, like ICA component selection, which are mentioned below.
 
-For example, :meth:`MneExperiment.load_test` can be used to load a mass-univariate test result directly, without a need to explicitly load data at intermediate stages. However, :meth:`MneExperiment.load_epochs` allows loading the corresponding data epochs, to perform a different analysis that may not be implemented in the pipeline.
+For example, :meth:`MneExperiment.load_test` can be used to directly load a mass-univariate test result, without a need to explicitly load data at any intermediate stage.
+On the other hand, :meth:`MneExperiment.load_epochs` can be used to load the corresponding data epochs, for example to perform a different analysis that may not be implemented in the pipeline.
 
 
 Step by Step

@@ -44,20 +44,27 @@ class Mouse(MneExperiment):
         'cov': SecondaryEpoch('prime', tmax=0),
     }
 
+    # Tests define contrasts or comparisons based on variables.
+    # In the example, the following would test for the difference between expected and unexpected words in
+    # target words:
+    # >>> result = mouse.load_test(test='surprise', epoch='target')
     tests = {
         '=0': TTestOneSample(),
         'surprise': TTestRelated('prediction', 'unexpected', 'expected'),
         'anova': ANOVA('prediction * subject'),
     }
 
+    # Define masks for permutation tests in anatomically constrained regions. Fro exmample:
+    # >>> result = mouse.load_test(test='surprise', epoch='target', mask='lateraltemporal')
     parcs = {
-        'frontotemporal-lh': CombinationParc('aparc', {
-            'frontal-lh': 'parsorbitalis + parstriangularis + parsopercularis',
-            'temporal-lh': 'transversetemporal + superiortemporal + '
-                           'middletemporal + inferiortemporal + bankssts',
-            }, views='lateral'),
+        'STG': SubParc('aparc', ('transversetemporal', 'superiortemporal')),
+        'IFG': SubParc('aparc', ('parsopercularis', 'parsorbitalis', 'parstriangularis')),
+        'lateraltemporal': SubParc('aparc', (
+            'transversetemporal', 'superiortemporal', 'bankssts',
+            'middletemporal', 'inferiortemporal')),
     }
 
 
+# Initialize the pipeline instance with the root path where the data is located
 root = '~/Data/Mouse'
 e = Mouse(root)

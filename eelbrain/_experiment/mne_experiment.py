@@ -2655,7 +2655,7 @@ class MneExperiment(FileTree):
             data: DataArg = 'sensor',
             **state):
         """
-        Load a Dataset with the evoked responses for each subject.
+        Load a Dataset with condition average responses for each subject.
 
         Parameters
         ----------
