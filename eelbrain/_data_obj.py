@@ -8664,14 +8664,14 @@ class Categorial(Dimension):
     def __init__(
             self,
             name: str,
-            values: Sequence[str],
+            values: Iterable[str],
             connectivity: ConnectivityArg = 'none',
     ):
         self.values = tuple(values)
         if len(set(self.values)) < len(self.values):
-            raise ValueError(f"{values=}: Dimension can not have duplicate values")
+            raise ValueError(f"values={self.values!r}: Dimension can not have duplicate values")
         if not all(isinstance(x, str) for x in self.values):
-            raise ValueError(f"{values=}: All Categorial values must be strings")
+            raise ValueError(f"values={self.values!r}: All Categorial values must be strings")
         Dimension.__init__(self, name, connectivity)
 
     def _coerce_connectivity(self, connectivity):
