@@ -1777,25 +1777,33 @@ class Var(Named):
         "Return a deep copy"
         return Var(self.x.copy(), *op_name(self, name=name))
 
-    def count(self):
+    def count(self, value: float = None, start: int = -1) -> Var:
         """Count the number of occurrence of each value
 
-        Notes
-        -----
-        Counting starts with zero (see examples). This is to facilitate
-        integration with indexing.
+        Parameters
+        ----------
+        value
+            Value which is to be counted.
+        start
+            Value at which to start counting (with the default of -1, the first
+            occurrence will be 0).
 
         Examples
         --------
         >>> v = Var([1, 2, 3, 1, 1, 1, 3])
         >>> v.count()
         Var([0, 0, 0, 1, 2, 3, 1])
+        >>> v.count(3)
+        Var([0, 0, 1, 1, 1, 1, 2])
         """
-        x = np.empty(len(self.x), int)
-        index = np.empty(len(self.x), bool)
-        for v in np.unique(self.x):
-            np.equal(self.x, v, index)
-            x[index] = np.arange(index.sum())
+        if value is None:
+            x = np.empty(len(self.x), int)
+            index = np.empty(len(self.x), bool)
+            for v in np.unique(self.x):
+                np.equal(self.x, v, index)
+                x[index] = np.arange(index.sum())
+        else:
+            x = np.cumsum(self == value) + start
         return Var(x, self.name)
 
     def aggregate(
@@ -2129,6 +2137,9 @@ class Var(Named):
 
 
 class _Effect:
+
+    _n_cases = None
+
     # numeric ---
     def __bool__(self):
         raise TypeError(f"The truth value of a {self.__class__.__name__} is ambiguous")
@@ -2145,6 +2156,9 @@ class _Effect:
         if isinstance(other, Model):
             return Model((self % e for e in other.effects))
         return Interaction((self, other))
+
+    def __len__(self):
+        return self._n_cases
 
     def as_var(
             self,
@@ -2171,14 +2185,14 @@ class _Effect:
             x = [labels.get(v, default) for v in self]
         return Var(x, name or self.name)
 
-    def count(self, value, start=-1):
+    def count(self, value: Tuple[str, ...] = None, start: int = -1) -> Var:
         """Cumulative count of the occurrences of ``value``
 
         Parameters
         ----------
-        value : str | tuple  (value in .cells)
-            Cell value which is to be counted.
-        start : int
+        value
+            Cell which is to be counted.
+        start
             Value at which to start counting (with the default of -1, the first
             occurrence will be 0).
 
@@ -2189,13 +2203,22 @@ class _Effect:
 
         Examples
         --------
-        >>> a = Factor('abc', tile=3)
-        >>> a
-        Factor(['a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c'])
-        >>> a.count('a')
-        array([0, 0, 0, 1, 1, 1, 2, 2, 2])
+        >>> a = Factor('abcabcccc')
+        >>> b = Factor('aaabbbccc')
+        >>> i = a % b
+        >>> i.count()
+        Var([0, 0, 0, 0, 0, 0, 0, 1, 2])
+        >>> i.count(('c', 'c'))
+        Var([-1, -1, -1, -1, -1, -1, 0, 1, 2])
         """
-        return Var(np.cumsum(self == value) + start)
+        if value is None:
+            x = np.empty(len(self), int)
+            for cell in self.cells:
+                index = self == cell
+                x[index] = np.arange(index.sum())
+        else:
+            x = np.cumsum(self == value) + start
+        return Var(x)
 
     def enumerate_cells(self, name=None):
         """Enumerate the occurrence of each cell value throughout the data
@@ -2509,9 +2532,6 @@ class Factor(_Effect):
         return self.__repr__(True)
 
     # container ---
-    def __len__(self):
-        return self._n_cases
-
     def __getitem__(self, index):
         index = asindex(index)
         x = self.x[index]
@@ -2699,6 +2719,42 @@ class Factor(_Effect):
                 n += 2
             items = items[:i]
         return f"{', '.join(items)}{suffix}"
+
+    def count(self, value: str = None, start: int = -1) -> Var:
+        """Cumulative count of the occurrences of ``value``
+
+        Parameters
+        ----------
+        value
+            Value which is to be counted.
+        start
+            Value at which to start counting (with the default of -1, the first
+            occurrence will be 0).
+
+        Returns
+        -------
+        count : Var of int,  len = len(self)
+            Cumulative count of value in self.
+
+        Examples
+        --------
+        >>> a = Factor('abcabcabccc')
+        >>> a
+        Factor(['a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c', 'c', 'c'])
+        >>> a.count()
+        array([0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 4])
+        >>> a.count('a')
+        array([0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2])
+        """
+        if value is None:
+            x = np.empty(len(self.x), int)
+            index = np.empty(len(self.x), bool)
+            for v in np.unique(self.x):
+                np.equal(self.x, v, index)
+                x[index] = np.arange(index.sum())
+        else:
+            x = np.cumsum(self == value) + start
+        return Var(x)
 
     def aggregate(
             self,
@@ -7223,9 +7279,6 @@ class Interaction(_Effect):
             return [cell for cell in self._all_cells if cell not in self._value_set]
 
     # container ---
-    def __len__(self):
-        return self._n_cases
-
     def __getitem__(self, index):
         if isinstance(index, Var):
             index = index.x
@@ -7390,9 +7443,6 @@ class NestedEffect(_Effect):
 
     def __iter__(self):
         return self.effect.__iter__()
-
-    def __len__(self):
-        return self._n_cases
 
     def __eq__(self, other):
         return self.effect == other
