@@ -743,10 +743,11 @@ class Frame(FileFrame):
         if mark:
             mark, invalid = self.doc.epochs.sensor._normalize_sensor_names(mark, missing='return')
             if invalid:
-                msg = ("Some channels specified to mark do not exist in the "
-                       "data and will be ignored: " + ', '.join(invalid))
-                wx.CallLater(1, wx.MessageBox, msg, "Invalid Channels in Mark",
-                             wx.OK | wx.ICON_WARNING)
+                desc = ', '.join(invalid)
+                msg = f"Some channels specified to mark do not exist in the data and will be ignored: {desc}"
+                wx.CallLater(1, wx.MessageBox, msg, "Invalid Channels in Mark", wx.OK | wx.ICON_WARNING)
+        else:
+            mark = []
 
         # setup plot parameters
         plot_list = ((self.doc.epochs,),)
@@ -818,7 +819,7 @@ class Frame(FileFrame):
             self._mean_plot.set_data(self._get_page_mean_seg())
             axes.append(self._mean_ax)
 
-        self.canvas.redraw(axes=axes)
+        self.canvas.redraw(axes)
 
     def GoToEpoch(self, i):
         for page, epochs in enumerate(self._segs_by_page):
@@ -1037,7 +1038,7 @@ class Frame(FileFrame):
         if self._plot_topo:
             tseg = self._get_ax_data(ax.ax_idx, event.xdata)
             self._topo_plot.set_data([tseg])
-            self.canvas.redraw(axes=[self._topo_ax])
+            self.canvas.redraw([self._topo_ax])
             self._topo_plot_info_str = ("Topomap: %s,  t = %s ms,  marked: %s" %
                                         (desc, x, ', '.join(self._mark)))
 
@@ -1232,7 +1233,7 @@ class Frame(FileFrame):
             self.config.WriteBool('Layout/show_topo', topo)
 
         if mean is None:
-            mean = self.config.ReadBool('Layout/show_mean', True)
+            mean = self.config.ReadBool('Layout/show_mean', False)
         else:
             mean = bool(mean)
             self.config.WriteBool('Layout/show_mean', mean)
@@ -1247,7 +1248,7 @@ class Frame(FileFrame):
                 if nplots == 1:
                     mean = False
                 elif nplots < 1:
-                    raise ValueError("nplots needs to be >= 1; got %r" % nplots)
+                    raise ValueError(f"{nplots=}: needs to be >= 1")
                 nax = nplots + bool(mean) + bool(topo)
                 nrow = math.ceil(math.sqrt(nax))
                 ncol = int(math.ceil(nax / nrow))
@@ -1262,8 +1263,7 @@ class Frame(FileFrame):
                 elif nax == 2:
                     mean = False
                 elif nax < 1:
-                    err = ("nplots=%s: Need at least one plot." % str(nplots))
-                    raise ValueError(err)
+                    raise ValueError(f"{nplots=}: Need at least one plot.")
                 n_per_page = nax - bool(topo) - bool(mean)
             self.config.WriteInt('Layout/n_rows', nrow)
             self.config.WriteInt('Layout/n_cols', ncol)
@@ -1545,20 +1545,17 @@ class FindNoisyChannelsDialog(EelbrainDialog):
 
         # flat channels
         sizer.Add(wx.StaticText(self, label="Threshold for flat channels:"))
-        msg = ("Invalid entry for flat channel threshold: {value}. Please "
-               "specify a number > 0.")
+        msg = "Invalid entry for flat channel threshold: {value}. Please specify a number > 0."
         validator = REValidator(POS_FLOAT_PATTERN, msg, False)
         ctrl = wx.TextCtrl(self, value=str(flat), validator=validator)
-        ctrl.SetHelpText("A channel that does not deviate from 0 by more than "
-                         "this value is considered flat.")
+        ctrl.SetHelpText("A channel that does not deviate from 0 by more than this value is considered flat.")
         ctrl.SelectAll()
         sizer.Add(ctrl)
         self.flat_ctrl = ctrl
 
         # flat channels in average
         sizer.Add(wx.StaticText(self, label="Threshold for flat channels in average:"))
-        msg = ("Invalid entry for average flat channel threshold: {value}. Please "
-               "specify a number > 0.")
+        msg = "Invalid entry for average flat channel threshold: {value}. Please specify a number > 0."
         validator = REValidator(POS_FLOAT_PATTERN, msg, False)
         ctrl = wx.TextCtrl(self, value=str(flat_average), validator=validator)
         ctrl.SetHelpText("A channel that does not deviate from 0 by more than "
@@ -1569,13 +1566,10 @@ class FindNoisyChannelsDialog(EelbrainDialog):
 
         # Correlation
         sizer.Add(wx.StaticText(self, label="Threshold for channel to neighbor correlation:"))
-        msg = ("Invalid entry for channel neighbor correlation: {value}. Please "
-               "specify a number > 0.")
+        msg = "Invalid entry for channel neighbor correlation: {value}. Please specify a number > 0."
         validator = REValidator(POS_FLOAT_PATTERN, msg, False)
         ctrl = wx.TextCtrl(self, value=str(corr), validator=validator)
-        ctrl.SetHelpText("A channel is considered noisy if the average of the "
-                         "correlation with its neighbors is smaller than this "
-                         "value.")
+        ctrl.SetHelpText("A channel is considered noisy if the average of the correlation with its neighbors is smaller than this value.")
         sizer.Add(ctrl)
         self.mincorr_ctrl = ctrl
 
@@ -1621,8 +1615,7 @@ class FindNoisyChannelsDialog(EelbrainDialog):
         if self.do_report.GetValue() or self.do_apply.GetValue():
             event.Skip()
         else:
-            wx.MessageBox("Specify at least one action (report or apply)",
-                          "No Command Selected", wx.ICON_EXCLAMATION)
+            wx.MessageBox("Specify at least one action (report or apply)", "No Command Selected", wx.ICON_EXCLAMATION)
 
     def OnSetDefault(self, event):
         self.flat_ctrl.SetValue('1e-13')
@@ -1631,16 +1624,11 @@ class FindNoisyChannelsDialog(EelbrainDialog):
 
     def StoreConfig(self):
         config = self.Parent.config
-        config.WriteFloat("FindNoisyChannels/flat",
-                          float(self.flat_ctrl.GetValue()))
-        config.WriteFloat("FindNoisyChannels/flat_average",
-                          float(self.flat_average_ctrl.GetValue()))
-        config.WriteFloat("FindNoisyChannels/mincorr",
-                          float(self.mincorr_ctrl.GetValue()))
-        config.WriteBool("FindNoisyChannels/do_report",
-                         self.do_report.GetValue())
-        config.WriteBool("FindNoisyChannels/do_apply",
-                         self.do_apply.GetValue())
+        config.WriteFloat("FindNoisyChannels/flat", float(self.flat_ctrl.GetValue()))
+        config.WriteFloat("FindNoisyChannels/flat_average", float(self.flat_average_ctrl.GetValue()))
+        config.WriteFloat("FindNoisyChannels/mincorr", float(self.mincorr_ctrl.GetValue()))
+        config.WriteBool("FindNoisyChannels/do_report", self.do_report.GetValue())
+        config.WriteBool("FindNoisyChannels/do_apply", self.do_apply.GetValue())
         config.Flush()
 
 
@@ -1655,9 +1643,7 @@ class LayoutDialog(EelbrainDialog):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        sizer.Add(wx.StaticText(self, wx.ID_ANY, "Layout: number of rows and "
-                                "columns (e.g., '5 7')\n"
-                                "or number of epochs (e.g., '35'):"))
+        sizer.Add(wx.StaticText(self, wx.ID_ANY, "Layout: number of rows and columns (e.g., '5 7')\nor number of epochs (e.g., '35'):"))
         self.text = wx.TextCtrl(self, wx.ID_ANY, "%i %i" % (rows, columns))
         self.text.SelectAll()
         sizer.Add(self.text)

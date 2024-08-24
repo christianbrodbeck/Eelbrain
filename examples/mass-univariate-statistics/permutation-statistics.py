@@ -5,14 +5,17 @@ Permutation statistics
 
 .. currentmodule:: eelbrain
 
-Options for permutation statistics: max-statistic, cluster-mass and TFCE.
-
-This example illustrates different options for null-distirbutions in permutation tests.
-All are illustrated using a simple *t*-test. 
+Eelbrain implents three methods for estimating null-distributions in permutation tests:
+max-statistic, cluster-mass and TFCE.
+This example illustrates these using a simple *t*-test.
 For simulating more complex datasets see other examples in this section.
 
 For the sake of speed, the tests here are based on 1000 permutations of the data (``samples=1000``).
 For precise *p*-values, 10000 permutations (the default) are preferable.
+
+.. contents:: Contents
+   :local:
+
 """
 # sphinx_gallery_thumbnail_number = 2
 from eelbrain import *
@@ -64,8 +67,16 @@ p = plot.TopoButterfly(significan_regions[0, 'cluster'], t=0.13, head_radius=0.3
 # Cluster-based tests
 # -------------------
 # In cluster-based tests, a first steps consists in finding contiguous regions of "meaningful" effect, so-called clusters.
-# "Meaningful" can be defined based on a value of the statistic (e.g., a *t*-value). 
-# It is commonly set to a *t* value equivalent to uncorrected *p* = .05.
+# In order to find contiguous regions, the algorithm needs to know which channels are
+# neighbors. This information is refered to as the sensor connectivity (i.e., which sensors
+# are connected). The connectivity graph can be visualized to confirm that it is set correctly.
+
+p = plot.SensorMap(eeg, connectivity=True)
+
+###############################################################################
+# We also need to define what constitutes a "meaningful" effect, i.e., an effect that should be included in the cluster.
+# This can be defined based on the magnitude of the statistic (e.g., a *t*-value).
+# It is commonly set to a *t* value equivalent to an uncorrected *p*-vale of .05.
 # This is specified with the ``pmin=.05`` argument.
 #
 # A summary statistic is then computed for each cluster. In Eelbrain this is the *cluster-mass* statistic:

@@ -60,9 +60,11 @@ class SubParc(Parcellation):
 
     Examples
     --------
-    Lateral temporal lobe of both hemispheres::
+    Masks for temporal and frontal lobes::
 
         parcs = {
+            'STG': SubParc('aparc', ('transversetemporal', 'superiortemporal')),
+            'IFG': SubParc('aparc', ('parsopercularis', 'parsorbitalis', 'parstriangularis')),
             'lateraltemporal': SubParc('aparc', (
                 'transversetemporal', 'superiortemporal', 'bankssts',
                 'middletemporal', 'inferiortemporal')),

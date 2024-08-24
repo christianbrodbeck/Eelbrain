@@ -162,7 +162,7 @@ class BoostingResult(PickleableDataClass):
           - 2: Cython multiprocessing implementation (Eelbrain 0.38)
           - 3: Cython based convolution (Eelbrain 0.40)
 
-    eelbrain_version : int
+    eelbrain_version : str
         Version of Eelbrain with which the model was estimated.
 
 
@@ -219,7 +219,7 @@ class BoostingResult(PickleableDataClass):
     # store the version of the boosting algorithm with which model was fit
     version: int = 14  # file format (updates when re-saving)
     algorithm_version: int = -1  # do not change when re-saving
-    eelbrain_version: int = '< 0.40'  # do not change when re-saving
+    eelbrain_version: str = '< 0.40'  # do not change when re-saving
     # debug parameters
     y_pred: NDVar = None
     fit: Boosting = None

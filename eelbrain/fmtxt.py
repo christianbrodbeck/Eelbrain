@@ -889,7 +889,7 @@ class Number(FMTextElement):
     def _get_core(self, env):
         if np.isnan(self.content):
             return 'NaN'
-        elif isinstance(self.content, (bool, np.bool_, np.bool8)):
+        elif isinstance(self.content, (bool, np.bool_)):
             return str(self.content)
         else:
             fmt = env.get('fmt', self.fmt)
@@ -1334,9 +1334,9 @@ class Table(FMTextElement):
     Parameters
     ----------
     columns
-        alignment for each column, e.g. ``'lrr'``
+        alignment for each column, e.g. ``'lrr'``.
     rules
-        Add toprule and bottomrule
+        Add toprule and bottomrule.
     title
         Title for the table.
     caption
@@ -1759,7 +1759,7 @@ class Table(FMTextElement):
         return buffer.getvalue()
 
     def save_docx(self, path: PathArg = None):
-        """Save table as *.docx (requires `python-docx <https://python-docx.readthedocs.io>`_)
+        """Save table as ``*.docx`` (requires `python-docx <https://python-docx.readthedocs.io>`_)
 
         Parameters
         ----------

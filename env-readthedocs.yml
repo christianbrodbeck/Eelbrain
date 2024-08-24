@@ -14,7 +14,6 @@ dependencies:
 - nibabel >2.3.0  # read_annot bug
 - nilearn >=0.10.4
 - numpy >=1.11
-- numba
 - pillow
 - pip
 - pooch  # for mne dataset downloading

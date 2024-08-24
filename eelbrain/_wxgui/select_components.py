@@ -37,7 +37,6 @@ from .._utils.system import IS_OSX
 from ..mne_fixes._version import MNE_VERSION, V0_24
 from ..plot._base import DISPLAY_UNIT, UNIT_FORMAT, AxisData, DataLayer, PlotType
 from ..plot._topo import _ax_topomap
-from .app import get_app, run
 from .frame import EelbrainDialog
 from .history import Action, FileDocument, FileModel, FileFrame, FileFrameChild
 from .mpl_canvas import FigureCanvasPanel
@@ -109,18 +108,24 @@ class Document(FileDocument):
             sysname: str,
             connectivity: Union[str, Sequence] = None,
             drop_epochs_std: float = None,  # drop epochs with high signal (e.g. 10)
+            decim: int = None,
     ):
         FileDocument.__init__(self, path)
         self._ndvar_args = dict(sysname=sysname, connectivity=connectivity)
         self.saved = True
         self._explained_variance = {}
 
-        if isinstance(data, mne.BaseEpochs):
+        if isinstance(data, mne.io.BaseRaw):
+            events = mne.make_fixed_length_events(data)
+            if decim is None:
+                decim = int(round(data.info['sfreq'] / 100))
+            ds = Dataset({'epochs': mne.Epochs(data, events, 1, 0, 1, baseline=None, proj=False, decim=decim, preload=True)})
+        elif isinstance(data, mne.BaseEpochs):
             ds = Dataset({'epochs': data})
         elif isinstance(data, Dataset):
             ds = data
         else:
-            raise TypeError(f'data={data!r}')
+            raise TypeError(f'{data=}')
 
         # Exclude extreme epochs
         epochs_ndvar = self.as_ndvar(ds['epochs'])
@@ -157,7 +162,7 @@ class Document(FileDocument):
         self.components = NDVar(data[:, picks], (ic_dim, self.epochs_ndvar.sensor), 'components', {'meas': 'component', 'cmap': 'xpolar'})
 
         # sources
-        data = ica.get_sources(epochs).get_data()
+        data = ica.get_sources(epochs).get_data(copy=False)
         self.sources = NDVar(data, ('case', ic_dim, self.epochs_ndvar.time), 'sources', {'meas': 'component', 'cmap': 'xpolar'})
 
         # find unique epoch labels
@@ -745,7 +750,7 @@ class Frame(SharedToolsMenu, FileFrame):
 
         if IS_OSX:
             try:
-                self.canvas.redraw(axes=axes)
+                self.canvas.redraw(axes)
             except AttributeError:
                 self.canvas.draw()
         else:
@@ -1604,68 +1609,3 @@ class InfoFrame(HTMLFrame):
                 continue
             raise ValueError(f"url={url!r}")
         self.Parent.GoToComponentEpoch(component, epoch)
-
-
-def select_components(
-        path: PathArg,
-        data: Union[Dataset, mne.io.BaseRaw],
-        sysname: str = None,
-        connectivity: Union[str, Sequence] = None,
-        decim: int = None,
-        debug: bool = False,
-):
-    """GUI for selecting ICA-components
-
-    Parameters
-    ----------
-    path
-        Path to the ICA file.
-    data
-        Data to use for displying component time course during source selection.
-        Can be specified as :class:`mne.io.Raw` object with continuous data, or
-        as :class:`Dataset` with epoched data (``data['epochs']`` should contain
-        an :class:`mne.Epochs` object).
-        Optionally, ``data['index']`` can provide labels to display for epochs
-        (the default is ``range(n_epochs)``).
-        Further :class:`Factor` can be used to plot condition averages.
-    sysname
-        Optional, to define sensor connectivity.
-    connectivity
-        Optional, to define sensor connectivity (see
-        :func:`eelbrain.load.mne.sensor_dim`).
-    decim
-        Decimate the data for display (only applies when data is a ``Raw``
-        object; default is to spproximate 100 Hz samplingrate).
-
-    Notes
-    -----
-    The ICA object does not need to be computed on the same data that is in
-    ``ds``. For example, the ICA can be computed on a raw file but component
-    selection done using the epochs that will be analyzed.
-
-    .. note::
-        If the terminal becomes unresponsive after closing the GUI, try
-        disabling ``prompt_toolkit`` with :func:`configure`:
-        ``eelbrain.configure(prompt_toolkit=False)``.
-    """
-    if isinstance(data, mne.io.BaseRaw):
-        events = mne.make_fixed_length_events(data)
-        if decim is None:
-            decim = int(round(data.info['sfreq'] / 100))
-        ds = Dataset()
-        ds['epochs'] = mne.Epochs(data, events, 1, 0, 1, baseline=None, proj=False, decim=decim, preload=True)
-    elif isinstance(data, Dataset):
-        ds = data
-    else:
-        raise TypeError(f"{data=}")
-    get_app()  # make sure app is created
-    doc = Document(path, ds, sysname, connectivity)
-    model = Model(doc)
-    frame = Frame(model)
-    frame.Show()
-    frame.Raise()
-    if TEST_MODE:
-        return frame
-    run()
-    if debug:
-        return frame

@@ -342,9 +342,9 @@ def correlation_coefficient(x, y, dim=None, name=None):
     # correlation coefficient
     z_x = stats.zscore(x_data, -1, 1)
     z_y = stats.zscore(y_data, -1, 1)
-    z_y *= z_x
-    out = z_y.sum(-1)
-    out /= z_y.shape[-1] - 1
+    xy = z_y * z_x
+    out = xy.sum(-1)
+    out /= xy.shape[-1] - 1
 
     if np.isscalar(out):
         return float(out)
@@ -567,7 +567,7 @@ def filter_data(
         data = ndvar.x.swapaxes(axis, -1)
     sfreq = 1. / ndvar.time.tstep
 
-    if data.dtype != numpy.float_:
+    if data.dtype != float:
         data = data.astype(float)
 
     filter_kwargs.setdefault('copy', True)
@@ -1138,10 +1138,10 @@ def resample(
     if npad:
         old_sfreq = 1.0 / time.tstep
         x = ndvar.x if ndvar.x.dtype.kind == 'f' else ndvar.x.astype(float)
-        x = mne.filter.resample(x, sfreq, old_sfreq, npad, axis, window, pad=pad)
+        x = mne.filter.resample(x, sfreq, old_sfreq, npad=npad, axis=axis, window=window, pad=pad)
         new_num = x.shape[axis]
         if isinstance(ndvar.x, np.ma.masked_array):
-            mask = mne.filter.resample(ndvar.x.mask.astype(float), sfreq, old_sfreq, npad, axis, window, pad=pad, n_jobs=n_jobs)
+            mask = mne.filter.resample(ndvar.x.mask.astype(float), sfreq, old_sfreq, npad=npad, axis=axis, window=window, pad=pad, n_jobs=n_jobs)
             x = np.ma.masked_array(x, mask > 0.5)
     else:
         new_num = int(floor((time.tstop - time.tmin) / new_tstep))

@@ -107,7 +107,7 @@ def select():
     # remove entries
     removed = set(selection).difference(entries)
     if removed:
-        print(f"Removing: {', '.join(removed)}")
+        print(f"Removing entries that are no longer in search results:\n {', '.join(removed)}\n")
         for key in removed:
             del selection[key]
     # ask for each new entry
@@ -158,15 +158,18 @@ def download():
             break
         r = requests.get(bibtex_url)
         if r.status_code == 403:
-            print(r.content.decode())
+            print(f"Error 403:\n{r.content.decode()}\n")
             break
-        print(result_id, end=', ')
+        print(result_id, end=' - ')
         bibtex_cache[result_id] = r.content
         new += 1
-        time.sleep(random.uniform(5.432, 15.476))
+        sleep_time = random.uniform(5.432, 65.476)
+        print(f"sleeping for {sleep_time:.0f} seconds")
+        time.sleep(sleep_time)
     if not new:
         print("No new reference")
         return
+    print("Saving new references ...")
     with BIBTEX_CACHE.open('wb') as file:
         pickle.dump(bibtex_cache, file)
 

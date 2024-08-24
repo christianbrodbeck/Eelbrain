@@ -7,6 +7,7 @@ http://matplotlib.sourceforge.net/examples/user_interfaces/index.html
 
 '''
 from logging import getLogger
+import math
 import tempfile
 
 import numpy as np
@@ -58,9 +59,11 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
             overridden. Defaults to rc ``figure.autolayout``.
         """
         self.figure = Figure(*args, **kwargs)
+        self.original_size_inches = self.figure.get_size_inches()
         FigureCanvasWxAgg.__init__(self, parent, wx.ID_ANY, self.figure)
         self.Bind(wx.EVT_ENTER_WINDOW, self.ChangeCursor)
         self._background = None
+        self.hidpi = self.GetContentScaleFactor()
 
     def _on_key_down(self, event):
         # Override to avoid system chime
@@ -69,6 +72,14 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
     def _on_key_up(self, event):
         # Override to avoid system chime
         KeyEvent("key_release_event", self, self._get_key(event), *self._mpl_coords(), guiEvent=event)._process()
+
+    def SizeToFigure(self):
+        "Adjust the Panel size to the size implied when the figure was created"
+        w, h = self.original_size_inches
+        dpi = self.figure.dpi / self.hidpi
+        w = math.ceil(w * dpi)
+        h = math.ceil(h * dpi)
+        self.SetSize((w, h))
 
     def CanCopy(self):
         return True
@@ -103,21 +114,19 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
     def CopyAsPNG(self):
         self.Copy_to_Clipboard()
 
-    def _to_matplotlib_event(self, event, name='wx-event', button=None, key=None):
+    def _to_matplotlib_event(self, event: wx.MouseEvent):
         """Convert wxPython event to Matplotlib event
 
         - Sets axes and position but ignores source
         - cf. matplotlib.backends.backend_wx._FigureCanvasWxBase
         """
-        x = event.GetX()
-        y = self.figure.bbox.height - event.GetY()
-        return MouseEvent(name, self.figure.canvas, x, y, button, key, guiEvent=event)
+        x = event.GetX() * self.hidpi
+        y = (self.GetSize().GetHeight() - event.GetY()) * self.hidpi
+        return MouseEvent('wx-event', self.figure.canvas, x, y, guiEvent=event)
 
-    def redraw(self, axes=set(), artists=()):
-        # FIXME:  redraw artist instead of whole axes
-        if artists:
-            axes.update(artist.axes for artist in artists)
-        elif not axes:
+    def redraw(self, axes=()):
+        # https://matplotlib.org/stable/users/explain/animations/blitting.html
+        if not axes:
             return
         elif self._background is None:
             raise RuntimeError("Background not captured")
@@ -125,10 +134,7 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
         self.restore_region(self._background)
         for ax in axes:
             ax.draw_artist(ax)
-            self.blit(ax.get_window_extent())
-        # for artist in artists:
-        #     artist.axes.draw_artist(artist.axes)
-        #     self.blit(artist.axes.get_window_extent())
+        self.blit(self.figure.bbox)
 
     def store_canvas(self):
         self._background = self.copy_from_bbox(self.figure.bbox)
@@ -145,10 +151,7 @@ class CanvasFrame(EelbrainFrame):
         self._pos_arg = pos
 
         # set up the canvas
-        self.sizer = sizer = wx.BoxSizer(wx.VERTICAL)
-        self.SetSizer(sizer)
         self.canvas = FigureCanvasPanel(self, **kwargs)
-        sizer.Add(self.canvas, 1, wx.EXPAND)
         self.figure = self.canvas.figure
 
         if statusbar:
@@ -163,7 +166,11 @@ class CanvasFrame(EelbrainFrame):
         if mpl_toolbar:
             self.add_mpl_toolbar()
 
-        self.Fit()
+        # Fit frame size to the intended figure size
+        self.canvas.SizeToFigure()
+        frame_size = self.ClientToWindowSize(self.canvas.GetSize())
+        self.SetSize(frame_size)
+
         self._eelfigure = eelfigure
         self.Bind(wx.EVT_CLOSE, self.OnClose)
 
@@ -203,7 +210,6 @@ class CanvasFrame(EelbrainFrame):
         if self._pos_arg == wx.DefaultPosition:
             rect = self.GetRect()
             display_w, display_h = wx.DisplaySize()
-            # print(self.Rect.Right)
             dx = -rect.Left if rect.Right > display_w else 0
             dy = -rect.Top + 22 if rect.Bottom > display_h else 0
             if dx or dy:

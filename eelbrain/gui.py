@@ -1,5 +1,10 @@
 """Eelbrain GUIs"""
-from ._wxgui.select_components import select_components
+from typing import Sequence, Tuple, Union
+
+import mne
+
+from ._data_obj import Dataset
+from ._types import ColorArg, PathArg
 
 
 def run(block=False):
@@ -18,71 +23,146 @@ def run(block=False):
     run(block)
 
 
+def select_components(
+        path: PathArg,
+        data: Union[Dataset, mne.io.BaseRaw],
+        sysname: str = None,
+        connectivity: Union[str, Sequence] = None,
+        decim: int = None,
+        debug: bool = False,
+):
+    """GUI for selecting ICA-components
+
+    Parameters
+    ----------
+    path
+        Path to the ICA file.
+    data
+        Data to use for displying component time course during source selection.
+        Can be specified as :class:`mne.io.Raw` object with continuous data, or
+        as :class:`Dataset` with epoched data (``data['epochs']`` should contain
+        an :class:`mne.Epochs` object).
+        Optionally, ``data['index']`` can provide labels to display for epochs
+        (the default is ``range(n_epochs)``).
+        Further :class:`Factor` can be used to plot condition averages.
+    sysname
+        Optional, to define sensor connectivity.
+    connectivity
+        Optional, to define sensor connectivity (see
+        :func:`eelbrain.load.mne.sensor_dim`).
+    decim
+        Decimate the data for display (only applies when data is a ``Raw``
+        object; default is to approximate 100 Hz samplingrate).
+
+    Notes
+    -----
+    The ICA object does not need to be computed on the same data that is in
+    ``ds``. For example, the ICA can be computed on a raw file but component
+    selection done using the epochs that will be analyzed.
+
+    .. note::
+        If the terminal becomes unresponsive after closing the GUI, try
+        disabling ``prompt_toolkit`` with :func:`configure`:
+        ``eelbrain.configure(prompt_toolkit=False)``.
+    """
+    from ._wxgui.app import get_app
+    from ._wxgui.select_components import TEST_MODE, Document, Frame, Model
+
+    get_app()  # make sure app is created
+    doc = Document(path, data, sysname, connectivity, decim=decim)
+    model = Model(doc)
+    frame = Frame(model)
+    frame.Show()
+    frame.Raise()
+    if TEST_MODE:
+        return frame
+    run()
+    if debug:
+        return frame
+
+
 def select_epochs(
-        ds, data='meg', accept='accept', blink='blink', tag='rej_tag',
-        trigger='trigger', path=None, nplots=None, topo=None, mean=None,
-        vlim=None, color='k', lw=0.5, mark=[], mcolor='r', mlw=0.8,
-        antialiased=True, pos=None, size=None, allow_interpolation=True):
+        ds: Union[Dataset, mne.BaseEpochs],
+        data: str = 'meg',
+        accept: str = 'accept',
+        blink: str = 'blink',
+        tag: str = 'rej_tag',
+        trigger: str = 'trigger',
+        path: PathArg = None,
+        nplots: Union[int, Tuple[int, int]] = None,
+        topo: bool = None,
+        mean: bool = None,
+        vlim: float = None,
+        color: ColorArg = 'k',
+        lw: float = 0.5,
+        mark: Sequence = None,
+        mcolor: ColorArg = 'r',
+        mlw: float = 0.8,
+        antialiased: bool = True,
+        pos: Tuple[int, int] = None,
+        size: Tuple[int, int] = None,
+        allow_interpolation: bool = True,
+):
     """GUI for rejecting trials of MEG/EEG data
 
     Parameters
     ----------
-    ds : Dataset | mne.Epochs
+    ds
         The data for which to select trials. If ``ds`` is a :class:`Dataset`,
         the subsequent parameters up to 'trigger' specify names of variables in
         ``ds``; if ``ds`` is an :class:`mne.Epochs` object, these parameters are
         ignored.
-    data : str
+    data
         Name of the epochs data in ``ds`` (default ``'meg'``).
-    accept : str
+    accept
         Name of the boolean :class:`Var` in ``ds`` to accept or reject epochs
         (default ``'accept'``).
-    blink : str
+    blink
         Name of the eye tracker data in ``ds`` if present (default ``'blink'``).
-    tag : str
+    tag
         Name of the rejection tag (storing the reason for rejecting a
         specific epoch; default ``'rej_tag'``).
-    trigger : str
+    trigger
         Name of the ``int`` :class:`Var` containing the event trigger for each
         epoch (used when loading a rejection file to assert that it comes from
         the same data; default ``'trigger'``).
-    path : None | str
+    path
         Path to the desired rejection file. If the file already exists it
         is loaded as starting values. The extension determines the format
         (``*.pickle`` or ``*.txt``).
-    nplots : None | int | tuple of 2 int
+    nplots
         Number of epoch plots per page. Can be an ``int`` to produce a
         square layout with that many epochs, or an ``(n_rows, n_columns)``
         tuple. The default is to use the settings from the last session.
-    topo : None | bool
+    topo
         Show a topomap plot of the time point under the mouse cursor.
         Default (None): use settings form last session.
-    mean : None | bool
+    mean
         Show a plot of the page mean at the bottom right of the page.
         Default (None): use settings form last session.
-    vlim : None | scalar
+    vlim
         Limit of the epoch plots on the y-axis. If None, a value is
         determined automatically to show all data.
-    color : None | matplotlib color
+    color : matplotlib color
         Color for primary data (default is black).
-    lw : scalar
+    lw
         Linewidth for normal sensor plots.
     mark : None | index for sensor dim
         Sensors to plot as individual traces with a separate color.
     mcolor : matplotlib color
         Color for marked traces.
-    mlw : scalar
+    mlw
         Line width for marked sensor plots.
-    antialiased : bool
+    antialiased
         Perform Antialiasing on epoch plots (associated with a minor speed
         cost).
-    pos : None | tuple of 2 int
+    pos
         Window position on screen. Default (None): use settings form last
         session.
-    size : None | tuple of 2 int
+    size
         Window size on screen. Default (None): use settings form last
         session.
-    allow_interpolation : bool
+    allow_interpolation
         Whether to allow interpolating individual channels by epoch (default
         True).
 

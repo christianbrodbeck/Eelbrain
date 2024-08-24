@@ -514,13 +514,13 @@ class MneExperiment(FileTree):
         ########################################################################
         # sessions
         if not self.sessions:
-            raise TypeError("The MneExperiment.sessions parameter needs to be specified. The session name is contained in your raw data files. For example if your file is named `R0026_mysession-raw.fif` your session name is 'mysession' and you should set MneExperiment.sessions to 'mysession'.")
+            raise TypeError(f"The {self.__class__.__name__}.sessions attribute needs to be specified. The session name is contained in your raw data files. For example if your file is named `R0026_mysession-raw.fif` your session name is 'mysession' and you should set {self.__class__.__name__}.sessions to 'mysession'.")
         elif isinstance(self.sessions, str):
             self._sessions = (self.sessions,)
         elif isinstance(self.sessions, Sequence):
             self._sessions = tuple(self.sessions)
         else:
-            raise TypeError(f"MneExperiment.sessions={self.sessions!r}; needs to be a string or a tuple")
+            raise TypeError(f"{self.__class__.__name__}.sessions={self.sessions!r}; needs to be a string or a tuple")
         self._visits = (self.visits,) if isinstance(self.visits, str) else tuple(self.visits)
 
         ########################################################################
@@ -2135,7 +2135,7 @@ class MneExperiment(FileTree):
             **state,
     ) -> Dataset:
         """
-        Load a Dataset with epochs for a given epoch definition
+        Load a :class:`Dataset` with epochs for a given epoch definition
 
         Parameters
         ----------
@@ -2149,8 +2149,10 @@ class MneExperiment(FileTree):
             epoch's baseline specification. The default is to not apply baseline
             correction.
         ndvar
-            Convert epochs to an NDVar (named 'meg' for MEG data and 'eeg' for
-            EEG data). Use 'both' to include NDVar and MNE Epochs.
+            Convert epochs to :class:`NDVar` (using keys ``'meg'`` for MEG data and
+            ``'eeg'`` for EEG data in the returned :class:`Dataset`).
+            With ``ndvar=False``, include :class:`mne.Epochs` with key ``'epochs'``.
+            Use ``'both'`` to include both NDVar and :class:`mne.Epochs`.
         add_bads
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the bad channels file. Alternatively,
@@ -2653,7 +2655,7 @@ class MneExperiment(FileTree):
             data: DataArg = 'sensor',
             **state):
         """
-        Load a Dataset with the evoked responses for each subject.
+        Load a Dataset with condition average responses for each subject.
 
         Parameters
         ----------
@@ -3413,7 +3415,8 @@ class MneExperiment(FileTree):
             if len(epoch_params.sessions) != 1:
                 raise ValueError(f"{epoch=}: epoch has multiple session")
             ds = self.load_epochs(add_bads=add_bads, epoch=epoch, reject=False, decim=1, **state)
-            data = concatenate(ds['meg'])
+            key = ds.info['sensor_types'][0]
+            data = concatenate(ds[key])
         else:
             data = self.load_raw(ndvar=True, add_bads=add_bads, **state)
         n_corr = neighbor_correlation(data)
@@ -5835,6 +5838,16 @@ class MneExperiment(FileTree):
         field : str | list of str
             The field for which the value should be changed (default 'subject').
             Can also contain multiple fields, e.g. ``['subject', 'session']``.
+
+        Example
+        -------
+        >>> raw_01 = e.load_raw()  # raw for S01
+        >>> e.next()
+        subject: S01 -> S03
+        >>> raw_03 = e.load_raw()  # raw for S03
+        >>> e.next()
+        subject: S03 -> S04
+
         """
         if isinstance(field, str):
             current = self.get(field)

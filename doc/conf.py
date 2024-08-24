@@ -10,6 +10,7 @@
 # serve to show the default.
 
 from datetime import datetime
+from itertools import chain
 import os
 from pathlib import Path
 from warnings import filterwarnings
@@ -17,6 +18,7 @@ from warnings import filterwarnings
 import eelbrain.plot._brain_object  # make sure that Brain is available
 import eelbrain
 import mne
+from sphinx_gallery.sorting import ExplicitOrder, _SortKey
 
 
 # docutils 0.14
@@ -75,27 +77,7 @@ def use_pyplot(gallery_conf, fname):
     eelbrain.configure(frame=False)
 
 
-class NameOrder:
-    """Specify sphinx-gallery example order as file tree"""
-
-    def __init__(self, order):
-        self._order = order
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self._order})"
-
-    def __call__(self, item):
-        path = Path(item)
-        if isinstance(self._order, dict):
-            return NameOrder(self._order[path.name])
-        return self._order.index(path.name)
-
-    def section_order(self):
-        return NameOrder(list(self._order))
-
-
-example_order = NameOrder({
-    'examples': [],
+example_order = {
     'datasets': [
         'intro.py',
         'dataset-basics.py',
@@ -109,7 +91,8 @@ example_order = NameOrder({
     ],
     'mass-univariate-statistics': [
         'permutation-statistics.py',
-        'sensor-cluster-based-ttest.py',
+        'sensor-ttest.py',
+        'sensor-anova.py',
         'sensor-lm.py',
         'sensor-two-stage.py',
         'compare-topographies.py',
@@ -127,13 +110,23 @@ example_order = NameOrder({
         'partitions.py',
         'epoch_impulse.py',
     ],
-})
+}
+
+
+class NameOrder(_SortKey):
+    """Specify sphinx-gallery example order as file tree"""
+
+    items = list(chain.from_iterable(example_order.values()))
+
+    def __call__(self, item):
+        print(f"NameOrder: {item}")
+        return self.items.index(item)
 
 
 sphinx_gallery_conf = {
     'examples_dirs': '../examples',   # path to example scripts
-    'subsection_order': example_order.section_order(),
-    'within_subsection_order': example_order,
+    'subsection_order': ExplicitOrder([f'../examples/{name}' for name in example_order]),
+    'within_subsection_order': NameOrder,
     'gallery_dirs': 'auto_examples',  # path where to save gallery generated examples
     'filename_pattern': rf'{os.sep}\w',
     'default_thumb_file': Path(__file__).parent / 'images' / 'eelbrain.png',

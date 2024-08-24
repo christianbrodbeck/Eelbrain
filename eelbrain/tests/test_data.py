@@ -8,7 +8,6 @@ import pickle
 import shutil
 from string import ascii_lowercase
 import tempfile
-import warnings
 
 import mne
 import numpy as np
@@ -790,6 +789,11 @@ def test_factor():
     numeric = Factor(['1', '10', '6', '1'])
     assert_array_equal(numeric.as_var(), [1, 10, 6, 1])
 
+    # .count()
+    a = Factor('abcabcabccc')
+    assert_array_equal(a.count().x, [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 4])
+    assert_array_equal(a.count('a').x, [0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2])
+
     # Factor.floodfill()
     f = Factor([' ', ' ', '1', '2', ' ', ' ', '3', ' ', ' ', '2', ' ', ' ', '1'])
     regions =  [ 1,   1,   1,   2,   2,   2,   3,   3,   3,   2,   2,   1,   1]
@@ -848,6 +852,13 @@ def test_interaction():
     assert_dataobj_equal(i.as_factor(), Factor(['a c', 'a d', 'b c', 'b d']))
     i = a % Factor(['c', '', 'c', ''])
     assert_dataobj_equal(i.as_factor(), Factor(['a c', 'a', 'b c', 'b']))
+
+    # .count()
+    a = Factor('abcabcccc')
+    b = Factor('aaabbbccc')
+    i = a % b
+    assert_array_equal(i.count().x, [0, 0, 0, 0, 0, 0, 0, 1, 2])
+    assert_array_equal(i.count(('c', 'c')).x, [-1, -1, -1, -1, -1, -1, 0, 1, 2])
 
     # pickling
     ip = pickle.loads(pickle.dumps(i))
@@ -1895,7 +1906,8 @@ def test_var():
 
     # .count()
     v = Var([1., 2., 1.11, 2., 1.11, 4.])
-    assert_array_equal(v.count(), [0, 0, 0, 1, 1, 0])
+    assert_array_equal(v.count().x, [0, 0, 0, 1, 1, 0])
+    assert_array_equal(v.count(2).x, [-1, 0, 0, 1, 1, 1])
 
     # .split()
     y = Var(np.arange(16))

@@ -1442,17 +1442,12 @@ class FigureFrame:
     def Show(self):
         pass
 
-    def redraw(self, axes=(), artists=()):
+    def redraw(self, axes=()):
         "Adapted duplicate of mpl_canvas.FigureCanvasPanel"
         self.canvas.restore_region(self._background)
         for ax in axes:
             ax.draw_artist(ax)
-            extent = ax.get_window_extent()
-            self.canvas.blit(extent)
-        for artist in artists:
-            artist.axes.draw_artist(artist.axes)
-            extent = artist.axes.get_window_extent()
-            self.canvas.blit(extent)
+        self.canvas.blit(self.figure)
 
     def store_canvas(self):
         self._background = self.canvas.copy_from_bbox(self.figure.bbox)
@@ -3568,6 +3563,8 @@ class CategorialAxisMixin:
         if n > 1:
             bbs = [l.get_window_extent(self.figure.canvas.renderer) for l in labels]
             overlap = max(bbs[i].x1 - bbs[i + 1].x0 for i in range(n - 1))
+            if overlap <= 0:
+                return False
             extend = n * (overlap + 10)
             w, h = self._frame.GetSize()
             w += int(extend)
