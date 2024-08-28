@@ -1,13 +1,14 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from inspect import getfullargspec
 import re
-from typing import Collection, Tuple, Union
+from typing import Collection, List, Tuple, Union
+
+import mne
 
 from .. import testnd
 from .. import test
 from .._data_obj import CellArg
 from .._exceptions import DefinitionError
-from .._io.fiff import find_mne_channel_types
 from .._utils.parse import find_variables
 from .definitions import Definition
 from .variable_def import Variables, GroupVar
@@ -525,10 +526,10 @@ class TestDims:
             return False
         return self.string == other.string and self.time == other.time
 
-    def data_to_ndvar(self, info):
+    def data_to_ndvar(self, info: mne.Info) -> List[str]:
         assert self.sensor
         if self._to_ndvar is None:
-            return find_mne_channel_types(info)
+            return info.get_channel_types(unique=True, only_data_chs=True)
         else:
             return self._to_ndvar
 

@@ -3,6 +3,7 @@
 from functools import cached_property, partial
 import os
 import sys
+import packaging.version
 from tempfile import mkdtemp
 from typing import Any, Callable, Literal, Sequence, Union
 from time import time, sleep
@@ -1046,6 +1047,7 @@ class Brain(TimeSlicer, surfer.Brain):
             Mayavi parallel_scale parameter. Default is 95 for the inflated
             surface, 75 otherwise. Smaller numbers correspond to zooming in.
         """
+        import mayavi
         from mayavi import mlab
         from traits.trait_base import ETSConfig
 
@@ -1056,19 +1058,34 @@ class Brain(TimeSlicer, surfer.Brain):
             else:
                 scale = 75
 
+        # Which mayavi scaling issues are we dealing with
+        if IS_OSX and self._frame and scale is not None:
+            scale_bug = packaging.version.parse(mayavi.__version__) < packaging.version.parse('4.8.2')
+            position_bug = not scale_bug
+        else:
+            scale_bug = position_bug = 0
+
         i = 0
         for figs in self._figures:
             for fig in figs:
                 if forward is not None or up is not None:
                     mlab.view(focalpoint=(0, forward or 0, up or 0), figure=fig)
                 if scale is not None:
-                    if IS_OSX and self._frame and i == 0:
+                    if scale_bug and i == 0:
                         fig.scene.camera.parallel_scale = 2 * scale
                     else:
                         fig.scene.camera.parallel_scale = scale
                 fig.scene.camera.parallel_projection = True
                 fig.render()
                 i += 1
+
+        if position_bug:
+            if self.hemi == 'rh':
+                rh = self.brains[0]
+                rh._geo_surf.actor.actor.position = [0, 57, 47]
+            else:
+                lh = self.brains[0]
+                lh._geo_surf.actor.actor.position = [0, -57, 47]
 
     def set_size(self, width, height):
         """Set image size in pixels"""
