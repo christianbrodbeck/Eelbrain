@@ -16,7 +16,7 @@ from scipy import signal
 from .. import load
 from .._data_obj import NDVar, Sensor
 from .._exceptions import DefinitionError
-from .._io.fiff import KIT_NEIGHBORS, find_mne_channel_types
+from .._io.fiff import KIT_NEIGHBORS
 from .._io.txt import read_connectivity
 from .._ndvar import filter_data
 from .._text import enumeration
@@ -341,7 +341,7 @@ class RawSource(RawPipe):
         bad_chs = raw.info['bads']
         if flat is None:
             # flat EEG channel is probably the reference
-            if find_mne_channel_types(raw.info) != ['eeg']:
+            if raw.info.get_channel_types(unique=True, only_data_chs=True) != ['eeg']:
                 flat = 1e-14
         if flat:
             sysname = self.get_sysname(raw.info, subject, None)

@@ -2370,7 +2370,7 @@ class MneExperiment(FileTree):
             for data_kind in sensor_types:
                 sysname = pipe.get_sysname(info, ds.info['subject'], data_kind)
                 connectivity = pipe.get_connectivity(data_kind)
-                if data_kind == 'mag' and 'planar1' not in sensor_types:
+                if data_kind == 'mag' and 'grad' not in sensor_types:
                     name = 'meg'
                 else:
                     name = data_kind
@@ -5004,7 +5004,7 @@ class MneExperiment(FileTree):
             raise ValueError(f"{rej=}; Epoch rejection is not manual")
 
         if data == 'grad':
-            raise NotImplementedError("Epoch selection for vector data; use data='planar1' and data='planar2'")
+            raise NotImplementedError(f"{data=} visualization of gradiometer vector data is not implemented; use data='planar1' and data='planar2'")
         data = TestDims.coerce(data)
         assert data.sensor is True
 
@@ -5041,14 +5041,9 @@ class MneExperiment(FileTree):
 
         if auto is not None:
             if isinstance(auto, dict):
-                auto_dict = auto.copy()
+                auto_dict = auto
                 missing = {key for key in auto_dict if key not in ds}
-                if 'grad' in missing:
-                    grad_threshold = auto_dict.pop('grad')
-                    for key in ds:
-                        if re.match('planar[12]', key):
-                            auto_dict[key] = grad_threshold
-                elif missing:
+                if missing:
                     raise ValueError(f"{auto=}: channel types {enumeration(missing)} not in data")
             else:
                 auto_dict = {y_name: auto}

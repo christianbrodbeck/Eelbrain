@@ -2,7 +2,7 @@
 """I/O for MNE"""
 from collections.abc import Iterable
 import fnmatch
-from itertools import repeat, zip_longest
+from itertools import chain, zip_longest
 from logging import getLogger
 from math import floor
 import os
@@ -11,12 +11,11 @@ import re
 from typing import Any, List, Literal, Optional, Sequence, Tuple, Union
 import warnings
 
-import numpy as np
-
 import mne
 from mne.source_estimate import _BaseSourceEstimate
 from mne.io.constants import FIFF
 from mne.io.kit.constants import KIT
+import numpy as np
 
 from .. import _info
 from .._types import PathArg
@@ -47,6 +46,9 @@ BaselineArg = Optional[Tuple[Optional[float], Optional[float]]]
 ConnectivityArg = Union[str, Sequence[Tuple[str, str]], np.ndarray]
 DataArg = Literal['eeg', 'mag', 'grad']
 PicksArg = Any
+
+TOPOGRAPHIC_CH_TYPES = ('mag', 'grad', 'planar1', 'planar2', 'eeg')
+DATA_CH_TYPES = ('csd', 'seeg', 'ecog', 'dbs', 'eog', 'emg', 'ecg', 'resp')
 
 
 def mne_neighbor_files():
@@ -270,109 +272,72 @@ def events(
     return ds
 
 
-def find_mne_channel_types(info):
-    chs = {(ch['kind'], ch['unit']) for ch in info['chs']}
-    types = {ch[0] for ch in chs}
-    if FIFF.FIFFV_MEG_CH in types:
-        units = {ch[1] for ch in chs if ch[0] == FIFF.FIFFV_MEG_CH}
-        mag = FIFF.FIFF_UNIT_T in units
-        grad = FIFF.FIFF_UNIT_T_M in units
-    else:
-        mag = grad = False
-    eeg = FIFF.FIFFV_EEG_CH in types
-    eog = FIFF.FIFFV_EOG_CH in types
-    out = []
-    if mag:
-        out.append('mag')
-    if grad:
-        out.append('planar1')
-        out.append('planar2')
-    if eeg:
-        out.append('eeg')
-    if eog:
-        out.append('eog')
-    return out
-
-
-def _guess_ndvar_data_type(info):
-    """Guess which type of data to extract from an mne object.
-
-    Checks for the presence of channels in that order: "mag", "eeg", "grad".
-    If none are found, a ValueError is raised.
-
-    Parameters
-    ----------
-    info : dict
-        MNE info dictionary.
-
-    Returns
-    -------
-    data : str
-        Kind of data to extract
-    """
-    data_types = find_mne_channel_types(info)
-    if data_types:
-        return data_types[0]
-    else:
-        raise ValueError("No MEG, EEG or EOG channel found in data")
+def _guess_ndvar_data_type(info: mne.Info) -> str:
+    "Guess which type of data to extract from an mne object"
+    data_types = info.get_channel_types(unique=True)
+    for ch_type in chain(TOPOGRAPHIC_CH_TYPES, DATA_CH_TYPES):
+        if ch_type in data_types:
+            return ch_type
+    if data_types[0] == 'stim' and len(data_types) > 1:
+        return data_types[1]
+    return data_types[0]
 
 
 def _picks(info, data, exclude) -> np.ndarray:
+    meg = eeg = eog = False
+    kwargs = {'stim': False, 'ref_meg': False}
     if data is None:
         data = _guess_ndvar_data_type(info)
     if data == 'eeg':
-        meg = False
         eeg = True
-        eog = False
-    elif data == 'eog':
-        meg = False
-        eeg = False
-        eog = True
     elif data == 'eeg&eog':
-        meg = False
         eeg = True
-        eog = True
+        kwargs['eog'] = True
     elif data in ['grad', 'mag', 'planar1', 'planar2']:
         meg = data
-        eeg = False
-        eog = False
     elif data is True:
         meg = True
         eeg = True
-        eog = False
     else:
-        raise ValueError(f"data={data!r} (needs to be one of: eeg, eog, mag, grad, planar1, planar2)")
-    return mne.pick_types(info, meg, eeg, False, eog, ref_meg=False, exclude=exclude)
+        kwargs[data] = True
+    return mne.pick_types(info, meg, eeg, exclude=exclude, **kwargs)
 
 
 def _ndvar_epochs_reject(data, reject):
     if reject:
         if not np.isscalar(reject):
-            err = ("Reject must be scalar (rejection threshold); got %s." %
-                   repr(reject))
-            raise ValueError(err)
+            raise TypeError(f"{reject=}: must be scalar (rejection threshold)")
         reject = {data: reject}
     else:
         reject = None
     return reject
 
 
-def _sensor_info(data, vmax, mne_info, user_info=None, mult=1):
+def _sensor_info(
+        data: str,
+        vmax: float,
+        mne_info: mne.Info,
+        user_info: dict = None,
+        mult: float = 1,
+):
     if data == 'eeg' or data == 'eog' or data == 'eeg&eog':
         info = _info.for_eeg(vmax, mult)
         summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _info.for_eeg(summary_vmax, mult)
+        info['summary_info'] = _info.for_eeg(summary_vmax, mult)
     elif data == 'mag':
         info = _info.for_meg(vmax, mult)
         summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _info.for_meg(summary_vmax, mult)
+        info['summary_info'] = _info.for_meg(summary_vmax, mult)
     elif data in ['grad', 'planar1', 'planar2']:
         info = _info.for_meg(vmax, mult, 'T/cm', '∆U')
         summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _info.for_meg(summary_vmax, mult, 'T/cm', '∆U')
+        info['summary_info'] = _info.for_meg(summary_vmax, mult, 'T/cm', '∆U')
     else:
-        raise ValueError("data=%r" % data)
-    info.update(proj='z root', samplingrate=mne_info['sfreq'], summary_info=summary_info)
+        info = {}
+
+    if data in TOPOGRAPHIC_CH_TYPES:
+        info['proj'] = 'z root'
+    info['samplingrate'] = mne_info['sfreq']
     if user_info:
         info.update(user_info)
     return info
@@ -721,7 +686,7 @@ def sensor_dim(
         picks: np.ndarray = None,
         sysname: str = None,
         connectivity: ConnectivityArg = None,
-):
+) -> Sensor:
     """Create a :class:`Sensor` dimension from an :class:`mne.Info` object.
 
     Parameters
@@ -731,7 +696,7 @@ def sensor_dim(
         attribute that contains measurement info).
     picks
         Channel picks (integer array, as used in mne-python).
-        By default all MEG and EEG channels are included.
+        By default, all MEG and EEG channels are included.
     sysname
         Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
         inferred automatically for KIT data converted with a recent version of
@@ -785,7 +750,7 @@ def sensor_dim(
             if connectivity is None:
                 connectivity = 'auto'
         else:
-            raise ValueError(f"Unknown channel unit for sysname={sysname!r}: {ch_unit!r}")
+            raise ValueError(f"Unknown channel unit for {sysname=}: {ch_unit!r}")
 
     if connectivity is None:
         connectivity = sysname or 'auto'
@@ -795,13 +760,12 @@ def sensor_dim(
         if sysname and sysname.startswith('KIT-'):
             connectivity = sysname
         else:
-            ch_types = find_mne_channel_types({'chs': chs})
+            ch_types = info.get_channel_types(picks, unique=True)
             if len(ch_types) == 1:
                 ch_type = ch_types[0]
-                if ch_type == 'eog':
+                if ch_type not in ['mag', 'grad', 'eeg']:
                     connectivity = 'none'
             else:
-                # TODO: connectivity for vector data
                 connectivity = 'none'
 
     if connectivity in ('grid', 'none'):
@@ -817,9 +781,6 @@ def sensor_dim(
             c_matrix, names = mne.channels.read_ch_adjacency(connectivity)
             # fix channel names
             if connectivity.startswith('neuromag'):
-                vec_ids = {name[-1] for name in ch_names}
-                if len(vec_ids) > 1:
-                    raise NotImplementedError("Connectivity for Neuromag vector data")
                 if ' ' not in names[0]:  # mne-python < ~1.2
                     names = [f'{n[:3]} {n[3:]}' for n in names]
             elif connectivity == 'ctf275':
@@ -835,14 +796,6 @@ def sensor_dim(
             except ValueError:
                 missing = [name for name in ch_names if name not in names]
                 raise IndexError(f"{connectivity=} is missing channels {', '.join(missing)}")
-            # Add superfluous channels as unconnected nodes?
-            # if len(names) < len(ch_names):
-            #     # Add zeros (no connectivity) at index -1
-            #     n = c_matrix.shape[0] + 1
-            #     indptr = np.append(c_matrix.indptr, c_matrix.indptr[-1])
-            #     c_matrix = scipy.sparse.csr_matrix((c_matrix.data, c_matrix.indices, indptr), (n, n), c_matrix.dtype)
-            #     index = [names.index(name) if name in names else -1 for name in ch_names]
-            #     c_matrix = c_matrix[index][:, index]
 
         connectivity = _matrix_graph(c_matrix)
     elif connectivity in (None, False):
@@ -1019,7 +972,7 @@ def raw_ndvar(
         i_stop: Union[int, Sequence[int]] = None,
         decim: int = 1,
         reset_tmin: bool = False,
-        data: Literal['eeg',  'mag',  'grad'] = None,
+        data: str = None,
         exclude: Union[str, Sequence[str]] = 'bads',
         sysname: str = None,
         connectivity: ConnectivityArg = None,
@@ -1067,7 +1020,7 @@ def raw_ndvar(
     Returns
     -------
     data : NDVar | list of NDVar
-        Data (sensor or source space). If ``i_start`` and ``i_stopr`` are scalar
+        Data (sensor or source space). If ``i_start`` and ``i_stop`` are scalar
         then a single NDVar is returned, if they are lists then a list of NDVars
         is returned.
 

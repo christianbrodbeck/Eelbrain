@@ -78,6 +78,22 @@ def test_load_fiff_mne():
     assert_array_almost_equal(reconstruct.get_data(('sensor', 'time')), mne_reconstruct.data)
 
 
+@requires_mne_testing_data
+def test_load_fiff_ndvar():
+    data_path = Path(mne.datasets.testing.data_path())
+
+    # raw_ndvar for
+    raw = mne.io.read_raw_fif(data_path / 'MEG/sample/sample_audvis_trunc_raw.fif')
+    # stim
+    ndvar = load.fiff.raw_ndvar(raw, data='stim')
+    data = raw.copy().pick('stim').get_data()
+    assert_array_equal(ndvar.get_data(('sensor', 'time')), data)
+    # EOG
+    ndvar = load.fiff.raw_ndvar(raw, data='eog')
+    data = raw.copy().pick('eog').get_data()
+    assert_array_equal(ndvar.get_data(('sensor', 'time')), data)
+
+
 def test_load_fiff_sensor():
     umd_sqd_path = file_path('test_umd-raw.sqd')
     raw = mne.io.read_raw_kit(umd_sqd_path)
