@@ -26,7 +26,7 @@ def aggregate_left(
         stop = start + n_window
         if stop > n_xf:
             stop = n_xf
-        for j in range(start, start + n_window):
+        for j in range(start, stop):
             out[i] += xf[j]
 
 
