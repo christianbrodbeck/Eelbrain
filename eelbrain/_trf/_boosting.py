@@ -22,8 +22,10 @@ import inspect
 from itertools import chain, repeat
 from math import ceil
 from operator import mul
+import platform
+import sys
 import time
-from typing import Callable, List, Literal, Optional, Union, Tuple, Sequence
+from typing import Callable, Dict, List, Literal, Optional, Union, Tuple, Sequence
 import warnings
 
 import numpy as np
@@ -162,8 +164,8 @@ class BoostingResult(PickleableDataClass):
           - 2: Cython multiprocessing implementation (Eelbrain 0.38)
           - 3: Cython based convolution (Eelbrain 0.40)
 
-    eelbrain_version : str
-        Version of Eelbrain with which the model was estimated.
+    execution_context : dict
+        Information on the context in which the model was estimated.
 
 
     Examples
@@ -217,9 +219,9 @@ class BoostingResult(PickleableDataClass):
     r_l1: NDVar = None
     partition_results: List[BoostingResult] = None
     # store the version of the boosting algorithm with which model was fit
-    version: int = 14  # file format (updates when re-saving)
+    version: int = 15  # file format (updates when re-saving)
     algorithm_version: int = -1  # do not change when re-saving
-    eelbrain_version: str = '< 0.40'  # do not change when re-saving
+    execution_context: Dict[str, str] = None  # do not change when re-saving
     # debug parameters
     y_pred: NDVar = None
     fit: Boosting = None
@@ -254,6 +256,8 @@ class BoostingResult(PickleableDataClass):
             if version < 14:
                 # state[f"y_{state['error']}_scale"] = state.pop('y_scale')
                 state[f"{state['error']}_residual"] = state.pop('residual')
+            if version == 14 and 'eelbrain_version' in state:
+                state['execution_context'] = {'eelbrain_version': state.pop('eelbrain_version')}
             if version < 15:
                 if state.pop('prefit', None):
                     raise IOError('Boosting result used the prefit functionality that has been removed. Use an older version of eelbrain to open this result.')
@@ -593,12 +597,21 @@ class BoostingResult(PickleableDataClass):
                 if not all(v is not None for v in values):
                     raise ValueError(f'partition_results avaiable for some but not all part-results')
                 new_value = [cls._eelbrain_concatenate(p_results) for p_results in zip(*values)]
-            elif field.name in ('algorithm_version', 'eelbrain_version'):
+            elif field.name in ('algorithm_version',):
                 values = set(values)
                 if len(values) == 1:
                     new_value = values.pop()
                 else:
                     new_value = tuple(sorted(values))
+            elif field.name == 'execution_context':
+                new_values = values[:1]
+                for value in values[1:]:
+                    if value not in new_values:
+                        new_values.append(value)
+                if len(new_values) == 1:
+                    new_value = new_values[0]
+                else:
+                    new_value = values
             elif any(v is None for v in values):
                 new_value = None
             else:
@@ -902,6 +915,14 @@ class Boosting:
         if debug:
             evaluations['fit'] = self
         t_run = self.t_fit_done - self.t_fit_start
+        execution_context = {
+            'machine': platform.machine(),
+            'architecture': platform.architecture(),
+            'processor': platform.processor(),
+            'platform': sys.platform,
+            'platform_version': platform.version(),
+            'eelbrain_version': eelbrain_version,
+        }
         # partition-specific results
         if partition_results:
             partition_results_list = []
@@ -914,7 +935,7 @@ class Boosting:
                     h_i, self._get_h_failed(i), 0,
                     self.data.basis, self.data.basis_window, None,
                     self.data.y.shape[1], self.data.y_info, self.data.ydims,
-                    algorithm_version=3, eelbrain_version=eelbrain_version,
+                    algorithm_version=3, execution_context=execution_context,
                     i_test=i, **evaluations_i)
                 partition_results_list.append(result)
         else:
@@ -931,7 +952,7 @@ class Boosting:
             # advanced data properties
             self.data.y.shape[1], self.data.y_info, self.data.ydims,
             partition_results=partition_results_list,
-            algorithm_version=3, eelbrain_version=eelbrain_version,
+            algorithm_version=3, execution_context=execution_context,
             i_test=i_test, **evaluations)
 
 
