@@ -11,9 +11,9 @@ def test_gammatone_bank():
     target_path = TEST_DATA_DIRECTORY / 'gammatone.pickle'
     if not target_path.exists():
         pytest.skip(f"Test data missing: {target_path}")
-    target = load.unpickle(target_path)
-
     sound = generate_sound()
+
+    target = load.unpickle(target_path)
     gt = gammatone_bank(sound, 20, 2000, 32, 1 / 100)
     assert_dataobj_equal(gt, target)
 

@@ -6,6 +6,9 @@ cimport numpy
 ctypedef numpy.float64_t FLOAT64
 ctypedef numpy.int64_t INT64
 
+cdef extern from "math.h":
+    double round(double x)
+
 
 def aggregate_left(
         FLOAT64 [:] xf,
@@ -15,11 +18,11 @@ def aggregate_left(
         FLOAT64 [:] out,
 ):
     cdef:
-        Py_ssize_t i, j
+        Py_ssize_t i, j, start
         Py_ssize_t n_xf = xf.shape[0]
 
     for i in range(n_samples):
-        start = int(round(i * step))
+        start = <Py_ssize_t>round(i * step)
         stop = start + n_window
         if stop > n_xf:
             stop = n_xf
@@ -35,10 +38,10 @@ def aggregate_right(
         FLOAT64 [:] out,
 ):
     cdef:
-        Py_ssize_t i, j
+        Py_ssize_t i, j, stop
 
     for i in range(n_samples):
-        stop = int(round(i * step)) + 1
+        stop = <Py_ssize_t>round(i * step) + 1
         start = stop - n_window
         if start < 0:
             start = 0
