@@ -5,7 +5,7 @@
 Introduction
 ============
 
-Data are represented with there primary data-objects:
+Data are represented with three primary data-objects:
 
 * :class:`Factor` for categorial variables
 * :class:`Var` for scalar variables
