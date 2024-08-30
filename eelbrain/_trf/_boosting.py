@@ -221,7 +221,7 @@ class BoostingResult(PickleableDataClass):
     # store the version of the boosting algorithm with which model was fit
     version: int = 15  # file format (updates when re-saving)
     algorithm_version: int = -1  # do not change when re-saving
-    execution_context: Dict[str, str] = None  # do not change when re-saving
+    execution_context: Dict[str, Union[str, Tuple[str, ...]]] = None  # do not change when re-saving
     # debug parameters
     y_pred: NDVar = None
     fit: Boosting = None
