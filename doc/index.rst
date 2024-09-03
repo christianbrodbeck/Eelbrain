@@ -16,7 +16,7 @@ Eelbrain |version|
 * Mass-univariate :ref:`permutation tests<examples>`
 * `Temporal Response Function <https://doi.org/10.7554/eLife.85012>`_ estimator for fitting single-trial time series models
 * :ref:`Pipeline<experiment-class-guide>` for M/EEG group level analysis
-* Interactive plots and GUIs (:func:`ICA<gui.select_components>` and :func:`trial selection<gui.select_epochs>`)
+* Interactive plots and :ref:`GUIs<ref-guis>` for ICA and trial selection
 
 
 Manual
