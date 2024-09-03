@@ -19,8 +19,12 @@ New in 0.40
 -----------
 
 * Due to a change in randomization algorithm, the permutation distribution for vector-based mass univariate tests may be different (old and new versions are both valid randomizations).
-* :func:`boosting` now accepts data with ragged trials (trials of different lengths).
-* :func:`boosting` now stores both the l1 and l2 loss of the final fit.
+* :func:`boosting`:
+
+    - Now accepts data with ragged trials (trials of different lengths).
+    - Now stores both the l1 and l2 loss of the final fit.
+    - Due to optimization, results may be numerically different
+
 * Pipeline:
 
     - :class:`pipeline.RawICA` preprocessing pipe now allows setting ``fit_kwargs``.
