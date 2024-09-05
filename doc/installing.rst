@@ -9,13 +9,13 @@ Eelbrain can be installed as pre-compiled library from `conda-forge <https://con
 
 .. code-block:: bash
 
-    $ conda install -c conda-forge eelbrain
+    $ mamba install eelbrain
 
-or:
+or with `conda`:
 
 .. code-block:: bash
 
-    $ mamba install eelbrain
+    $ conda install -c conda-forge eelbrain
 
 Alternatively, Eelbrain is also hosted on the Python Package Index (`PyPI <https://pypi.org/project/eelbrain/>`_), but installing from PyPI requires local compilation:
 
@@ -41,7 +41,7 @@ Full Setup
 
 The recommended tool for deploying Eelbrain is the `Mamba <https://mamba.readthedocs.io/en/latest/index.html>`_ package manager:
 
-1. `Install Mamba <https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html>`_.
+1. `Install Mamba <https://conda-forge.org/download/>`_.
 
 2. Create an environment containing Eelbrain along with other libraries required for a project. An example environment is provided in the `Alice <https://github.com/Eelbrain/Alice>`_ repository's `environment.yml <https://github.com/Eelbrain/Alice/blob/main/environment.yml>`_ file:
 
