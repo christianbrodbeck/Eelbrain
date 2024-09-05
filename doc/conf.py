@@ -21,10 +21,6 @@ import mne
 from sphinx_gallery.sorting import ExplicitOrder, _SortKey
 
 
-# docutils 0.14
-filterwarnings('ignore', category=DeprecationWarning)
-filterwarnings('ignore', category=FutureWarning)
-
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
