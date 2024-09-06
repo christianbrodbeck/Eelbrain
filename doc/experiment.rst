@@ -10,7 +10,7 @@ The :class:`MneExperiment` Pipeline
      - :class:`MneExperiment` class reference for details on all available methods
      - `Pipeline wiki page <https://github.com/christianbrodbeck/Eelbrain/wiki/MNE-Pipeline>`_
        for additional information
-     - `TRFExperiment <https://github.com/Eelbrain/Alice/tree/pipeline/pipeline>`_: an experimental extension of the pipeline to Temporal Response Function analysis
+     - `TRFExperiment <https://trf-tools.readthedocs.io/latest/pipeline.html>`_: an experimental extension of the pipeline to Temporal Response Function analysis
 
 .. contents:: Contents
    :local:
