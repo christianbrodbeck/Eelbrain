@@ -285,7 +285,7 @@ class MneExperiment(FileTree):
     has_edf = defaultdict(lambda: False)
 
     # Pattern for subject names when searching the data directory.
-    subject_re = r'(R|S|A|Y|AD|QP)(\d{3,})$'
+    subject_re = r'([a-zA-Z_]+)(\d+)$'
     # MEG-system (used as ``sysname`` to infer connectivity; for usage search `get_sysname`).
     meg_system = None
 

@@ -33,6 +33,7 @@ New in 0.40
 * Pipeline:
 
     - :class:`pipeline.RawICA` preprocessing pipe now allows setting ``fit_kwargs``.
+    - The default :attr:`MneExperiment.subject_re` pattern for finding subjects is now more general.
 
 * Permutation tests:
 
