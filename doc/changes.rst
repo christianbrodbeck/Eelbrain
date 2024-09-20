@@ -30,10 +30,11 @@ New in 0.40
     - Now stores both the l1 and l2 loss of the final fit.
     - Due to optimization, results may be numerically different from earlier versions.
 
+
 * Pipeline:
 
     - :class:`pipeline.RawICA` preprocessing pipe now allows setting ``fit_kwargs``.
-    - The default :attr:`MneExperiment.subject_re` pattern for finding subjects is now more general.
+    - The default :attr:`pipeline.MneExperiment.subject_re` pattern for finding subjects is now more general.
 
 * Permutation tests:
 
