@@ -18,18 +18,27 @@ Major changes
 New in 0.40
 -----------
 
-* Due to a change in randomization algorithm, the permutation distribution for vector-based mass univariate tests may be different (old and new versions are both valid randomizations).
-* :func:`boosting` now accepts data with ragged trials (trials of different lengths).
-* :func:`boosting` now stores both the l1 and l2 loss of the final fit.
-* Pipeline:
-
-    - :class:`pipeline.RawICA` preprocessing pipe now allows setting ``fit_kwargs``.
-
 * API:
 
    - Plotting parameters ``ncol`` and ``nrow`` have been renamed to ``columns`` and ``rows``.
    - :class:`Factor` cells that are not specified in ``labels`` are now ordered by their first ocurrence in ``x`` (previously order was alphabetic).
    - The ``pool_error`` argument is replaced by ``within_subject_error``.
+
+* :func:`boosting`:
+
+    - Now accepts data with ragged trials (trials of different lengths).
+    - Now stores both the l1 and l2 loss of the final fit.
+    - Due to optimization, results may be numerically different from earlier versions.
+
+
+* Pipeline:
+
+    - :class:`pipeline.RawICA` preprocessing pipe now allows setting ``fit_kwargs``.
+    - The default :attr:`pipeline.MneExperiment.subject_re` pattern for finding subjects is now more general.
+
+* Permutation tests:
+
+    - Due to a change in randomization algorithm, the permutation distribution for vector-based tests may be slightly different (old and new versions are both valid randomizations).
 
 
 New in 0.39

@@ -7,6 +7,7 @@ from .. import NDVar, UTS, gammatone_bank
 
 TEST_DATA_DIRECTORY = Path(__file__).parents[2] / 'test_data'
 
+
 def generate_sound():
     sample_rate = 44100
     duration = 2

@@ -10,7 +10,7 @@ The :class:`MneExperiment` Pipeline
      - :class:`MneExperiment` class reference for details on all available methods
      - `Pipeline wiki page <https://github.com/christianbrodbeck/Eelbrain/wiki/MNE-Pipeline>`_
        for additional information
-     - `TRFExperiment <https://github.com/Eelbrain/Alice/tree/pipeline/pipeline>`_: an experimental extension of the pipeline to Temporal Response Function analysis
+     - `TRFExperiment <https://trf-tools.readthedocs.io/latest/pipeline.html>`_: an experimental extension of the pipeline to Temporal Response Function analysis
 
 .. contents:: Contents
    :local:
@@ -472,7 +472,7 @@ Folder name for the raw data directory. By default, this is ``meg``, i.e., the e
 .. py:attribute:: MneExperiment.subject_re
    :type: str
 
-Subjects are identified on initialization by looking for folders in the data directory (``meg`` by default) whose name matches the :attr:`.MneExperiment.subject_re` regular expression. By default, this is ``'(R|A|Y|AD|QP)(\d{3,})$'``, which matches R-numbers like ``R1234``, but also numbers prefixed by ``A``, ``Y``, ``AD`` or ``QP`` (for information about how to define a different regular expression, see :mod:`re`).
+Subjects are identified on initialization by looking for folders in the :attr:`MneExperiment.data_dir` directory (``meg`` by default) whose name matches the :attr:`.MneExperiment.subject_re` regular expression. By default, this is one or more characters or underline, followed by one or more digits, for example: ``S001``, ``subject_1``, ``R0001`` (for information about how to define a different pattern, see :mod:`re`).
 
 
 Reading files

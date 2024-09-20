@@ -340,9 +340,7 @@ class RawSource(RawPipe):
         raw = self.load(subject, recording, add_bads=False)
         bad_chs = raw.info['bads']
         if flat is None:
-            # flat EEG channel is probably the reference
-            if raw.info.get_channel_types(unique=True, only_data_chs=True) != ['eeg']:
-                flat = 1e-14
+            flat = 1e-14  # May need a setting to exclude the EEG reference?
         if flat:
             sysname = self.get_sysname(raw.info, subject, None)
             raw = load.mne.raw_ndvar(raw, sysname=sysname, connectivity=self.connectivity)

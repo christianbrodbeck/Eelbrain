@@ -6,7 +6,6 @@ dependencies:
 - setuptools >=17
 - cython >=3
 - colormath >=2.1
-- docutils <0.17  # https://stackoverflow.com/a/68008428/166700
 - keyring >=5
 - matplotlib-base >=3.4
 - seaborn
@@ -25,5 +24,3 @@ dependencies:
 - scipy >=0.17
 - tqdm >=4.8
 - wxpython >=4.1.1
-- pip:
-  - scanpydoc

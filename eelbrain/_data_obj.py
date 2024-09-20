@@ -6233,7 +6233,7 @@ class Dataset(dict):
 
         Notes
         -----
-        Only includes :class:Var: and :class:`Factor` items.
+        Only includes :class:`Var` and :class:`Factor` items.
         """
         import pandas
 
@@ -6449,16 +6449,67 @@ class Dataset(dict):
         if len(names) != n_cases:
             raise ValueError(f'{names=}: {len(names)} names but {n_cases} cases')
         items = {key: combine([case[i] for case in cases], check_dims=check_dims, dim_intersection=dim_intersection, to_list=to_list) for i, key in enumerate(names)}
+
         for key in random:
             item = items[key]
             if isinstance(item, Factor):
                 item.random = True
             else:
-                raise ValueError(f"random={random}: {key!r} is not a Factor but {item}")
+                raise ValueError(f"{random=}: {key!r} is not a Factor but {item}")
         return cls(items, name, caption, info)
 
     @classmethod
-    def from_r(cls, name):
+    def from_dataframe(
+            cls,
+            df,
+            random: Union[str, Collection[str]] = None,
+            skip: Union[str, Collection[str]] = None,
+    ) -> Dataset:
+        """Create a dataset from a :class:`pandas.DataFrame`
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            The input data frame.
+        random
+            Names of the columns that should be assigned as random factor.
+        """
+        import pandas
+
+        if isinstance(random, str):
+            random = [random]
+        elif isinstance(random, Iterator):
+            random = list(random)
+        elif random is None:
+            random = []
+
+        if isinstance(skip, str):
+            skip = [skip]
+        elif isinstance(skip, Iterator):
+            skip = list(skip)
+        elif skip is None:
+            skip = []
+
+        items = {}
+        for name, item in df.items():
+            if name in skip:
+                continue
+            key = cls.as_key(name)
+            if isinstance(item, pandas.Series):
+                items[key] = Var(item, name=name)
+            elif isinstance(item, pandas.Categorical):
+                items[key] = Factor(item, name=name)
+
+        for key in random:
+            item = items[key]
+            if isinstance(item, Factor):
+                item.random = True
+            else:
+                raise ValueError(f"{random=}: {key!r} is not a Factor but {item}")
+        return cls(items)
+
+    @classmethod
+    def from_r(cls, name) -> Dataset:
         """Create a Dataset from an R data frame through ``rpy2``
 
         Parameters

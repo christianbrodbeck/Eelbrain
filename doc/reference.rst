@@ -583,9 +583,10 @@ Tools with a graphical user interface (GUI):
 Controlling the GUI Application
 ===============================
 
-Eelbrain uses a wxPython based application to create GUIs. This GUI appears as a
-separate application with its own Dock icon. The way that control
-of this GUI is managed depends on the environment form which it is invoked.
+When Eelbrain is used in a terminal (as opposed to, from a notebook),
+Eelbrain creates a `wxPython <https://wxpython.org>`_ application for graphical user interfaces (GUIs).
+This application appears as a separate icon in the Dock.
+How to control this application depends on the environment from which it is invoked.
 
 When Eelbrain plots are created from within iPython, the GUI is managed in the
 background and control returns immediately to the terminal. There might be cases

@@ -6,6 +6,7 @@ src = datasets.get_mne_sample(src='ico', sub=[0])['src']
 brain = plot.brain.brain(src.source, mask=False,hemi='lh',views='lat')
 """
 from logging import getLogger
+from typing import Optional
 
 from mayavi.core.ui.api import SceneEditor, MlabSceneModel
 import numpy as np
@@ -19,6 +20,8 @@ from .._wxgui import wx, ID, Icon
 from .._wxgui.app import get_app
 from .._wxgui.frame import EelbrainFrame
 from .._wxgui.mpl_canvas import AxisLimitsDialog, SetTimeDialog
+from ._brain_object import Brain
+
 
 SCENE_NAME = 'scene_%i'
 SURFACES = ('inflated', 'pial', 'smoothwm')
@@ -62,7 +65,18 @@ class MayaviView(HasTraits):
 class BrainFrame(EelbrainFrame):
     _allow_user_set_title = True
 
-    def __init__(self, parent, brain, title, width, height, n_rows, n_columns, surf, pos):
+    def __init__(
+            self,
+            parent: Optional[wx.Window],
+            brain: Brain,
+            title: str,
+            width: int,
+            height: int,
+            n_rows: int,
+            n_columns: int,
+            surf: str,
+            pos: wx.Position = None,
+    ):
         pos_ = wx.DefaultPosition if pos is None else pos
         EelbrainFrame.__init__(self, parent, wx.ID_ANY, f"Brain: {title}", pos_)
 
@@ -226,6 +240,8 @@ class BrainFrame(EelbrainFrame):
         for row, view in zip(self._brain.brain_matrix, views):
             for b in row:
                 b.show_view(view)
+        # Re-adjust position to account for mayavi bug
+        self._brain.set_parallel_view(scale=True)
 
     def OnSetVLim(self, event):
         vlim = self._brain.get_vlim()

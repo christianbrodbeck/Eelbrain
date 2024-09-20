@@ -1,5 +1,4 @@
-from pathlib import Path
-
+"""Requires test data at root/test_data: gammatone.pickle, gammatone-left.pickle"""
 import pytest
 
 from eelbrain import load, gammatone_bank

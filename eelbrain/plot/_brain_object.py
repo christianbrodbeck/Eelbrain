@@ -1080,12 +1080,16 @@ class Brain(TimeSlicer, surfer.Brain):
                 i += 1
 
         if position_bug:
-            if self.hemi == 'rh':
-                rh = self.brains[0]
-                rh._geo_surf.actor.actor.position = [0, 57, 47]
+            fig = self._figures[0][0]
+            is_rh = self.hemi == 'rh'
+            if is_rh:
+                is_lateral = mlab.view(figure=fig)[0] < 90
             else:
-                lh = self.brains[0]
-                lh._geo_surf.actor.actor.position = [0, -57, 47]
+                is_lateral = mlab.view(figure=fig)[0] > 90
+            if is_rh == is_lateral:
+                mlab.view(focalpoint=(0, -57, -47), figure=fig)
+            else:
+                mlab.view(focalpoint=(0, 57, -47), figure=fig)
 
     def set_size(self, width, height):
         """Set image size in pixels"""
