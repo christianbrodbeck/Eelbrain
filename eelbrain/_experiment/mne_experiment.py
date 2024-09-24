@@ -419,14 +419,14 @@ class MneExperiment(FileTree):
             'evoked-file': join('{evoked-dir}', '{subject}', '{sns_kind} {evoked_desc}-ave.fif'),
 
             # forward modeling:
-            'fwd-file': join('{raw-cache-dir}', '{recording}-{mrisubject}-{src}-fwd.fif'),
+            'fwd-file': join('{raw-cache-dir}', '{recording}-{mrisubject}-{fwd_kind}-fwd.fif'),
             # sensor covariance
             'cov-dir': join('{cache-dir}', 'cov'),
             'cov-base': join('{cov-dir}', '{subject_visit}', '{sns_kind} {cov}-{rej}'),
             'cov-file': '{cov-base}-cov.fif',
             'cov-info-file': '{cov-base}-info.txt',
             # inverse solution
-            'inv-file': join('{raw-cache-dir}', 'inv', '{mrisubject} {src} {recording} {inv_kind}-inv.fif'),
+            'inv-file': join('{raw-cache-dir}', 'inv', '{mrisubject} {fwd_kind} {recording} {inv_kind}-inv.fif'),
             # MRIs
             'common_brain': 'fsaverage',
             # MRI base files
@@ -434,9 +434,6 @@ class MneExperiment(FileTree):
             'bem-dir': join('{mri-dir}', 'bem'),
             'mri-cfg-file': join('{mri-dir}', 'MRI scaling parameters.cfg'),
             'mri-file': join('{mri-dir}', 'mri', 'orig.mgz'),
-            'bem-file': join('{bem-dir}', '{mrisubject}-inner_skull-bem.fif'),
-            'bem-sol-file': join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),  # removed for 0.24
-            'head-bem-file': join('{bem-dir}', '{mrisubject}-head.fif'),
             'src-file': join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
             'fiducials-file': join('{bem-dir}', '{mrisubject}-fiducials.fif'),
             # Morphing
@@ -647,6 +644,7 @@ class MneExperiment(FileTree):
             default_cov = 'bestreg'
         else:
             default_cov = None
+        self._register_field('bem', ('', '3layer'), '', allow_empty=True)
         self._register_field('cov', sorted(self._covs), default_cov)
         self._register_field('inv', default='free-3-dSPM', eval_handler=self._eval_inv)
         self._register_field('model', eval_handler=self._eval_model)
@@ -659,8 +657,8 @@ class MneExperiment(FileTree):
 
         # slave fields
         self._register_field('mrisubject', depends_on=('mri', 'subject'), slave_handler=self._update_mrisubject, repr=False)
-        self._register_field('src-name', depends_on=('src',), slave_handler=self._update_src_name, repr=False)
-        self._register_field('inv-cache', depends_on='inv', slave_handler=self._update_inv_cache, repr=False)
+        self._register_field('src-name', depends_on=('src',), slave_handler=self._update_src_name, repr=False)  # ico-4 is omitted
+        self._register_field('inv-cache', depends_on='inv', slave_handler=self._update_inv_cache, repr=False)  # Subset of inv that affect the cached solution
 
         # fields used internally
         self._register_field('analysis', repr=False)
@@ -672,9 +670,11 @@ class MneExperiment(FileTree):
         self._register_field('test_dims', repr=False)
 
         # compounds
+        self._register_compound('fwd_kind', ('src', 'bem'))
+        self._register_compound('fwd_kind-name', ('src-name', 'bem'))
         self._register_compound('sns_kind', ('raw',))
         self._register_compound('inv_kind', ('sns_kind', 'cov', 'rej', 'inv-cache'))
-        self._register_compound('src_kind', ('sns_kind', 'cov', 'mri', 'src-name', 'inv'))
+        self._register_compound('src_kind', ('sns_kind', 'cov', 'mri', 'fwd_kind-name', 'inv'))
         self._register_compound('recording', ('session', 'visit'))
         self._register_compound('subject_visit', ('subject', 'visit'))
         self._register_compound('mrisubject_visit', ('mrisubject', 'visit'))
@@ -2058,8 +2058,16 @@ class MneExperiment(FileTree):
 
     def _load_bem(self):
         subject = self.get('mrisubject')
+        bem_dir = Path(self.get('bem-dir'))
+        if self.get('bem') == '3layer':
+            bem_name = '5120-5120-5120'
+            conductivity = (0.3, 0.006, 0.3)
+        else:
+            bem_name = 'inner_skull'
+            conductivity = (0.3,)
+
         if subject == 'fsaverage' or is_fake_mri(self.get('mri-dir')):
-            return mne.read_bem_surfaces(self.get('bem-file'))
+            return mne.read_bem_surfaces(bem_dir / f'{subject}-{bem_name}-bem.fif')
         else:
             bem_dir = self.get('bem-dir')
             surfs = ('brain', 'inner_skull', 'outer_skull', 'outer_skin')
@@ -2070,7 +2078,6 @@ class MneExperiment(FileTree):
                     path = paths[surf]
                     if os.path.islink(path):
                         # try to fix broken symlinks
-                        bem_dir = Path(self.get('bem-dir'))
                         new_target = Path('watershed') / f'{subject}_{surf}_surface'
                         if (bem_dir / new_target).exists():
                             self._log.info("Fixing broken symlink for %s %s surface file", subject, surf)
@@ -2086,7 +2093,7 @@ class MneExperiment(FileTree):
                     os.environ['FREESURFER_HOME'] = subp.get_fs_home()
                     mne.bem.make_watershed_bem(subject, self.get('mri-sdir'), overwrite=True)
 
-            return mne.make_bem_model(subject, conductivity=(0.3,), subjects_dir=self.get('mri-sdir'))
+            return mne.make_bem_model(subject, conductivity=conductivity, subjects_dir=self.get('mri-sdir'))
 
     def load_cov(self, **kwargs):
         """Load the covariance matrix
@@ -4421,6 +4428,7 @@ class MneExperiment(FileTree):
         src = mne.read_source_spaces(src)
         self._log.debug(f"make_fwd {basename(dst)}...")
         if self.get('mrisubject') == 'fsaverage':
+            # This ignores the bem setting; the pre-computed solution is 3-layer
             bemsol = join(self.get('mri-dir'), 'bem', 'fsaverage-5120-5120-5120-bem-sol.fif')
         else:
             bem = self._load_bem()
@@ -5713,7 +5721,8 @@ class MneExperiment(FileTree):
             self._log.info(f"Generating {src} source space for {subject}...")
             if kind == 'vol':
                 if subject == 'fsaverage':
-                    bem = self.get('bem-file')
+                    bem_dir = Path(self.get('bem-dir'))
+                    bem = bem_dir / f'{subject}-inner_skull-bem.fif'
                 else:
                     raise NotImplementedError("Volume source space for subject other than fsaverage")
                 if special == 'brainstem':

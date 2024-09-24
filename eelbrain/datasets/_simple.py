@@ -596,6 +596,7 @@ def setup_samples_experiment(
         # copy rudimentary fsaverage
         surf_names = ['inflated', 'white', 'orig', 'orig_avg', 'curv', 'sphere']
         files = {
+            'bem': ['fsaverage-head.fif', 'fsaverage-5120-5120-5120-bem.fif'],
             'bem': ['fsaverage-head.fif', 'fsaverage-inner_skull-bem.fif'],
             'label': ['lh.aparc.annot', 'rh.aparc.annot'],
             'surf': [f'{hemi}.{name}' for hemi, name in product(['lh', 'rh'], surf_names)],
