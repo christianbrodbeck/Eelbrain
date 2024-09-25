@@ -10,7 +10,7 @@ import re
 import shutil
 import subprocess
 from time import localtime, strftime
-from typing import List
+from typing import Callable, List, Sequence
 import traceback
 
 import numpy as np
@@ -260,10 +260,19 @@ class TreeModel:
             raise ValueError(f"The {key!r} field needs to be set as default")
         self._fields[key] = value
 
-    def _register_field(self, key, values=None, default=None, set_handler=None,
-                        eval_handler=None, post_set_handler=None,
-                        depends_on=None, slave_handler=None,
-                        allow_empty=False, repr=None):
+    def _register_field(
+            self,
+            key: str,
+            values: Sequence[str] = None,
+            default: str = None,
+            set_handler: Callable = None,
+            eval_handler: Callable = None,
+            post_set_handler=None,
+            depends_on: Sequence[str] = None,
+            slave_handler: Callable = None,
+            allow_empty: bool = False,
+            repr: bool = None,
+    ):
         """Register an iterable field
 
         Parameters
