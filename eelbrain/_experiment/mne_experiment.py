@@ -644,7 +644,7 @@ class MneExperiment(FileTree):
             default_cov = 'bestreg'
         else:
             default_cov = None
-        self._register_field('bem', ('', '3l'), '', allow_empty=True)
+        self._register_field('bem', ('', '3layer'), '', allow_empty=True)
         self._register_field('cov', sorted(self._covs), default_cov)
         self._register_field('inv', default='free-3-dSPM', eval_handler=self._eval_inv)
         self._register_field('model', eval_handler=self._eval_model)
@@ -2059,7 +2059,7 @@ class MneExperiment(FileTree):
     def _load_bem(self):
         subject = self.get('mrisubject')
         bem_dir = Path(self.get('bem-dir'))
-        if self.get('bem') == '3l':
+        if self.get('bem') == '3layer':
             bem_name = '5120-5120-5120'
             conductivity = (0.3, 0.006, 0.3)
         else:
