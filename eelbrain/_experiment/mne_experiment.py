@@ -5284,8 +5284,7 @@ class MneExperiment(FileTree):
         if samples < 1:
             raise ValueError("Need samples > 0 to run permutation test.")
         elif isinstance(test_obj, TwoStageTest):
-            raise NotImplementedError("ROI analysis not implemented for two-"
-                                      "stage tests")
+            raise NotImplementedError("ROI analysis not implemented for two-stage tests")
 
         if parc is not None:
             state['parc'] = parc
@@ -5507,10 +5506,7 @@ class MneExperiment(FileTree):
                 n_ds = ds
             n_ds_aligned = align1(n_ds, s_ds['subject'], 'subject')
             s_ds.update(n_ds_aligned)
-        return s_ds.as_table(
-            midrule=True, count=True,
-            caption="All subjects included in the analysis with trials per "
-                    "condition")
+        return s_ds.as_table(midrule=True, count=True, caption="All subjects included in the analysis with trials per condition")
 
     def _report_test_info(self, section, ds, test, res, data, include=None, model=True):
         """Top-level report info function
