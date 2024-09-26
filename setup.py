@@ -8,7 +8,7 @@ from setuptools import setup, find_packages, Extension
 
 import numpy as np
 
-# Distributing Cython modules
+# Source distribution includes C code to allow installing without Cython
 # https://cython.readthedocs.io/en/stable/src/userguide/source_files_and_compilation.html#distributing-cython-modules
 try:
     from Cython.Build import cythonize
