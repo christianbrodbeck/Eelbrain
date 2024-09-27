@@ -408,7 +408,7 @@ def rtest_r(p, df):
 
 
 def ttest_p(t, df, tail=0):
-    """Two tailed probability
+    """Two-tailed probability
 
     Parameters
     ----------
@@ -428,7 +428,7 @@ def ttest_p(t, df, tail=0):
     elif tail == -1:
         t = -t
     elif tail != 1:
-        raise ValueError("tail=%r" % tail)
+        raise ValueError(f"{tail=}")
     p = scipy.stats.t.sf(t, df)
     if tail == 0:
         p *= 2
