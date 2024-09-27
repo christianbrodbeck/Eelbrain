@@ -41,7 +41,6 @@ def _visit(recording: str) -> str:
 
 
 class RawPipe:
-
     name: str = None  # set on linking
     path: str = None
     root: str = None
@@ -250,7 +249,7 @@ class RawSource(RawPipe):
         if self.connectivity is not None:
             out['connectivity'] = self.connectivity
         return out
-    
+
     def _load(self, subject, recording, preload):
         path = self.path.format(root=self.root, subject=subject, recording=recording)
         raw = self.reader(path, preload=preload, **self._read_raw_kwargs)
@@ -359,7 +358,6 @@ class RawSource(RawPipe):
 
 
 class CachedRawPipe(RawPipe):
-
     _bad_chs_affect_cache: bool = False
     source: RawPipe = None  # set on linking
 
@@ -797,7 +795,7 @@ class RawICA(CachedRawPipe):
         ica.apply(raw)
         return raw
 
-    def mtime(self, subject: str, recording: str, bad_chs: bool=True):
+    def mtime(self, subject: str, recording: str, bad_chs: bool = True):
         mtime = CachedRawPipe.mtime(self, subject, recording, bad_chs or self._bad_chs_affect_cache)
         if mtime:
             path = self._ica_path(subject, recording=recording)

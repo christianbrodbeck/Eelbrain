@@ -49,8 +49,6 @@ def gammatone_bank(
         Since gammatone filter response depends on ``integration_window``, the
         filter response will be delayed relative to the analytic envelope. To
         prevent this delay, use `location='left'`
-    pad
-        Pad output to match time axis of input.
     name
         NDVar name (default is ``wav.name``).
 
