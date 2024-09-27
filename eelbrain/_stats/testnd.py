@@ -1858,7 +1858,7 @@ class ANOVA(MultiEffectNDTest):
             raise ValueError("Only one of pmin, fmin and tfce can be specified")
         else:
             if pmin is not None:
-                thresholds = [stats.ftest_f(pmin, e.df, df_den) for e, df_den in zip(effects, dfs_denom)]
+                thresholds = [scipy.stats.f.isf(pmin, e.df, df_den) for e, df_den in zip(effects, dfs_denom)]
             elif fmin is not None:
                 thresholds = tuple(repeat(abs(fmin), len(effects)))
             else:
@@ -1913,10 +1913,9 @@ class ANOVA(MultiEffectNDTest):
         pmin = self.pmin or 0.05
         if self.samples:
             f_and_clusters = []
-            for e, fmap, df_den, cdist in zip(self._effects, self.f,
-                                               self._dfs_denom, self._cdist):
+            for e, fmap, df_den, cdist in zip(self._effects, self.f, self._dfs_denom, self._cdist):
                 # create f-map with cluster threshold
-                f0 = stats.ftest_f(pmin, e.df, df_den)
+                f0 = scipy.stats.f.isf(pmin, e.df, df_den)
                 info = _info.for_stat_map('f', f0)
                 f_ = NDVar(fmap.x, fmap.dims, e.name, info)
                 # add overlay with cluster
@@ -1930,7 +1929,7 @@ class ANOVA(MultiEffectNDTest):
         p_uncorr = []
         for e, f, df_den in zip(self._effects, self.f, self._dfs_denom):
             info = _info.for_p_map()
-            pmap = stats.ftest_p(f.x, e.df, df_den)
+            pmap = scipy.stats.f.sf(f.x, e.df, df_den)
             p_ = NDVar(pmap, f.dims, e.name, info)
             p_uncorr.append(p_)
         self.p_uncorrected = p_uncorr
