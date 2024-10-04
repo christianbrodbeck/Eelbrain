@@ -149,14 +149,16 @@ class RawSource(RawPipe):
     connectivity
         Connectivity between sensors. Can be specified as:
 
+        - ``'auto'`` to use :func:`mne.channels.find_ch_adjacency`
+        - Pre-defined connectivity (one of :func:`mne.channels.get_builtin_ch_adjacencies`)
+        - Path to load connectivity from a file
+        - ``"none"`` for no connections
+        - ``"grid"`` for grid connections
         - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
         - :class:`numpy.ndarray` of int, shape (n_edges, 2), to specify
           connections in terms of indices. Each row should specify one
           connection [i, j] with i < j. If the array's dtype is uint32,
           property checks are disabled to improve efficiency.
-        - ``'auto'`` to use :func:`mne.channels.find_ch_adjacency`
-        - Path object to load connectivity from a file
-        - ``"none"`` for no connections
 
         If unspecified, it is inferred from ``sysname`` if possible.
     ...
@@ -207,6 +209,9 @@ class RawSource(RawPipe):
             **kwargs,
     ):
         RawPipe.__init__(self)
+        if isinstance(connectivity, str):
+            if connectivity not in ('auto', 'grid', 'none') and connectivity not in mne.channels.get_builtin_ch_adjacencies():
+                connectivity = Path(connectivity)
         if isinstance(connectivity, Path):
             connectivity = read_connectivity(connectivity)
         self.filename = typed_arg(filename, str)
