@@ -595,7 +595,7 @@ def morph_source_space(
         x = x.reshape((n_sources, -1))
 
     # apply morph matrix
-    x_m = morph_mat * x
+    x_m = morph_mat.dot(x)
 
     # restore data shape
     if ndvar.ndim > 2:
