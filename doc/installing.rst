@@ -2,6 +2,10 @@
 Installing
 **********
 
+.. contents:: Contents
+   :local:
+
+
 Basic Installation
 ------------------
 
@@ -88,3 +92,15 @@ Sometimes Mamba may run into difficulties while updating and it may be easier to
 
 .. SEEALSO::
     Mamba is an extension of `Conda <https://conda.io/projects/conda/en/latest/user-guide/getting-started.html>`_. The Conda documentation provides more information on `environments <https://conda.io/docs/user-guide/tasks/manage-environments.html>`_.
+
+
+Making your analysis future-proof
+---------------------------------
+
+Newer version of Eelbrain support files generated with previous versions.
+However, running the same code with different versions can lead to slightly different results.
+This does not just apply to Eelbrain, but equally to the libraries it relies on like NumPy and MNE-Python, and happens for example when underlying implementations change, which can lead to different rounding errors.
+These changes should be very small, but they can sometimes change a p-value slightly, so it might be undesirable when revisiting at a previously finished analysis.
+In order to be able to replicate results exactly in the future, it might be useful to keep a
+`record <https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#building-identical-conda-environments>`_
+of the environment with which the analysis was done.

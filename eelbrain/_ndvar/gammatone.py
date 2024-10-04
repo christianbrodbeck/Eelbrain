@@ -49,25 +49,21 @@ def gammatone_bank(
         Since gammatone filter response depends on ``integration_window``, the
         filter response will be delayed relative to the analytic envelope. To
         prevent this delay, use `location='left'`
-    pad
-        Pad output to match time axis of input.
     name
         NDVar name (default is ``wav.name``).
 
     Notes
     -----
-    This function uses the `<https://github.com/detly/gammatone>` library, which
-    is a Python port of Malcolm Slaney's and Dan Ellis' MATLAB gammatone
-    filterbank.
-    It requires the ``fmax`` bug-fix branch, which can be instaled with:
+    This function uses the `Gammatone <https://github.com/Lightning-Sandbox/gammatone>`_
+    library, which can be instaled with:
 
-        $ pip install https://github.com/christianbrodbeck/gammatone/archive/fmax.zip
+        $ pip install gammatone
     """
     try:
         from gammatone.filters import centre_freqs, erb_filterbank
         from gammatone.gtgram import make_erb_filters
     except ModuleNotFoundError:
-        raise ModuleNotFoundError("gammatone module not installed. Install using:\n\n  $ pip install https://github.com/christianbrodbeck/gammatone/archive/fmax.zip")
+        raise ModuleNotFoundError("gammatone module not installed. Install using:\n\n  $ pip install gammatone")
 
     assert location in ('left', 'right')
     fs = 1 / wav.time.tstep

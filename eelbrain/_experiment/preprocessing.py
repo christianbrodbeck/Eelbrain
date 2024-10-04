@@ -41,7 +41,6 @@ def _visit(recording: str) -> str:
 
 
 class RawPipe:
-
     name: str = None  # set on linking
     path: str = None
     root: str = None
@@ -150,14 +149,16 @@ class RawSource(RawPipe):
     connectivity
         Connectivity between sensors. Can be specified as:
 
+        - ``'auto'`` to use :func:`mne.channels.find_ch_adjacency`
+        - Pre-defined connectivity (one of :func:`mne.channels.get_builtin_ch_adjacencies`)
+        - Path to load connectivity from a file
+        - ``"none"`` for no connections
+        - ``"grid"`` for grid connections
         - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
         - :class:`numpy.ndarray` of int, shape (n_edges, 2), to specify
           connections in terms of indices. Each row should specify one
           connection [i, j] with i < j. If the array's dtype is uint32,
           property checks are disabled to improve efficiency.
-        - ``'auto'`` to use :func:`mne.channels.find_ch_adjacency`
-        - Path object to load connectivity from a file
-        - ``"none"`` for no connections
 
         If unspecified, it is inferred from ``sysname`` if possible.
     ...
@@ -208,6 +209,9 @@ class RawSource(RawPipe):
             **kwargs,
     ):
         RawPipe.__init__(self)
+        if isinstance(connectivity, str):
+            if connectivity not in ('auto', 'grid', 'none') and connectivity not in mne.channels.get_builtin_ch_adjacencies():
+                connectivity = Path(connectivity)
         if isinstance(connectivity, Path):
             connectivity = read_connectivity(connectivity)
         self.filename = typed_arg(filename, str)
@@ -250,7 +254,7 @@ class RawSource(RawPipe):
         if self.connectivity is not None:
             out['connectivity'] = self.connectivity
         return out
-    
+
     def _load(self, subject, recording, preload):
         path = self.path.format(root=self.root, subject=subject, recording=recording)
         raw = self.reader(path, preload=preload, **self._read_raw_kwargs)
@@ -322,7 +326,7 @@ class RawSource(RawPipe):
         if isinstance(bad_chs, (str, int)):
             bad_chs = (bad_chs,)
         raw = self.load(subject, recording, add_bads=False)
-        sensor = load.mne.sensor_dim(raw)
+        sensor = load.mne.sensor_dim(raw.info, connectivity=self.connectivity)
         new_bads = sensor._normalize_sensor_names(bad_chs)
         # update with old bad channels
         if old_bads is not None and not redo:
@@ -359,7 +363,6 @@ class RawSource(RawPipe):
 
 
 class CachedRawPipe(RawPipe):
-
     _bad_chs_affect_cache: bool = False
     source: RawPipe = None  # set on linking
 
@@ -797,7 +800,7 @@ class RawICA(CachedRawPipe):
         ica.apply(raw)
         return raw
 
-    def mtime(self, subject: str, recording: str, bad_chs: bool=True):
+    def mtime(self, subject: str, recording: str, bad_chs: bool = True):
         mtime = CachedRawPipe.mtime(self, subject, recording, bad_chs or self._bad_chs_affect_cache)
         if mtime:
             path = self._ica_path(subject, recording=recording)
