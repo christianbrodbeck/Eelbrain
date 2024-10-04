@@ -321,7 +321,7 @@ class RawSource(RawPipe):
         if isinstance(bad_chs, (str, int)):
             bad_chs = (bad_chs,)
         raw = self.load(subject, recording, add_bads=False)
-        sensor = load.mne.sensor_dim(raw)
+        sensor = load.mne.sensor_dim(raw.info, connectivity=self.connectivity)
         new_bads = sensor._normalize_sensor_names(bad_chs)
         # update with old bad channels
         if old_bads is not None and not redo:
