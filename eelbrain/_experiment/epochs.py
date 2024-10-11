@@ -216,6 +216,11 @@ class PrimaryEpoch(Epoch):
     Based on multiple categorial labels::
 
         PrimaryEpoch('session', "variable.isin(['label1', 'label2'])")
+
+    Based on multiple categorial variables::
+
+        PrimaryEpoch('session', "(variable == 'label') & (other_variable == 'other_label)")
+
     """
     DICT_ATTRS = Epoch.DICT_ATTRS + ('sel',)
 

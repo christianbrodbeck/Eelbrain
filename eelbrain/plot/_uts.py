@@ -288,29 +288,39 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             dy: float = None,
             **kwargs,
     ):
-        """Add clusters from a cluster test to the plot (as shaded area).
+        """Add clusters from a cluster test to the plot.
 
         Parameters
         ----------
         clusters
-            The clusters, as stored in test results' :py:attr:`.clusters`.
+            A dataset with the clusters to visualize.
+            Uses the format of clusters stored in test results'
+            :py:attr:`.clusters`.
+            This should include at least ``tstart`` and ``tstop`` columns.
+            It can also optionally contain an ``effect`` column to use different
+            ``color`` and ``y`` levels for different types of clusters.
             Use ``None`` to remove the clusters plotted on a given axis.
         pmax
             Only plot clusters with ``p <= pmax``.
         ptrend
             Maximum p-value of clusters to plot as trend.
         color : matplotlib color | dict
-            Color for the clusters, or a ``{effect: color}`` dict.
+            Color for the clusters, or a ``{effect: color}`` dictionary.
         ax : None | int
             Index of the axes to which the clusters are to be added. If None,
             add the clusters to all axes.
         y
-            Y level at which to plot clusters (default is boxes spanning the
-            whole y-axis).
+            Visualize clusters as horizontal bars at specific ``y`` levels in
+            the plot (default is shaded boxes spanning the whole y-axis).
+            As with ``color``, this can be an ``{effect: y}`` dictionary.
         dy
-            Height of bars.
+            Height of the bars when using ``y``.
         ...
             Additional arguments for the matplotlib artists (e.g., ``zorder``).
+
+        Notes
+        -----
+        Previously added clusters will be removed.
         """
         axes = range(len(self.axes)) if ax is None else [ax]
 
