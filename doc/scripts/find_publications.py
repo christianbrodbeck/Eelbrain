@@ -156,14 +156,27 @@ def download():
         else:
             print(f"BibTeX link not found in:\n{r.content.decode()}")
             break
-        r = requests.get(bibtex_url)
-        if r.status_code == 403:
-            print(f"Error 403:\n{r.content.decode()}\n")
+
+        wait_hours = 0
+        while True:
+            r = requests.get(bibtex_url)
+            if r.status_code == 403:
+                print(f"Error 403:\n{r.content.decode()}\n")
+                wait_hours += 1
+                base = wait_hours * 60
+                sleep_time = random.uniform(base + 5.432, base + 65.476)
+                print(f"sleeping for {sleep_time/60:.0f} minutes")
+                time.sleep(sleep_time)
+                continue
             break
         print(result_id, end=' - ')
         bibtex_cache[result_id] = r.content
         new += 1
-        sleep_time = random.uniform(5.432, 65.476)
+        if new % 2:
+            sleep_time = random.uniform(5.432, 65.476)
+        else:
+            base = 60*60
+            sleep_time = random.uniform(base + 5.432, base + 335.476)
         print(f"sleeping for {sleep_time:.0f} seconds")
         time.sleep(sleep_time)
     if not new:
