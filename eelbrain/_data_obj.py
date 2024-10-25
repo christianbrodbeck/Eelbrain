@@ -9131,6 +9131,8 @@ class Sensor(Dimension):
         n = len(locs)
         if locs.shape != (n, 3):
             raise ValueError(f"locs needs to have shape (n_sensors, 3), got {locs.shape=}")
+        elif np.isnan(locs).any():
+            raise ValueError("locs contain NaN values")
         self.sysname = sysname
         self.default_proj2d = self._interpret_proj(proj2d)
 
