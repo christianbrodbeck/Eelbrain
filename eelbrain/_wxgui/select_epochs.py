@@ -870,7 +870,7 @@ class Frame(FileFrame):
                 desc = "Epoch %i %s" % (idx, state)
                 self.model.set_case(idx, state, tag, desc)
             elif ax.ax_idx == TOPO_PLOT:
-                ch_locs = self._topo_plot.sensors.locs
+                ch_locs = self._topo_plot.sensors.locations
                 sensor_i = np.argmin(cdist(ch_locs, [[event.xdata, event.ydata]]))
                 sensor = self._topo_plot.sensors.sensors.names[sensor_i]
                 if sensor in self._mark:

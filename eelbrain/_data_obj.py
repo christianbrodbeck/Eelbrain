@@ -135,7 +135,7 @@ from ._exceptions import DimensionMismatchError, EvalError, IncompleteModel
 from ._data_opt import gaussian_smoother
 from ._text import enumeration
 from ._types import PathArg
-from ._utils import mne_utils, intervals, ui, n_decimals, natsorted
+from ._utils import deprecated, mne_utils, intervals, ui, n_decimals, natsorted
 from ._utils.numpy_utils import (
     INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
     aslice, apply_numpy_index, deep_array, digitize_index, digitize_slice_endpoint,
@@ -9058,15 +9058,15 @@ class Sensor(Dimension):
 
     Parameters
     ----------
-    locs : array_like  (n_sensor, 3)
+    locations : array_like  (n_sensor, 3)
         list of sensor locations in ALS coordinates, i.e., for each sensor a
         ``(anterior, left, superior)`` coordinate triplet.
-    names : list of str
+    names
         Sensor names, same order as ``locs`` (default is ``['0', '1', '2',
         ...]``).
-    sysname : str
+    sysname
         Name of the sensor system.
-    proj2d : str
+    proj2d
         Default 2d projection (default is ``'z-root'``; for options see notes
         below).
     connectivity : str | list of (str, str) | array of int, (n_edges, 2)
@@ -9084,7 +9084,7 @@ class Sensor(Dimension):
     ----------
     channel_idx : dict
         Dictionary mapping channel names to indexes.
-    locs : array  (n_sensors, 3)
+    locations : array  (n_sensors, 3)
         Spatial position of all sensors.
     names : list of str
         Ordered list of sensor names.
@@ -9111,27 +9111,27 @@ class Sensor(Dimension):
 
     Examples
     --------
-    >>> locs = [(0,  0,   0),
-    ...         (0, -.25, -.45)]
-    >>> sensor_dim = Sensor(locs, names=["Cz", "Pz"])
+    >>> locations = [(0,  0,   0),
+    ...              (0, -.25, -.45)]
+    >>> sensor_dim = Sensor(locations, names=["Cz", "Pz"])
     """
     _default_connectivity = 'custom'
     _proj_aliases = {'left': 'x-', 'right': 'x+', 'back': 'y-', 'front': 'y+', 'top': 'z+', 'bottom': 'z-'}
 
     def __init__(
             self,
-            locs: Sequence,
+            locations: Sequence,
             names: Sequence[str] = None,
             sysname: str = None,
             proj2d: str = 'z root',
             connectivity: Union[str, Sequence] = 'none',
     ):
         # 'z root' transformation fails with 32-bit floats
-        self.locs = locs = np.asarray(locs, dtype=np.float64)
-        n = len(locs)
-        if locs.shape != (n, 3):
-            raise ValueError(f"locs needs to have shape (n_sensors, 3), got {locs.shape=}")
-        elif np.isnan(locs).any():
+        self.locations = locations = np.asarray(locations, dtype=np.float64)
+        n = len(locations)
+        if locations.shape != (n, 3):
+            raise ValueError(f"locs needs to have shape (n_sensors, 3), got {locations.shape=}")
+        elif np.isnan(locations).any():
             raise ValueError("locs contain NaN values")
         self.sysname = sysname
         self.default_proj2d = self._interpret_proj(proj2d)
@@ -9144,6 +9144,11 @@ class Sensor(Dimension):
         Dimension.__init__(self, 'sensor', connectivity)
         self._init_secondary()
 
+    @cached_property
+    @deprecated('0.42', 'use .locations instead')
+    def locs(self):
+        return self.locations
+
     def _coerce_connectivity(self, connectivity):
         if isinstance(connectivity[0][0], str):
             return connectivity_from_name_pairs(connectivity, self.names, allow_missing=True)
@@ -9151,9 +9156,9 @@ class Sensor(Dimension):
             return Dimension._coerce_connectivity(self, connectivity)
 
     def _init_secondary(self):
-        self.x = self.locs[:, 0]
-        self.y = self.locs[:, 1]
-        self.z = self.locs[:, 2]
+        self.x = self.locations[:, 0]
+        self.y = self.locations[:, 1]
+        self.z = self.locations[:, 2]
 
         self.channel_idx = {name: i for i, name in enumerate(self.names)}
         # short names
@@ -9168,8 +9173,7 @@ class Sensor(Dimension):
 
     def __getstate__(self):
         out = Dimension.__getstate__(self)
-        out.update(proj2d=self.default_proj2d, locs=self.locs, names=self.names,
-                   sysname=self.sysname)
+        out.update(proj2d=self.default_proj2d, locs=self.locations, names=self.names, sysname=self.sysname)
         return out
 
     def __setstate__(self, state):
@@ -9177,7 +9181,7 @@ class Sensor(Dimension):
             state['name'] = 'sensor'
             state['connectivity_type'] = 'custom'
         Dimension.__setstate__(self, state)
-        self.locs = state['locs']
+        self.locations = state['locs']
         self.names = state['names']
         self.sysname = state['sysname']
         self.default_proj2d = state['proj2d']
@@ -9187,7 +9191,7 @@ class Sensor(Dimension):
         return "<Sensor n=%i, name=%r>" % (len(self), self.sysname)
 
     def __len__(self):
-        return len(self.locs)
+        return len(self.locations)
 
     def _eq(self, other, check: bool):  # Based on equality of sensor names
         return Dimension._eq(self, other, check) and np.all(other.names == self.names)
@@ -9196,7 +9200,7 @@ class Sensor(Dimension):
         if np.isscalar(index):
             return self.names[index]
         else:
-            return Sensor(self.locs[index], self.names[index], self.sysname,
+            return Sensor(self.locations[index], self.names[index], self.sysname,
                           self.default_proj2d, self._subgraph(index))
 
     def _as_uv(self):
@@ -9257,7 +9261,7 @@ class Sensor(Dimension):
             return Dimension._dim_index(self, index)
 
     def _distances(self):
-        return squareform(pdist(self.locs))
+        return squareform(pdist(self.locations))
 
     def _generate_connectivity(self):
         raise RuntimeError("Sensor connectivity is not defined. Use Sensor.set_connectivity().")
@@ -9441,13 +9445,13 @@ class Sensor(Dimension):
             Radius and center (r, cx, cy, cz).
         """
         # initial guess of sphere parameters (radius and center)
-        center_0 = np.mean(self.locs, 0)
-        radius_0 = np.mean(np.sqrt(np.sum((self.locs - center_0) ** 2, axis=1)))
+        center_0 = np.mean(self.locations, 0)
+        radius_0 = np.mean(np.sqrt(np.sum((self.locations - center_0) ** 2, axis=1)))
         # error function
         if len(self) >= 6:
             def err(params):
                 # params: [cx, cy, cz, rx, ry, rz]
-                centered = self.locs - params[:3]  # -> c=0
+                centered = self.locations - params[:3]  # -> c=0
                 centered /= params[3:]  # -> r=1
                 centered **= 2
                 length = np.sum(centered, 1)
@@ -9457,7 +9461,7 @@ class Sensor(Dimension):
         else:
             def err(params):
                 # params: [cx, cy, cz, r]
-                centered = self.locs - params[:3]  # -> c=0
+                centered = self.locations - params[:3]  # -> c=0
                 centered **= 2
                 length = np.sum(centered, 1)
                 length -= params[3]
@@ -9477,7 +9481,7 @@ class Sensor(Dimension):
         if proj in ('cone', 'lower cone', 'z root'):
             # center the sensor locations based on the sphere and scale to radius 1
             center, radius = self._sphere_fit
-            locs3d = self.locs - center
+            locs3d = self.locations - center
             locs3d /= radius
 
             # implement projection
@@ -9504,15 +9508,15 @@ class Sensor(Dimension):
             if match:
                 ax, sign = match.groups()
                 if ax == 'x':
-                    locs2d = np.copy(self.locs[:, 1:])
+                    locs2d = np.copy(self.locations[:, 1:])
                     if sign == '-':
                         locs2d[:, 0] *= -1
                 elif ax == 'y':
-                    locs2d = np.copy(self.locs[:, [0, 2]])
+                    locs2d = np.copy(self.locations[:, [0, 2]])
                     if sign == '+':
                         locs2d[:, 0] *= -1
                 elif ax == 'z':
-                    locs2d = np.copy(self.locs[:, :2])
+                    locs2d = np.copy(self.locations[:, :2])
                     if sign == '-':
                         locs2d[:, 1] *= -1
             else:
@@ -9546,7 +9550,7 @@ class Sensor(Dimension):
             ax, sign = match.groups()
 
             # depth:  + = closer
-            depth = self.locs[:, 'xyz'.index(ax)]
+            depth = self.locations[:, 'xyz'.index(ax)]
             if sign == '-':
                 depth = -depth
 
@@ -9688,7 +9692,7 @@ class Sensor(Dimension):
         index = np.array([name in names for name in self.names])
         if check_dims:
             other_index = np.array([name in names for name in dim.names])
-            if not np.all(self.locs[index] == dim.locs[other_index]):
+            if not np.all(self.locations[index] == dim.locations[other_index]):
                 raise DimensionMismatchError("Sensor locations don't match between dimension objects")
         return self[index]
 
@@ -9708,7 +9712,7 @@ class Sensor(Dimension):
             lists of neighbors represented as sensor indices.
         """
         nb = {}
-        pairwise_distances = squareform(pdist(self.locs))
+        pairwise_distances = squareform(pdist(self.locations))
         np.fill_diagonal(pairwise_distances, pairwise_distances.max() * 99)
         for i, distances in enumerate(pairwise_distances):
             nb[i] = np.flatnonzero(distances < (distances.min() * connect_dist))

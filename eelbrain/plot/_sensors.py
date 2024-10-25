@@ -508,8 +508,8 @@ class SensorMaps(EelFigure):
         # store args
         self._sensors = sensors
 
-        min_coords = sensors.locs.min(0) - frame
-        max_coords = sensors.locs.max(0) + frame
+        min_coords = sensors.locations.min(0) - frame
+        max_coords = sensors.locations.max(0) + frame
         xlim, ylim, zlim = list(zip(min_coords, max_coords))
 
         # back
@@ -804,7 +804,7 @@ class SensorMap3d(EelFigure):
         EelFigure.__init__(self, sensors.sysname, layout)
 
         ax = self.figure.add_subplot(111, projection='3d')
-        locs = sensors.locs
+        locs = sensors.locations
         ax.scatter(locs[:, 0], locs[:, 1], locs[:, 2])
         ax.set_xlabel('Left -> Right')
         ax.set_ylabel('Posterior -> Anterior')

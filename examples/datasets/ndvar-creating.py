@@ -41,8 +41,8 @@ p = plot.SensorMap(sensor, connectivity=True)
 # with the Sensor description by creating an :class:`NDVar`, the topography can be plotted
 # without any further information:
 i_cz = sensor.names.index('Cz')
-cz_loc = sensor.locs[i_cz]
-dists = scipy.spatial.distance.cdist([cz_loc], sensor.locs)[0]
+cz_loc = sensor.locations[i_cz]
+dists = scipy.spatial.distance.cdist([cz_loc], sensor.locations)[0]
 dists /= dists.max()
 topo = -0.7 + dists
 n400_topo = NDVar(topo, sensor)
