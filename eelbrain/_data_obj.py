@@ -1137,7 +1137,7 @@ def combine(
 
     # find name
     if name is None:
-        names = list(filter(None, (item.name for item in items)))
+        names = [item.name for item in items if item.name is not None]
         name = os.path.commonprefix(names) or None
 
     # combine objects
@@ -7070,12 +7070,12 @@ class Dataset(dict):
 
         return Dataset(items, name or self.name, self._caption, self.info)
 
-    def summary(self, width=None):
+    def summary(self, width: int = None):
         """A summary of the Dataset's contents
 
         Parameters
         ----------
-        width : int
+        width
             Width in characters (default depends on current terminal size).
         """
         if width is None:

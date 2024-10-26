@@ -57,7 +57,7 @@ for subject in range(10):
 ds = combine(dss)
 # make subject a random factor (to treat it as random effect for ANOVA)
 ds['subject'].random = True
-print(ds.head())
+ds.head()
 
 ###############################################################################
 # Re-reference the EEG data (i.e., subtract the mean of the two mastoid channels):
