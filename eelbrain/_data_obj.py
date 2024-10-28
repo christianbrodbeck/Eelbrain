@@ -6596,7 +6596,7 @@ class Dataset(dict):
             self,
             x: CategorialArg = None,
             drop_empty: bool = True,
-            name: str = '{name}',
+            name: str = None,
             count: Union[bool, str] = 'n',
             drop_bad: bool = False,
             drop: Sequence[str] = (),
@@ -6657,7 +6657,9 @@ class Dataset(dict):
         if x is not None:
             x = ascategorial(x, data=self)
 
-        ds = Dataset(name=name.format(name=self.name), info=self.info)
+        if name and '{name}' in name:
+            name = name.format(name=self.name)
+        ds = Dataset(name=name, info=self.info)
 
         if count:
             if x is None:
@@ -6794,29 +6796,34 @@ class Dataset(dict):
         assert_is_legal_dataset_key(new)
         self[new] = self.pop(old)
 
-    def repeat(self, repeats, name='{name}'):
+    def repeat(
+            self,
+            repeats: Union[int, Sequence[[int]]],
+            name: str = None,
+    ):
         """
         Return a new Dataset with each row repeated ``n`` times.
 
         Parameters
         ----------
-        repeats : int | array of int
+        repeats
             Number of repeats, either a constant or a different number for each
             element.
-        name : str
+        name
             Name for the new Dataset.
         """
         if self.n_cases is None:
             raise RuntimeError("Can't repeat Dataset with unspecified n_cases")
+        if name and '{name}' in name:
+            name = name.format(name=self.name)
 
         if isinstance(repeats, Integral):
             n_cases = self.n_cases * repeats
         else:
             n_cases = sum(repeats)
 
-        return Dataset(((k, v.repeat(repeats)) for k, v in self.items()),
-                       name.format(name=self.name), self._caption, self.info,
-                       n_cases)
+        items = ((k, v.repeat(repeats)) for k, v in self.items())
+        return Dataset(items, name, self._caption, self.info, n_cases)
 
     @property
     def shape(self):
