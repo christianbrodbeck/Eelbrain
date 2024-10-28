@@ -11,8 +11,8 @@ from .. import _info
 
 def _topo(sensor, center):
     i = sensor.names.index(center)
-    loc = sensor.locs[i]
-    dists = scipy.spatial.distance.cdist([loc], sensor.locs)[0]
+    loc = sensor.locations[i]
+    dists = scipy.spatial.distance.cdist([loc], sensor.locations)[0]
     radius = sensor._sphere_fit[1].mean()
     dists /= radius
     topo = 1.0 - dists

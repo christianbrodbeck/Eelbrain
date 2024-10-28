@@ -71,7 +71,7 @@ def _crop_colorbar( cbar, cbar_vmin, cbar_vmax ):
     """crop a colorbar to show from cbar_vmin to cbar_vmax.(symmetric_cbar=False)"""
     if (cbar_vmin is None) and (cbar_vmax is None):
         return
-    cbar_tick_locs = cbar.locator.locs
+    cbar_tick_locs = cbar.locator.locations
     if cbar_vmax is None:
         cbar_vmax = cbar_tick_locs.max()
     if cbar_vmin is None:

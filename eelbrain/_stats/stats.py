@@ -377,20 +377,6 @@ def t_ind(y, group, out=None, perm=None):
     return out
 
 
-def ftest_f(p, df_num, df_den):
-    "F values for given probabilities."
-    p = np.asanyarray(p)
-    f = scipy.stats.f.isf(p, df_num, df_den)
-    return f
-
-
-def ftest_p(f, df_num, df_den):
-    "P values for given f values."
-    f = np.asanyarray(f)
-    p = scipy.stats.f.sf(f, df_num, df_den)
-    return p
-
-
 def rtest_p(r, df):
     # http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Inference
     r = np.asanyarray(r)
@@ -408,7 +394,7 @@ def rtest_r(p, df):
 
 
 def ttest_p(t, df, tail=0):
-    """Two tailed probability
+    """Two-tailed probability
 
     Parameters
     ----------
@@ -428,7 +414,7 @@ def ttest_p(t, df, tail=0):
     elif tail == -1:
         t = -t
     elif tail != 1:
-        raise ValueError("tail=%r" % tail)
+        raise ValueError(f"{tail=}")
     p = scipy.stats.t.sf(t, df)
     if tail == 0:
         p *= 2

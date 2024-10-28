@@ -23,7 +23,6 @@ from .._data_obj import (
     hasrandom, is_higher_order_effect, isbalanced, iscategorial, isnestedin)
 from .._utils import deprecate_ds_arg
 from .opt import anova_fmaps, anova_full_fmaps, lm_res_ss, ss
-from .stats import ftest_p
 from . import test
 
 
@@ -407,7 +406,7 @@ class _NDANOVA(MPTestMapper):
         """
         p_maps = np.empty_like(f_maps)
         for i in range(len(f_maps)):
-            p_maps[i] = ftest_p(f_maps[i], self.dfs_nom[i], self.dfs_denom[i])
+            p_maps[i] = scipy.stats.f.sf(f_maps[i], self.dfs_nom[i], self.dfs_denom[i])
         return p_maps
 
     def preallocate(self, y_shape):
@@ -773,7 +772,7 @@ class IncrementalFTest:
 
         if df_e > 0:
             F = MS_diff / MS_e
-            p = ftest_p(F, df_diff, df_e)
+            p = scipy.stats.f.sf(F, df_diff, df_e)
         else:
             F = None
             p = None

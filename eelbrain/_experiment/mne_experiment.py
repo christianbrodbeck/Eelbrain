@@ -1497,19 +1497,13 @@ class MneExperiment(FileTree):
             mtime = max(getmtime(path) for path in paths)
             return mtime
 
-    def _result_file_mtime(self, dst, data, single_subject=False):
-        """MTime if up-to-date, else None (for reports and movies)
-
-        Parameters
-        ----------
-        dst : str
-            Filename.
-        data : TestDims
-            Data type.
-        single_subject : bool
-            Whether the corresponding test is performed for a single subject
-            (as opposed to the current group).
-        """
+    def _result_file_mtime(
+            self,
+            dst: str,  # Filename
+            data: TestDims,
+            single_subject: bool = False,  # Whether the test is performed for a single subject (vs. the current group).
+    ):
+        """MTime if up-to-date, else None (for reports and movies)"""
         if exists(dst):
             mtime = self._result_mtime(data, single_subject)
             if mtime:
@@ -3824,8 +3818,9 @@ class MneExperiment(FileTree):
         data
             Data to test, for example:
 
-            - ``'sensor'`` spatio-temporal test in sensor space.
             - ``'source'`` spatio-temporal test in source space.
+            - ``'sensor'`` spatio-temporal test in sensor space (MEG).
+            - ``'eeg'`` spatio-temporal test in EEG sensor space.
             - ``'source.mean'`` ROI mean time course.
             - ``'sensor.rms'`` RMS across sensors.
 
@@ -5284,8 +5279,7 @@ class MneExperiment(FileTree):
         if samples < 1:
             raise ValueError("Need samples > 0 to run permutation test.")
         elif isinstance(test_obj, TwoStageTest):
-            raise NotImplementedError("ROI analysis not implemented for two-"
-                                      "stage tests")
+            raise NotImplementedError("ROI analysis not implemented for two-stage tests")
 
         if parc is not None:
             state['parc'] = parc
@@ -5507,10 +5501,7 @@ class MneExperiment(FileTree):
                 n_ds = ds
             n_ds_aligned = align1(n_ds, s_ds['subject'], 'subject')
             s_ds.update(n_ds_aligned)
-        return s_ds.as_table(
-            midrule=True, count=True,
-            caption="All subjects included in the analysis with trials per "
-                    "condition")
+        return s_ds.as_table(midrule=True, count=True, caption="All subjects included in the analysis with trials per condition")
 
     def _report_test_info(self, section, ds, test, res, data, include=None, model=True):
         """Top-level report info function
@@ -6600,7 +6591,21 @@ class MneExperiment(FileTree):
             if test_obj.model is not None:
                 self.set(model=test_obj.model)
 
-    def _set_analysis_options(self, data, baseline, src_baseline, pmin, tstart, tstop, parc=None, mask=None, samplingrate=None, test_options=(), folder_options=(), smooth=None):
+    def _set_analysis_options(
+            self,
+            data: DataArg,
+            baseline: BaselineArg,
+            src_baseline: BaselineArg,
+            pmin: PMinArg,
+            tstart: float = None,
+            tstop: float = None,
+            parc: str = None,
+            mask: str = None,
+            samplingrate: float = None,
+            test_options: Sequence[str] = (),  # Additional, test-specific tags (for use by TRFExperiment only)
+            folder_options: Sequence[str] = (),
+            smooth: float = None,
+    ):
         """Set templates for paths with test parameters
 
         analysis:  preprocessing up to source estimate epochs (not parcellation)
@@ -6609,19 +6614,6 @@ class MneExperiment(FileTree):
         test_options: baseline, permutation test method etc.
 
         also sets `parc`
-
-        Parameters
-        ----------
-        data : TestDims
-            Whether the analysis is in sensor or source space.
-        ...
-        src_baseline :
-            Should be False if data=='sensor'.
-        ...
-        samplingrate : int
-            Samplingrate (default is None, i.e. based on epochs).
-        test_options : sequence of str
-            Additional, test-specific tags (for use by TRFExperiment only).
         """
         data = TestDims.coerce(data)
         # data kind (sensor or source space)
