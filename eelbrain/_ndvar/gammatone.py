@@ -55,7 +55,7 @@ def gammatone_bank(
     Notes
     -----
     This function uses the `Gammatone <https://github.com/Lightning-Sandbox/gammatone>`_
-    library, which can be instaled with:
+    library, which can be installed with::
 
         $ pip install gammatone
     """

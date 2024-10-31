@@ -14,7 +14,6 @@ import re
 import shutil
 import time
 from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, Union
-import warnings
 
 import numpy as np
 import mne
@@ -6338,6 +6337,7 @@ class MneExperiment(FileTree):
             noise at that source (default ``'dSPM'``).
         depth
             Depth weighting [4]_ (``0`` to disable depth weighting).
+            See :func:`mne.minimum_norm.make_inverse_operator`.
         pick_normal
             Estimate a free orientation current vector, then pick the component
             orthogonal to the cortical surface and discard the parallel
@@ -6347,9 +6347,6 @@ class MneExperiment(FileTree):
 
         Notes
         -----
-        For details, see the MNE  documentation on the `inverse operator
-        <https://mne.tools/stable/overview/implementation.html?
-        highlight=lambda#the-linear-inverse-operator>`_
 
         .. warning::
             Free and loose orientation inverse solutions have a non-zero
@@ -6386,12 +6383,12 @@ class MneExperiment(FileTree):
 
     @staticmethod
     def _inv_str(ori: str, snr: float, method: str, depth: float, pick_normal: bool):
-        "Construct inv str from settings"
+        "Construct inv string from settings; see :meth:`.set_inv`"
         if isinstance(ori, str):
             if ori not in ('free', 'fixed', 'vec'):
-                raise ValueError(f'ori={ori!r}')
+                raise ValueError(f"{ori=}; needs to be 'free', 'fixed', 'vec', or float")
         elif not 0 < ori < 1:
-            raise ValueError(f"ori={ori!r}; must be in range (0, 1)")
+            raise ValueError(f"{ori=}; must be in range (0, 1)")
         else:
             ori = f'loose{str(ori)[1:]}'
         items = [ori]
@@ -6399,21 +6396,21 @@ class MneExperiment(FileTree):
         if snr > 0:
             items.append(f'{snr:g}')
         elif snr < 0:
-            raise ValueError(f"snr={snr!r}")
+            raise ValueError(f"{snr=}")
 
         if method in INV_METHODS:
             items.append(method)
         else:
-            raise ValueError(f"method={method!r}")
+            raise ValueError(f"{method=}")
 
         if not 0 <= depth <= 1:
-            raise ValueError(f"depth={depth!r}; must be in range [0, 1]")
+            raise ValueError(f"{depth=}; must be in range [0, 1]")
         elif depth != 0.8:
             items.append(f'{depth:g}')
 
         if pick_normal:
             if ori in ('vec', 'fixed'):
-                raise ValueError(f"ori={ori!r} and pick_normal=True are incompatible")
+                raise ValueError(f"{ori=} and pick_normal=True are incompatible")
             items.append('pick_normal')
 
         return '-'.join(items)
