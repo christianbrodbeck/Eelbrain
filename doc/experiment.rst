@@ -890,10 +890,16 @@ The source space to use.
 ``inv``
 -------
 
-What inverse solution to use for source localization. This parameter can also be
-set with :meth:`MneExperiment.set_inv`, which has a more detailed description of
-the options. The inverse solution can be set directly using the appropriate
-string as in ``e.set(inv='fixed-1-MNE')``.
+What inverse solution to use for source localization.
+``inv`` can be set with :meth:`MneExperiment.set_inv`,
+which has a detailed description of the options.
+``inv`` can be set directly using the appropriate string,
+e.g., ``e.set(inv='fixed-6-MNE-0')``.
+To determine the string corresponding to a given set of parameters,
+use :meth:`MneExperiment.inv_str`. For example::
+
+    >>> MneExperiment.inv_str('fixed', snr=6, method='MNE', depth=0)
+    'fixed-6-MNE-0'
 
 
 .. _state-parc:

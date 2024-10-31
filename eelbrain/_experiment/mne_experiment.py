@@ -6347,6 +6347,9 @@ class MneExperiment(FileTree):
 
         Notes
         -----
+        Can also be set through the ``inv`` state parameter (see :ref:`state-inv`).
+        To determine the string corresponding to a given set of parameters,
+        use :meth:`MneExperiment.inv_str`.
 
         .. warning::
             Free and loose orientation inverse solutions have a non-zero
@@ -6379,10 +6382,16 @@ class MneExperiment(FileTree):
                <https://doi.org/10.1016/j.neuroimage.2005.11.054>`_
 
         """
-        self.set(inv=self._inv_str(ori, snr, method, depth, pick_normal), **state)
+        self.set(inv=self.inv_str(ori, snr, method, depth, pick_normal), **state)
 
     @staticmethod
-    def _inv_str(ori: str, snr: float, method: str, depth: float, pick_normal: bool):
+    def inv_str(
+            ori: str = 'free',
+            snr: float = 3,
+            method: str = 'dSPM',
+            depth: float = 0.8,
+            pick_normal: bool = False,
+    ):
         "Construct inv string from settings; see :meth:`.set_inv`"
         if isinstance(ori, str):
             if ori not in ('free', 'fixed', 'vec'):
@@ -6451,7 +6460,7 @@ class MneExperiment(FileTree):
 
     @classmethod
     def _eval_inv(cls, inv):
-        return cls._inv_str(*cls._parse_inv(inv))
+        return cls.inv_str(*cls._parse_inv(inv))
 
     @staticmethod
     def _update_inv_cache(fields):
