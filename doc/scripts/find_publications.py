@@ -114,6 +114,9 @@ def select():
     for result_id, entry in entries.items():
         if result_id in selection:
             continue
+        elif entry['link'].startswith('https://scholar.archive.org'):
+            selection[result_id] = False
+            continue
         print(entry['title'])
         print(entry['publication_info']['summary'])
         print(entry['link'])
