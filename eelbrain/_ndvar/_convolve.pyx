@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-# cython: boundscheck=False, wraparound=False, cdivision=True, initializedcheck=False
+# cython: boundscheck=False, wraparound=False, cdivision=True, initializedcheck=False, language_level=3
 
 from cython.parallel cimport prange
 from libc.stdlib cimport malloc, free
