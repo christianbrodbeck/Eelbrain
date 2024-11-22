@@ -1,5 +1,5 @@
 # optimized statistics functions
-# cython: boundscheck=False, wraparound=False, cdivision=True, initializedcheck=False
+# cython: boundscheck=False, wraparound=False, cdivision=True, initializedcheck=False, language_level=3
 from cython.view cimport array as cvarray
 from libc.stdlib cimport malloc, free
 cimport numpy as np

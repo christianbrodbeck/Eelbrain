@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-# cython: boundscheck=False, wraparound=False, cdivision=True, initializedcheck=False
+# cython: boundscheck=False, wraparound=False, cdivision=True, initializedcheck=False, language_level=3
 
 from libc.math cimport exp, sqrt, M_PI
 import numpy as np

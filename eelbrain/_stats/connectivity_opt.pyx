@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-# cython: boundscheck=False, wraparound=False
+# cython: boundscheck=False, wraparound=False, language_level=3
 from libc.stdlib cimport malloc, free
 import numpy as np
 cimport numpy as np

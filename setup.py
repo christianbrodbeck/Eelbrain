@@ -17,6 +17,7 @@ except ImportError:
 
 
 IS_WINDOWS = os.name == 'nt'
+IS_ARM = os.uname().machine == 'arm64'
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
@@ -29,26 +30,36 @@ version = match.group(1)
 Version(version)  # check that it's a valid version
 
 # Cython extensions
-args = {'define_macros': [("NPY_NO_DEPRECATED_API", "NPY_1_11_API_VERSION")]}
+base_args = {'define_macros': [("NPY_NO_DEPRECATED_API", "NPY_1_11_API_VERSION")]}
 if IS_WINDOWS:
-    open_mp_args = {**args, 'extra_compile_args': '/openmp'}
+    open_mp_args = {
+        **base_args,
+        'extra_compile_args': '/openmp',
+    }
+elif IS_ARM:
+    open_mp_args = {
+        **base_args,
+        'extra_compile_args': ['-Wno-unreachable-code', '-fopenmp', '-O3'],
+        'extra_link_args': ['-fopenmp'],
+    }
+    base_args['extra_compile_args'] = ['-Wno-unreachable-code', '-O3']
 else:
     open_mp_args = {
-        **args,
+        **base_args,
         'extra_compile_args': ['-Wno-unreachable-code', '-fopenmp', '-O3', '-mavx'],
         'extra_link_args': ['-fopenmp'],
     }
-    args['extra_compile_args'] = ['-Wno-unreachable-code', '-O3', '-mavx']
+    base_args['extra_compile_args'] = ['-Wno-unreachable-code', '-O3', '-mavx']
 ext = '.pyx' if cythonize else '.c'
 ext_cpp = '.pyx' if cythonize else '.cpp'
 extensions = [
-    Extension('eelbrain._data_opt', [f'eelbrain/_data_opt{ext}'], **args),
+    Extension('eelbrain._data_opt', [f'eelbrain/_data_opt{ext}'], **base_args),
     Extension('eelbrain._trf._boosting_opt', [f'eelbrain/_trf/_boosting_opt{ext}'], **open_mp_args),
     Extension('eelbrain._ndvar._convolve', [f'eelbrain/_ndvar/_convolve{ext}'], **open_mp_args),
-    Extension('eelbrain._ndvar._gammatone', [f'eelbrain/_ndvar/_gammatone{ext}'], **args),
-    Extension('eelbrain._stats.connectivity_opt', [f'eelbrain/_stats/connectivity_opt{ext}'], **args),
-    Extension('eelbrain._stats.opt', [f'eelbrain/_stats/opt{ext}'], **args),
-    Extension('eelbrain._stats.vector', [f'eelbrain/_stats/vector{ext_cpp}'], include_dirs=['dsyevh3C'], **args),
+    Extension('eelbrain._ndvar._gammatone', [f'eelbrain/_ndvar/_gammatone{ext}'], **base_args),
+    Extension('eelbrain._stats.connectivity_opt', [f'eelbrain/_stats/connectivity_opt{ext}'], **base_args),
+    Extension('eelbrain._stats.opt', [f'eelbrain/_stats/opt{ext}'], **base_args),
+    Extension('eelbrain._stats.vector', [f'eelbrain/_stats/vector{ext_cpp}'], include_dirs=['dsyevh3C'], **base_args),
 ]
 if cythonize:
     extensions = cythonize(extensions)
