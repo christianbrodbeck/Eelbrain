@@ -166,8 +166,7 @@ class TreeModel:
 
         if self.owner:
             task = self.__class__.__name__
-            self.notification = Notifier(self.owner, task, self._crash_report,
-                                         self._auto_debug)
+            self.notification = Notifier(self.owner, task, self._crash_report, self._auto_debug)
         else:
             self.notification = NotNotifier()
 
