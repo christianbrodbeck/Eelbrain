@@ -23,7 +23,7 @@ jobs:
         conda env update --file env-dev.yml --name base
     - name: build Eelbrain
       run: |
-        pip install .
+        pip install -e .
     - name: Test with pytest
       run: |
         pytest
