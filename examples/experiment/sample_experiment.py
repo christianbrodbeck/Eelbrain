@@ -20,8 +20,6 @@ from eelbrain import MneExperiment
 
 class SampleExperiment(MneExperiment):
 
-    owner = "me@nyu.edu"
-
     stim_channel = 'STI 014'
     merge_triggers = -1  # ignore events of duration 1
 

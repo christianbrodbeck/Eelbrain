@@ -3,7 +3,7 @@ from math import log, sqrt
 
 import numpy as np
 from numpy.testing import assert_allclose
-from scipy.signal import gaussian
+from scipy.signal.windows import gaussian
 
 from eelbrain._data_opt import gaussian_smoother
 
