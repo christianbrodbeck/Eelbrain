@@ -78,6 +78,9 @@ In an existing environment, Eelbrain can generally be updated with the following
     (eelbrain) $ mamba update eelbrain
 
 
+However, in complex environments this can lead to package conflicts (mamba will display an error message).
+In such cases it may be easier to just cerate a new environment.
+
 The currently installed version can be displayed with the ``mamba list`` command:
 
 .. code-block:: bash
