@@ -45,7 +45,7 @@ class EelUnpickler(Unpickler):
 
 
 def pickle(obj: Any, dest: PathArg = None, protocol: int = HIGHEST_PROTOCOL):
-    """Pickle a Python object.
+    """Pickle a Python object (see :mod:`pickle`).
 
     Parameters
     ----------
@@ -66,7 +66,7 @@ def pickle(obj: Any, dest: PathArg = None, protocol: int = HIGHEST_PROTOCOL):
 
     See Also
     --------
-    save.pickle
+    eelbrain.load.unpickle
     """
     if dest is None:
         filetypes = [("Pickled Python Objects (*.pickle)", '*.pickle')]
@@ -103,20 +103,21 @@ def unpickle(path: PathArg = None):
 
     Notes
     -----
+    This function is similar to Python's builtin :mod:`pickle`
+    ``pickle.load(open(path))``, but also loads object saved
+    with older versions of Eelbrain, and allows using a system file dialog to
+    select a file.
+
     If you see ``ValueError: unsupported pickle protocol``, the pickle file
     was saved with a higher version of Python; in order to make pickles
     backwards-compatible, use :func:`~eelbrain.save.pickle` with a lower
     ``protocol=2``.
     To batch-convert multiple pickle files, use :func:`~eelbrain.load.convert_pickle_protocol`
 
-    This function is similar to ``pickle.load(open(path))``, but also loads object saved
-    with older versions of Eelbrain, and allows using a system file dialog to
-    select a file.
-
     See Also
     --------
-    load.unpickle
-    load.convert_pickle_protocol
+    eelbrain.save.pickle
+    eelbrain.load.convert_pickle_protocol
     """
     if path is None:
         filetypes = [("Pickles (*.pickle)", '*.pickle'), ("All files", '.*')]
