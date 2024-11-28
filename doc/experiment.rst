@@ -279,8 +279,8 @@ ICA
 ---
 
 If preprocessing includes ICA, select which ICA components should be removed.
-To open the ICA selection GUI, The experiment ``raw`` state needs to be set to
-the ICA stage of the pipeline::
+To open the ICA selection GUI, The experiment :ref:`state-raw` state needs to be
+set to the ICA stage of the pipeline::
 
     >>> e.set(raw='ica')
     >>> e.make_ica_selection()
