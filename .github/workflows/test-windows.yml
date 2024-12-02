@@ -3,7 +3,7 @@ name: Tests-Windows
 on: [push]
 
 jobs:
-  build-linux:
+  tests-windows:
     runs-on: widows-latest
     strategy:
       max-parallel: 5
