@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   tests-windows:
-    runs-on: widows-latest
+    runs-on: windows-latest
     strategy:
       max-parallel: 5
 
