@@ -25,6 +25,7 @@ jobs:
         conda activate base
     - name: build Eelbrain
       run: |
+        conda activate base
         pip install -e .
     - name: Test with pytest
       run: |
