@@ -31,4 +31,4 @@ jobs:
       run: |
         conda activate base
         python -m pytest --version
-        python -m pytest eelbrain --no-gui
+        python -m pytest -v -s eelbrain --no-gui
