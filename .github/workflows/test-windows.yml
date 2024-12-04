@@ -30,4 +30,5 @@ jobs:
     - name: Test with pytest
       run: |
         conda activate base
-        pytest eelbrain --no-gui
+        python -m pytest --version
+        python -m pytest eelbrain --no-gui
