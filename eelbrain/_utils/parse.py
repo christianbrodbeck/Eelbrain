@@ -22,5 +22,5 @@ def find_variables(expr: str) -> Set[str]:
     try:
         st = ast.parse(expr)
     except SyntaxError as error:
-        raise ValueError(f"Invalid expression: {expr:r} ({error})")
+        raise ValueError(f"Invalid expression: {expr!r} ({error})")
     return {n.id for n in ast.walk(st) if isinstance(n, ast.Name)}
