@@ -1720,7 +1720,7 @@ class Var(Named):
         "For effect coding"
         return self.x[:, None] - self.x.mean()
 
-    def as_factor(self, labels='%r', name=None, random=False):
+    def as_factor(self, labels='%s', name=None, random=False):
         """Convert the Var into a Factor
 
         Parameters
