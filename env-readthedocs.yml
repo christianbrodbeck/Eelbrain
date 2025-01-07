@@ -12,7 +12,7 @@ dependencies:
 - mne-base >=1.0
 - nibabel >2.3.0  # read_annot bug
 - nilearn >=0.10.4
-- numpy >=1.11
+- numpy >=1.11, <2
 - pillow
 - pip
 - pooch  # for mne dataset downloading
