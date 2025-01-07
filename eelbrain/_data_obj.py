@@ -816,10 +816,10 @@ def _empty_like(obj, n=None, name=None):
     if isinstance(obj, Factor):
         return Factor([''], repeat=n, name=name)
     elif isinstance(obj, Var):
-        return Var(np.empty(n) * np.NaN, name)
+        return Var(np.empty(n) * np.nan, name)
     elif isinstance(obj, NDVar):
         shape = (n,) + obj.shape[1:]
-        return NDVar(np.empty(shape) * np.NaN, obj.dims, name)
+        return NDVar(np.empty(shape) * np.nan, obj.dims, name)
     elif isdatalist(obj):
         return Datalist([None] * n, name, obj._fmt)
     else:
@@ -1964,13 +1964,13 @@ class Var(Named):
 
     def isany(self, *values):
         "Boolean index, True where the Var is equal to one of the values"
-        return np.in1d(self.x, values)
+        return np.isin(self.x, values)
 
     def isin(self, values):
         "Boolean index, True where the Var value is in values"
         if isinstance(values, dict):
             values = tuple(values)
-        return np.in1d(self.x, values)
+        return np.isin(self.x, values)
 
     def isnan(self):
         "Return boolean :class:`Var` indicating location of ``NaN`` values"
@@ -1978,11 +1978,11 @@ class Var(Named):
 
     def isnot(self, *values):
         "Boolean index, True where the Var is not equal to one of the values"
-        return np.in1d(self.x, values, invert=True)
+        return np.isin(self.x, values, invert=True)
 
     def isnotin(self, values):
         "Boolean index, True where the Var value is not in values"
-        return np.in1d(self.x, values, invert=True)
+        return np.isin(self.x, values, invert=True)
 
     def log(self, base=None, name=None):
         """Element-wise log
@@ -2961,7 +2961,7 @@ class Factor(_Effect):
         >>> f.isin(('b', 'c'))
         array([False, False,  True,  True,  True,  True], dtype=bool)
         """
-        return np.in1d(self.x, self._encode(values))
+        return np.isin(self.x, self._encode(values))
 
     def isnot(self, *values):
         """Find the index of entries not in ``values``
@@ -2981,7 +2981,7 @@ class Factor(_Effect):
         index : array of bool
             For each case False if the value is in values, else True.
         """
-        return np.in1d(self.x, self._encode(values), invert=True)
+        return np.isin(self.x, self._encode(values), invert=True)
 
     def label_length(self, name=None):
         """Create Var with the length of each label string
@@ -7956,8 +7956,8 @@ class PermutedParametrization:
 
 def _subgraph_edges(connectivity, int_index):
     "Extract connectivity for a subset of a graph"
-    idx = np.logical_and(np.in1d(connectivity[:, 0], int_index),
-                         np.in1d(connectivity[:, 1], int_index))
+    idx = np.logical_and(np.isin(connectivity[:, 0], int_index),
+                         np.isin(connectivity[:, 1], int_index))
     if np.any(idx):
         new_c = connectivity[idx]
 
@@ -9048,7 +9048,7 @@ class Scalar(Dimension):
 
         if np.all(self.values == dim.values):
             return self
-        index = np.in1d(self.values, dim.values)
+        index = np.isin(self.values, dim.values)
         if np.all(index):
             return self
         elif index.sum() == len(dim):
@@ -9844,10 +9844,10 @@ def _mne_tri_soure_space_graph(source_space, vertices_list):
 
         # select relevant edges
         if not np.array_equal(verts, src_vertices):
-            if not np.all(np.in1d(verts, src_vertices)):
+            if not np.all(np.isin(verts, src_vertices)):
                 raise RuntimeError("Not all vertices are in the source space")
-            edge_in_use = np.logical_and(np.in1d(graph[:, 0], verts),
-                                         np.in1d(graph[:, 1], verts))
+            edge_in_use = np.logical_and(np.isin(graph[:, 0], verts),
+                                         np.isin(graph[:, 1], verts))
             graph = graph[edge_in_use]
 
         # reassign vertex ids based on present vertices
@@ -10233,7 +10233,7 @@ class SourceSpaceBase(Dimension):
         self._assert_same_base(other)
         if any(np.any(np.setdiff1d(o, s, True)) for s, o in zip(self.vertices, other.vertices)):
             raise IndexError(f"{other}: contains sources not in {self}")
-        bool_index = np.hstack([np.in1d(s, o) for s, o in zip(self.vertices, other.vertices)])
+        bool_index = np.hstack([np.isin(s, o) for s, o in zip(self.vertices, other.vertices)])
         return np.flatnonzero(bool_index)
 
     def get_source_space(self, subjects_dir=None):
@@ -10273,12 +10273,12 @@ class SourceSpaceBase(Dimension):
 
     def _is_superset_of(self, dim):
         self._assert_same_base(dim)
-        return all(np.all(np.in1d(d, s)) for s, d in zip(self.vertices, dim.vertices))
+        return all(np.all(np.isin(d, s)) for s, d in zip(self.vertices, dim.vertices))
 
     def index_into_dim(self, dim):
         if not self._is_superset_of(dim):
             raise ValueError(f"{dim}: Index source space has unknown vertices")
-        index = np.hstack([np.in1d(s, d) for s, d in zip(self.vertices, dim.vertices)])
+        index = np.hstack([np.isin(s, d) for s, d in zip(self.vertices, dim.vertices)])
         return NDVar(index, (self,))
 
     def intersect(self, dim, check_dims=True):
@@ -10298,7 +10298,7 @@ class SourceSpaceBase(Dimension):
             equal)
         """
         self._assert_same_base(dim)
-        index = np.hstack([np.in1d(s, o) for s, o in zip(self.vertices, dim.vertices)])
+        index = np.hstack([np.isin(s, o) for s, o in zip(self.vertices, dim.vertices)])
         return self[index]
 
     def _melt_vars(self) -> dict:
@@ -10556,7 +10556,7 @@ class SourceSpace(SourceSpaceBase):
             elif any(any(np.setdiff1d(o, s)) for o, s in zip(ov, sv)):
                 raise IndexError("Index contains unknown sources")
             else:
-                return np.hstack([np.in1d(s, o, True) for s, o in zip(sv, ov)])
+                return np.hstack([np.isin(s, o, True) for s, o in zip(sv, ov)])
         return SourceSpaceBase._array_index(self, arg, allow_vertex)
 
     def _array_index_for_vertex(self, vertex_desc):
@@ -10577,7 +10577,7 @@ class SourceSpace(SourceSpaceBase):
 
     def _array_index_hemilabel(self, label: mne.Label):
         stc_vertices = self.vertices[label.hemi == 'rh']
-        idx = np.in1d(stc_vertices, label.vertices, True)
+        idx = np.isin(stc_vertices, label.vertices, True)
         return idx
 
     def _dim_index(self, index):
@@ -10626,7 +10626,7 @@ class SourceSpace(SourceSpaceBase):
             subjects_dir = self.subjects_dir
         sss = self.get_source_space(subjects_dir)
         vertices = [sss[0]['vertno'], sss[1]['vertno']]
-        data = [np.in1d(vert, self_vert) for vert, self_vert in
+        data = [np.isin(vert, self_vert) for vert, self_vert in
                 zip(vertices, self.vertices)]
         source = SourceSpace(vertices, self.subject, self.src, subjects_dir,
                              self.parc.name, name=self.name)

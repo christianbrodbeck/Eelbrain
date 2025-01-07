@@ -90,7 +90,7 @@ def complete_source_space(
         else:
             source_out = VolumeSourceSpace(vertices, source.subject, source.src, source.subjects_dir, parc)
     # locate source vertices
-    vertex_indices = [np.in1d(v, src_v, True) for v, src_v in zip(source_out.vertices, source.vertices)]
+    vertex_indices = [np.isin(v, src_v, True) for v, src_v in zip(source_out.vertices, source.vertices)]
     index = (slice(None,),) * axis + (np.concatenate(vertex_indices),)
     # generate target array
     shape = list(ndvar.shape)
@@ -223,7 +223,7 @@ def label_from_annot(sss, subject, subjects_dir, parc=None, color=(0, 0, 0)):
     for hemi, ss in zip(('lh', 'rh'), sss):
         annotation, _, names = read_annot(fname % hemi)
         bad = [-1, names.index(b'unknown')]
-        keep = ~np.in1d(annotation[ss['vertno']], bad)
+        keep = ~np.isin(annotation[ss['vertno']], bad)
         if np.any(keep):
             label = mne.Label(ss['vertno'][keep], hemi=hemi, color=color)
             labels.append(label)
@@ -376,7 +376,7 @@ def labels_from_mni_coords(seeds, extent=30., subject='fsaverage',
 
         for label in labels:
             rm = unknown[label.hemi]
-            if np.any(np.in1d(label.vertices, rm.vertices)):
+            if np.any(np.isin(label.vertices, rm.vertices)):
                 label.vertices = np.setdiff1d(label.vertices, rm.vertices, True)
 
     return labels
@@ -722,7 +722,7 @@ def resample_ico_source_space(
     # restrict to vertices in source
     vertices_to = [np.intersect1d(vs_from, vs_to, True) for vs_from, vs_to in zip(source.vertices, vertices_to)]
     # index into source
-    index = np.hstack([np.in1d(vs_from, vs_to, True) for vs_from, vs_to in zip(source.vertices, vertices_to)])
+    index = np.hstack([np.isin(vs_from, vs_to, True) for vs_from, vs_to in zip(source.vertices, vertices_to)])
     if data is None:
         return source[index]
     else:

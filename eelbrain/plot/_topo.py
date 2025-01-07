@@ -708,7 +708,7 @@ class _plt_topomap(_plt_im):
                 mask = nanmap > 0.5
                 v = np.where(isnan, 0, v)
                 vmap = interpolate.griddata(locs, v, self._mgrid, self._method)
-                np.place(vmap, mask, np.NaN)
+                np.place(vmap, mask, np.nan)
                 return vmap
             return interpolate.griddata(locs, v, self._mgrid, self._method)
 

@@ -7015,7 +7015,7 @@ class MneExperiment(FileTree):
                     n_good.append(float('nan'))
                 if has_interp:
                     n_interp.append(float('nan'))
-                n_events.append(np.NaN)
+                n_events.append(np.nan)
                 continue
 
             try:
