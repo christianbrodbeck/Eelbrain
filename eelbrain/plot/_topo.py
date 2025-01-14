@@ -53,10 +53,11 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
     cmap
         Colormap (default depends on the data).
     contours
-        Contours to draw on topomaps. Can be an int (number of contours,
-        including ``vmin``/``vmax``), a sequence (values at which to draw
-        contours), or a ``**kwargs`` dict (must contain at least the "levels"
-        key). Default is no contours.
+        Draw contours. Can be an int (number of contours, including
+        ``vmin`` and ``vmax``), a sequence (values at which to draw
+        contours), or a dictionary with ``**kwargs`` for
+        :meth:`~matplotlib.axes.Axes.contour` (must include a ``"levels"`` key).
+        Default is no contours.
     proj
         The sensor projection to use for topomaps (or one projection per plot).
     res
@@ -208,10 +209,11 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
     cmap
         Colormap (default depends on the data).
     contours
-        Contours to draw on topomaps. Can be an int (number of contours,
-        including ``vmin``/``vmax``), a sequence (values at which to draw
-        contours), or a ``**kwargs`` dict (must contain at least the "levels"
-        key). Default is no contours.
+        Draw contours. Can be an int (number of contours, including
+        ``vmin`` and ``vmax``), a sequence (values at which to draw
+        contours), or a dictionary with ``**kwargs`` for
+        :meth:`~matplotlib.axes.Axes.contour` (must include a ``"levels"`` key).
+        Default is no contours.
     proj
         The sensor projection to use for topomaps.
     res
@@ -347,32 +349,33 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMix
     ----------
     y : (list of) NDVar
         Data to plot.
-    xax : None | categorial
+    xax
         Create a separate plot for each cell in this model.
-    data : Dataset
+    data
         If a Dataset is provided, data can be specified as strings.
-    sub : str | array
+    sub
         Specify a subset of the data.
-    vmax : scalar
+    vmax
         Upper limits for the colormap (default is determined from data).
-    vmin : scalar
+    vmin
         Lower limit for the colormap (default ``-vmax``).
-    cmap : str
+    cmap
         Colormap (default depends on the data).
-    contours : int | sequence | dict
-        Contours to draw on topomaps. Can be an int (number of contours,
-        including ``vmin``/``vmax``), a sequence (values at which to draw
-        contours), or a ``**kwargs`` dict (must contain at least the "levels"
-        key). Default is no contours.
+    contours
+        Draw contours. Can be an int (number of contours, including
+        ``vmin`` and ``vmax``), a sequence (values at which to draw
+        contours), or a dictionary with ``**kwargs`` for
+        :meth:`~matplotlib.axes.Axes.contour` (must include a ``"levels"`` key).
+        Default is no contours.
     color : matplotlib color
         Color of the butterfly plots.
     linewidth : scalar
         Linewidth for plots (defult is to use ``matplotlib.rcParams``).
     t
         Time to display in the topomap.
-    proj : str
+    proj
         The sensor projection to use for topomaps.
-    res : int
+    res
         Resolution of the topomaps (width = height = ``res``).
     interpolation
         Method for interpolating topo-map between sensors (default is based on
@@ -876,10 +879,11 @@ class TopoArray(ColorMapMixin, TopoMapKey, XAxisMixin, EelFigure):
     cmap
         Colormap (default depends on the data).
     contours
-        Contours to draw on topomaps. Can be an int (number of contours,
-        including ``vmin``/``vmax``), a sequence (values at which to draw
-        contours), or a ``**kwargs`` dict (must contain at least the "levels"
-        key). Default is no contours.
+        Draw contours. Can be an int (number of contours, including
+        ``vmin`` and ``vmax``), a sequence (values at which to draw
+        contours), or a dictionary with ``**kwargs`` for
+        :meth:`~matplotlib.axes.Axes.contour` (must include a ``"levels"`` key).
+        Default is no contours.
     ntopo
         number of topomaps per array-plot.
     t

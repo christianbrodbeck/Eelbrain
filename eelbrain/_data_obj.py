@@ -9649,7 +9649,7 @@ class Sensor(Dimension):
                 if int_to_name is None:
                     int_to_name = {}
                     for ch_name in self.names:
-                        if match := re.search('\d+', ch_name):
+                        if match := re.search(r'\d+', ch_name):
                             int_to_name[int(match.group())] = ch_name
 
                 if key in int_to_name:

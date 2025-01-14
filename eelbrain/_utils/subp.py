@@ -307,10 +307,10 @@ def _run_mne_gui(name, cwd, modal, subject, subjects_dir):
     if subject:
         env['SUBJECT'] = subject
 
-    setup_path = os.path.join(root, 'bin', 'mne_setup_sh').replace(' ', '\ ')
+    setup_path = os.path.join(root, 'bin', 'mne_setup_sh').replace(' ', r'\ ')
     setup = '. %s' % setup_path
 
-    cmd = os.path.join(root, 'bin', name).replace(' ', '\ ')
+    cmd = os.path.join(root, 'bin', name).replace(' ', r'\ ')
     p = subprocess.Popen(setup + ';' + cmd, shell=True, cwd=cwd, env=env)
 
     if modal:
