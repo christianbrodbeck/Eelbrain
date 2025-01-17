@@ -58,8 +58,7 @@ class _plt_im:
 
     def _draw_contours(self):
         if self._contour_h:
-            for c in self._contour_h.collections:
-                c.remove()
+            self._contour_h.remove()
             self._contour_h = None
 
         if not self._contours:
@@ -73,8 +72,7 @@ class _plt_im:
 
         self._contour_h = self.ax.contour(self._data, origin='lower', extent=self._extent, **self._contours)
         if self._mask is not None:
-            for c in self._contour_h.collections:
-                c.set_clip_path(self._mask)
+            self._contour_h.set_clip_path(self._mask)
 
     def add_contour(self, meas, level, color):
         if self._meas == meas:

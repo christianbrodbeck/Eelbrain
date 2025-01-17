@@ -7,7 +7,7 @@ dependencies:
 - cython >=3
 - colormath >=2.1
 - keyring >=5
-- matplotlib-base >=3.4
+- matplotlib-base >=3.8
 - seaborn
 - mne-base >=1.0
 - nibabel >2.3.0  # read_annot bug
