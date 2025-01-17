@@ -10212,12 +10212,27 @@ class SourceSpaceBase(Dimension):
             return arg
         elif isinstance(arg, Sequence):
             if all(isinstance(v, str) for v in arg):
-                if self.parc is not None and all(a in self.parc for a in arg):
-                    return self.parc.isin(arg)
-                elif allow_vertex:
-                    return [self._array_index_for_vertex(v) for v in arg]
+                # First, try to interpret all items as labels
+                label_index = None
+                vertices = arg
+                if self.parc is not None:
+                    # FIXME: Some volume labels may be too small to apply to a single voxel (e.g., transversetemporal with 10 mm grid). This could be handled better by storing all label names in self.parc.info to detect valid label names that are not present in the data
+                    labels = [a for a in arg if a in self.parc]
+                    if labels:
+                        label_index = self.parc.isin(arg)
+                        if len(labels) == len(arg):
+                            return label_index
+                        vertices = [a for a in arg if a not in self.parc]
+                # For items that are not in the parcellation, try to interpret them as vertex IDs
+                if allow_vertex:
+                    vertex_index = [self._array_index_for_vertex(v) for v in vertices]
+                    if label_index is None:
+                        return vertex_index
+                    else:
+                        label_index[vertex_index] = True
+                        return label_index
                 else:
-                    raise IndexError(f"{arg!r}")
+                    raise IndexError(f"Unknown labels: {vertices}")
             elif all(isinstance(v, INT_TYPES) for v in arg):
                 return arg
             else:
