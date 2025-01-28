@@ -1,13 +1,19 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from packaging.version import Version
 from pathlib import Path
 from pickle import dump, HIGHEST_PROTOCOL, Unpickler
 from itertools import chain
 import os
 from typing import Any
 
+import numpy
+
 from .._data_obj import Dataset, NDVar, Var, SourceSpaceBase, ismodelobject
 from .._types import PathArg
 from .._utils import IS_WINDOWS, tqdm, ui
+
+
+NUMPY_1 = Version(numpy.__version__) < Version('2')
 
 
 class EelUnpickler(Unpickler):
@@ -31,6 +37,9 @@ class EelUnpickler(Unpickler):
         elif module.startswith('pathlib'):
             if name == 'WindowsPath' and not IS_WINDOWS:
                 name = 'Path'
+        elif NUMPY_1 and module.startswith('numpy._core.numeric'):
+            # This affected some pickles created with numpy 2
+            module = module.replace('numpy._core.numeric', 'numpy.core.numeric')
 
         return Unpickler.find_class(self, module, name)
 
