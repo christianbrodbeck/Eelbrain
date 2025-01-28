@@ -568,11 +568,11 @@ class Brain(TimeSlicer, surfer.Brain):
                 continue
             # expand to full source space
             ss_map = np.zeros(ss['nuse'], int)
-            ss_map[np.in1d(ss['vertno'], vertices)] = x[index]
+            ss_map[np.isin(ss['vertno'], vertices)] = x[index]
             # select only the used colors; Mayavi resets the range of the data-
             # to-LUT mapping to the extrema of the data at various points, so it
             # is safer to restrict the LUT to used colors
-            ctab_index = np.in1d(ctab[:, 4], ss_map)
+            ctab_index = np.isin(ctab[:, 4], ss_map)
             hemi_ctab = ctab[ctab_index]
             if np.any(hemi_ctab):
                 # map nearest from vertex to index
@@ -775,7 +775,7 @@ class Brain(TimeSlicer, surfer.Brain):
             selected = np.any(tris == vertex, 1)
             for i in range(7):
                 selected_v = np.unique(tris[selected])
-                index = np.in1d(ss_vertices, selected_v)
+                index = np.isin(ss_vertices, selected_v)
                 if index.any():
                     vertex = ss_vertices[index][0]
                     break

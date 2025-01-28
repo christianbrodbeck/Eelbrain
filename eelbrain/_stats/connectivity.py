@@ -103,12 +103,12 @@ def find_peaks(x, connectivity, out=None):
                 border = no
                 while border:
                     # forward
-                    idx = np.in1d(conn_src, border)
+                    idx = np.isin(conn_src, border)
                     conn_dst_sub = conn_dst[idx]
                     eq = np.equal(data[conn_src[idx]], data[conn_dst_sub])
                     new = set(conn_dst_sub[eq])
                     # backward
-                    idx = np.in1d(conn_dst, border)
+                    idx = np.isin(conn_dst, border)
                     conn_src_sub = conn_src[idx]
                     eq = np.equal(data[conn_src_sub], data[conn_dst[idx]])
                     new.update(conn_src_sub[eq])

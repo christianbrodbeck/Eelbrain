@@ -3,6 +3,7 @@
 from packaging.version import Version
 import os
 from pathlib import Path
+import platform
 import re
 from setuptools import setup, find_packages, Extension
 
@@ -17,7 +18,7 @@ except ImportError:
 
 
 IS_WINDOWS = os.name == 'nt'
-IS_ARM = os.uname().machine == 'arm64'
+IS_ARM = platform.machine().lower().startswith('arm')
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 

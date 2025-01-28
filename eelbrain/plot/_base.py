@@ -927,7 +927,7 @@ class DataLayer(Layer):
             x = NDVar(1. - self.y.x.mask, self.y.dims, self.y.name, {'meas': 'mask'})
             yield DataLayer(x, PlotType.CONTOUR, {'levels': [0.5], 'colors': ['black']}, _bin_func=np.max)
         else:
-            raise RuntimeError(f"plot_type={plot_type!r}")
+            raise RuntimeError(f"{plot_type=}")
 
     def sub_time(self, time: float, data_only: bool = False):
         y = self.y.sub(time=time)
@@ -1210,11 +1210,11 @@ class PlotData:
                         else:
                             f = getattr(dim, attr)
                             if not isinstance(f, Factor):
-                                raise ValueError(f'xax={xax!r}')
+                                raise ValueError(f'{xax=}')
                             indexes = [f == cell for cell in f.cells]
                             ax_names = f.cells
                     elif dim != xax_dim:
-                        raise ValueError(f"y={y}, xax={xax!r}: dimension not equal on different y")
+                        raise ValueError(f"{y=}, {xax=}: dimension not equal on different y")
                     agg, dims = find_data_dims(layer, dims, dissolve_dim)
                     layers.append([aggregate(layer.sub(**{dimname: i}), agg) for i in indexes])
                 x_name = xax

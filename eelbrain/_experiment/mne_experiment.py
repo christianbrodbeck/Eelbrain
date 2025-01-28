@@ -14,7 +14,6 @@ import re
 import shutil
 import time
 from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, Union
-import warnings
 
 import numpy as np
 import mne
@@ -6338,6 +6337,7 @@ class MneExperiment(FileTree):
             noise at that source (default ``'dSPM'``).
         depth
             Depth weighting [4]_ (``0`` to disable depth weighting).
+            See :func:`mne.minimum_norm.make_inverse_operator`.
         pick_normal
             Estimate a free orientation current vector, then pick the component
             orthogonal to the cortical surface and discard the parallel
@@ -6347,9 +6347,9 @@ class MneExperiment(FileTree):
 
         Notes
         -----
-        For details, see the MNE  documentation on the `inverse operator
-        <https://mne.tools/stable/overview/implementation.html?
-        highlight=lambda#the-linear-inverse-operator>`_
+        Can also be set through the ``inv`` state parameter (see :ref:`state-inv`).
+        To determine the string corresponding to a given set of parameters,
+        use :meth:`MneExperiment.inv_str`.
 
         .. warning::
             Free and loose orientation inverse solutions have a non-zero
@@ -6382,16 +6382,22 @@ class MneExperiment(FileTree):
                <https://doi.org/10.1016/j.neuroimage.2005.11.054>`_
 
         """
-        self.set(inv=self._inv_str(ori, snr, method, depth, pick_normal), **state)
+        self.set(inv=self.inv_str(ori, snr, method, depth, pick_normal), **state)
 
     @staticmethod
-    def _inv_str(ori: str, snr: float, method: str, depth: float, pick_normal: bool):
-        "Construct inv str from settings"
+    def inv_str(
+            ori: str = 'free',
+            snr: float = 3,
+            method: str = 'dSPM',
+            depth: float = 0.8,
+            pick_normal: bool = False,
+    ):
+        "Construct inv string from settings; see :meth:`.set_inv`"
         if isinstance(ori, str):
             if ori not in ('free', 'fixed', 'vec'):
-                raise ValueError(f'ori={ori!r}')
+                raise ValueError(f"{ori=}; needs to be 'free', 'fixed', 'vec', or float")
         elif not 0 < ori < 1:
-            raise ValueError(f"ori={ori!r}; must be in range (0, 1)")
+            raise ValueError(f"{ori=}; must be in range (0, 1)")
         else:
             ori = f'loose{str(ori)[1:]}'
         items = [ori]
@@ -6399,21 +6405,21 @@ class MneExperiment(FileTree):
         if snr > 0:
             items.append(f'{snr:g}')
         elif snr < 0:
-            raise ValueError(f"snr={snr!r}")
+            raise ValueError(f"{snr=}")
 
         if method in INV_METHODS:
             items.append(method)
         else:
-            raise ValueError(f"method={method!r}")
+            raise ValueError(f"{method=}")
 
         if not 0 <= depth <= 1:
-            raise ValueError(f"depth={depth!r}; must be in range [0, 1]")
+            raise ValueError(f"{depth=}; must be in range [0, 1]")
         elif depth != 0.8:
             items.append(f'{depth:g}')
 
         if pick_normal:
             if ori in ('vec', 'fixed'):
-                raise ValueError(f"ori={ori!r} and pick_normal=True are incompatible")
+                raise ValueError(f"{ori=} and pick_normal=True are incompatible")
             items.append('pick_normal')
 
         return '-'.join(items)
@@ -6454,7 +6460,7 @@ class MneExperiment(FileTree):
 
     @classmethod
     def _eval_inv(cls, inv):
-        return cls._inv_str(*cls._parse_inv(inv))
+        return cls.inv_str(*cls._parse_inv(inv))
 
     @staticmethod
     def _update_inv_cache(fields):
@@ -7009,7 +7015,7 @@ class MneExperiment(FileTree):
                     n_good.append(float('nan'))
                 if has_interp:
                     n_interp.append(float('nan'))
-                n_events.append(np.NaN)
+                n_events.append(np.nan)
                 continue
 
             try:

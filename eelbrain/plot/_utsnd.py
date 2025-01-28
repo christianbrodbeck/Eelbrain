@@ -58,8 +58,7 @@ class _plt_im:
 
     def _draw_contours(self):
         if self._contour_h:
-            for c in self._contour_h.collections:
-                c.remove()
+            self._contour_h.remove()
             self._contour_h = None
 
         if not self._contours:
@@ -73,8 +72,7 @@ class _plt_im:
 
         self._contour_h = self.ax.contour(self._data, origin='lower', extent=self._extent, **self._contours)
         if self._mask is not None:
-            for c in self._contour_h.collections:
-                c.set_clip_path(self._mask)
+            self._contour_h.set_clip_path(self._mask)
 
     def add_contour(self, meas, level, color):
         if self._meas == meas:
@@ -214,6 +212,12 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         Lower limit for the colormap.
     cmap : str
         Colormap (default depends on the data).
+    contours
+        Draw contours. Can be an int (number of contours, including
+        ``vmin`` and ``vmax``), a sequence (values at which to draw
+        contours), or a dictionary with ``**kwargs`` for
+        :meth:`~matplotlib.axes.Axes.contour` (must include a ``"levels"`` key).
+        Default is no contours.
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
@@ -256,6 +260,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
             vmax: float = None,
             vmin: float = None,
             cmap=None,
+            contours: Union[int, Sequence, dict] = None,
             axtitle=True,
             interpolation=None,
             xlim=None,
@@ -263,7 +268,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         plot_data = PlotData.from_args(y, (x, None), xax, data, sub).for_plot(PlotType.IMAGE)
         xdim, ydim = plot_data.dims
         self.plots = []
-        ColorMapMixin.__init__(self, plot_data.data, cmap, vmax, vmin, None, self.plots)
+        ColorMapMixin.__init__(self, plot_data.data, cmap, vmax, vmin, contours, self.plots)
 
         layout = Layout(plot_data.plot_used, 1.5, 3, **kwargs)
         EelFigure.__init__(self, plot_data.frame_title, layout)

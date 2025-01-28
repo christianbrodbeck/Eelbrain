@@ -40,7 +40,13 @@ def test_plot_array():
     "Test plot.Array"
     ds = datasets.get_uts(utsnd=True)
     p = plot.Array('utsnd', data=ds)
+    # contours
+    p.add_contour(1, 'k')
+    p.add_contour(2, 'blue')
     p.close()
+    p = plot.Array('utsnd', data=ds, contours=6)
+    p.close()
+    # data parameters
     p = plot.Array('utsnd', 'A%B', data=ds)
     assert p._layout.nax == 4
     assert (p._layout.rows, p._layout.columns) == (2, 2)

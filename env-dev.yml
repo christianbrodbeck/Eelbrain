@@ -15,7 +15,7 @@ dependencies:
 - libclang
 - numpy >= 1.20
 - scipy >= 1.5
-- matplotlib-base >= 3.6
+- matplotlib-base >= 3.8
 - seaborn
 - pymatreader
 - pillow
@@ -23,7 +23,7 @@ dependencies:
 - appnope
 - psutil
 # mne-python
-- mne >= 0.19
+- mne >= 1
 - h5py
 - pandas
 - scikit-learn

@@ -595,7 +595,7 @@ class BoostingResult(PickleableDataClass):
                 continue
             if field.name == 'partition_results' and any(v is not None for v in values):
                 if not all(v is not None for v in values):
-                    raise ValueError(f'partition_results avaiable for some but not all part-results')
+                    raise ValueError(f'partition_results available for some but not all part-results')
                 new_value = [cls._eelbrain_concatenate(p_results) for p_results in zip(*values)]
             elif field.name in ('algorithm_version',):
                 values = set(values)

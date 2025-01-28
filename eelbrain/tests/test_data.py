@@ -1086,7 +1086,7 @@ def test_ndvar():
     m = NDVar([[1, 0, -1, 0, 0], [-1, 0, 1, 0, 0]], (Case, x.sensor))
     y_target = x.x[0, 0] - x.x[0, 2] - x.x[1, 0] + x.x[1, 2]
     y = m.dot(x[:2], ('case', 'sensor'))
-    assert_array_equal(y.x, y_target)
+    assert_allclose(y.x, y_target)
     y = m.dot(x[:2], ('sensor', 'case'))
     assert_allclose(y.x, y_target)
 

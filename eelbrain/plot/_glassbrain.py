@@ -665,7 +665,7 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     vol = np.zeros(shape4d)
     mask = src[0]['inuse'].astype(bool)
     if data.shape[0] < mask.sum():
-        mask[mask] = np.in1d(src[0]['vertno'], source.vertices[0], assume_unique=True)
+        mask[mask] = np.isin(src[0]['vertno'], source.vertices[0], assume_unique=True)
     vol[mask.reshape(shape3d)] = data
     vol = np.moveaxis(vol, 3, 0)  # time on first axis
 

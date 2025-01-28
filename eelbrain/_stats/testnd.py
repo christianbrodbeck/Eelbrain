@@ -3122,7 +3122,7 @@ class NDPermutationDistribution:
                                         self._connectivity, self._criteria)
             n_clusters = len(cids)
             # clean original cluster map
-            idx = np.in1d(cmap, cids, invert=True).reshape(self.shape)
+            idx = np.isin(cmap, cids, invert=True).reshape(self.shape)
             cmap[idx] = 0
         else:
             cmap = stat_map

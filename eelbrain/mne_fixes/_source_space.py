@@ -104,7 +104,7 @@ def prune_volume_source_space(
             ss['vertno'] = ss['vertno'][keep]
             ss['nuse'] = len(ss['vertno'])
             break
-        ss['inuse'] = np.in1d(np.arange(ss['np']), ss['vertno'])
+        ss['inuse'] = np.isin(np.arange(ss['np']), ss['vertno'])
     # check result
     assert ss['inuse'].sum() == ss['nuse']
     assert np.all(np.flatnonzero(ss['inuse']) == ss['vertno'])
@@ -136,6 +136,6 @@ def restrict_volume_source_space(
             index[neighbors[neighbors[:, 0] == i, 1]] = True
     # update ss
     ss['vertno'] = ss['vertno'][index]
-    ss['inuse'] = np.in1d(np.arange(ss['np']), ss['vertno'])
+    ss['inuse'] = np.isin(np.arange(ss['np']), ss['vertno'])
     ss['nuse'] = len(ss['vertno'])
     return SourceSpaces([ss], sss.info)
