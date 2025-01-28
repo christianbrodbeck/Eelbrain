@@ -45,7 +45,7 @@ class EelUnpickler(Unpickler):
 
 
 def pickle(obj: Any, dest: PathArg = None, protocol: int = HIGHEST_PROTOCOL):
-    """Pickle a Python object.
+    """Pickle a Python object (see :mod:`pickle`).
 
     Parameters
     ----------
@@ -66,7 +66,7 @@ def pickle(obj: Any, dest: PathArg = None, protocol: int = HIGHEST_PROTOCOL):
 
     See Also
     --------
-    save.pickle
+    eelbrain.load.pickle
     """
     if dest is None:
         filetypes = [("Pickled Python Objects (*.pickle)", '*.pickle')]
