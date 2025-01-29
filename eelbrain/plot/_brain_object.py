@@ -158,6 +158,23 @@ class Brain(TimeSlicer, surfer.Brain):
     The documentation lists only the methods that Eelbrain adds to or overrides
     from the PySurfer :class:`~surfer.Brain` super-class. For complete PySurfer
     functionality see te PySurfer documentation.
+
+    Initializing a :class:`Brain` object is expensive. When plotting multiple
+    overlays on the same brain, it is more economical to initialize only one
+    :class:`Brain` object and adding/removing the data layers in a loop.
+    Pseudo-code for an example adding images to a table::
+
+        table = fmtxt.Table('ll')
+        b = brain(source_space, hemi=hemi, …)
+        for data_layer in data_layers:
+            table.cell(data_layer.name)
+            b.add_ndvar(data_layer, ...)
+            im = b.image()
+            table.cell(im)
+            b.remove_data()
+            b.remove_labels()
+
+    For another example see the implementation of :class:`SequencePlotter`.
     """
     _display_time_in_frame_title = True
 

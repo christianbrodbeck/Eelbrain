@@ -71,12 +71,22 @@ Eelbrain can then be used from this environment, for example through `Jupyter La
     (eelbrain) $ jupyter lab
 
 
+.. SEEALSO::
+    Mamba is an extension of `Conda <https://conda.io/projects/conda/en/latest/user-guide/getting-started.html>`_. The Conda documentation provides more information on `environments <https://conda.io/docs/user-guide/tasks/manage-environments.html>`_.
+
+
+Updating
+^^^^^^^^
+
 In an existing environment, Eelbrain can generally be updated with the following command (assuming the target environment is currently active):
 
 .. code-block:: bash
 
     (eelbrain) $ mamba update eelbrain
 
+
+However, in complex environments this can lead to package conflicts (mamba will display an error message).
+In such cases it may be easier to just cerate a new environment.
 
 The currently installed version can be displayed with the ``mamba list`` command:
 
@@ -89,9 +99,6 @@ The currently installed version can be displayed with the ``mamba list`` command
     eelbrain                  0.39.11         py311h86e7398_0    conda-forge
 
 Sometimes Mamba may run into difficulties while updating and it may be easier to create a new environment instead.
-
-.. SEEALSO::
-    Mamba is an extension of `Conda <https://conda.io/projects/conda/en/latest/user-guide/getting-started.html>`_. The Conda documentation provides more information on `environments <https://conda.io/docs/user-guide/tasks/manage-environments.html>`_.
 
 
 Making your analysis future-proof
