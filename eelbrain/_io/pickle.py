@@ -66,7 +66,7 @@ def pickle(obj: Any, dest: PathArg = None, protocol: int = HIGHEST_PROTOCOL):
 
     See Also
     --------
-    eelbrain.load.pickle
+    eelbrain.load.unpickle
     """
     if dest is None:
         filetypes = [("Pickled Python Objects (*.pickle)", '*.pickle')]
