@@ -70,9 +70,9 @@ def get_source_dim(ndvar):
         for source in ndvar.dims:
             if isinstance(source, SourceSpace):
                 return source
-        raise ValueError("ndvar has no SourceSpace dimension")
+        raise ValueError("ndvar has no surface-based SourceSpace dimension")
     else:
-        raise TypeError("ndvar=%r; needs to be NDVar or SourceSpace")
+        raise TypeError(f"{ndvar=}; needs to be NDVar or surface-based SourceSpace")
 
 
 class Brain(TimeSlicer, surfer.Brain):
