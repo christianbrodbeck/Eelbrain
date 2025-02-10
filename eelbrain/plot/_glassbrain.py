@@ -298,6 +298,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                 cbar_vmin, cbar_vmax, vmin, vmax = get_colorbar_and_data_ranges(data, vmax=vmax, symmetric_cbar=symmetric_cbar)
             else:
                 cbar_vmin, cbar_vmax, vmin, vmax = get_colorbar_and_data_ranges(data, vmax=vmax, symmetric_cbar=symmetric_cbar)
+                vmin = -vmax
 
             # Deal with automatic settings of plot parameters
             if threshold == 'auto':
