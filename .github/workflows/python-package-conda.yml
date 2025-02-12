@@ -14,27 +14,29 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: '3.10'
-    - name: Add conda to system path
-      run: |
-        # $CONDA is an environment variable pointing to the root of the miniconda directory
-        echo $CONDA/bin >> $GITHUB_PATH
     - name: Install dependencies
       run: |
-        conda env update --file env-dev.yml --name base
         sudo apt-get update
         sudo apt-get install -y xvfb
+    - name: Install Mamba
+      uses: mamba-org/setup-micromamba@v2
+      with:
+        environment-file: env-dev.yml
+        environment-name: eeldev
+        init-shell: bash
+        cache-environment: true
+        post-cleanup: 'all'
     - name: build Eelbrain
-      run: |
-        pip install -e .
-    - name: Start virtual display
-      run: |
-        Xvfb :99 -screen 0 1024x768x16 &
-        export DISPLAY=:99
+      run: pip install -e .
+      shell: bash -el {0}
     - name: Test with pytest
       env:
         DISPLAY: :99
       run: |
+        Xvfb :99 -screen 0 1024x768x16 &
+        export DISPLAY=:99
         pytest --cov --cov-report=xml
+      shell: bash -el {0}
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
