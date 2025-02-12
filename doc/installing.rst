@@ -2,9 +2,14 @@
 Installing
 **********
 
+For the simplest experience, follow the :ref:`install-full`.
+For alternative ways of installing, see :ref:`install-custom`.
+
 .. contents:: Contents
    :local:
 
+
+.. _install-custom:
 
 Basic Installation
 ------------------
@@ -39,6 +44,8 @@ The default PYPI installation omits optional dependencies required for using the
 .. SEEALSO::
     For more installing options, including pre-releases, see the `wiki <https://github.com/christianbrodbeck/Eelbrain/wiki/Installing>`_.
 
+
+.. _install-full:
 
 Full Setup
 ----------
