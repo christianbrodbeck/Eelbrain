@@ -805,7 +805,7 @@ def sensor_dim(
 
 
 def variable_length_epochs(
-        ds: Dataset,
+        events: Dataset,
         tmin: Union[float, Sequence[float]],
         tmax: Union[float, Sequence[float]] = None,
         baseline: BaselineArg = None,
@@ -822,13 +822,15 @@ def variable_length_epochs(
 
     Parameters
     ----------
-    ds
-        Dataset containing a variable which defines epoch cues (i_start).
+    events
+        Dataset containing events and an :class:`mne.io.Raw` data object,
+        as returned by :func:`eelbrain.load.mne.events`.
     tmin
-        First sample to include in the epochs in seconds (Default is -0.1).
+        First sample to include in each epoch in seconds, relative to event time.
+        Can be :class:`str` referencing a variable in ``events``.
     tmax
-        Last sample to include in each epoch in seconds.
-        Use ``tstop`` instead to specify index exclusive of last sample
+        Last sample to include in each epoch in seconds, relative to event time.
+        Can be :class:`str` referencing a variable in ``events``.
     baseline
         Time interval for baseline correction. ``(tmin, tmax)`` tuple in
         seconds, or ``None`` to use all the data (e.g., ``(None, 0)`` uses all
@@ -877,14 +879,14 @@ def variable_length_epochs(
     epochs
         List of data epochs of shape.
     """
-    epochs_ = variable_length_mne_epochs(ds, tmin, tmax, baseline, allow_truncation, tstop=tstop, **kwargs)
+    epochs_ = variable_length_mne_epochs(events, tmin, tmax, baseline, allow_truncation, tstop=tstop, **kwargs)
     return [epochs_ndvar(epoch, name, data, exclude, sysname=sysname, connectivity=connectivity)[0] for epoch in epochs_]
 
 
 def variable_length_mne_epochs(
-        ds: Dataset,
-        tmin: Union[float, Sequence[float]],
-        tmax: Union[float, Sequence[float]] = None,
+        events: Dataset,
+        tmin: Union[float, Sequence[float], str],
+        tmax: Union[float, Sequence[float], str] = None,
         baseline: BaselineArg = None,
         allow_truncation: bool = False,
         tstop: Union[float, Sequence[float]] = None,
@@ -896,12 +898,15 @@ def variable_length_mne_epochs(
 
     Parameters
     ----------
-    ds
-        Dataset containing a variable which defines epoch cues (i_start).
+    events
+        Dataset containing events and an :class:`mne.io.Raw` data object,
+        as returned by :func:`eelbrain.load.mne.events`.
     tmin
-        First sample to include in the epochs in seconds (Default is -0.1).
+        First sample to include in each epoch in seconds, relative to event time.
+        Can be :class:`str` referencing a variable in ``events``.
     tmax
-        Last sample to include in each epoch in seconds.
+        Last sample to include in each epoch in seconds, relative to event time.
+        Can be :class:`str` referencing a variable in ``events``.
     baseline
         Time interval for baseline correction. ``(tmin, tmax)`` tuple in
         seconds, or ``None`` to use all the data (e.g., ``(None, 0)`` uses all
@@ -923,12 +928,16 @@ def variable_length_mne_epochs(
     """
     if baseline is False:
         baseline = None
-    raw = ds.info['raw']
+    raw = events.info['raw']
     if tmax is None:
         if tstop is None:
             raise TypeError(f"{tmax=}, {tstop=}: must specify at least one")
+        if isinstance(tstop, str):
+            tstop = events.eval(tstop)
         n = len(tstop)
     else:
+        if isinstance(tmax, str):
+            tmax = events.eval(tmax)
         n = len(tmax)
     if np.isscalar(tmin):
         tmin = np.repeat(tmin, n)
@@ -943,25 +952,25 @@ def variable_length_mne_epochs(
         tmax = np.repeat(tmax, n)
     if picks is None and raw.info['bads']:
         picks = mne.pick_types(raw.info, meg=True, eeg=True, eog=True, ref_meg=False, exclude=[])
-    events = _mne_events(ds)
+    events_array = _mne_events(events)
     # Load epochs
     out = []
     for i, (tmin_i, tmax_i) in enumerate(zip(tmin, tmax)):
-        i_min = events[i, 0] + floor(tmin_i * raw.info['sfreq'])
+        i_min = events_array[i, 0] + floor(tmin_i * raw.info['sfreq'])
         if raw.first_samp > i_min:
             if allow_truncation:
-                tmin_i = (raw.first_samp - events[i, 0]) / raw.info['sfreq']
+                tmin_i = (raw.first_samp - events_array[i, 0]) / raw.info['sfreq']
             else:
                 missing = (i_min - raw.first_samp) / raw.info['sfreq']
                 raise ValueError(f"{tmin[i]=} is outside of data range by {missing:g} s")
-        i_max = events[i, 0] + floor(tmax_i * raw.info['sfreq'])
+        i_max = events_array[i, 0] + floor(tmax_i * raw.info['sfreq'])
         if raw.last_samp < i_max:
             if allow_truncation:
-                tmax_i = (raw.last_samp - events[i, 0]) / raw.info['sfreq']
+                tmax_i = (raw.last_samp - events_array[i, 0]) / raw.info['sfreq']
             else:
                 missing = (i_max - raw.last_samp) / raw.info['sfreq']
                 raise ValueError(f"{tmax[i]=} is outside of data range by {missing:g} s")
-        epochs_i = mne.Epochs(raw, events[i:i+1], None, tmin_i, tmax_i, baseline, picks, preload=True, decim=decim, **kwargs)
+        epochs_i = mne.Epochs(raw, events_array[i:i+1], None, tmin_i, tmax_i, baseline, picks, preload=True, decim=decim, **kwargs)
         out.append(epochs_i)
     return out
 
