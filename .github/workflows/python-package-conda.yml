@@ -3,10 +3,13 @@ name: Tests
 on: [push]
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build-posix:
+    name: build-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       max-parallel: 5
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -14,7 +17,8 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: '3.10'
-    - name: Install dependencies
+    - if: matrix.os == 'ubuntu-latest'
+      name: Install dependencies
       run: |
         sudo apt-get update
     - name: Install Mamba
@@ -28,15 +32,21 @@ jobs:
     - name: build Eelbrain
       run: pip install -e .
       shell: bash -el {0}
-    - name: Test with pytest
+    - if: matrix.os == 'ubuntu-latest'
+      name: Test without GUI
+      shell: bash -el {0}
       env:
         DISPLAY: :99
       run: |
         Xvfb :99 -screen 0 1024x768x16 &
-        export DISPLAY=:99
-        pytest --cov --cov-report=xml
+        pytest eelbrain --cov --cov-report=xml --no-gui
+    - if: matrix.os == 'macos-latest'
+      name: Test with GUIs and code-cov
       shell: bash -el {0}
-    - name: Upload coverage to Codecov
+      run: |
+        pytest eelbrain --cov --cov-report=xml
+    - if: matrix.os == 'macos-latest'
+      name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
