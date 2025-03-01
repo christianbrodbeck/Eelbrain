@@ -1,7 +1,10 @@
 # Helper to download data for Alice example
+import hashlib
 import shutil
 from pathlib import Path
 from urllib.request import urlretrieve
+
+from pooch import file_hash
 
 from .._types import PathArg
 
@@ -9,6 +12,8 @@ from .._types import PathArg
 def get_alice_path(
         path: PathArg = Path("~/Data/Alice"),
 ):
+    md5 = hashlib.md5()
+
     path = Path(path).expanduser().resolve()
     if path.exists():
         return path
@@ -22,10 +27,13 @@ def get_alice_path(
 
     for url, hash in urls:
         temp_file_name, header = urlretrieve(url)
-        hashsum = hashfunc(temp_file_name, hash_type='md5')
-        if hash_ != hashsum:
+        with open(temp_file_name, "rb") as f:
+            for chunk in iter(lambda: f.read(1048576), b""):
+                md5.update(chunk)
+        file_hash = md5.hexdigest()
+        if file_hash != hash:
             raise RuntimeError(f'Hash mismatch for {url}')
-        with zipfile.ZipFile(temp_file_name, 'r') as fid:
-            fid.extractall(path)
+        with zipfile.ZipFile(temp_file_name, 'r') as f:
+            f.extractall(path)
         Path(temp_file_name).unlink()
     return path
