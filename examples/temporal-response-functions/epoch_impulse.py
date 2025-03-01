@@ -11,6 +11,11 @@ and have variable latency.
 
 The example uses simulated data meant to vaguely resemble data from an N400
 experiment, but not intended as a physiologically realistic simulation.
+
+.. contents:: Sections
+    :local:
+    :backlinks: top
+
 """
 # sphinx_gallery_thumbnail_number = 2
 from eelbrain import *
@@ -30,8 +35,8 @@ trf = fit.h.sub(time=(average.time.tmin, average.time.tstop))
 p = plot.TopoButterfly([fit.h_scaled, average], xlim=(-0.100, 0.600), axtitle=['Impulse response', 'Average'], t=0.400)
 
 ###############################################################################
-# Categorial coding
-# -----------------
+# Categorial variables
+# --------------------
 # Impulse predictors can be used like dummy codes in a regression model.
 # Use one impulse to code for occurrence of any word (``any_word``), and a
 # second impulse to code for unpredictable words only (``cloze``):
@@ -53,8 +58,8 @@ fit = boosting('eeg', [any_word, low_cloze], 0, 0.5, basis=0.050, model='predict
 p = plot.TopoButterfly(fit.h, xlim=(-0.100, 0.600), t=0.400)
 
 ###############################################################################
-# Continuous coding
-# -----------------
+# Continuous variables
+# --------------------
 # Impulse predictors can similarly accommodate continuous variables:
 
 # effect code for cloze (1 for low cloze, -1 for high cloze)
