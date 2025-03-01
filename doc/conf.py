@@ -239,7 +239,7 @@ intersphinx_mapping = {
     'imageio': ('https://imageio.readthedocs.io/en/stable/', None),
     'matplotlib': ('https://matplotlib.org/stable', None),
     'mne': ('https://mne.tools/stable', None),
-    'nilearn': ('https://nilearn.github.io', None),
+    'nilearn': ('https://nilearn.github.io/stable', None),
     'numpy': ('https://numpy.org/doc/stable', None),
     'pandas': ('https://pandas.pydata.org/docs', None),
     'rpy2': ('https://rpy2.github.io/doc', None),
