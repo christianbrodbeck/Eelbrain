@@ -33,7 +33,7 @@ def get_alice_path(
                 md5.update(chunk)
         file_hash = md5.hexdigest()
         if file_hash != hash:
-            raise RuntimeError(f'Hash mismatch for {url}')
+            raise RuntimeError(f'Hash mismatch for {url}: {file_hash} != {hash}')
         with zipfile.ZipFile(temp_file_path, 'r') as f:
             f.extractall(path)
         Path(temp_file_path).unlink()
