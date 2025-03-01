@@ -12,7 +12,7 @@ def get_alice_path(
     path = Path(path).expanduser().resolve()
     if path.exists():
         return path
-    path.mkdir(exist_ok=True)
+    path.mkdir(exist_ok=True, parents=True)
     urls = [
         ['https://drum.lib.umd.edu/bitstream/handle/1903/27591/stimuli.zip', '4336a47bef7d3e63239c40c0623dc186'],
         # ['https://drum.lib.umd.edu/bitstream/handle/1903/27591/eeg.0.zip', 'd63d96a6e5080578dbf71320ddbec0a0'],
