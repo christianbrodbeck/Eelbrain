@@ -1,0 +1,31 @@
+# Helper to download data for Alice example
+import shutil
+from pathlib import Path
+from urllib.request import urlretrieve
+
+from .._types import PathArg
+
+
+def get_alice_path(
+        path: PathArg = Path("~/Data/Alice"),
+):
+    path = Path(path).expanduser().resolve()
+    if path.exists():
+        return path
+    path.mkdir(exist_ok=True)
+    urls = [
+        ['https://drum.lib.umd.edu/bitstream/handle/1903/27591/stimuli.zip', '4336a47bef7d3e63239c40c0623dc186'],
+        # ['https://drum.lib.umd.edu/bitstream/handle/1903/27591/eeg.0.zip', 'd63d96a6e5080578dbf71320ddbec0a0'],
+        ['https://drum.lib.umd.edu/bitstream/handle/1903/27591/eeg.1.zip', 'bdc65f168db4c0f19bb0fed20eae129b'],  # S15-S34
+        # ['https://drum.lib.umd.edu/bitstream/handle/1903/27591/eeg.2.zip', '3fb33ca1c4640c863a71bddd45006815'],
+    ]
+
+    for url, hash in urls:
+        temp_file_name, header = urlretrieve(url)
+        hashsum = hashfunc(temp_file_name, hash_type='md5')
+        if hash_ != hashsum:
+            raise RuntimeError(f'Hash mismatch for {url}')
+        with zipfile.ZipFile(temp_file_name, 'r') as fid:
+            fid.extractall(path)
+        Path(temp_file_name).unlink()
+    return path

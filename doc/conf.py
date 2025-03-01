@@ -102,6 +102,7 @@ example_order = {
     ],
     'temporal-response-functions': [
         'trf_intro.py',
+        'alice-trf.py',
         'mtrf.py',
         'partitions.py',
         'epoch_impulse.py',
