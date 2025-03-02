@@ -1,7 +1,7 @@
 import numpy
 from dataclasses import dataclass, fields
 from functools import cached_property, reduce
-from itertools import product
+from itertools import product, zip_longest
 from operator import mul
 from typing import List, Sequence, Union
 
@@ -386,7 +386,11 @@ class DeconvolutionData:
             if y.has_case ^ x_data.has_case:
                 raise ValueError(f'{y=}: case dimension does not match x')
         if y_time_dim != x_data.time_dim:
-            raise ValueError("y does not have the same time dimension as x")
+            if isinstance(y_time_dim, list):
+                desc = '\n'.join([f"{y_time}  {x_time}" for y_time, x_time in zip_longest(y_time_dim, x_data.time_dim)])
+            else:
+                desc = f"y_time={y_time_dim!r}; x_time={x_data.time_dim!r}"
+            raise ValueError(f"y does not have the same time dimension as x:\n{desc}")
         elif n_cases != x_data.n_cases:
             raise ValueError(f'{y=}: different number of cases from x ({x_data.n_cases})')
 

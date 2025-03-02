@@ -3,9 +3,14 @@
 
 EEG speech envelope TRF
 =======================
-Analyze continuous speech data from the mTRF dataset [1]_: use the
-boosting algorithm for estimating temporal response functions (TRFs) to the
-acoustic envelope.
+A TRF analysis on data that comes as arrays.
+Analyze continuous speech data from the mTRF dataset [1]_.
+Use the boosting algorithm for estimating temporal response functions (TRFs)
+to the acoustic envelope.
+
+.. contents:: Sections
+    :local:
+    :backlinks: top
 
 """
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
