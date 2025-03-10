@@ -784,7 +784,7 @@ def sensor_dim(
                 if ' ' not in names[0]:  # mne-python < ~1.2
                     names = [f'{n[:3]} {n[3:]}' for n in names]
             elif connectivity == 'ctf275':
-                ch_names = [name[:5] for name in ch_names]
+                names = [f'{name}-4408' for name in names]
             elif connectivity.startswith('bti'):
                 names = [f'MEG {name[1:]:0>3}' for name in names]
 
