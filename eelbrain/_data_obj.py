@@ -4142,24 +4142,30 @@ class NDVar(Named):
         """
         return NDVar(self.x.copy(), self.dims, name or self.name, self.info)
 
-    def diff(self, dim=None, n=1, pad=True, name=None):
-        """Discrete difference
+    def diff(
+            self,
+            dim: str = None,
+            n: int = 1,
+            pad: bool = True,
+            name: str = None,
+    ) -> NDVar:
+        """Discrete difference (see :func:`numpy.diff`)
 
         parameters
         ----------
-        dim : str
+        dim
             Dimension along which to operate.
-        n : int
+        n
             Number of times to difference (default 1).
-        pad : bool
+        pad
             Pad the ``dim`` dimension of the result to conserve NDVar shape
             (default). For exmaple, ``diff([0, 1, 1, 0]) -> [0, 1, 0, -1]``.
-        name : str
+        name
             Name of the output NDVar (default is the current name).
 
         Returns
         -------
-        diff : NDVar
+        NDVar
             NDVar with the ``n`` th differences. If the input is masked, the
             previous mask is extended by ``n`` to mask all values in ``diff``
             that incorporate previsouly masked values.
@@ -11161,7 +11167,14 @@ class UTS(Dimension):
             return super(UTS, self)._array_index(arg)
 
     def _array_index_for_slice(self, start: float, stop: float = None, step: float = None):
-        "Create a slice into the time axis"
+        """Create a slice into the time axis
+
+        Parameters
+        ----------
+        start
+            Interpreted as cut-off, i.e., for an axis with times [0.001, 0.002, 0.003, ...]
+            index [0.0021:] would start with sample 0.003.
+        """
         if (start is not None) and (stop is not None) and (start >= stop):
             raise ValueError("tstart must be smaller than tstop")
 
