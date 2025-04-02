@@ -1046,7 +1046,7 @@ class RawReReference(CachedRawPipe):
                 pipe = pipe.source
             if pipe.montage:
                 raw.set_montage(pipe.montage)
-        raw.set_eeg_reference(self.reference)
+        raw.set_eeg_reference(list(self.reference))
         if self.drop:
             raw = raw.drop_channels(self.drop)
         return raw
