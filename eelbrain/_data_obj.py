@@ -4077,6 +4077,7 @@ class NDVar(Named):
         axis = self.get_axis(dim)
         dim = self.get_dim(dim)
         edges, out_dim = dim._bin(start, stop, step, nbins, label)
+        edges_index = dim._array_index(edges)
 
         out_shape = list(self.shape)
         out_shape[axis] = len(edges) - 1
@@ -4084,17 +4085,15 @@ class NDVar(Named):
             x = np.ma.empty(out_shape)
         else:
             x = np.empty(out_shape)
-        bins = []
         idx_prefix = FULL_AXIS_SLICE * axis
-        for i, bin_ in enumerate(intervals(edges)):
-            src_idx = (*idx_prefix, dim._array_index(bin_))
-            dst_idx = (*idx_prefix, i)
-            x[dst_idx] = func(self.x[src_idx], axis=axis)
-            bins.append(bin_)
+        for i, bin_ in enumerate(intervals(edges_index)):
+            src_index = (*idx_prefix, slice(*bin_))
+            dst_index = (*idx_prefix, i)
+            x[dst_index] = func(self.x[src_index], axis=axis)
 
         dims = list(self.dims)
         dims[axis] = out_dim
-        info = {**self.info, 'bins': tuple(bins)}
+        info = {**self.info, 'bins': tuple(intervals(edges))}
         return NDVar(x, dims, name or self.name, info)
 
     def clip(self, min=None, max=None, name=None, out=None):
@@ -10996,10 +10995,14 @@ class UTS(Dimension):
         if stop is None:
             stop = self.tstop
 
-        n_bins = int(ceil(round((stop - start) / step, 2)))
+        n_bins = int(ceil((stop - start) / step))
         edges = [start + n * step for n in range(n_bins)]
-        edges.append(stop)
-        # new dimension
+        # Drop last bin if it is empty
+        if self._array_index(stop) > self._array_index(edges[-1]):
+            edges.append(stop)
+        else:
+            n_bins -= 1
+        # New dimension
         tmin = start + step / 2 if label == 'center' else start
         out_dim = UTS(tmin, step, n_bins)
         return edges, out_dim
