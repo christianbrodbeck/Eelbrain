@@ -37,6 +37,7 @@ DAMAGE.
 import os
 from typing import Literal, Union
 import warnings
+import numbers
 
 import nibabel
 import numpy as np
@@ -45,8 +46,6 @@ from .._data_obj import NDVarArg, Dataset, VolumeSourceSpace
 from .._utils.numpy_utils import newaxis
 from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, brain_data, butterfly_data, use_inline_backend
 from ._utsnd import Butterfly
-
-import numbers
 
 # Copied from nilearn.image.resampling to avoid sklearn import with forced warnings
 def get_bounds(shape, affine):
@@ -130,6 +129,63 @@ def _get_cropped_cbar_ticks(cbar_vmin, cbar_vmax, threshold=None, n_ticks=5):
             )
     return new_tick_locs
 
+# Adapted from nilearn.plotting.img_plotting
+def _get_colorbar_and_data_ranges(stat_map_data, 
+    vmin=None, 
+    vmax=None, 
+    symmetric_cbar=True,
+):
+    """Set colormap and colorbar limits.
+
+    Used by plot_stat_map, plot_glass_brain and plot_img_on_surf.
+
+    The limits for the colorbar depend on the symmetric_cbar argument. Please
+    refer to docstring of plot_stat_map.
+    """
+    # handle invalid vmin/vmax inputs
+    if (not isinstance(vmin, numbers.Number)) or (not np.isfinite(vmin)):
+        vmin = None
+    if (not isinstance(vmax, numbers.Number)) or (not np.isfinite(vmax)):
+        vmax = None
+
+    # avoid dealing with masked_array:
+    if hasattr(stat_map_data, "_mask"):
+        stat_map_data = np.asarray(
+            stat_map_data[np.logical_not(stat_map_data._mask)]
+        )
+    
+    stat_map_min = np.nanmin(stat_map_data)
+    stat_map_max = np.nanmax(stat_map_data)
+
+    if symmetric_cbar == "auto":
+        if (vmin is None) or (vmax is None):
+            symmetric_cbar = stat_map_min < 0 < stat_map_max
+            print(symmetric_cbar)
+        else:
+            symmetric_cbar = np.isclose(vmin, -vmax)
+
+    # check compatibility between vmin, vmax and symmetric_cbar
+    if symmetric_cbar:
+        if vmin is None and vmax is None:
+            vmax = max(-stat_map_min, stat_map_max)
+            vmin = -vmax
+        elif vmin is None:
+            vmin = -vmax
+        elif vmax is None:
+            vmax = -vmin
+        elif not np.isclose(vmin, -vmax):
+            raise ValueError(
+                "vmin must be equal to -vmax unless symmetric_cbar is False."
+            )
+    # set colorbar limits
+    else:
+        if vmin is None:
+            vmin = stat_map_min
+        if vmax is None:
+            vmax = stat_map_max
+
+    return vmin, vmax
+
 class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     """Plot 2d projections of a brain volume
 
@@ -200,8 +256,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     symmetric_cbar
         Specifies whether the colorbar should range from -vmax to vmax (True)
         or from vmin to vmax (False). Setting to 'auto' will select the latter if
-        the range of the whole image is either positive or negative.
-        # Note: The colormap will always be set to range from -vmax to vmax.
+        the range of the whole image is either positive or negative. If set to 'auto' 
+        and no cmap is provided, this will change to True if data is not boolean in 
+        nature, and vice versa.
     interpolation
         Interpolation to use when resampling the image to the destination
         space. Can be "continuous" to use 3rd-order spline
@@ -327,8 +384,10 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             if cmap is None:
                 if data.dtype.kind == 'b':
                     cmap = 'copper' if black_bg else 'Oranges'
+                    symmetric_cbar = False if symmetric_cbar == 'auto' else symmetric_cbar
                 else:
                     cmap = 'cold_hot' if black_bg else 'cold_white_hot'
+                    symmetric_cbar = True if symmetric_cbar == 'auto' else symmetric_cbar
 
             if data.dtype.kind == 'b':
                 if vmax is None:
@@ -336,7 +395,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                 if vmin is None:
                     vmin = 0
             else:
-                vmin, vmax = self._get_colorbar_and_data_ranges(data, vmin=vmin, vmax=vmax, symmetric_cbar=symmetric_cbar)
+                vmin, vmax = _get_colorbar_and_data_ranges(data, vmin=vmin, vmax=vmax, symmetric_cbar=symmetric_cbar)
 
             # Deal with automatic settings of plot parameters
             if threshold == 'auto':
@@ -414,63 +473,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             time_text = None
         TimeSlicerEF.__init__(self, 'time', time, display_text=time_text)
         self._show()
-
-    # Copied from nilearn.plotting.img_plotting
-    def _get_colorbar_and_data_ranges(self,
-        stat_map_data,
-        vmin=None,
-        vmax=None,
-        symmetric_cbar=True,
-    ):
-        """Set colormap and colorbar limits.
-
-        Used by plot_stat_map, plot_glass_brain and plot_img_on_surf.
-
-        The limits for the colorbar depend on the symmetric_cbar argument. Please
-        refer to docstring of plot_stat_map.
-        """
-        # handle invalid vmin/vmax inputs
-        if (not isinstance(vmin, numbers.Number)) or (not np.isfinite(vmin)):
-            vmin = None
-        if (not isinstance(vmax, numbers.Number)) or (not np.isfinite(vmax)):
-            vmax = None
-
-        # avoid dealing with masked_array:
-        if hasattr(stat_map_data, "_mask"):
-            stat_map_data = np.asarray(
-                stat_map_data[np.logical_not(stat_map_data._mask)]
-            )
-        
-        stat_map_min = np.nanmin(stat_map_data)
-        stat_map_max = np.nanmax(stat_map_data)
-
-        if symmetric_cbar == "auto":
-            if (vmin is None) or (vmax is None):
-                symmetric_cbar = stat_map_min < 0 < stat_map_max
-            else:
-                symmetric_cbar = np.isclose(vmin, -vmax)
-
-        # check compatibility between vmin, vmax and symmetric_cbar
-        if symmetric_cbar:
-            if vmin is None and vmax is None:
-                vmax = max(-stat_map_min, stat_map_max)
-                vmin = -vmax
-            elif vmin is None:
-                vmin = -vmax
-            elif vmax is None:
-                vmax = -vmin
-            elif not np.isclose(vmin, -vmax):
-                raise ValueError(
-                    "vmin must be equal to -vmax unless symmetric_cbar is False."
-                )
-        # set colorbar limits
-        else:
-            if vmin is None:
-                vmin = stat_map_min
-            if vmax is None:
-                vmax = stat_map_max
-
-        return vmin, vmax
 
     def _fill_toolbar(self, tb):
         ColorBarMixin._fill_toolbar(self, tb)
