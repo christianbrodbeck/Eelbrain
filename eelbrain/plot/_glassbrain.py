@@ -44,8 +44,10 @@ import numpy as np
 
 from .._data_obj import NDVarArg, Dataset, VolumeSourceSpace
 from .._utils.numpy_utils import newaxis
+from .._colorspaces import SYMMETRIC_CMAPS
 from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, brain_data, butterfly_data, use_inline_backend
 from ._utsnd import Butterfly
+
 
 # Copied from nilearn.image.resampling to avoid sklearn import with forced warnings
 def get_bounds(shape, affine):
@@ -64,6 +66,7 @@ def get_bounds(shape, affine):
                     [adim, bdim, cdim, 1]]).T
     box = np.dot(affine, box)[:3]
     return list(zip(box.min(axis=-1), box.max(axis=-1)))
+
 
 # Copied from nilearn.plotting.displays._slicers
 def _get_cbar_ticks(vmin, vmax, offset, n_ticks=5):
@@ -101,6 +104,7 @@ def _get_cbar_ticks(vmin, vmax, offset, n_ticks=5):
 
     return ticks
 
+
 # Copied from nilearn.plotting.img_plotting
 def _get_cropped_cbar_ticks(cbar_vmin, cbar_vmax, threshold=None, n_ticks=5):
     """Return ticks for cropped colorbars."""
@@ -128,6 +132,7 @@ def _get_cropped_cbar_ticks(cbar_vmin, cbar_vmax, threshold=None, n_ticks=5):
                 -threshold if threshold > cbar_vmax else threshold
             )
     return new_tick_locs
+
 
 # Adapted from nilearn.plotting.img_plotting
 def _get_colorbar_and_data_ranges(stat_map_data, 
@@ -157,10 +162,10 @@ def _get_colorbar_and_data_ranges(stat_map_data,
     stat_map_min = np.nanmin(stat_map_data)
     stat_map_max = np.nanmax(stat_map_data)
 
+    # Runs if symmetricality is unspecified by user and has not been set previously
     if symmetric_cbar == "auto":
         if (vmin is None) or (vmax is None):
             symmetric_cbar = stat_map_min < 0 < stat_map_max
-            print(symmetric_cbar)
         else:
             symmetric_cbar = np.isclose(vmin, -vmax)
 
@@ -185,6 +190,7 @@ def _get_colorbar_and_data_ranges(stat_map_data,
             vmax = stat_map_max
 
     return vmin, vmax
+
 
 class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     """Plot 2d projections of a brain volume
@@ -388,6 +394,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                 else:
                     cmap = 'cold_hot' if black_bg else 'cold_white_hot'
                     symmetric_cbar = True if symmetric_cbar == 'auto' else symmetric_cbar
+            elif cmap in SYMMETRIC_CMAPS and symmetric_cbar == 'auto':
+                # Only changes to True if present in SYMMETRIC_CMAPS and no user input is specified
+                symmetric_cbar = True
 
             if data.dtype.kind == 'b':
                 if vmax is None:
@@ -451,6 +460,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         self.colorbar = colorbar
         self.vmin = vmin
         self.vmax = vmax
+        self.symmetric_cbar = symmetric_cbar
         self._arrows = draw_arrows
 
         if draw_arrows:
