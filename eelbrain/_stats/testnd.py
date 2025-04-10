@@ -2093,7 +2093,7 @@ class Vector(NDDifferenceTest):
     .. [1] Das, Proloy, Christian Brodbeck, Jonathan Z. Simon, and Behtash Babadi.
         Neuro-Current Response Functions: A Unified Approach to MEG Source Analysis
         under the Continuous Stimuli Paradigm. NeuroImage 211 (May 2020): 116528.
-        <https://doi.org/10.1016/j.neuroimage.2020.116528>.
+        `10.1016/j.neuroimage.2020.116528 <https://doi.org/10.1016/j.neuroimage.2020.116528>`_
     .. [2] Kopp, J. (2008). Efficient numerical diagonalization of hermitian 3 x
         3 matrices. International Journal of Modern Physics C, 19(3), 523-548.
         `10.1142/S0129183108012303 <https://doi.org/10.1142/S0129183108012303>`_
