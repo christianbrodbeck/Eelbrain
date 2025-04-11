@@ -20,6 +20,11 @@ def test_glassbrain():
     p = plot.GlassBrain(ndvar_30, draw_arrows=False)
     p.close()
 
+    # vmin, vmax, and symmetric colorbar
+    p = plot.GlassBrain(ndvar_30, colorbar = True, cmap = 'lux-a')
+    assert p.vmin == -p.vmax and p.symmetric_cbar
+    p.close()
+
     # time series
     p = plot.GlassBrain(ndvar)
     p.set_time(.03)
