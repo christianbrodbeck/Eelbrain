@@ -106,7 +106,7 @@ def tsv(
         path = ui.ask_file("Load TSV", "Select tsv file to import as Dataset")
         if not path:
             return
-    path = Path(path)
+    path = Path(path).expanduser()
 
     if isinstance(random, str):
         random = [random]
