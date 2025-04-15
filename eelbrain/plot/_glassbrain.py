@@ -171,6 +171,10 @@ def _get_colorbar_and_data_ranges(stat_map_data,
 
     # check compatibility between vmin, vmax and symmetric_cbar
     if symmetric_cbar:
+        if vmin == 0 or vmax == 0:
+            raise ValueError(
+                "vmin or vmax should not be 0 if symmetric_cbar is True"
+            )
         if vmin is None and vmax is None:
             vmax = max(-stat_map_min, stat_map_max)
             vmin = -vmax
@@ -397,7 +401,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             elif cmap in SYMMETRIC_CMAPS and symmetric_cbar == 'auto':
                 # Only changes to True if present in SYMMETRIC_CMAPS and no user input is specified
                 symmetric_cbar = True
-
+                
             if data.dtype.kind == 'b':
                 if vmax is None:
                     vmax = 1

@@ -25,6 +25,25 @@ def test_glassbrain():
     assert p.vmin == -p.vmax and p.symmetric_cbar
     p.close()
 
+    # test symmetry of max and min
+    p = plot.GlassBrain(ndvar_30, colorbar = True, cmap = 'lux-a', vmax = 3)
+    assert p.vmax == -p.vmin
+    p.close()
+    p = plot.GlassBrain(ndvar_30, colorbar = True, cmap = 'lux-a', vmin = -3)
+    assert p.vmax == -p.vmin
+    p.close()
+
+    # test asymmetric map
+    p = plot.GlassBrain(ndvar_30, cmap = 'copper')
+    p.close()
+
+    # thresholding
+    p = plot.GlassBrain(ndvar_30, colorbar = True, cmap = 'copper', threshold = 1.8e-9)
+    p.close()
+    p = plot.GlassBrain(ndvar_30, colorbar = True, cmap = 'copper', threshold = 1.8e-9,
+                    vmin = -3.6e-9, vmax = 3.6e-9)
+    p.close()
+
     # time series
     p = plot.GlassBrain(ndvar)
     p.set_time(.03)
