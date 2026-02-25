@@ -21,9 +21,10 @@ def test_sample():
     from eelbrain._experiment.tests.sample_experiment import SampleExperiment
 
     tempdir = TempDir()
-    datasets.setup_samples_experiment(tempdir, n_subjects=3, n_segments=2)
+    datasets.setup_samples_experiment(tempdir, n_subjects=3, n_segments=2, mris=True)
 
     root = join(tempdir, 'SampleExperiment')
+
     e = SampleExperiment(root)
 
     assert e.get('raw') == '1-40'
@@ -43,11 +44,20 @@ def test_sample():
     ds = e.load_selected_events(epoch='av')
     assert ds.n_cases == 39
 
+    # mrisubject
+    assert e.get('mrisubject') == 'sub-R0001'
+
     # covariance
     with e._temporary_state:
-        e.set(cov='emptyroom')
+        e.set(cov='emptyroom', raw='tsss')
         cov = e.load_cov()
         assert isinstance(cov, mne.Covariance)
+        assert e.load_bad_channels(noise=True) == []
+        e.set(cov='emptyroom', raw='1-40')
+        cov = e.load_cov()
+        assert isinstance(cov, mne.Covariance)
+        assert e.load_bad_channels(noise=True) == []
+        e.load_cov()
 
     # evoked cache invalidated by change in bads
     e.set('R0001', rej='', epoch='target')
@@ -285,7 +295,7 @@ def test_sample_source():
     from eelbrain._experiment.tests.sample_experiment import SampleExperiment
 
     tempdir = TempDir()
-    datasets.setup_samples_experiment(tempdir, 3, 2, mris=True)  # TODO: use sample MRI which already has forward solution
+    datasets.setup_samples_experiment(tempdir, n_subjects=3, n_segments=2, mris=True)  # TODO: use sample MRI which already has forward solution
     root = join(tempdir, 'SampleExperiment')
     e = SampleExperiment(root)
 

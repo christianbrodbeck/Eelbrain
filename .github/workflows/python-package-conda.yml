@@ -7,9 +7,14 @@ jobs:
     name: build-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       max-parallel: 5
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            python: "3.10"  # Lowest version supported on conda-forge
+          - os: macos-latest
+            python: "3.12"
 
     steps:
     - uses: actions/checkout@v4
@@ -43,6 +48,6 @@ jobs:
         pytest eelbrain --cov --cov-branch --cov-report=xml
     - if: matrix.os == 'macos-latest'
       name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
