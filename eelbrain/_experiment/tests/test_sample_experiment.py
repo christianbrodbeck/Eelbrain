@@ -462,7 +462,6 @@ def test_sample():
     # ------------
     class Experiment(SampleExperiment):
         def label_events(self, ds):
-            ds = SampleExperiment.label_events(self, ds)
             ds = ds.sub("event == 'smiley'")
             ds['new_var'] = Var([i + 1 for i in ds['sample']])
             return ds
@@ -1100,11 +1099,9 @@ def test_selected_events_manifest_uses_real_dependencies():
         'cat': None,
     })
     dependencies = handle.dependency_fingerprints()
-    expected_labeled_events_dependencies = {'events', 'raw'} if e._resolve_derivative('events-input').exists() else {'events'}
-
     assert 'dependencies' not in handle.current_fingerprint()
     assert set(dependencies) == {'labeled-events'}
-    assert set(dependencies['labeled-events']['dependencies']) == expected_labeled_events_dependencies
+    assert set(dependencies['labeled-events']['dependencies']) == {'events-input', 'events'}
 
 
 @requires_mne_sample_data
@@ -1120,15 +1117,13 @@ def test_labeled_events_sidecar_copies_raw_info_from_raw():
     e.set(subject='R0000', epoch='target', rej='')
     raw = e.load_raw()
 
-    # With a BIDS sidecar present, labeled-events depends on events-input + raw
+    # labeled-events always depends on both events-input and events (trigger-based)
     labeled_handle = e._resolve_derivative('labeled-events')
     dependencies = labeled_handle.dependency_fingerprints()
     labeled_events = labeled_handle.load()
 
-    assert set(dependencies) == {'events', 'raw'}
-    assert dependencies['events']['name'] == 'events-input'
-    assert dependencies['raw']['name'] == raw_node_name(e.get('raw'))
-    # Raw timing info must be copied from the raw file (EventsInput can't supply it)
+    assert set(dependencies) == {'events-input', 'events'}
+    # Raw timing info is copied from trigger events (which read the raw file),
     # so that the epoch boundary check in _prepare_selected_events works correctly.
     assert labeled_events.info['raw.samplingrate'] == raw.info['sfreq']
     assert labeled_events.info['raw.first_samp'] == raw.first_samp

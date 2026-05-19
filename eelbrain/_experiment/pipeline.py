@@ -441,13 +441,13 @@ class Pipeline(StateModel):
             self.__class__.__name__,
         ))
         self._derivatives.register(LabeledEventsDerivative(
-            type(self).label_events,
+            self.label_events,
             self.__class__.__name__,
             len(self._tasks) > 1,
             len(self._sessions) > 1,
             self._variables,
             self._groups,
-            type(self).cache_event_labels,
+            self.cache_event_labels,
         ))
         self._derivatives.register(SelectedEventsDerivative(self._raw, self._epochs, self._artifact_rejection))
         self._derivatives.register(EpochsDerivative(self._raw, self._epochs))

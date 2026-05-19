@@ -64,7 +64,7 @@ from .derivative_cache import (
 )
 from .configuration import Configuration, sequence_arg, typed_arg
 from .exceptions import FileMissingError
-from .pathing import bids_path, ica_file_path
+from .pathing import bids_path, find_bids_path_without_run, ica_file_path
 
 MNE_VERBOSITY = 'WARNING'
 LOG = logging.getLogger(__name__)
@@ -251,18 +251,14 @@ class RawSourceInput(Input[mne.io.BaseRaw]):
         if bids_path_.fpath.exists():
             return bids_path_
         # Alternative paths: split files and omitted run
-        alternative_path = bids_path_.copy()
-        alternative_path.update(split='01')
-        if alternative_path.fpath.exists():
-            return alternative_path
+        split_path = bids_path_.copy().update(split='01')
+        if split_path.fpath.exists():
+            return split_path
         # run-01 may be stored without the run entity (single-run subject/task).
-        if bids_path_.run == '01':
-            alternative_path.update(run=None)
-            if alternative_path.fpath.exists():
-                return alternative_path
-            alternative_path.update(split=None)
-            if alternative_path.fpath.exists():
-                return alternative_path
+        if found := find_bids_path_without_run(bids_path_):
+            return found
+        if found := find_bids_path_without_run(split_path):
+            return found
         if require:
             raise FileMissingError(f"Raw input file does not exist at expected location {bids_path_.fpath}")
         return bids_path_

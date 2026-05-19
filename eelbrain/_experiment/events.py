@@ -31,21 +31,21 @@ from __future__ import annotations
 
 import hashlib
 import inspect
-import json
 from pathlib import Path
 from typing import Any
 from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
+from mne_bids import BIDSPath
 
 from .. import load, save
-from .._data_obj import Datalist, Dataset, Factor, combine
+from .._data_obj import Datalist, Dataset, Factor, Var, combine
 from .._exceptions import ConfigurationError
 from .._info import BAD_CHANNELS, INTERPOLATE_CHANNELS
 from .derivative_cache import CachePolicy, Dependency, Derivative, Input, Request, UncachedDerivative, file_fingerprint
 from .epochs import EPOCH_EXTRACT_OPTIONS, EpochCollection, SecondaryEpoch, SuperEpoch, PrimaryEpoch, ContinuousEpoch
-from .pathing import BIDS_ENTITY_KEYS, bids_path
+from .pathing import BIDS_ENTITY_KEYS, bids_path, find_bids_path_without_run
 from .preprocessing import raw_node_name
 from .variable_def import Variables
 
@@ -72,8 +72,6 @@ class EventsInput(Input[Dataset]):
     to the returned :class:`~eelbrain.Dataset` so that they are available in
     :meth:`~Pipeline.label_events`.
 
-    The recording sampling frequency is read from the accompanying
-    ``*_<datatype>.json`` metadata sidecar (``SamplingFrequency`` field).
     """
     name = 'events-input'
 
@@ -83,27 +81,25 @@ class EventsInput(Input[Dataset]):
     ):
         self.raw_extension = raw_extension
 
+    def _resolve_bids_events_path(self, ctx: Request) -> BIDSPath:
+        bids_path_ = bids_path(ctx.root, ctx.state, extension='.tsv', suffix='events')
+        if bids_path_.fpath.exists():
+            return bids_path_
+        return find_bids_path_without_run(bids_path_) or bids_path_
+
     def path(self, ctx: Request) -> Path:
-        return bids_path(ctx.root, ctx.state, extension='.tsv', suffix='events').fpath
+        return self._resolve_bids_events_path(ctx).fpath
 
     def fingerprint(self, ctx: Request) -> dict[str, Any]:
         return file_fingerprint(ctx.root, self.path(ctx), 'events-tsv')
 
-    def load(self, ctx: Request) -> Dataset:
+    def load(self, ctx: Request) -> Dataset | None:
         path = self.path(ctx)
+        if not path.exists():
+            return None
         df = pd.read_csv(path, sep='\t')
-        # Read SamplingFrequency from the accompanying JSON metadata sidecar
-        json_path = Path(bids_path(ctx.root, ctx.state, '.json').fpath)
-        if json_path.exists():
-            with open(json_path) as f:
-                sfreq = float(json.load(f).get('SamplingFrequency', 0.))
-        else:
-            sfreq = 0.
         entities = {k: ctx.state[k] for k in BIDS_ENTITY_KEYS}
-        ds = Dataset.from_dataframe(df)
-        ds.info['raw.samplingrate'] = sfreq
-        ds.info.update(entities)
-        return ds
+        return Dataset.from_dataframe(df, info=entities)
 
 
 def _check_ds(ds: Dataset, source: str, info: dict[str, Any]) -> Dataset:
@@ -114,7 +110,8 @@ def _check_ds(ds: Dataset, source: str, info: dict[str, Any]) -> Dataset:
     if 'value' not in ds:
         raise ConfigurationError(f"The Dataset returned by {source} does not contain a variable called `value`. This variable is required to check rejection files.")
     if ds.info is not info:
-        ds.info.update(info)
+        # Make sure to keep some required information
+        ds.info.update({k: v for k, v in info.items() if k not in ds.info})
     return ds
 
 
@@ -157,7 +154,6 @@ class EventsDerivative(Derivative[Dataset]):
         session = ctx.state['session']
         trigger_shift = self._get_trigger_shift(subject, session)
         return {
-            'raw': ctx.state['raw'],
             'stim_channel': self.stim_channel,
             'merge_triggers': self.merge_triggers,
             'trigger_shift': trigger_shift,
@@ -171,7 +167,11 @@ class EventsDerivative(Derivative[Dataset]):
         raw = ctx.load(raw_node_name(ctx.state['raw']))
         if self.preload and not raw.preload:
             raw.load_data()
-        ds = load.mne.events(raw, self.merge_triggers, stim_channel=self.stim_channel)
+        try:
+            ds = load.mne.events(raw, self.merge_triggers, stim_channel=self.stim_channel)
+        except ValueError:
+            # No trigger channel present (e.g. sidecar-only dataset); return empty events
+            ds = Dataset({'i_start': Var(np.zeros(0, int)), 'trigger': Var(np.zeros(0, int))}, info={'raw': raw})
         del ds.info['raw']
         ds.rename('i_start', 'sample')
         ds.rename('trigger', 'value')
@@ -230,17 +230,11 @@ class LabeledEventsDerivative(Derivative[Dataset]):
         if not cache:
             self.cache_policy = CachePolicy.DISABLED_BY_DEFAULT
 
-    def _has_sidecar(self, ctx: Request) -> bool:
-        """Return whether a BIDS events sidecar exists for the current state."""
-        return ctx.registry.resolve('events-input', state=ctx.state).exists()
-
     def dependencies(self, ctx: Request) -> tuple[Dependency, ...]:
-        if self._has_sidecar(ctx):
-            return (
-                Dependency('events-input', label='events'),
-                Dependency(raw_node_name(ctx.state['raw']), label='raw'),
-            )
-        return (Dependency('events'),)
+        return (
+            Dependency('events-input'),
+            Dependency('events'),
+        )
 
     def fingerprint(self, ctx: Request) -> dict[str, Any]:
         return self.standard_fingerprint(
@@ -252,24 +246,34 @@ class LabeledEventsDerivative(Derivative[Dataset]):
         )
 
     def build(self, ctx: Request) -> Dataset:
-        ds = ctx.load('events')
-        if self._has_sidecar(ctx):
-            raw = ctx.load('raw')
-            ds.info['raw.samplingrate'] = raw.info['sfreq']
-            ds.info['raw.first_samp'] = raw.first_samp
-            ds.info['raw.last_samp'] = raw.last_samp
-            # BIDS TSV 'sample' is 0-indexed from file start (MNE-BIDS subtracts
-            # raw.first_samp on write); adjust to raw's absolute sample frame.
-            if raw.first_samp:
-                ds['sample'] = ds['sample'] + raw.first_samp
+        sidecar = ctx.load('events-input')
+        trigger_events = ctx.load('events')
+        if sidecar is not None:
+            ds = sidecar
+            # Override sfreq with the authoritative value from the raw file, and
+            # adjust samples: BIDS TSV is 0-indexed from file start (MNE-BIDS
+            # subtracts raw.first_samp on write), so add it back.
+            ds.info['raw.samplingrate'] = trigger_events.info['raw.samplingrate']
+            ds.info['raw.first_samp'] = trigger_events.info['raw.first_samp']
+            ds.info['raw.last_samp'] = trigger_events.info['raw.last_samp']
+            if trigger_events.info['raw.first_samp']:
+                ds['sample'] = ds['sample'] + trigger_events.info['raw.first_samp']
+        else:
+            ds = trigger_events
         ds['subject'] = Factor([ctx.state['subject']], repeat=ds.n_cases, random=True)
         if self.multi_task:
             ds[:, 'task'] = ctx.state['task']
         if self.multi_session:
             ds[:, 'session'] = ctx.state['session']
         self._variables._apply(ds, self._groups)
+        # Apply e.label_events()
         info = ds.info
-        return _check_ds(self.label_events_impl(self, ds), f'{self.owner_name}.label_events()', info)
+        n_args = len(inspect.signature(self.label_events_impl).parameters)
+        if n_args == 1:
+            ds = self.label_events_impl(ds)
+        else:
+            raise ValueError(f"{self.owner_name}.label_events {self.label_events_impl!r}: number of arguments: {n_args}; should take one argument, {self.owner_name}.label_events(self, ds) or label_events(ds) ")
+        return _check_ds(ds, f'{self.owner_name}.label_events()', info)
 
     def load(self, ctx: Request, path: Path) -> Dataset:
         ds = load.unpickle(path)
