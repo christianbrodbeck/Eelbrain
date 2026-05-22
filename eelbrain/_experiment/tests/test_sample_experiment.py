@@ -1013,10 +1013,10 @@ def test_epochs_cache_uses_fif():
     manifest = json.loads(handle.manifest_path.read_text())
     assert manifest['artifact_metadata']['kind'] == 'single'
     assert manifest['artifact_metadata']['file'] == 'epochs-0000-epo.fif'
-    selected_events_dependency = manifest['dependencies']['selected-events']
-    assert 'view' not in selected_events_dependency
-    assert 'quick_fingerprint' not in selected_events_dependency
-    assert 'dependencies' not in selected_events_dependency
+    epoch_events_dependency = manifest['dependencies']['epoch-events']
+    assert 'view' not in epoch_events_dependency
+    assert 'quick_fingerprint' not in epoch_events_dependency
+    assert 'dependencies' not in epoch_events_dependency
 
     mtimes_1 = tuple(path.stat().st_mtime_ns for path in sorted(handle.artifact_path.iterdir()))
     ds_cached = handle.load(cache=True)
@@ -1093,15 +1093,17 @@ def test_selected_events_manifest_uses_real_dependencies():
 
     e = SampleExperiment(root)
     e.set(subject='R0000', epoch='target', rej='')
-    handle = e._resolve_derivative('selected-events', options={
+    handle = e._resolve_derivative('epoch-events', options={
         'reject': True,
         'index': True,
         'cat': None,
     })
     dependencies = handle.dependency_fingerprints()
     assert 'dependencies' not in handle.current_fingerprint()
-    assert set(dependencies) == {'labeled-events'}
-    assert set(dependencies['labeled-events']['dependencies']) == {'events-input', 'events'}
+    assert set(dependencies) == {'selected-events'}
+    rec_events_deps = dependencies['selected-events']['dependencies']
+    assert set(rec_events_deps) == {'labeled-events'}
+    assert set(rec_events_deps['labeled-events']['dependencies']) == {'events-input', 'events'}
 
 
 @requires_mne_sample_data
@@ -1214,17 +1216,17 @@ def test_selected_events_cache_identity_ignores_view_options():
     e = SampleExperiment(root)
     e.set(subject='R0000', epoch='target', rej='', model='modality')
 
-    handle_default = e._resolve_derivative('selected-events', options={
+    handle_default = e._resolve_derivative('epoch-events', options={
         'reject': True,
         'index': True,
         'cat': None,
     })
-    handle_view = e._resolve_derivative('selected-events', options={
+    handle_view = e._resolve_derivative('epoch-events', options={
         'reject': True,
         'index': True,
         'cat': ('auditory',),
     })
-    handle_reject = e._resolve_derivative('selected-events', options={
+    handle_reject = e._resolve_derivative('epoch-events', options={
         'reject': False,
         'index': True,
         'cat': None,
@@ -1340,12 +1342,12 @@ def test_selected_events_vardef_is_local():
     compact = Variables({'grouped': LabelVar('value', {(1, 2): 'target'}, task='sample')})
     changed = Variables({'grouped': LabelVar('value', {1: 'target', 2: 'nontarget'}, task='sample')})
 
-    handle = e._resolve_derivative('selected-events', options=options)
+    handle = e._resolve_derivative('epoch-events', options=options)
     _ = handle.load(cache=True)
 
     assert 'vardef' not in handle.current_fingerprint()
     with pytest.raises(TypeError, match="undeclared option"):
-        e._resolve_derivative('selected-events', options={**options, 'vardef': compact})
+        e._resolve_derivative('epoch-events', options={**options, 'vardef': compact})
 
     ds_compact = e.load_selected_events(vardef=compact)
     ds_changed = e.load_selected_events(vardef=changed)
@@ -1396,6 +1398,58 @@ def test_sample_neuromag():
     e.make_epoch_selection(auto={'mag': 2e-12, 'grad': 5e-11, 'eeg': 1.5e-4})
     ds = e.load_selected_events(reject='keep')
     assert ds['accept'].sum() == 69
+
+
+@requires_mne_sample_data
+def test_primary_epoch_run():
+    """Test PrimaryEpoch.run parameter: combine-all and explicit-run modes."""
+    set_log_level('warning', 'mne')
+
+    tempdir = TempDir()
+    datasets.setup_samples_experiment(tempdir, n_subjects=2, n_segments=2, n_runs=2)
+    root = join(tempdir, 'SampleExperiment')
+
+    class MultiRunExperiment(Pipeline):
+        stim_channel = 'STI 014'
+        merge_triggers = -1
+        variables = {
+            'event': LabelVar('value', {(1, 2, 3, 4): 'target', 5: 'smiley', 32: 'button'}),
+        }
+        # combine-all epoch: run=None → load events from all runs
+        # explicit-run epochs: run='1'/'2' → load events only from that run
+        epochs = {
+            'target': PrimaryEpoch('sample', "event == 'target'", tmax=0.3, decim=5),
+            'target-r1': PrimaryEpoch('sample', "event == 'target'", tmax=0.3, decim=5, run='1'),
+            'target-r2': PrimaryEpoch('sample', "event == 'target'", tmax=0.3, decim=5, run='2'),
+        }
+
+    e = MultiRunExperiment(root)
+
+    # With explicit-run epoch, run state should be forced to the epoch's run
+    e.set(epoch='target-r1')
+    assert e.get('run') == '1', "explicit-run epoch should set run='1' in state"
+
+    # Combine-all: events from both runs combined; explicit-run loads only that run
+    e.set(epoch='target', rej='')
+    ds_all = e.load_selected_events()
+    assert ds_all.n_cases > 0
+
+    e.set(epoch='target-r1', rej='')
+    ds_r1 = e.load_selected_events()
+    assert ds_r1.n_cases > 0
+
+    e.set(epoch='target-r2', rej='')
+    ds_r2 = e.load_selected_events()
+    assert ds_r2.n_cases > 0
+
+    # Combined events = run-1 + run-2
+    assert ds_all.n_cases == ds_r1.n_cases + ds_r2.n_cases, f"combine-all ({ds_all.n_cases}) != run-1 ({ds_r1.n_cases}) + run-2 ({ds_r2.n_cases})"
+
+    # Epochs can be loaded from combine-all epoch
+    e.set(epoch='target')
+    ds_epochs = e.load_epochs()
+    assert 'meg' in ds_epochs
+    assert ds_epochs.n_cases == ds_all.n_cases
 
 
 @requires_mne_sample_data

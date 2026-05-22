@@ -47,18 +47,6 @@ def _bids_name(
     return '_'.join(parts)
 
 
-def find_bids_path_without_run(bids_path_: BIDSPath) -> BIDSPath | None:
-    """For run-01, return a copy with run omitted if that file exists, else None.
-
-    Single-run datasets may omit the run entity from filenames.
-    """
-    if bids_path_.run == '01':
-        without_run = bids_path_.copy().update(run=None)
-        if without_run.fpath.exists():
-            return without_run
-    return None
-
-
 def bids_path(root: Path, state: dict[str, Any], extension: str, *, suffix: str = None, noise: bool = False) -> BIDSPath:
     kwargs = {key: _state_value(state, key) for key in BIDS_ENTITY_KEYS}
     path = BIDSPath(

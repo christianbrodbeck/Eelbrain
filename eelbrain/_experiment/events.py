@@ -1,7 +1,28 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-"""Event and selected-event derivatives.
+"""Event derivatives - prepare events for epoch extraction (epoch-events).
 
-The event pipeline is split into three nodes:
+Dependency structure:
+
+    epoch-events
+    ├── PrimaryEpoch (single run) / ContinuousEpoch
+    │     └── selected-events
+    │           ├── labeled-events
+    │           │     ├── events-input   (BIDS sidecar, preferred when present)
+    │           │     └── events         (trigger-based fallback)
+    │           └── rej-input            (only when rej is non-empty and reject != False)
+    │
+    ├── PrimaryEpoch (combine runs: run=None and multiple runs exist)
+    │     └── selected-events  ×N  (one per run)
+    │           ├── labeled-events
+    │           │     ├── events-input
+    │           │     └── events
+    │           └── rej-input
+    │
+    ├── SecondaryEpoch
+    │     └── epoch-events  (base epoch, recursively)
+    │
+    └── SuperEpoch
+          └── epoch-events  ×N  (one per sub-epoch)
 
 :class:`EventsInput` (``'events-input'``)
     External input that reads events directly from a BIDS sidecar
@@ -20,11 +41,19 @@ The event pipeline is split into three nodes:
     sidecar file is present.
 
 :class:`SelectedEventsDerivative` (``'selected-events'``)
-    Applies epoch-specific trial selection (``sel`` predicate, rejection,
-    bad-channel interpolation) on top of the labeled events.
-    Cache policy is :attr:`~CachePolicy.DISABLED_BY_DEFAULT`
-    because the result is a small dataset that is cheap to recompute and is
-    usually only needed as an intermediate for :class:`~epochs.EpochsDerivative`.
+    Applies epoch-specific trial selection (``sel`` predicate), artifact
+    rejection, and bad-channel annotations for a single raw recording file.
+    Always restricted to one task/run combination.  Adds ``rej-input`` as a
+    dependency when artifact rejection is active (``rej`` is non-empty and
+    ``reject`` is not ``False``).
+
+:class:`EpochEventsDerivative` (``'epoch-events'``)
+    Epoch-level event aggregation.  For :class:`~epochs.PrimaryEpoch` and
+    :class:`~epochs.ContinuousEpoch` this delegates to
+    :class:`SelectedEventsDerivative`, combining across runs for combine-all
+    epochs.  For :class:`~epochs.SecondaryEpoch` and
+    :class:`~epochs.SuperEpoch` it delegates to base/sub-epoch
+    ``epoch-events`` nodes.
 """
 
 from __future__ import annotations
@@ -45,7 +74,7 @@ from .._exceptions import ConfigurationError
 from .._info import BAD_CHANNELS, INTERPOLATE_CHANNELS
 from .derivative_cache import CachePolicy, Dependency, Derivative, Input, Request, UncachedDerivative, file_fingerprint
 from .epochs import EPOCH_EXTRACT_OPTIONS, EpochCollection, SecondaryEpoch, SuperEpoch, PrimaryEpoch, ContinuousEpoch
-from .pathing import BIDS_ENTITY_KEYS, bids_path, find_bids_path_without_run
+from .pathing import BIDS_ENTITY_KEYS, bids_path
 from .preprocessing import raw_node_name
 from .variable_def import Variables
 
@@ -82,10 +111,7 @@ class EventsInput(Input[Dataset]):
         self.raw_extension = raw_extension
 
     def _resolve_bids_events_path(self, ctx: Request) -> BIDSPath:
-        bids_path_ = bids_path(ctx.root, ctx.state, extension='.tsv', suffix='events')
-        if bids_path_.fpath.exists():
-            return bids_path_
-        return find_bids_path_without_run(bids_path_) or bids_path_
+        return bids_path(ctx.root, ctx.state, extension='.tsv', suffix='events')
 
     def path(self, ctx: Request) -> Path:
         return self._resolve_bids_events_path(ctx).fpath
@@ -285,22 +311,119 @@ class LabeledEventsDerivative(Derivative[Dataset]):
 
 
 class SelectedEventsDerivative(UncachedDerivative[Dataset]):
-    """Selected event dataset for one epoch/rejection state.
+    """Selected events for a single raw recording (one task/run).
+
+    Applies epoch-specific trial selection (``sel`` predicate), artifact
+    rejection, and bad-channel annotations for a single recording file.
+    Always restricted to one task/run combination; multi-run aggregation is
+    handled by :class:`EpochEventsDerivative`.
+    """
+    name = 'selected-events'
+    OPTION_DEFAULTS = {
+        'index': True,
+        'reject': True,
+        'baseline': False,
+        'samplingrate': None,
+        'decim': None,
+        'pad': 0,
+        'tmin': None,
+        'tmax': None,
+        'tstop': None,
+    }
+
+    def __init__(
+            self,
+            epochs: dict[str, Any],
+            artifact_rejection: dict[str, dict[str, Any]],
+    ):
+        self.epochs = epochs
+        self.artifact_rejection = artifact_rejection
+
+    def dependencies(self, ctx: Request) -> tuple[Dependency, ...]:
+        epoch = self.epochs[ctx.state['epoch']]
+        reject = ctx.options['reject']
+        if reject not in (True, False, 'keep'):
+            raise ValueError(f"{reject=}")
+        rejection_params = self.artifact_rejection[ctx.state['rej']]
+        state = {'task': epoch.task, 'run': ctx.state['run']}
+        deps = [Dependency('labeled-events', state=state)]
+        if rejection_params['kind'] and reject:
+            deps.append(Dependency('rej-input', state=state))
+        return tuple(deps)
+
+    def fingerprint(self, ctx: Request) -> dict[str, Any]:
+        epoch = self.epochs[ctx.state['epoch']]
+        return self.standard_fingerprint(ctx, definitions={'epoch': epoch})
+
+    def build(self, ctx: Request) -> Dataset:
+        epoch = self.epochs[ctx.state['epoch']]
+        subject = ctx.state['subject']
+        ds = ctx.load('labeled-events')
+        if epoch.sel:
+            ds = ds.sub(epoch.sel)
+        if epoch.n_cases is not None and ds.n_cases != epoch.n_cases:
+            raise RuntimeError(f"Number of epochs {ds.n_cases}, expected {epoch.n_cases}")
+        if ctx.options['index']:
+            ds.index(ctx.options['index'])
+
+        # Trial rejection
+        reject = ctx.options['reject']
+        rejection_params = self.artifact_rejection[ctx.state['rej']]
+        if rejection_params['kind'] and reject:
+            rejection_ds = ctx.load('rej-input')
+
+            # Handle event mismatches
+            if rejection_ds.info.get('epochs.selection') is not None:
+                ds = ds[rejection_ds.info['epochs.selection']]
+            if rejection_ds.n_cases != ds.n_cases or np.any(ds['value'] != rejection_ds['value']):
+                raise RuntimeError(f"The epoch selection file contains different events from the data loaded from the raw file. If the events included in the epoch were changed intentionally, redo epoch selection for {subject}/{epoch.name}")
+
+            # Channel interpolation
+            if rejection_params['interpolation']:
+                ds.info[INTERPOLATE_CHANNELS] = True
+                if INTERPOLATE_CHANNELS in rejection_ds:
+                    ds[INTERPOLATE_CHANNELS] = rejection_ds[INTERPOLATE_CHANNELS]
+                else:
+                    ds[INTERPOLATE_CHANNELS] = Datalist([[]] * ds.n_cases, INTERPOLATE_CHANNELS, 'strlist')
+            else:
+                ds.info[INTERPOLATE_CHANNELS] = False
+
+            if reject == 'keep':
+                ds['accept'] = rejection_ds['accept']
+            elif reject is True:
+                ds = ds.sub(rejection_ds['accept'])
+            elif reject is not False:
+                raise RuntimeError(f"{reject=}")
+
+            ds.info[BAD_CHANNELS] = rejection_ds.info.get(BAD_CHANNELS, [])
+        else:
+            ds.info[INTERPOLATE_CHANNELS] = False
+            ds.info[BAD_CHANNELS] = []
+
+        return epoch._prepare_selected_events(ds, subject, ctx.options)
+
+
+class EpochEventsDerivative(UncachedDerivative[Dataset]):
+    """Epoch-level event aggregation.
+
+    For :class:`~epochs.PrimaryEpoch` and :class:`~epochs.ContinuousEpoch`,
+    delegates to :class:`SelectedEventsDerivative`.  For combine-all
+    PrimaryEpochs aggregates across runs and adds a ``'run'`` column.  For
+    :class:`~epochs.SecondaryEpoch` and :class:`~epochs.SuperEpoch` delegates
+    to the appropriate base/sub-epoch ``epoch-events`` nodes.
 
     Options
     -------
     reject
-        Whether to apply artifact rejection (`True`, `False`, or `'keep'`).
+        Whether to apply artifact rejection (``True``, ``False``, or ``'keep'``).
     index
-        Add an index column the returned dataset, and which column name to use.
-        Indexing occurs after trial selection and before artifact rejection.
+        Add an index column to the returned dataset.  For single-run epochs
+        indexing occurs before artifact rejection; for combine-all epochs after
+        combining runs.
     cat
-        Optional subset of model cells to keep.
+        Optional subset of model cells to keep (view option).
     """
-    name = 'selected-events'
-    # key_fields = ('subject', 'session', 'task', 'run', 'raw', 'epoch', 'rej')
-    # cache_suffix = '.pickle'
-    # cache_policy = CachePolicy.DISABLED_BY_DEFAULT
+    name = 'epoch-events'
     OPTION_DEFAULTS = {
         'index': True,
         'reject': True,
@@ -316,35 +439,42 @@ class SelectedEventsDerivative(UncachedDerivative[Dataset]):
 
     def __init__(
             self,
-            raw,
             epochs: dict[str, Any],
-            artifact_rejection: dict[str, dict[str, Any]],
+            runs_for: dict[tuple[str, str, str], tuple[str, ...]],
     ):
-        self.raw = raw
         self.epochs = epochs
-        self.artifact_rejection = artifact_rejection
+        self._runs_for = runs_for
+
+    def _runs(self, ctx: Request) -> tuple[str, ...]:
+        return self._runs_for.get((ctx.state['subject'], ctx.state['session'], ctx.state['task']), ())
 
     def dependencies(self, ctx: Request) -> tuple[Dependency, ...]:
         epoch = self.epochs[ctx.state['epoch']]
+        runs = self._runs(ctx)
         if isinstance(epoch, EpochCollection):
-            raise ValueError(f"epoch={epoch.name!r}; can't load events for collection epoch")
+            raise ValueError(f"epoch={epoch.name!r}; can't load events for epoch collection")
+        elif isinstance(epoch, PrimaryEpoch) and epoch.run is None and runs:
+            # Combine-all: per-run selected-events; index applied after combining
+            rec_options = ctx.options_for('selected-events', 'reject', *EPOCH_EXTRACT_OPTIONS, index=False)
+            return tuple(
+                Dependency('selected-events', label=f'selected-events-{run}',
+                           state={'task': epoch.task, 'run': run}, options=rec_options)
+                for run in runs
+            )
         elif isinstance(epoch, (PrimaryEpoch, ContinuousEpoch)):
-            reject = ctx.options['reject']
-            if reject not in (True, False, 'keep'):
-                raise ValueError(f"{reject=}")
-            state = {'task': epoch.task}
-            deps = [Dependency('labeled-events', state=state)]
-            rejection_params = self.artifact_rejection[ctx.state['rej']]
-            if rejection_params['kind'] and reject:
-                deps.append(Dependency('rej-input', state=state))
-            return tuple(deps)
+            return (Dependency('selected-events', state={'task': epoch.task},
+                               options=ctx.options_for('selected-events', 'reject', *EPOCH_EXTRACT_OPTIONS)),)
         else:
-            options = ctx.options_for('selected-events', 'reject', *EPOCH_EXTRACT_OPTIONS)
+            options = ctx.options_for('epoch-events', 'reject', *EPOCH_EXTRACT_OPTIONS)
             if isinstance(epoch, SecondaryEpoch):
                 state = {'epoch': epoch.sel_epoch, 'task': self.epochs[epoch.sel_epoch].task}
-                return (Dependency('selected-events', options=options, state=state),)
+                return (Dependency('epoch-events', options=options, state=state),)
             elif isinstance(epoch, SuperEpoch):
-                return tuple(Dependency('selected-events', label=f'{sub_epoch}:events', options=options, state={'epoch': sub_epoch, 'task': self.epochs[sub_epoch].task}) for sub_epoch in epoch.sub_epochs)
+                return tuple(
+                    Dependency('epoch-events', label=f'{sub_epoch}:events', options=options,
+                               state={'epoch': sub_epoch, 'task': self.epochs[sub_epoch].task})
+                    for sub_epoch in epoch.sub_epochs
+                )
             else:
                 raise RuntimeError(f"{epoch=}")
 
@@ -354,51 +484,25 @@ class SelectedEventsDerivative(UncachedDerivative[Dataset]):
 
     def build(self, ctx: Request) -> Dataset:
         epoch = self.epochs[ctx.state['epoch']]
-        subject = ctx.state['subject']
         if isinstance(epoch, (PrimaryEpoch, ContinuousEpoch)):
-            ds = ctx.load('labeled-events')
-            if epoch.sel:
-                ds = ds.sub(epoch.sel)
-            if epoch.n_cases is not None and ds.n_cases != epoch.n_cases:
-                raise RuntimeError(f"Number of epochs {ds.n_cases}, expected {epoch.n_cases}")
-            if ctx.options['index']:
-                ds.index(ctx.options['index'])
-
-            # Trial rejection
-            reject = ctx.options['reject']
-            rejection_params = self.artifact_rejection[ctx.state['rej']]
-            if rejection_params['kind'] and reject:
-                rejection_ds = ctx.load('rej-input')
-
-                # Handle event mismatches
-                if rejection_ds.info.get('epochs.selection') is not None:
-                    ds = ds[rejection_ds.info['epochs.selection']]
-                if rejection_ds.n_cases != ds.n_cases or np.any(ds['value'] != rejection_ds['value']):
-                    raise RuntimeError(f"The epoch selection file contains different events from the data loaded from the raw file. If the events included in the epoch were changed intentionally, redo epoch selection for {subject}/{epoch.name}")
-
-                # Channel interpolation
-                if rejection_params['interpolation']:
-                    ds.info[INTERPOLATE_CHANNELS] = True
-                    if INTERPOLATE_CHANNELS in rejection_ds:
-                        ds[INTERPOLATE_CHANNELS] = rejection_ds[INTERPOLATE_CHANNELS]
-                    else:
-                        ds[INTERPOLATE_CHANNELS] = Datalist([[]] * ds.n_cases, INTERPOLATE_CHANNELS, 'strlist')
-                else:
-                    ds.info[INTERPOLATE_CHANNELS] = False
-
-                if reject == 'keep':
-                    ds['accept'] = rejection_ds['accept']
-                elif reject is True:
-                    ds = ds.sub(rejection_ds['accept'])
-                elif reject is not False:
-                    raise RuntimeError(f"{reject=}")
-
-                ds.info[BAD_CHANNELS] = rejection_ds.info.get(BAD_CHANNELS, [])
-            else:
-                ds.info[INTERPOLATE_CHANNELS] = False
-                ds.info[BAD_CHANNELS] = []
+            runs = self._runs(ctx)
+            if isinstance(epoch, PrimaryEpoch) and epoch.run is None and runs:
+                dss = []
+                for run in runs:
+                    ds = ctx.load(f'selected-events-{run}')
+                    ds[:, 'run'] = run
+                    dss.append(ds)
+                ds = combine(dss)
+                ds.info[BAD_CHANNELS] = sorted({ch for d in dss for ch in d.info.get(BAD_CHANNELS, [])})
+                ds.info[INTERPOLATE_CHANNELS] = any(d.info.get(INTERPOLATE_CHANNELS, False) for d in dss)
+                if epoch.n_cases is not None and ds.n_cases != epoch.n_cases:
+                    raise RuntimeError(f"Number of epochs {ds.n_cases}, expected {epoch.n_cases}")
+                if ctx.options['index']:
+                    ds.index(ctx.options['index'])
+                return ds
+            return ctx.load('selected-events')
         elif isinstance(epoch, SecondaryEpoch):
-            ds = ctx.load('selected-events')
+            ds = ctx.load('epoch-events')
             if epoch.sel:
                 ds = ds.sub(epoch.sel)
             if ctx.options['index']:
