@@ -641,6 +641,12 @@ def test_sample_tasks():
     ds2 = e.load_epochs(epoch='target2')
     ds_super = e.load_epochs(epoch='super')
     assert_dataobj_equal(ds_super['meg'], combine((ds1['meg'], ds2['meg'])))
+    # SuperEpoch should reuse the same sub-epoch cache entry as direct loading.
+    super_dependencies = e._resolve_derivative('epochs').dependency_fingerprints()
+    with e._temporary_state:
+        e.set(epoch='target2')
+        target2_manifest = e._resolve_derivative('epochs').manifest_path
+    assert Path(super_dependencies['target2']['manifest']) == target2_manifest
     # evoked
     dse_super = e.load_evoked(epoch='super', model='modality%side')
     target = ds_super.aggregate('modality%side', drop=('sample', 't_edf', 'onset', 'index', 'value', 'task', 'interpolate_channels', 'epoch'))
@@ -1081,6 +1087,13 @@ def test_epochs_cached_load_uses_current_selected_events():
     assert 'marker' in ds_cached
     assert mtimes_1 == mtimes_2
 
+    # View-level category selection needs to keep the event shell and epochs
+    # object aligned.
+    ds_cat_events = e_changed.load_selected_events(model='modality', cat=('auditory',))
+    ds_cat_epochs = e_changed.load_epochs(model='modality', cat=('auditory',), ndvar=False)
+    assert ds_cat_epochs.n_cases == ds_cat_events.n_cases
+    assert set(ds_cat_epochs['modality']) == {'auditory'}
+
 
 @requires_mne_sample_data
 def test_selected_events_manifest_uses_real_dependencies():
@@ -1104,6 +1117,14 @@ def test_selected_events_manifest_uses_real_dependencies():
     rec_events_deps = dependencies['selected-events']['dependencies']
     assert set(rec_events_deps) == {'labeled-events'}
     assert set(rec_events_deps['labeled-events']['dependencies']) == {'events-input', 'events'}
+
+    # Secondary epochs with no additional selection should still inherit the
+    # primary epoch's event selection when extracting epochs.
+    target_events = e.load_selected_events(epoch='target')
+    cov_events = e.load_selected_events(epoch='cov')
+    assert cov_events.n_cases == target_events.n_cases
+    cov_epochs = e.load_epochs(epoch='cov', ndvar=False)
+    assert cov_epochs.n_cases == cov_events.n_cases
 
 
 @requires_mne_sample_data
@@ -1419,6 +1440,7 @@ def test_primary_epoch_run():
         # explicit-run epochs: run='1'/'2' → load events only from that run
         epochs = {
             'target': PrimaryEpoch('sample', "event == 'target'", tmax=0.3, decim=5),
+            'target-copy': SecondaryEpoch('target'),
             'target-r1': PrimaryEpoch('sample', "event == 'target'", tmax=0.3, decim=5, run='1'),
             'target-r2': PrimaryEpoch('sample', "event == 'target'", tmax=0.3, decim=5, run='2'),
         }
@@ -1450,6 +1472,14 @@ def test_primary_epoch_run():
     ds_epochs = e.load_epochs()
     assert 'meg' in ds_epochs
     assert ds_epochs.n_cases == ds_all.n_cases
+
+    # A secondary epoch based on a combine-all primary should load epochs from
+    # every run, not just the current run.
+    e.set(epoch='target-copy', rej='')
+    ds_secondary = e.load_selected_events()
+    assert ds_secondary.n_cases == ds_all.n_cases
+    ds_secondary_epochs = e.load_epochs()
+    assert ds_secondary_epochs.n_cases == ds_secondary.n_cases
 
 
 @requires_mne_sample_data
