@@ -791,6 +791,7 @@ class ContinuousEpoch(EpochBase):
         return -self.pad_start, ds.eval('tmax'), None, baseline, decim, True
 
 
+# save/load one or multiple epochs objects
 def _save_epochs(path: Path, value) -> None:
     if path.exists():
         if path.is_dir():
@@ -880,17 +881,10 @@ class RecordingEpochsDerivative(Derivative[Any]):
         epoch = self.epochs[ctx.state['epoch']]
         raw_name = ctx.state['raw']
         state = {'task': epoch.task}
+        event_options = ctx.options_for('selected-events', 'reject', *EPOCH_EXTRACT_OPTIONS, index=False)
         return (
-            Dependency(
-                'selected-events',
-                state=state,
-                options=ctx.options_for('selected-events', 'reject', *EPOCH_EXTRACT_OPTIONS, index=False),
-            ),
-            Dependency(
-                raw_node_name(raw_name),
-                label='raw',
-                state=state,
-            ),
+            Dependency('selected-events', state=state, options=event_options),
+            Dependency(raw_node_name(raw_name), label='raw', state=state),
         )
 
     def dependency_fingerprint_override(self, ctx: Request, dep: Dependency, dep_ctx: Request) -> dict[str, Any] | None:
@@ -1013,7 +1007,7 @@ class EpochsDerivative(Derivative[Any]):
         if isinstance(epoch, SuperEpoch):
             sub_options = ctx.options_for('epochs', *self.OPTION_DEFAULTS, ndvar=False, data='sensor')
             return tuple(
-                Dependency('epochs', label=sub_epoch, state={'epoch': sub_epoch, 'task': self.epochs[sub_epoch].task}, options=sub_options)
+                Dependency('epochs', label=sub_epoch, state={'epoch': sub_epoch}, options=sub_options)
                 for sub_epoch in epoch.sub_epochs
             )
         runs = self._runs(ctx)
@@ -1023,9 +1017,7 @@ class EpochsDerivative(Derivative[Any]):
         if isinstance(epoch, PrimaryEpoch) and epoch.run is None and runs:
             return (
                 Dependency('epoch-events', options=sel_options, state=state),
-                *[Dependency('recording-epochs', label=f'recording-epochs-run-{run}',
-                             state={**state, 'run': run}, options=rec_options)
-                  for run in runs],
+                *[Dependency('recording-epochs', label=f'epochs-{run}', state={**state, 'run': run}, options=rec_options) for run in runs],
             )
         return (
             Dependency('epoch-events', options=sel_options, state=state),
@@ -1033,6 +1025,7 @@ class EpochsDerivative(Derivative[Any]):
         )
 
     def dependency_fingerprint_override(self, ctx: Request, dep: Dependency, dep_ctx: Request) -> dict[str, Any] | None:
+        """Depend on the subset of events that is actually relevant for the epoch"""
         if dep.name != 'epoch-events':
             return None
         epoch = self.epochs[ctx.state['epoch']]
@@ -1067,7 +1060,7 @@ class EpochsDerivative(Derivative[Any]):
             return Datalist(epochs_list, 'epochs')
         runs = self._runs(ctx)
         if isinstance(epoch, PrimaryEpoch) and epoch.run is None and runs:
-            return Datalist([ctx.load(f'recording-epochs-run-{run}') for run in runs], 'epochs')
+            return Datalist([ctx.load(f'epochs-{run}') for run in runs], 'epochs')
         return ctx.load('recording-epochs')
 
     def load(self, ctx: Request, path: Path):
@@ -1094,10 +1087,13 @@ class EpochsDerivative(Derivative[Any]):
                 ds[:, 'epoch'] = sub_epoch
                 dss.append(ds)
             ds = combine(dss)
-            ds['epochs'] = combine(epoch_value)
         else:
             ds = ctx.load('epoch-events')
-            ds['epochs'] = combine(epoch_value) if isinstance(epoch_value, Datalist) else epoch_value
+
+        if isinstance(epoch_value, Datalist):
+            ds['epochs'] = combine(epoch_value)
+        else:
+            ds['epochs'] = epoch_value
 
         ndvar = ctx.view_options['ndvar']
         if ndvar:
