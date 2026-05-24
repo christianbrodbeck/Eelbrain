@@ -26,7 +26,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 from collections.abc import Iterator
-import inspect
 from collections.abc import Mapping, Sequence
 import math
 import shutil
@@ -259,20 +258,6 @@ class EpochBase(Configuration):
             Whether ``tmax`` varies per epoch.
         """
         raise NotImplementedError(f"{self.__class__.__name__}._extraction_parameters()")
-
-    def _repr_args(self):
-        args = []
-        for name, param in inspect.signature(self.__class__).parameters.items():
-            value = getattr(self, name)
-            if param.default is param.empty:
-                args.append(repr(value))
-            elif value != param.default:
-                args.append(f'{name}={value!r}')
-        return args
-
-    def __repr__(self):
-        args = ', '.join(self._repr_args())
-        return f"{self.__class__.__name__}({args})"
 
     def _store_dependent_parameters(self, epochs: Mapping[str, EpochBase], tasks: Sequence[str]) -> None:
         if self._rej_file_epochs_from_name:
@@ -539,16 +524,6 @@ class PrimaryEpoch(Epoch):
         self.sel = typed_arg(sel, str)
         self.n_cases = typed_arg(n_cases, int)
 
-    def _repr_args(self):
-        args = [repr(self.task)]
-        if self.sel is not None:
-            args.append(repr(self.sel))
-        for name, param in inspect.signature(Epoch).parameters.items():
-            value = getattr(self, name)
-            if value != param.default:
-                args.append(f'{name}={value!r}')
-        return args
-
 
 class SecondaryEpoch(Epoch):
     """Epoch inheriting events from another epoch
@@ -587,13 +562,6 @@ class SecondaryEpoch(Epoch):
         self.sel_epoch = base
         self.sel = typed_arg(sel, str)
         self._kwargs = kwargs
-
-    def _repr_args(self):
-        args = [repr(self.sel_epoch)]
-        if self.sel is not None:
-            args.append(repr(self.sel))
-        args.extend([f'{key}={value!r}' for key, value in self._kwargs.items()])
-        return args
 
     def _store_dependent_parameters(self, epochs: Mapping[str, EpochBase], tasks: Sequence[str]) -> None:
         base = epochs[self.sel_epoch]
@@ -687,9 +655,6 @@ class EpochCollection(EpochBase):
     def __init__(self, collect: Sequence[str]):
         self.collect = collect
         EpochBase.__init__(self)
-
-    def _repr_args(self):
-        return [repr(self.collect)]
 
     def _store_dependent_parameters(self, epochs: Mapping[str, EpochBase], tasks: Sequence[str]) -> None:
         sub_epochs = [epochs[sub_epoch] for sub_epoch in self.collect]
