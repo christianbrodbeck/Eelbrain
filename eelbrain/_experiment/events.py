@@ -320,7 +320,6 @@ class SelectedEventsDerivative(UncachedDerivative[Dataset]):
     """
     name = 'selected-events'
     OPTION_DEFAULTS = {
-        'index': True,
         'reject': True,
         'baseline': False,
         'samplingrate': None,
@@ -344,12 +343,23 @@ class SelectedEventsDerivative(UncachedDerivative[Dataset]):
         reject = ctx.options['reject']
         if reject not in (True, False, 'keep'):
             raise ValueError(f"{reject=}")
-        rejection_params = self.artifact_rejection[ctx.state['rej']]
-        state = {'task': epoch.task, 'run': ctx.state['run']}
-        deps = [Dependency('labeled-events', state=state)]
-        if rejection_params['kind'] and reject:
-            deps.append(Dependency('rej-input', state=state))
-        return tuple(deps)
+        if isinstance(epoch, EpochCollection):
+            raise ValueError(f"epoch={epoch.name!r}; can't load events for epoch collection")
+        elif isinstance(epoch, (PrimaryEpoch, ContinuousEpoch)):
+            rejection_params = self.artifact_rejection[ctx.state['rej']]
+            state = {'task': epoch.task}
+            if epoch.run:
+                state['run'] = epoch.run
+            deps = [Dependency('labeled-events', state=state)]
+            if rejection_params['kind'] and reject:
+                deps.append(Dependency('rej-input', state=state))
+            return tuple(deps)
+        elif isinstance(epoch, SecondaryEpoch):
+            options = ctx.options_for('selected-events', 'reject', *EPOCH_EXTRACT_OPTIONS)
+            state = {'epoch': epoch.sel_epoch}
+            return (Dependency('selected-events', options=options, state=state),)
+        else:
+            raise RuntimeError(f"{epoch=}")
 
     def fingerprint(self, ctx: Request) -> dict[str, Any]:
         epoch = self.epochs[ctx.state['epoch']]
@@ -358,47 +368,54 @@ class SelectedEventsDerivative(UncachedDerivative[Dataset]):
     def build(self, ctx: Request) -> Dataset:
         epoch = self.epochs[ctx.state['epoch']]
         subject = ctx.state['subject']
-        ds = ctx.load('labeled-events')
-        if epoch.sel:
-            ds = ds.sub(epoch.sel)
-        if epoch.n_cases is not None and ds.n_cases != epoch.n_cases:
-            raise RuntimeError(f"Number of epochs {ds.n_cases}, expected {epoch.n_cases}")
-        if ctx.options['index']:
-            ds.index(ctx.options['index'])
+        if isinstance(epoch, (PrimaryEpoch, ContinuousEpoch)):
+            ds = ctx.load('labeled-events')
+            if epoch.sel:
+                ds = ds.sub(epoch.sel)
+            if epoch.n_cases is not None and ds.n_cases != epoch.n_cases:
+                raise RuntimeError(f"Number of epochs {ds.n_cases}, expected {epoch.n_cases}")
+            ds.index()
 
-        # Trial rejection
-        reject = ctx.options['reject']
-        rejection_params = self.artifact_rejection[ctx.state['rej']]
-        if rejection_params['kind'] and reject:
-            rejection_ds = ctx.load('rej-input')
+            # Trial rejection
+            reject = ctx.options['reject']
+            rejection_params = self.artifact_rejection[ctx.state['rej']]
+            if rejection_params['kind'] and reject:
+                rejection_ds = ctx.load('rej-input')
 
-            # Handle event mismatches
-            if rejection_ds.info.get('epochs.selection') is not None:
-                ds = ds[rejection_ds.info['epochs.selection']]
-            if rejection_ds.n_cases != ds.n_cases or np.any(ds['value'] != rejection_ds['value']):
-                raise RuntimeError(f"The epoch selection file contains different events from the data loaded from the raw file. If the events included in the epoch were changed intentionally, redo epoch selection for {subject}/{epoch.name}")
+                # Handle event mismatches
+                if rejection_ds.info.get('epochs.selection') is not None:
+                    ds = ds[rejection_ds.info['epochs.selection']]
+                if rejection_ds.n_cases != ds.n_cases or np.any(ds['value'] != rejection_ds['value']):
+                    raise RuntimeError(f"The epoch selection file contains different events from the data loaded from the raw file. If the events included in the epoch were changed intentionally, redo epoch selection for {subject}/{epoch.name}")
 
-            # Channel interpolation
-            if rejection_params['interpolation']:
-                ds.info[INTERPOLATE_CHANNELS] = True
-                if INTERPOLATE_CHANNELS in rejection_ds:
-                    ds[INTERPOLATE_CHANNELS] = rejection_ds[INTERPOLATE_CHANNELS]
+                # Channel interpolation
+                if rejection_params['interpolation']:
+                    ds.info[INTERPOLATE_CHANNELS] = True
+                    if INTERPOLATE_CHANNELS in rejection_ds:
+                        ds[INTERPOLATE_CHANNELS] = rejection_ds[INTERPOLATE_CHANNELS]
+                    else:
+                        ds[INTERPOLATE_CHANNELS] = Datalist([[]] * ds.n_cases, INTERPOLATE_CHANNELS, 'strlist')
                 else:
-                    ds[INTERPOLATE_CHANNELS] = Datalist([[]] * ds.n_cases, INTERPOLATE_CHANNELS, 'strlist')
+                    ds.info[INTERPOLATE_CHANNELS] = False
+
+                if reject == 'keep':
+                    ds['accept'] = rejection_ds['accept']
+                elif reject is True:
+                    ds = ds.sub(rejection_ds['accept'])
+                elif reject is not False:
+                    raise RuntimeError(f"{reject=}")
+
+                ds.info[BAD_CHANNELS] = rejection_ds.info.get(BAD_CHANNELS, [])
             else:
                 ds.info[INTERPOLATE_CHANNELS] = False
-
-            if reject == 'keep':
-                ds['accept'] = rejection_ds['accept']
-            elif reject is True:
-                ds = ds.sub(rejection_ds['accept'])
-            elif reject is not False:
-                raise RuntimeError(f"{reject=}")
-
-            ds.info[BAD_CHANNELS] = rejection_ds.info.get(BAD_CHANNELS, [])
+                ds.info[BAD_CHANNELS] = []
+        elif isinstance(epoch, SecondaryEpoch):
+            ds = ctx.load('selected-events')
+            if epoch.sel:
+                ds = ds.sub(epoch.sel)
+                ds.index()
         else:
-            ds.info[INTERPOLATE_CHANNELS] = False
-            ds.info[BAD_CHANNELS] = []
+            raise RuntimeError(f"{epoch=}")
 
         return epoch._prepare_selected_events(ds, subject, ctx.options)
 
@@ -416,16 +433,9 @@ class EpochEventsDerivative(UncachedDerivative[Dataset]):
     -------
     reject
         Whether to apply artifact rejection (``True``, ``False``, or ``'keep'``).
-    index
-        Add an index column to the returned dataset.  For single-run epochs
-        indexing occurs before artifact rejection; for combine-all epochs after
-        combining runs.
-    cat
-        Optional subset of model cells to keep (view option).
     """
     name = 'epoch-events'
     OPTION_DEFAULTS = {
-        'index': True,
         'reject': True,
         'baseline': False,
         'samplingrate': None,
@@ -435,7 +445,6 @@ class EpochEventsDerivative(UncachedDerivative[Dataset]):
         'tmax': None,
         'tstop': None,
     }
-    VIEW_OPTION_DEFAULTS = {'cat': None}
 
     def __init__(
             self,
@@ -445,31 +454,37 @@ class EpochEventsDerivative(UncachedDerivative[Dataset]):
         self.epochs = epochs
         self._runs_for = runs_for
 
-    def _runs(self, ctx: Request) -> tuple[str, ...]:
-        return self._runs_for.get((ctx.state['subject'], ctx.state['session'], ctx.state['task']), ())
+    def _find_runs(self, ctx: Request, epoch) -> tuple[str, ...]:
+        """Runs to aggregate over"""
+        if isinstance(epoch, PrimaryEpoch):
+            if epoch.run is None:
+                key = (ctx.state['subject'], ctx.state['session'], epoch.task)
+                if key in self._runs_for:
+                    return self._runs_for[key]
+            return ()
+        if isinstance(epoch, SecondaryEpoch):
+            return self._find_runs(ctx, self.epochs[epoch.sel_epoch])
+        return ()
 
     def dependencies(self, ctx: Request) -> tuple[Dependency, ...]:
         epoch = self.epochs[ctx.state['epoch']]
-        runs = self._runs(ctx)
+        runs = self._find_runs(ctx, epoch)
         if isinstance(epoch, EpochCollection):
             raise ValueError(f"epoch={epoch.name!r}; can't load events for epoch collection")
-        elif isinstance(epoch, PrimaryEpoch) and epoch.run is None and runs:
+        elif isinstance(epoch, (PrimaryEpoch, SecondaryEpoch)) and runs:
             # Combine-all: per-run selected-events; index applied after combining
-            rec_options = ctx.options_for('selected-events', 'reject', *EPOCH_EXTRACT_OPTIONS, index=False)
+            rec_options = ctx.options_for('selected-events', 'reject', *EPOCH_EXTRACT_OPTIONS)
             return tuple(
                 Dependency('selected-events', label=f'selected-events-{run}',
                            state={'task': epoch.task, 'run': run}, options=rec_options)
                 for run in runs
             )
-        elif isinstance(epoch, (PrimaryEpoch, ContinuousEpoch)):
+        elif isinstance(epoch, (PrimaryEpoch, SecondaryEpoch, ContinuousEpoch)):
             return (Dependency('selected-events', state={'task': epoch.task},
                                options=ctx.options_for('selected-events', 'reject', *EPOCH_EXTRACT_OPTIONS)),)
         else:
             options = ctx.options_for('epoch-events', 'reject', *EPOCH_EXTRACT_OPTIONS)
-            if isinstance(epoch, SecondaryEpoch):
-                state = {'epoch': epoch.sel_epoch, 'task': self.epochs[epoch.sel_epoch].task}
-                return (Dependency('epoch-events', options=options, state=state),)
-            elif isinstance(epoch, SuperEpoch):
+            if isinstance(epoch, SuperEpoch):
                 return tuple(
                     Dependency('epoch-events', label=f'{sub_epoch}:events', options=options,
                                state={'epoch': sub_epoch, 'task': self.epochs[sub_epoch].task})
@@ -484,9 +499,9 @@ class EpochEventsDerivative(UncachedDerivative[Dataset]):
 
     def build(self, ctx: Request) -> Dataset:
         epoch = self.epochs[ctx.state['epoch']]
-        if isinstance(epoch, (PrimaryEpoch, ContinuousEpoch)):
-            runs = self._runs(ctx)
-            if isinstance(epoch, PrimaryEpoch) and epoch.run is None and runs:
+        if isinstance(epoch, (PrimaryEpoch, SecondaryEpoch, ContinuousEpoch)):
+            runs = self._find_runs(ctx, epoch)
+            if runs:
                 dss = []
                 for run in runs:
                     ds = ctx.load(f'selected-events-{run}')
@@ -497,16 +512,8 @@ class EpochEventsDerivative(UncachedDerivative[Dataset]):
                 ds.info[INTERPOLATE_CHANNELS] = any(d.info.get(INTERPOLATE_CHANNELS, False) for d in dss)
                 if epoch.n_cases is not None and ds.n_cases != epoch.n_cases:
                     raise RuntimeError(f"Number of epochs {ds.n_cases}, expected {epoch.n_cases}")
-                if ctx.options['index']:
-                    ds.index(ctx.options['index'])
                 return ds
             return ctx.load('selected-events')
-        elif isinstance(epoch, SecondaryEpoch):
-            ds = ctx.load('epoch-events')
-            if epoch.sel:
-                ds = ds.sub(epoch.sel)
-            if ctx.options['index']:
-                ds.index(ctx.options['index'])
         elif isinstance(epoch, SuperEpoch):
             dss = []
             bad_channels = set()
@@ -520,9 +527,3 @@ class EpochEventsDerivative(UncachedDerivative[Dataset]):
         else:
             raise RuntimeError(f"{epoch=}")
         return epoch._prepare_selected_events(ds, ctx.state['subject'], ctx.options)
-
-    def apply_view_options(self, ctx: Request, ds: Dataset) -> Dataset:
-        if ctx.view_options['cat']:
-            model = ds.eval(ctx.state['model'])
-            ds = ds.sub(model.isin(ctx.view_options['cat']))
-        return ds

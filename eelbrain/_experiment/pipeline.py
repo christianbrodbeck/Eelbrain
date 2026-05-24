@@ -869,7 +869,6 @@ class Pipeline(StateModel):
             baseline: BaselineArg = False,
             ndvar: bool | Literal['both'] = True,
             reject: bool | Literal['keep'] = True,
-            cat: Sequence[CellArg] = None,
             samplingrate: int = None,
             decim: int = None,
             pad: float = 0,
@@ -905,8 +904,6 @@ class Pipeline(StateModel):
             from the Dataset. Set to ``False`` to ignore the trial rejection.
             Set ``reject='keep'`` to load the rejection (added it to the events
             as ``'accept'`` variable), but keep bad trails.
-        cat
-            Only load data for these cells (cells of model).
         samplingrate
             Samplingrate in Hz for the analysis (default is specified in epoch
             definition).
@@ -955,7 +952,6 @@ class Pipeline(StateModel):
             'baseline': baseline,
             'ndvar': ndvar,
             'reject': reject,
-            'cat': cat,
             'samplingrate': samplingrate,
             'decim': decim,
             'pad': pad,
@@ -1701,9 +1697,7 @@ class Pipeline(StateModel):
             self,
             subjects: SubjectArg = None,
             reject: bool | Literal['keep'] = True,
-            index: bool | str = True,
             vardef: str = None,
-            cat: Sequence[CellArg] = None,
             **kwargs,
     ) -> Dataset:
         """
@@ -1721,13 +1715,9 @@ class Pipeline(StateModel):
             from the Dataset. Set to ``False`` to ignore the trial rejection.
             Set ``reject='keep'`` to load the rejection (added it to the events
             as ``'accept'`` variable), but keep bad trails.
-        index
-            Index the Dataset before rejection (provide index name as str).
         vardef
             Name of a test defining additional variables to add to the returned
             Dataset.
-        cat
-            Only load data for these cells (cells of the current ``model``).
         ...
             State parameters.
 
@@ -1738,23 +1728,15 @@ class Pipeline(StateModel):
         """
         if reject not in (True, False, 'keep'):
             raise ValueError(f"{reject=}")
-        if index is True:
-            index = 'index'
-        elif index and not isinstance(index, str):
-            raise TypeError(f"{index=}")
         state = dict(kwargs)
         subject, group = self._process_subject_arg(subjects, state)
 
         if group is not None:
-            return combine([self.load_selected_events(subjects=subject_, reject=reject, index=index, vardef=vardef, cat=cat, **state) for subject_ in self.iter(group=group)])
+            return combine([self.load_selected_events(subjects=subject_, reject=reject, vardef=vardef, **state) for subject_ in self.iter(group=group)])
         elif subject is None:
             raise RuntimeError(f"{subject=}, {group=}")
 
-        options = {
-            'reject': reject,
-            'index': index,
-            'cat': cat,
-        }
+        options = {'reject': reject}
         ds = self._load_derivative('epoch-events', options=options)
         apply_vardef(ds, vardef, self.tests, self._groups)
         return ds

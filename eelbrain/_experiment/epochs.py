@@ -852,8 +852,6 @@ class RecordingEpochsDerivative(Derivative[Any]):
         Whether to interpolate bad channels while building epochs.
     reject
         Whether to apply per-epoch rejection state.
-    cat
-        Unused; present for option-forwarding symmetry with ``epochs``.
     """
     name = 'recording-epochs'
     key_fields = ('subject', 'session', 'task', 'run', 'raw', 'epoch', 'rej')
@@ -870,7 +868,6 @@ class RecordingEpochsDerivative(Derivative[Any]):
         'tstop': None,
         'interpolate_bads': False,
         'reject': True,
-        'cat': None,
     }
 
     def __init__(self, raw, epochs: dict[str, Any]):
@@ -881,7 +878,7 @@ class RecordingEpochsDerivative(Derivative[Any]):
         epoch = self.epochs[ctx.state['epoch']]
         raw_name = ctx.state['raw']
         state = {'task': epoch.task}
-        event_options = ctx.options_for('selected-events', 'reject', *EPOCH_EXTRACT_OPTIONS, index=False)
+        event_options = ctx.options_for('selected-events', 'reject', *EPOCH_EXTRACT_OPTIONS)
         return (
             Dependency('selected-events', state=state, options=event_options),
             Dependency(raw_node_name(raw_name), label='raw', state=state),
@@ -891,7 +888,7 @@ class RecordingEpochsDerivative(Derivative[Any]):
         if dep.name != 'selected-events':
             return None
         epoch = self.epochs[ctx.state['epoch']]
-        ds = ctx.load(dep.label or dep.name)
+        ds = ctx.load('selected-events')
         out = {'sample': ds['sample'], 'bad_channels': ds.info[BAD_CHANNELS]}
         for attr in epoch._eval_attrs():
             out[attr] = getattr(epoch, attr)
@@ -974,7 +971,7 @@ class EpochsDerivative(Derivative[Any]):
     (remaining options forwarded to :class:`RecordingEpochsDerivative`)
     """
     name = 'epochs'
-    key_fields = ('subject', 'session', 'task', 'run', 'raw', 'epoch', 'rej')
+    key_fields = ('subject', 'session', 'raw', 'epoch', 'rej')
     cache_suffix = '.epochs'
     cache_policy = CachePolicy.DISABLED_BY_DEFAULT
     OPTION_DEFAULTS = {
@@ -988,17 +985,28 @@ class EpochsDerivative(Derivative[Any]):
         'tstop': None,
         'interpolate_bads': False,
         'reject': True,
-        'cat': None,
     }
-    VIEW_OPTION_DEFAULTS = {'ndvar': True, 'data': 'sensor'}
+    VIEW_OPTION_DEFAULTS = {
+        'ndvar': True,
+        'data': 'sensor',
+    }
 
     def __init__(self, raw, epochs: dict[str, Any], runs_for: dict[tuple[str, str, str], tuple[str, ...]]):
         self.raw = raw
         self.epochs = epochs
         self._runs_for = runs_for
 
-    def _runs(self, ctx: Request) -> tuple[str, ...]:
-        return self._runs_for.get((ctx.state['subject'], ctx.state['session'], ctx.state['task']), ())
+    def _find_runs(self, ctx: Request, epoch) -> tuple[str, ...]:
+        """Runs to aggregate over"""
+        if isinstance(epoch, PrimaryEpoch):
+            if epoch.run is None:
+                key = (ctx.state['subject'], ctx.state['session'], epoch.task)
+                if key in self._runs_for:
+                    return self._runs_for[key]
+            return ()
+        if isinstance(epoch, SecondaryEpoch):
+            return self._find_runs(ctx, self.epochs[epoch.sel_epoch])
+        return ()
 
     def dependencies(self, ctx: Request) -> tuple[Dependency, ...]:
         epoch = self.epochs[ctx.state['epoch']]
@@ -1010,11 +1018,11 @@ class EpochsDerivative(Derivative[Any]):
                 Dependency('epochs', label=sub_epoch, state={'epoch': sub_epoch}, options=sub_options)
                 for sub_epoch in epoch.sub_epochs
             )
-        runs = self._runs(ctx)
+        runs = self._find_runs(ctx, epoch)
         rec_options = ctx.options_for('recording-epochs', *self.OPTION_DEFAULTS)
-        sel_options = ctx.options_for('epoch-events', 'reject', 'cat', *EPOCH_EXTRACT_OPTIONS, index=False)
+        sel_options = ctx.options_for('epoch-events', 'reject', *EPOCH_EXTRACT_OPTIONS)
         state = {'task': epoch.task}
-        if isinstance(epoch, PrimaryEpoch) and epoch.run is None and runs:
+        if runs:
             return (
                 Dependency('epoch-events', options=sel_options, state=state),
                 *[Dependency('recording-epochs', label=f'epochs-{run}', state={**state, 'run': run}, options=rec_options) for run in runs],
@@ -1058,8 +1066,8 @@ class EpochsDerivative(Derivative[Any]):
                 else:
                     epochs_list.append(epoch_value)
             return Datalist(epochs_list, 'epochs')
-        runs = self._runs(ctx)
-        if isinstance(epoch, PrimaryEpoch) and epoch.run is None and runs:
+        runs = self._find_runs(ctx, epoch)
+        if runs:
             return Datalist([ctx.load(f'epochs-{run}') for run in runs], 'epochs')
         return ctx.load('recording-epochs')
 
@@ -1140,8 +1148,16 @@ class EvokedDerivative(Derivative[list[mne.Evoked]]):
     )
     cache_policy = CachePolicy.OPTIONAL
     cache_suffix = '-ave.fif'
-    OPTION_DEFAULTS = {'samplingrate': None, 'decim': None}
-    VIEW_OPTION_DEFAULTS = {'baseline': False, 'ndvar': True, 'cat': None, 'data': 'sensor'}
+    OPTION_DEFAULTS = {
+        'samplingrate': None,
+        'decim': None,
+    }
+    VIEW_OPTION_DEFAULTS = {
+        'baseline': False,
+        'ndvar': False,
+        'cat': None,
+        'data': 'sensor',  # TODO
+    }
 
     def __init__(self, raw, epochs: dict[str, Any]):
         self.raw = raw
@@ -1161,7 +1177,7 @@ class EvokedDerivative(Derivative[list[mne.Evoked]]):
         }
         return (
             Dependency('epochs', options=options),
-            Dependency('epoch-events', options=ctx.options_for('epoch-events', 'samplingrate', 'decim', reject=True, cat=None)),
+            Dependency('epoch-events', options=ctx.options_for('epoch-events', 'samplingrate', 'decim', reject=True)),
         )
 
     def fingerprint(self, ctx: Request) -> dict[str, Any]:
@@ -1249,7 +1265,6 @@ class EvokedDerivative(Derivative[list[mne.Evoked]]):
             evoked = [evoked_by_cell[cell] for cell in cells]
         except KeyError:
             raise RuntimeError(f"Error reading cached evoked: available={tuple(evoked_by_cell)}, requested={tuple(cells)}") from None
-        ds['evoked'] = evoked
 
         # Baseline
         epoch = self.epochs[ctx.state['epoch']]
@@ -1257,16 +1272,13 @@ class EvokedDerivative(Derivative[list[mne.Evoked]]):
         if baseline is True:
             baseline = epoch.baseline
         if baseline and not epoch.post_baseline_trigger_shift:
-            for evoked_i in ds['evoked']:
+            for evoked_i in evoked:
                 mne.baseline.rescale(evoked_i.data, evoked_i.times, baseline, 'mean', copy=False)
 
         # NDVar
         data = TestDims.coerce(ctx.view_options['data'])
-        ndvar = ctx.view_options['ndvar']
-        if ndvar:
-            evoked = ds['evoked']
-            if ndvar == 1:
-                del ds['evoked']
+        to_ndvar = isinstance(data.sensor, str) or ctx.view_options['ndvar']
+        if to_ndvar:
             info = evoked[0].info
             sensor_types = ds.info['sensor_types'] = data.data_to_ndvar(info)
             source_pipe = self.raw.root_source_pipe(ctx.state['raw'])
@@ -1277,6 +1289,8 @@ class EvokedDerivative(Derivative[list[mne.Evoked]]):
                 ds[name] = load.mne.evoked_ndvar(evoked, data=sensor_type, sysname=sysname, adjacency=adjacency)
                 if sensor_type != 'eog' and isinstance(data.sensor, str):
                     ds[name] = getattr(ds[name], data.sensor)('sensor')
+        else:
+            ds['evoked'] = evoked
         return ds
 
 
@@ -1299,7 +1313,16 @@ class EvokedGroupDatasetDerivative(UncachedDerivative[Dataset]):
         Sensor representation to return.
     """
     name = 'evoked-group-dataset'
-    OPTION_DEFAULTS = {'baseline': False, 'ndvar': True, 'cat': None, 'samplingrate': None, 'decim': None, 'data': 'sensor'}
+    OPTION_DEFAULTS = {
+        'baseline': False,
+        'ndvar': True,
+        'samplingrate': None,
+        'decim': None,
+        'data': 'sensor',
+    }
+    VIEW_OPTION_DEFAULTS = {
+        'cat': None,
+    }
 
     def __init__(self, raw, groups):
         self.raw = raw
@@ -1311,11 +1334,8 @@ class EvokedGroupDatasetDerivative(UncachedDerivative[Dataset]):
     def fingerprint(self, ctx: Request) -> dict[str, Any]:
         return self.key(ctx)
 
-    def _subject_options(self, ctx: Request) -> dict[str, Any]:
-        return ctx.options_for('evoked', 'baseline', 'cat', 'samplingrate', 'decim', 'data', ndvar=isinstance(TestDims.coerce(ctx.options['data']).sensor, str))
-
     def dependencies(self, ctx: Request) -> tuple[Dependency, ...]:
-        options = self._subject_options(ctx)
+        options = ctx.options_for('evoked', 'baseline', 'samplingrate', 'decim', 'data')
         return tuple(
             Dependency('evoked', label=subject, state={'subject': subject}, options=options)
             for subject in self.groups[ctx.state['group']]

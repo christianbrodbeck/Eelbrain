@@ -996,7 +996,6 @@ def test_epochs_cache_uses_fif():
     options = {
         'baseline': False,
         'reject': True,
-        'cat': None,
         'samplingrate': None,
         'decim': None,
         'pad': 0,
@@ -1046,7 +1045,6 @@ def test_epochs_cached_load_uses_current_selected_events():
     options = {
         'baseline': False,
         'reject': True,
-        'cat': None,
         'samplingrate': None,
         'decim': None,
         'pad': 0,
@@ -1087,13 +1085,6 @@ def test_epochs_cached_load_uses_current_selected_events():
     assert 'marker' in ds_cached
     assert mtimes_1 == mtimes_2
 
-    # View-level category selection needs to keep the event shell and epochs
-    # object aligned.
-    ds_cat_events = e_changed.load_selected_events(model='modality', cat=('auditory',))
-    ds_cat_epochs = e_changed.load_epochs(model='modality', cat=('auditory',), ndvar=False)
-    assert ds_cat_epochs.n_cases == ds_cat_events.n_cases
-    assert set(ds_cat_epochs['modality']) == {'auditory'}
-
 
 @requires_mne_sample_data
 def test_selected_events_manifest_uses_real_dependencies():
@@ -1108,8 +1099,6 @@ def test_selected_events_manifest_uses_real_dependencies():
     e.set(subject='R0000', epoch='target', rej='')
     handle = e._resolve_derivative('epoch-events', options={
         'reject': True,
-        'index': True,
-        'cat': None,
     })
     dependencies = handle.dependency_fingerprints()
     assert 'dependencies' not in handle.current_fingerprint()
@@ -1237,21 +1226,9 @@ def test_selected_events_cache_identity_ignores_view_options():
     e = SampleExperiment(root)
     e.set(subject='R0000', epoch='target', rej='', model='modality')
 
-    handle_default = e._resolve_derivative('epoch-events', options={
-        'reject': True,
-        'index': True,
-        'cat': None,
-    })
-    handle_view = e._resolve_derivative('epoch-events', options={
-        'reject': True,
-        'index': True,
-        'cat': ('auditory',),
-    })
-    handle_reject = e._resolve_derivative('epoch-events', options={
-        'reject': False,
-        'index': True,
-        'cat': None,
-    })
+    handle_default = e._resolve_derivative('epoch-events', options={'reject': True})
+    handle_view = e._resolve_derivative('epoch-events', options={'reject': True})
+    handle_reject = e._resolve_derivative('epoch-events', options={'reject': False})
 
     assert handle_default.current_fingerprint() == handle_view.current_fingerprint()
     assert handle_default.current_fingerprint() != handle_reject.current_fingerprint()
@@ -1357,8 +1334,6 @@ def test_selected_events_vardef_is_local():
     e.set(subject='R0000', epoch='target', rej='')
     options = {
         'reject': True,
-        'index': True,
-        'cat': None,
     }
     compact = Variables({'grouped': LabelVar('value', {(1, 2): 'target'}, task='sample')})
     changed = Variables({'grouped': LabelVar('value', {1: 'target', 2: 'nontarget'}, task='sample')})
