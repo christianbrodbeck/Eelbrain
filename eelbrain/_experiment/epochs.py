@@ -177,7 +177,9 @@ class EpochBase(Configuration):
     _rej_file_epochs_from_name = False
     _needs_task: bool = False
     _tasks = None  # set if tasks is not (task,)
-    _allowed_eval_attrs: tuple[str, ...] = ('trigger_shift', 'post_baseline_trigger_shift')  # str to be evaluated in the events dataset
+    # Attributes that can contain a str to be evaluated in the events Dataset
+    # Used to construct the fingerprint for the events this epoch depends on
+    _allowed_eval_attrs: tuple[str, ...] = ('trigger_shift', 'post_baseline_trigger_shift')
 
     def _prepare_selected_events(
             self,
@@ -199,10 +201,9 @@ class EpochBase(Configuration):
 
         Returns
         -------
-        ds
-            Dataset to use as the event shell for epoch extraction.
-            Implementations may return a rewritten dataset, for example for
-            continuous epochs.
+        Dataset to use as the event shell for epoch extraction.
+        Implementations may return a rewritten dataset, for example for
+        continuous epochs.
         """
         if ds.n_cases == 0:
             raise RuntimeError(f"No events left for epoch {subject}/{self.name}")
@@ -223,6 +224,7 @@ class EpochBase(Configuration):
         return ds
 
     def _eval_attrs(self) -> Iterator[str]:
+        """Yield settings that must be evaluated in the events dataset."""
         for attr in self._allowed_eval_attrs:
             if isinstance(getattr(self, attr), str):
                 yield attr
@@ -260,6 +262,7 @@ class EpochBase(Configuration):
         raise NotImplementedError(f"{self.__class__.__name__}._extraction_parameters()")
 
     def _store_dependent_parameters(self, epochs: Mapping[str, EpochBase], tasks: Sequence[str]) -> None:
+        """Bind epoch-graph parameters after all epoch names are known."""
         if self._rej_file_epochs_from_name:
             self.rej_file_epochs = (self.name,)
         if self._needs_task:
@@ -273,7 +276,7 @@ class EpochBase(Configuration):
 
     @property
     def tasks(self) -> tuple[str, ...]:
-        """Which tasks go into this epoch"""
+        """Tasks contributing data to this epoch definition."""
         if self._tasks:
             return self._tasks
         return (self.task,)
@@ -287,39 +290,7 @@ class Epoch(EpochBase):
     # to be set by subclass
     rej_file_epochs = None
 
-    def _prepare_selected_events(
-            self,
-            ds: Dataset,
-            subject: str,
-            options: dict[str, Any],
-    ) -> Dataset:
-        ds = super()._prepare_selected_events(ds, subject, options)
-        tmin, tmax, tstop, _, decim, variable_tmax = self._extraction_parameters(ds, options)
-        if variable_tmax:
-            return ds
-        raw_sfreq = ds.info['raw.samplingrate']
-        if tmax is None:
-            if tstop is None:
-                tmax = 0.6
-            else:
-                sfreq = raw_sfreq / decim
-                start_index = int(round(tmin * sfreq))
-                stop_index = int(round(tstop * sfreq))
-                tmax = tmin + (stop_index - start_index - 1) / sfreq
-        elif tstop is not None:
-            raise TypeError(f"tmax and tstop can not both be specified at the same time, got tmax={tmax}, tstop={tstop}")
-        sample = ds['sample'].x
-        i_min = sample + math.floor(tmin * raw_sfreq)
-        i_max = sample + math.floor(tmax * raw_sfreq)
-        selection = np.flatnonzero((i_min >= ds.info['raw.first_samp']) & (i_max <= ds.info['raw.last_samp']))
-        if len(selection) == ds.n_cases and np.array_equal(selection, np.arange(ds.n_cases)):
-            return ds
-        ds = ds[selection]
-        ds.info = ds.info.copy()
-        ds.info['epochs.selection'] = selection
-        return ds
-
-    def _set_epoch_parameters(
+    def __init__(
             self,
             tmin: float | str = -0.1,
             tmax: float | str = 0.6,
@@ -330,7 +301,8 @@ class Epoch(EpochBase):
             post_baseline_trigger_shift: str = None,
             post_baseline_trigger_shift_min: float = None,
             post_baseline_trigger_shift_max: float = None,
-    ) -> None:
+    ):
+        """Store and validate common fixed-length epoch parameters."""
         if post_baseline_trigger_shift is not None:
             if post_baseline_trigger_shift_min is None or post_baseline_trigger_shift_max is None:
                 raise ConfigurationError(f"{post_baseline_trigger_shift=} but missing post_baseline_trigger_shift_min and/or post_baseline_trigger_shift_max")
@@ -372,35 +344,53 @@ class Epoch(EpochBase):
         self.post_baseline_trigger_shift_min = post_baseline_trigger_shift_min
         self.post_baseline_trigger_shift_max = post_baseline_trigger_shift_max
 
-    def __init__(
+    def _prepare_selected_events(
             self,
-            tmin: float | str = -0.1,
-            tmax: float | str = 0.6,
-            samplingrate: float = None,
-            decim: int = None,
-            baseline: EpochBaselineArg = None,
-            trigger_shift: float | str = 0.,
-            post_baseline_trigger_shift: str = None,
-            post_baseline_trigger_shift_min: float = None,
-            post_baseline_trigger_shift_max: float = None,
-    ):
-        self._set_epoch_parameters(
-            tmin,
-            tmax,
-            samplingrate,
-            decim,
-            baseline,
-            trigger_shift,
-            post_baseline_trigger_shift,
-            post_baseline_trigger_shift_min,
-            post_baseline_trigger_shift_max,
-        )
+            ds: Dataset,
+            subject: str,
+            options: dict[str, Any],
+    ) -> Dataset:
+        """Apply common event preparation and discard out-of-bounds epochs."""
+        ds = super()._prepare_selected_events(ds, subject, options)
+        return self._trim_to_raw_boundaries(ds, options)
+
+    def _trim_to_raw_boundaries(
+            self,
+            ds: Dataset,
+            options: dict[str, Any],
+    ) -> Dataset:
+        """Remove events whose requested epoch window exceeds raw bounds."""
+        tmin, tmax, tstop, _, decim, variable_tmax = self._extraction_parameters(ds, options)
+        if variable_tmax:
+            return ds
+        raw_sfreq = ds.info['raw.samplingrate']
+        if tmax is None:
+            if tstop is None:
+                tmax = 0.6
+            else:
+                sfreq = raw_sfreq / decim
+                start_index = int(round(tmin * sfreq))
+                stop_index = int(round(tstop * sfreq))
+                tmax = tmin + (stop_index - start_index - 1) / sfreq
+        elif tstop is not None:
+            raise TypeError(f"tmax and tstop can not both be specified at the same time, got tmax={tmax}, tstop={tstop}")
+        sample = ds['sample'].x
+        i_min = sample + math.floor(tmin * raw_sfreq)
+        i_max = sample + math.floor(tmax * raw_sfreq)
+        selection = np.flatnonzero((i_min >= ds.info['raw.first_samp']) & (i_max <= ds.info['raw.last_samp']))
+        if len(selection) == ds.n_cases and np.array_equal(selection, np.arange(ds.n_cases)):
+            return ds
+        ds = ds[selection]
+        ds.info = ds.info.copy()
+        ds.info['epochs.selection'] = selection
+        return ds
 
     def _extraction_parameters(
             self,
             ds: Dataset,
             options: dict[str, Any],
     ) -> tuple[float, Any, float | None, Any, int, bool]:
+        """Resolve fixed-length extraction settings with load-time overrides."""
         tmin = self.tmin if options['tmin'] is None else options['tmin']
         tmax = options['tmax']
         tstop = options['tstop']
@@ -518,7 +508,7 @@ class PrimaryEpoch(Epoch):
             n_cases: int = None,
             run: str | None = None,
     ):
-        Epoch.__init__(self, tmin, tmax, samplingrate, decim, baseline, trigger_shift, post_baseline_trigger_shift, post_baseline_trigger_shift_min, post_baseline_trigger_shift_max)
+        super().__init__(tmin, tmax, samplingrate, decim, baseline, trigger_shift, post_baseline_trigger_shift, post_baseline_trigger_shift_min, post_baseline_trigger_shift_max)
         self.task = task
         self.run = typed_arg(run, str)
         self.sel = typed_arg(sel, str)
@@ -570,7 +560,7 @@ class SecondaryEpoch(Epoch):
         params = self._kwargs.copy()
         for param in self.INHERITED_PARAMS:
             params.setdefault(param, getattr(base, param))
-        self._set_epoch_parameters(**params)
+        Epoch.__init__(self, **params)
         self.rej_file_epochs = base.rej_file_epochs
         self.task = base.task
 
@@ -614,17 +604,12 @@ class SuperEpoch(Epoch):
         params = self._kwargs.copy()
         for param, value in _shared_sub_epoch_parameters(self.name, sub_epochs, self.INHERITED_PARAMS).items():
             params.setdefault(param, value)
-        self._set_epoch_parameters(**params)
+        Epoch.__init__(self, **params)
         self._tasks = tuple(sorted({sub_epoch.task for sub_epoch in sub_epochs}))
         self.rej_file_epochs = [epoch_name for sub_epoch in sub_epochs for epoch_name in sub_epoch.rej_file_epochs]
 
-    def _prepare_selected_events(
-            self,
-            ds: Dataset,
-            subject: str,
-            options: dict[str, Any],
-    ) -> Dataset:
-        return EpochBase._prepare_selected_events(self, ds, subject, options)
+    def _trim_to_raw_boundaries(self, ds: Dataset, options: dict[str, Any]) -> Dataset:
+        return ds
 
 
 class EpochCollection(EpochBase):
@@ -654,7 +639,6 @@ class EpochCollection(EpochBase):
 
     def __init__(self, collect: Sequence[str]):
         self.collect = collect
-        EpochBase.__init__(self)
 
     def _store_dependent_parameters(self, epochs: Mapping[str, EpochBase], tasks: Sequence[str]) -> None:
         sub_epochs = [epochs[sub_epoch] for sub_epoch in self.collect]
@@ -714,7 +698,6 @@ class ContinuousEpoch(EpochBase):
             split: float = 10,
             samplingrate: float = None,
     ):
-        EpochBase.__init__(self)
         self.task = typed_arg(task, str)
         self.sel = typed_arg(sel, str)
         self.pad_start = typed_arg(pad_start, float)
@@ -841,6 +824,8 @@ class RecordingEpochsDerivative(Derivative[Any]):
 
     def dependencies(self, ctx: Request) -> tuple[Dependency, ...]:
         epoch = self.epochs[ctx.state['epoch']]
+        if not isinstance(epoch, (PrimaryEpoch, SecondaryEpoch, ContinuousEpoch)):
+            raise TypeError(f"{epoch=}")
         raw_name = ctx.state['raw']
         state = {'task': epoch.task}
         event_options = ctx.options_for('selected-events', 'reject', *EPOCH_EXTRACT_OPTIONS)
