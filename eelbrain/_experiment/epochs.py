@@ -602,9 +602,12 @@ class SuperEpoch(Epoch):
             if sub_epoch.post_baseline_trigger_shift is not None:
                 raise ConfigurationError(f"Epoch {self.name}: Super-epochs are merged on the level of events and can't contain epochs with post_baseline_trigger_shift")
         params = self._kwargs.copy()
-        for param, value in _shared_sub_epoch_parameters(self.name, sub_epochs, self.INHERITED_PARAMS).items():
-            params.setdefault(param, value)
+        # Only check sub-epoch agreement for params that are not explicitly overridden
+        non_overridden = [p for p in self.INHERITED_PARAMS if p not in params]
+        params.update(_shared_sub_epoch_parameters(self.name, sub_epochs, non_overridden))
         Epoch.__init__(self, **params)
+        # Record which params were explicitly overridden; _kwargs is kept for idempotent re-resolution
+        self._explicit_params = tuple(self._kwargs)
         self._tasks = tuple(sorted({sub_epoch.task for sub_epoch in sub_epochs}))
         self.rej_file_epochs = [epoch_name for sub_epoch in sub_epochs for epoch_name in sub_epoch.rej_file_epochs]
 
@@ -963,7 +966,11 @@ class EpochsDerivative(Derivative[Any]):
         if isinstance(epoch, EpochCollection):
             raise TypeError(f"{epoch=}: load_epochs not supported for EpochCollection")
         if isinstance(epoch, SuperEpoch):
-            sub_options = ctx.options_for('epochs', *self.OPTION_DEFAULTS, ndvar=False, data='sensor')
+            # Inject explicitly-overridden INHERITED_PARAMS as direct options so sub-epochs
+            # are loaded with the SuperEpoch's window/baseline/decim rather than their own.
+            epoch_overrides = {k: getattr(epoch, k) for k in epoch._explicit_params if k in epoch.INHERITED_PARAMS}
+            forward_keys = [k for k in self.OPTION_DEFAULTS if k not in epoch_overrides]
+            sub_options = ctx.options_for('epochs', *forward_keys, ndvar=False, data='sensor', **epoch_overrides)
             return tuple(
                 Dependency('epochs', label=sub_epoch, state={'epoch': sub_epoch}, options=sub_options)
                 for sub_epoch in epoch.sub_epochs
