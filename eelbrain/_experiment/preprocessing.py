@@ -1927,13 +1927,12 @@ class RawReReference(CachedRawPipe):
             log: logging.Logger | None = None,
             source_pipe: RawSource | None = None,
     ) -> mne.io.BaseRaw:
-        montage = raw.get_montage()
         if self.add:
             with warnings.catch_warnings():
                 warnings.filterwarnings('ignore', 'The locations of multiple reference channels are ignored', module='mne')
                 raw = mne.add_reference_channels(raw, self.add, copy=False)
-            if montage:
-                raw.set_montage(montage)
+            if source_pipe.montage:
+                raw.set_montage(source_pipe.montage)
         raw.set_eeg_reference(self.reference)
         if self.drop:
             raw = raw.drop_channels(self.drop)
