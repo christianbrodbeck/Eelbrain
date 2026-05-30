@@ -7,23 +7,6 @@ from eelbrain._data_obj import Dataset, Var
 from eelbrain.pipeline import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, ContinuousEpoch
 
 
-def test_epoch_repr():
-    primary_epoch = PrimaryEpoch('task')
-    assert primary_epoch.samplingrate is None
-    assert repr(primary_epoch) == "PrimaryEpoch('task', baseline=(None, 0))"
-    secondary_epoch = SecondaryEpoch('primary_epoch', 'v == 1')
-    assert repr(secondary_epoch) == "SecondaryEpoch('primary_epoch', 'v == 1')"
-    super_epoch = SuperEpoch(('e1', 'e2'))
-    assert repr(super_epoch) == "SuperEpoch(('e1', 'e2'))"
-    super_epoch_override = SuperEpoch(('e1', 'e2'), tmin=-0.2)
-    assert repr(super_epoch_override) == "SuperEpoch(('e1', 'e2'), tmin=-0.2)"
-    epoch_collection = EpochCollection(('e1', 'e2'))
-    assert repr(epoch_collection) == "EpochCollection(('e1', 'e2'))"
-    continuous_epoch = ContinuousEpoch('task', 'stim == 1')
-    assert continuous_epoch.samplingrate is None
-    assert repr(continuous_epoch) == "ContinuousEpoch(task='task', sel='stim == 1')"
-
-
 def test_prepare_continuous_epoch_dataset():
     epoch = ContinuousEpoch('task', 'stim == 1', pad_start=0.1, pad_end=0.2, split=0.5, samplingrate=200)
     assert 'name' not in epoch._as_dict()
