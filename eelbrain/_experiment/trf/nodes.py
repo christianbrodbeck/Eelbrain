@@ -394,7 +394,7 @@ class TRFDerivative(Derivative[object]):
             x = filter_predictor(x, self.raw, ctx.state['raw'], filter_x)
             x.name = term.string
             xs.append(x)
-        return Datalist(xs)
+        return Datalist(xs, name=term.string)
 
     def _load_subject_predictor(self, ctx: Request, predictor: SubjectUTSPredictor, term: Term, ds, y, filter_x: bool | str, is_nested: bool) -> NDVar | Datalist:
         "Cut recording-long predictors into response cases"
