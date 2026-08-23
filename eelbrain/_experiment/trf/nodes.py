@@ -317,7 +317,7 @@ class TRFDerivative(Derivative[object]):
         return tuple(deps)
 
     def build(self, ctx: Request) -> object:
-        return self.make_job(ctx).fit()
+        return self.make_job(ctx)()
 
     def make_job(self, ctx: Request) -> TRFJob:
         """Load the data and assemble a picklable :class:`TRFJob` (the fit deferred).
@@ -329,7 +329,7 @@ class TRFDerivative(Derivative[object]):
         """
         # ctx.load('response'/<predictor code>) resolves dependency labels, which
         # requires the build-deps context; it is re-entrant, so this is safe both
-        # from build() (already inside it) and from TRFJobSpec.make_job() (fresh).
+        # from build() (already inside it) and from JobSpec.make_job() (fresh).
         with ctx._build_deps_context():
             est = self.estimators[ctx.options['estimator']]
             model = ctx.options['x']
@@ -346,7 +346,7 @@ class TRFDerivative(Derivative[object]):
                 fwd = load.mne.forward_operator(fwd, ctx.state['src'], self.root / MRI_SDIR, None)
             if 'cov' in est.extra_inputs:
                 cov = ctx.load('cov')
-        return TRFJob(est, y, xs, tstart, tstop, fwd, cov, key=ctx.key())
+        return TRFJob(est, y, xs, tstart, tstop, fwd, cov)
 
     def _load_predictor(self, ctx: Request, ds, term: Term, y) -> NDVar | Datalist:
         "Assemble one model term's predictor, shaped to the response time axis"

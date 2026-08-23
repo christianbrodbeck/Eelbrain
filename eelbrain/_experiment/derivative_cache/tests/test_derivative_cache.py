@@ -2131,3 +2131,35 @@ def test_pipeline_clean_cache(monkeypatch):
     experiment.clean_cache(delete=True)
     assert not ctx.artifact_path.exists()
     assert registry.scan_cache().entries == []
+
+
+def test_external_input_has_artifact_members():
+    "An Input with CachePolicy.EXTERNAL exposes key/artifact_path/manifest_path"
+    _, registry, source, _, _, _, ephemeral, _, root = make_registry()
+
+    handle = registry.resolve('source', state=DEFAULT_STATE)
+    with pytest.raises(TypeError, match="input 'source'"):
+        _ = handle.artifact_path
+    with pytest.raises(TypeError, match="input 'source'"):
+        handle.key()
+    # ... including is_valid(), which the node itself has to answer
+    with pytest.raises(TypeError, match="input 'source'"):
+        handle.is_valid()
+
+    source.cache_policy = CachePolicy.EXTERNAL
+    try:
+        handle = registry.resolve('source', state=DEFAULT_STATE)
+        assert handle.key() == {'subject': 's1'}
+        assert handle.artifact_path == source.source_path('s1')
+        # The mirrored manifest is addressed relative to the derivatives dir, so an
+        # EXTERNAL artifact has to live there (real ones, e.g. ICA files, do).
+        with pytest.raises(ValueError):
+            _ = handle.manifest_path
+    finally:
+        source.cache_policy = CachePolicy.NEVER
+
+    # an uncached derivative still has neither, but knows it can never be valid
+    handle = registry.resolve('ephemeral', state=DEFAULT_STATE)
+    with pytest.raises(TypeError, match="uncached derivative 'ephemeral'"):
+        handle.key()
+    assert handle.is_valid() is False

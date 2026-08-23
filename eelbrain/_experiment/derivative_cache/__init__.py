@@ -18,6 +18,7 @@ from .base import (
     DerivativeRegistry,
     ExternalArtifactDerivative,
     Input,
+    JobInputsChangedError,
     OptionSpec,
     ProtectedArtifactError,
     Request,
@@ -28,4 +29,5 @@ from .base import (
     dependencies_match,
     file_fingerprint,
 )
+from .job import Job, JobProvenance, JobSpec
 from .garbage_collection import GC_KEPT_CATEGORIES, GCCategory, GCEntry, GCReport, _format_size

@@ -81,6 +81,7 @@ from ..pathing import CACHE_DIR, DERIV_DIR, LOG_DIR
 
 if TYPE_CHECKING:
     from .garbage_collection import GCReport
+    from .job import Job, JobProvenance
 
 T = TypeVar('T')
 MANIFEST_SUFFIX = '.manifest.json'
@@ -157,6 +158,12 @@ class CachePolicy(str, Enum):
 
     REQUIRED
         The artifact is always written to and read from disk.
+    EXTERNAL
+        The artifact lives outside ``cache-dir`` and is not owned by the cache:
+        the pipeline may write it, but so may the user or an external tool
+        (e.g. an ICA file that may carry manual component selections). The
+        cache only mirrors a provenance manifest for it and never replaces the
+        artifact automatically.
     NEVER
         Caching is permanently disabled: the derivative has no artifact path
         or manifest and is rebuilt on every request. Set by
@@ -165,6 +172,7 @@ class CachePolicy(str, Enum):
     """
 
     REQUIRED = 'required'
+    EXTERNAL = 'external'
     NEVER = 'never'
 
 
@@ -237,6 +245,29 @@ class ProtectedArtifactError(RuntimeError):
         if instructions:
             text += f" {instructions}"
         super().__init__(text)
+
+
+class JobInputsChangedError(RuntimeError):
+    """Refuse to compute a job whose inputs moved while its data was being loaded.
+
+    A job carries data read during :meth:`DependencyNode.make_job`, so inputs
+    that change during that load would leave the job holding data the manifest
+    does not describe. Nothing is protected here and nothing expensive has been
+    computed yet -- the job is simply not worth computing, and re-requesting it
+    reads the current data.
+    """
+
+    def __init__(
+            self,
+            node: str,
+            field: str | None = None,
+            old: Any = None,
+            new: Any = None,
+    ):
+        self.node = node
+        self.field = field
+        detail = f" ({field}: {old!r} -> {new!r})" if field is not None else ""
+        super().__init__(f"Inputs for {node!r} changed while its data was being loaded{detail}. The job would compute an artifact from data that is already out of date, so it was not created; request it again to compute from the current data.")
 
 
 def _simple_cache_label(key: dict[str, Any]) -> str | None:
@@ -474,6 +505,18 @@ class DependencyNode(Generic[T]):
         ``state`` override. The counterpart to :attr:`key_fields`: where
         ``key_fields`` declares polymorphism over state keys, ``fixed_state``
         pins them.
+    cache_policy
+        Whether this node has a tracked artifact and manifest. The default
+        (:attr:`CachePolicy.NEVER`) means it has neither, so
+        :meth:`Request.key`, :attr:`Request.artifact_path` and
+        :attr:`Request.manifest_path` raise :class:`TypeError`.
+        :class:`Derivative` sets :attr:`CachePolicy.REQUIRED`; an :class:`Input`
+        whose artifact is user-owned but provenance-tracked sets
+        :attr:`CachePolicy.EXTERNAL`.
+    cache_log_level
+        Log level for the standard cache hit/build messages, which are the
+        pipeline's progress report for anything expensive. Set to ``None`` to
+        suppress them. Only nodes with a tracked artifact emit them.
     """
 
     name: str
@@ -481,6 +524,53 @@ class DependencyNode(Generic[T]):
     key_options: dict[str, Any] = {}
     view_options: dict[str, Any] = {}
     fixed_state: dict[str, Any] = {}
+    cache_policy: CachePolicy = CachePolicy.NEVER
+    # Log level for standard cache hit/build messages. Set to None to silence.
+    cache_log_level: int | None = logging.DEBUG
+
+    def cache_log_path(self, ctx: Request, path: Path) -> str:
+        """Return the displayed artifact path for cache log messages."""
+        return ctx.registry.describe_artifact_path(path)
+
+    def log_cache_hit(self, ctx: Request, path: Path) -> None:
+        """Emit the standard cache-hit message for this node."""
+        self._log_cache_event(ctx, path, "Load cached", 'cached')
+
+    def log_cache_build(self, ctx: Request, path: Path) -> None:
+        """Emit the standard cache-build message for this node (no prior artifact)."""
+        self._log_cache_event(ctx, path, "Build", 'build')
+
+    def log_cache_recompute(self, ctx: Request, path: Path, reason: CacheInvalidation) -> None:
+        """Emit the cache-recompute message, reporting why the cached artifact was invalid."""
+        self._log_cache_event(ctx, path, "Recompute", 'recompute', reason=reason)
+
+    def log_job(self, ctx: Request, path: Path) -> None:
+        """Emit the message for generating a job that will compute this node's artifact.
+
+        Distinct from :meth:`log_cache_build`: the job's data has been read, but
+        whether it is ever computed, and where, is up to whoever holds it.
+        """
+        self._log_cache_event(ctx, path, "Generate job for", 'job')
+
+    def _log_cache_event(
+            self,
+            ctx: Request,
+            path: Path,
+            action: str,
+            event: str,
+            *,
+            reason: CacheInvalidation | None = None,
+    ) -> None:
+        if self.cache_log_level is None:
+            return
+        detail = f" ({reason.message()})" if reason is not None else ""
+        cache_event = {'event': event, 'derivative': self.name}
+        if reason is not None:
+            cache_event.update(reason.as_dict())
+        ctx.registry.log.log(
+            self.cache_log_level, "%s %s%s: %s", action, self.name, detail, self.cache_log_path(ctx, path),
+            extra={'cache_event': cache_event},
+        )
 
     @classmethod
     def declared_options(cls) -> set[str]:
@@ -652,6 +742,64 @@ class DependencyNode(Generic[T]):
         """
         raise ValueError(f"{self.name!r} does not define load view {view!r}")
 
+    def key(self, ctx: Request) -> dict[str, Any]:
+        """The key used to generate a unique path for this artifact.
+
+        This is the framework assembler and should not need overriding.
+        The key is used to resolve the artifact path and should stay focused
+        on cache address/identity. It is narrower than :meth:`fingerprint`,
+        which records the fuller set of non-dependency request
+        state/options/definitions that make an existing artifact stale.
+        """
+        fields = self._get_key_fields(ctx)
+        key = canonical_state_subset(ctx.state, fields)
+        option_names = self.override_key_options(ctx)
+        options = ctx.options if option_names is None else {name: ctx.options[name] for name in option_names}
+        if options:
+            key['options'] = options
+        return key
+
+    def is_valid(self, ctx: Request) -> bool:
+        """Return whether a valid artifact for this request already exists.
+
+        Subclasses with a tracked artifact must override this; a node without
+        one has nothing to validate, so this raises like :meth:`Request.key`
+        and :attr:`Request.artifact_path` do.
+        """
+        ctx._require_artifact('validity check')
+        raise NotImplementedError(f"{self.name!r} declares {self.cache_policy} but does not implement is_valid()")
+
+    def make_job(self, ctx: Request) -> Job:
+        """Load this request's inputs and assemble a picklable :class:`Job` (the computation deferred).
+
+        Override this on nodes whose computation should be separable from data
+        loading, so a single artifact can be computed on a machine that does not
+        have the raw data. Implementations load through ``ctx.load(...)`` inside
+        ``ctx._build_deps_context()``, exactly as :meth:`Derivative.build` does,
+        and the corresponding ``build`` is ``self.make_job(ctx)()``.
+        """
+        raise NotImplementedError
+
+    def save_result(
+            self,
+            ctx: Request,
+            result: T,
+            provenance: JobProvenance,
+    ) -> T:
+        """Persist an externally computed ``result`` and return the reloaded artifact.
+
+        Parameters
+        ----------
+        ctx
+            Resolved request for the artifact.
+        result
+            The value computed by the job.
+        provenance
+            What the job's inputs looked like when it read them; the artifact
+            is filed under these (see :class:`JobProvenance`).
+        """
+        raise NotImplementedError
+
 
 class Input(DependencyNode[T]):
     """Base class for non-cacheable external inputs.
@@ -660,6 +808,13 @@ class Input(DependencyNode[T]):
     such as raw source files, manually curated metadata, or external logs.
     They still participate in dependency manifests through
     :meth:`DependencyNode.fingerprint`.
+
+    An input whose artifact the pipeline does generate, but does not own
+    outright (e.g. an ICA file that may carry manual component selections),
+    declares :attr:`CachePolicy.EXTERNAL`. The cache then mirrors a provenance
+    manifest for it, so the input has a key, an artifact path and a manifest
+    path like a derivative, and can implement :meth:`DependencyNode.make_job` /
+    :meth:`DependencyNode.save_result`; but it is never rebuilt automatically.
     """
 
     def load(self, ctx: Request):
@@ -821,9 +976,6 @@ class Derivative(DependencyNode[T]):
     cache_suffix
         File suffix for the default :meth:`path` implementation. Leave
         ``None`` when overriding :meth:`path` directly.
-    cache_log_level
-        Log level for standard cache hit/build messages. Set to ``None``
-        to suppress them.
     version
         Derivative-local schema version recorded in manifests. Increment
         when the serialization format changes incompatibly.
@@ -833,8 +985,6 @@ class Derivative(DependencyNode[T]):
     cache_policy: CachePolicy = CachePolicy.REQUIRED
     # File suffix for the default :meth:`path` implementation.
     cache_suffix: str | None = None
-    # Log level for standard cache hit/build messages. Set to None to silence.
-    cache_log_level: int | None = logging.DEBUG
     # Derivative-local version recorded in manifests for compatibility checks.
     version: int = 1
 
@@ -849,42 +999,6 @@ class Derivative(DependencyNode[T]):
         fields = self._get_key_fields(ctx)
         label_key = canonical_state_subset(ctx.state, fields) if fields else ctx.key()
         return _simple_cache_label(label_key)
-
-    def cache_log_path(self, ctx: Request, path: Path) -> str:
-        """Return the displayed artifact path for cache log messages."""
-        return ctx.registry.describe_artifact_path(path)
-
-    def log_cache_hit(self, ctx: Request, path: Path) -> None:
-        """Emit the standard cache-hit message for this derivative."""
-        self._log_cache_event(ctx, path, "Load cached", 'cached')
-
-    def log_cache_build(self, ctx: Request, path: Path) -> None:
-        """Emit the standard cache-build message for this derivative (no prior artifact)."""
-        self._log_cache_event(ctx, path, "Build", 'build')
-
-    def log_cache_recompute(self, ctx: Request, path: Path, reason: CacheInvalidation) -> None:
-        """Emit the cache-recompute message, reporting why the cached artifact was invalid."""
-        self._log_cache_event(ctx, path, "Recompute", 'recompute', reason=reason)
-
-    def _log_cache_event(
-            self,
-            ctx: Request,
-            path: Path,
-            action: str,
-            event: str,
-            *,
-            reason: CacheInvalidation | None = None,
-    ) -> None:
-        if self.cache_log_level is None:
-            return
-        detail = f" ({reason.message()})" if reason is not None else ""
-        cache_event = {'event': event, 'derivative': self.name}
-        if reason is not None:
-            cache_event.update(reason.as_dict())
-        ctx.registry.log.log(
-            self.cache_log_level, "%s %s%s: %s", action, self.name, detail, self.cache_log_path(ctx, path),
-            extra={'cache_event': cache_event},
-        )
 
     def path(self, ctx: Request) -> Path:
         """Return the concrete artifact path for this request.
@@ -911,22 +1025,22 @@ class Derivative(DependencyNode[T]):
         label_slug = label_clean[:MAX_CACHE_LABEL_LEN].strip('-_')
         return ctx.registry.cache_dir / self.name / _cache_entity_dir(key) / f"{label_slug}_key-{key_hash}{self.cache_suffix}"
 
-    def key(self, ctx: Request) -> dict[str, Any]:
-        """The key used to generate a unique path for this artifact.
+    def is_valid(self, ctx: Request) -> bool:
+        """Return whether this request already has a valid cached artifact."""
+        if self.cache_policy is CachePolicy.NEVER:
+            return False
+        manifest = ctx._manifest()
+        if manifest is None or not ctx.artifact_path.exists():
+            return False
+        return ctx.registry._validation_reason(ctx, manifest) is None
 
-        This is the framework assembler and should not need overriding.
-        The key is used to resolve the artifact path and should stay focused
-        on cache address/identity. It is narrower than :meth:`fingerprint`,
-        which records the fuller set of non-dependency request
-        state/options/definitions that make an existing artifact stale.
-        """
-        fields = self._get_key_fields(ctx)
-        key = canonical_state_subset(ctx.state, fields)
-        option_names = self.override_key_options(ctx)
-        options = ctx.options if option_names is None else {name: ctx.options[name] for name in option_names}
-        if options:
-            key['options'] = options
-        return key
+    def save_result(
+            self,
+            ctx: Request,
+            result: T,
+            provenance: JobProvenance,
+    ) -> T:
+        return ctx.save_artifact(result, provenance)
 
     def build(self, ctx: Request) -> T:
         """Compute the artifact value for this request.
@@ -1183,10 +1297,11 @@ class Request(Generic[T]):
 
     Notes
     -----
-    Derivative-only members such as :meth:`key`, :attr:`artifact_path`,
-    :attr:`manifest_path`, :meth:`is_valid`, and :meth:`ensure` are available
-    on the same object. They raise :class:`TypeError` when the request targets
-    an input.
+    Artifact members such as :meth:`key`, :attr:`artifact_path`,
+    :attr:`manifest_path` and :meth:`is_valid` are available on the same
+    object. They raise :class:`TypeError` when the node has no tracked
+    artifact, i.e. for an uncached derivative and for any input other than an
+    :attr:`CachePolicy.EXTERNAL` one. :meth:`ensure` is derivative-only.
     """
 
     def __init__(
@@ -1271,6 +1386,31 @@ class Request(Generic[T]):
     def has_control(self, control: str) -> bool:
         """Return whether this request includes one explicit execution control."""
         return control in self.controls
+
+    def with_controls(self, *controls: str) -> Request[T]:
+        """Copy of this request with additional execution controls.
+
+        Used to authorize an operation that the plain request refuses, such as
+        recomputing a protected artifact, without going through mutable
+        pipeline state. The request is copied rather than re-resolved, so
+        which options the caller actually provided carries over unchanged;
+        option values are re-validated by the constructor, which is idempotent
+        for already-canonical values.
+
+        Parameters
+        ----------
+        controls
+            Request controls to add to those this request carries.
+        """
+        return Request(
+            node=self.node,
+            registry=self.registry,
+            state=self._state,
+            options=dict(self.options),
+            view_options=dict(self.view_options),
+            controls=self.controls.union(controls),
+            provided_key_options=self._provided_key_options,
+        )
 
     @contextmanager
     def _state_check_context(self):
@@ -1410,36 +1550,40 @@ class Request(Generic[T]):
             return self.node
         raise TypeError(f"Request for input {self.node.name!r} has no derivative artifact state")
 
-    def _require_cached_derivative(self, attribute: str) -> None:
-        derivative = self._require_derivative()
-        if derivative.cache_policy is CachePolicy.NEVER:
-            raise TypeError(f"Request for uncached derivative {derivative.name!r} has no {attribute}")
+    def _require_artifact(self, attribute: str) -> None:
+        if self.node.cache_policy is CachePolicy.NEVER:
+            kind = 'uncached derivative' if isinstance(self.node, Derivative) else 'untracked input'
+            raise TypeError(f"Request for {kind} {self.node.name!r} has no {attribute}")
 
     @property
     def base_artifact_path(self) -> Path:
         """Base artifact path before any cache-path disambiguation."""
-        self._require_cached_derivative('artifact path')
-        assert self._base_artifact_path is not None
+        if self._base_artifact_path is None:
+            self._require_artifact('artifact path')
+            self._base_artifact_path = self.node.path(self)
         return self._base_artifact_path
 
     @property
     def artifact_path(self) -> Path:
-        """Resolved artifact path for a derivative request."""
-        self._require_cached_derivative('artifact path')
-        assert self._artifact_path is not None
+        """Resolved artifact path for this request."""
+        if self._artifact_path is None:
+            # Cache-path disambiguation only applies inside cache-dir, so an
+            # EXTERNAL artifact is simply its own path.
+            self._artifact_path = self.base_artifact_path
         return self._artifact_path
 
     @property
     def manifest_path(self) -> Path:
-        """Resolved manifest path for a derivative request."""
-        self._require_cached_derivative('manifest path')
-        assert self._manifest_path is not None
+        """Resolved manifest path for this request."""
+        if self._manifest_path is None:
+            self._manifest_path = self.registry.manifest_path(self.artifact_path, self.node.name)
         return self._manifest_path
 
     def key(self) -> dict[str, Any]:
-        """Return the normalized derivative key for this request."""
-        self._require_cached_derivative('cache key')
-        assert self._key is not None
+        """Return the normalized cache key for this request."""
+        if self._key is None:
+            self._require_artifact('cache key')
+            self._key = self.registry.canonicalize(self.node.key(self))
         return self._key
 
     @property
@@ -1498,14 +1642,8 @@ class Request(Generic[T]):
         return reason
 
     def is_valid(self) -> bool:
-        """Return whether the current derivative request already has a valid artifact."""
-        derivative = self._require_derivative()
-        if derivative.cache_policy is CachePolicy.NEVER:
-            return False
-        manifest = self._manifest()
-        if manifest is None or not self.artifact_path.exists():
-            return False
-        return self.registry._validation_reason(self, manifest) is None
+        """Return whether this request already has a valid artifact."""
+        return self.node.is_valid(self)
 
     def _dependency_map(self) -> dict[str, Dependency]:
         """Declared dependencies keyed by label, rejecting duplicate labels."""
@@ -1561,14 +1699,39 @@ class Request(Generic[T]):
             return artifact
         return self.save_artifact(artifact)
 
-    def save_artifact(self, artifact: T) -> T:
+    def save_artifact(self, artifact: T, provenance: JobProvenance | None = None) -> T:
         """Persist a built artifact and write its manifest; return the reloaded artifact.
 
         Shared by :meth:`load_artifact` and by off-host execution (an externally
         computed result re-united with its cache entry, e.g. via
-        :meth:`~eelbrain._experiment.trf.job.TRFJobSpec.save_result`).
+        :meth:`~eelbrain._experiment.derivative_cache.job.JobSpec.save_result`).
+
+        Parameters
+        ----------
+        artifact
+            The value to persist.
+        provenance
+            What the inputs looked like when a job read them, for a result
+            computed off-host; the artifact is filed under these rather than
+            under the current inputs, which may have moved on. Omitted for an
+            artifact built in place, which records the inputs the build just
+            read.
         """
         derivative = self._require_derivative()
+        if provenance is not None:
+            # A job result reaches here without passing through load_artifact's
+            # protected check, so repeat it: an artifact outside cache-dir is
+            # user-visible and never overwritten without explicit authorization. Only
+            # on this path -- an in-place build was already checked before building,
+            # and for an ExternalArtifactDerivative the file existing here means
+            # build() just wrote it.
+            if self.artifact_path.exists() and not self.registry.is_cache_artifact(self.artifact_path) and not self.has_control(ALLOW_PROTECTED_OVERWRITE):
+                raise ProtectedArtifactError(derivative.name, self.artifact_path)
+            dependencies = provenance.dependencies
+            fingerprint = provenance.fingerprint
+        else:
+            dependencies = self.dependency_fingerprints()
+            fingerprint = self.current_fingerprint()
         artifact_metadata = self.registry.canonicalize(derivative.artifact_metadata(self, artifact))
         self.artifact_path.parent.mkdir(parents=True, exist_ok=True)
         derivative.save(self, self.artifact_path, artifact)
@@ -1578,8 +1741,8 @@ class Request(Generic[T]):
             derivative=derivative.name,
             derivative_version=derivative.version,
             key=self.key(),
-            fingerprint=self.current_fingerprint(),
-            dependencies=self.dependency_fingerprints(),
+            fingerprint=fingerprint,
+            dependencies=dependencies,
             cache_policy=derivative.cache_policy.value,
             software={
                 'eelbrain_cache_schema': str(MANIFEST_SCHEMA_VERSION),
@@ -1590,7 +1753,9 @@ class Request(Generic[T]):
             resolve_options=resolve_options,
         )
         self.registry.write_manifest(self.manifest_path, manifest)
-        self.registry._record_valid(self)
+        if provenance is None:
+            # Only an in-place build is guaranteed to be up-to-date; a job result may already be stale
+            self.registry._record_valid(self)
         self._artifact_metadata = manifest.artifact_metadata
         with self._state_check_context():
             return derivative.load(self, self.artifact_path)

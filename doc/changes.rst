@@ -60,6 +60,11 @@ New in 0.43
     instead of ``det``, in the :class:`Dataset` returned by
     :meth:`BoostingResult.partition_result_data`
 
+* ICA-GUI (:func:`gui.select_components`): The *Find Bad Channels* tool now also
+  detects defective channels through gaps in the component maps — channels whose
+  weight is ~0 in multiple components with a realistic field pattern, while the
+  surrounding channels share the same polarity.
+
 
 New in 0.42
 -----------
