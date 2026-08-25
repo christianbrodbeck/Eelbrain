@@ -1095,6 +1095,94 @@ def test_ica_all_tasks_after_maxwell(samples_experiment):
 
 
 @requires_mne_sample_data
+def test_head_pos_without_chpi(samples_experiment):
+    "RawMaxwell(head_pos=True) is a no-op for recordings without continuous HPI"
+    set_log_level('warning', 'mne')
+    from eelbrain._experiment.tests.sample_experiment import SampleExperiment
+
+    root = samples_experiment(n_subjects=1, n_segments=1)
+
+    class Experiment(SampleExperiment):
+        raw = {
+            **SampleExperiment.raw,
+            'tsss_hp': RawMaxwell('raw', st_duration=10., ignore_ref=True, st_correlation=.9, st_only=True, st_overlap=False, head_pos=True),
+        }
+    e = Experiment(root)
+    e.set('R0000')
+
+    # the sample data has no cHPI, so the derivative falls back to the static dev_head_t
+    head_pos = e.load_head_position()
+    assert head_pos.shape == (1, 10)
+    pos_request = e._derivatives.resolve('raw-head-position', state=e.state)
+    assert pos_request.artifact_path.suffix == '.pos'
+    assert pos_request.artifact_path.exists()
+    assert pos_request.manifest_path.exists()
+
+    # with a single position sample there is nothing to compensate, so the output is unchanged
+    raw_hp = e.load_raw(raw='tsss_hp', preload=True)
+    raw = e.load_raw(raw='tsss', preload=True)
+    assert raw_hp.ch_names == raw.ch_names
+    assert 'chpi' not in raw_hp.get_channel_types()
+    assert_array_equal(raw_hp.get_data(), raw.get_data())
+
+    # head_pos still separates the two pipes in the cache
+    manifests = {raw: e._derivatives.resolve(raw_node_name(raw), state={**e.state, 'raw': raw}, options={'noise': False}).manifest_path for raw in ('tsss', 'tsss_hp')}
+    assert manifests['tsss_hp'] != manifests['tsss']
+
+
+@requires_mne_sample_data
+def test_head_pos_movement_compensation(samples_experiment):
+    "RawMaxwell(head_pos=True) compensates movement, drops the CHPI channels, and keeps mixed runs concatenable"
+    set_log_level('warning', 'mne')
+    from eelbrain._experiment.preprocessing.nodes import RawHeadPositionDerivative
+    from eelbrain._experiment.tests.sample_experiment_sessions import SampleExperiment
+
+    root = samples_experiment(n_subjects=1, n_tasks=2, n_segments=1, n_runs=2)
+
+    class Experiment(SampleExperiment):
+        raw = {
+            'tsss': RawMaxwell('raw', ignore_ref=True, head_pos=True),
+            'tsss_static': RawMaxwell('raw', ignore_ref=True),
+            'ica': RawICA('tsss', method='fastica', max_iter=1, n_components=0.95),
+            **SampleExperiment.raw,
+        }
+
+    def mixed_head_positions(self, ctx):
+        "Tracked positions for run 1, only the static transform for run 2"
+        raw = ctx.load(self._raw_input_name)
+        trans = raw.info['dev_head_t']['trans']
+        quat = mne.transforms.rot_to_quat(trans[:3, :3])
+        sample = [*quat, *trans[:3, 3], .99, .001, .01]
+        if ctx.state['run'] != '1':
+            return np.array([[raw.first_time, *sample]])
+        t = np.linspace(raw.first_time, raw.times[-1] + raw.first_time, 20)
+        out = np.tile([sample], (20, 1))
+        out[:, 3:6] += np.linspace(0, .005, 20)[:, np.newaxis]  # move the head over the recording
+        return np.column_stack([t, out])
+
+    e = Experiment(root)
+    e.set('R0000', task='sample1', run='1')
+    with patch.object(RawHeadPositionDerivative, 'build', mixed_head_positions):
+        assert e.load_head_position().shape == (20, 10)
+        raw_hp = e.load_raw(raw='tsss', preload=True)
+        raw = e.load_raw(raw='tsss_static', preload=True)
+        # movement compensation changed the MEG data ...
+        data, data_hp = raw.get_data(picks='meg'), raw_hp.get_data(picks='meg')
+        assert np.abs(data_hp - data).max() / np.abs(data).max() > 1e-3
+        # ... but not the channel layout: the 'chpi' position channels maxwell_filter appends are removed
+        assert 'chpi' not in raw_hp.get_channel_types()
+        assert raw_hp.ch_names == raw.ch_names
+
+        assert e.load_head_position(run='2').shape == (1, 10)  # run 2 has nothing to compensate
+        e.set(raw='ica')
+        with catch_warnings():
+            filterwarnings('ignore', "FastICA did not converge", UserWarning)
+            # ICA after RawMaxwell concatenates the tracked and the untracked run, which requires matching channels
+            e.make_ica()
+            assert isinstance(e.load_ica(), mne.preprocessing.ICA)
+
+
+@requires_mne_sample_data
 def test_epoch_reference(samples_experiment):
     "EEG re-referencing after channel interpolation (the 'reference' state)"
     set_log_level('warning', 'mne')
