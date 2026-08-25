@@ -50,6 +50,19 @@ For example, the following definition sets up a pipeline for MEG, using TSSS, a 
 To use the ``raw --> TSSS --> 1-40 Hz band-pass`` pipeline, use ``e.set(raw="1-40")``.
 To use ``raw --> TSSS --> 1-40 Hz band-pass --> ICA``, select ``e.set(raw="ica")``.
 
+For data recorded with continuous HPI, :class:`RawMaxwell` can compensate for head movement with ``head_pos=True``::
+
+    class Experiment(Pipeline):
+
+        raw = {
+            'tsss': RawMaxwell('raw', st_duration=10., head_pos=True),
+        }
+
+Head positions are estimated once per recording with :func:`mne.chpi.compute_head_pos`, cached, and used for both bad channel detection and Maxwell filtering.
+They can be retrieved with :meth:`Pipeline.load_head_position` for inspection with :func:`mne.viz.plot_head_positions`.
+The setting has no effect on recordings without continuous HPI, and empty room data is never affected.
+:meth:`Pipeline.show_head_position_overview` marks recordings with continuous HPI with ``†``.
+
 The following is an example for EEG using band-pass filter and ICA::
 
     class Experiment(Pipeline):
