@@ -3,7 +3,7 @@ import mne
 import pytest
 
 from eelbrain._exceptions import ConfigurationError
-from eelbrain._experiment.preprocessing import RawSource
+from eelbrain._experiment.preprocessing import RawMaxwell, RawSource
 
 
 def test_raw_source_rename_channels():
@@ -37,3 +37,23 @@ def test_raw_source_rename_channels():
     # rename_channels values need to be in the montage
     with pytest.raises(ConfigurationError):
         RawSource(montage='biosemi16', rename_channels={'A1': 'NoSuchChannel'})
+
+
+def test_maxwell_head_pos_semantic_dict():
+    "head_pos is omitted from the fingerprint when unset, so caches predating it stay valid"
+    maxwell = RawMaxwell('raw', st_duration=10.)
+    assert maxwell.head_pos is False
+    assert maxwell._as_dict() == {
+        'type': 'RawMaxwell',
+        'source': 'raw',
+        'bad_condition': 'error',
+        'kwargs': {'st_duration': 10.},
+    }
+
+    movecomp = RawMaxwell('raw', st_duration=10., head_pos=True)
+    assert movecomp._as_dict()['head_pos'] is True
+    assert movecomp != maxwell
+    # head_pos configures the pipe, it is never forwarded to MNE
+    assert movecomp.kwargs == {'st_duration': 10.}
+    with pytest.raises(TypeError):
+        RawMaxwell('raw', head_position=True)

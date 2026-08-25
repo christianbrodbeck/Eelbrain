@@ -1000,6 +1000,8 @@ class RawDerivative(Derivative[mne.io.BaseRaw]):
             deps.append(Dependency('maxwell-calibration'))
             deps.append(Dependency('maxwell-crosstalk'))
             deps.append(Dependency('canonical-head-position'))
+            if self.pipe.head_pos and not ctx.options['noise']:
+                deps.append(Dependency('raw-head-position'))
         return tuple(deps)
 
     def fingerprint(self, ctx: Request) -> dict[str, Any]:
@@ -1042,7 +1044,8 @@ class RawDerivative(Derivative[mne.io.BaseRaw]):
             calibration = ctx.load('maxwell-calibration')
             cross_talk = ctx.load('maxwell-crosstalk')
             destination = ctx.load('canonical-head-position')
-            return self.pipe._make(raw, path=path, noise=ctx.options['noise'], raw_name=self.raw_name, log=ctx.registry.log, source_pipe=source_pipe, calibration=calibration, cross_talk=cross_talk, destination=destination)
+            head_pos = ctx.load('raw-head-position') if self.pipe.head_pos and not ctx.options['noise'] else None
+            return self.pipe._make(raw, path=path, noise=ctx.options['noise'], raw_name=self.raw_name, log=ctx.registry.log, source_pipe=source_pipe, calibration=calibration, cross_talk=cross_talk, destination=destination, head_pos=head_pos)
         return self.pipe._make(raw, path=path, noise=ctx.options['noise'], raw_name=self.raw_name, log=ctx.registry.log, source_pipe=source_pipe)
 
     def load(self, ctx: Request, path: Path) -> mne.io.BaseRaw:
@@ -1148,21 +1151,17 @@ class MaxwellCrosstalkInput(Input[Path]):
         return path if path.exists() else None
 
 
-class RawHeadPositionDerivative(UncachedDerivative[numpy.ndarray]):
+class RawHeadPositionDerivative(Derivative[numpy.ndarray]):
     """Head position samples extracted from one raw recording.
 
-    For recordings with cHPI active the full tracked position time-series is
-    returned; otherwise the static ``dev_head_t`` transform is returned as a
-    single sample.
-
-    Returns an ``(n, 6)`` float array with columns
-    ``[q1, q2, q3, tx, ty, tz]`` using MNE's compact quaternion convention.
-    An empty ``(0, 6)`` array is returned when no head position information is
-    available in the file.
+    For recordings with cHPI, the tracked position time-series (see :func:`mne.chpi.compute_head_pos`).
+    Otherwise, the static ``dev_head_t`` transform as a single sample.
+    ``None`` when the file has no head position information at all.
     """
 
     name = 'raw-head-position'
     key_fields = ('subject', 'session', 'task', 'acquisition', 'run')
+    cache_suffix = '.pos'
 
     def __init__(self, raw_input_name: str):
         self._raw_input_name = raw_input_name
@@ -1178,14 +1177,58 @@ class RawHeadPositionDerivative(UncachedDerivative[numpy.ndarray]):
             chpi_amplitudes = mne.chpi.compute_chpi_amplitudes(raw)
             chpi_locs = mne.chpi.compute_chpi_locs(info, chpi_amplitudes)
             head_pos = mne.chpi.compute_head_pos(info, chpi_locs)
-            # head_pos columns: [t, q1, q2, q3, tx, ty, tz, gof, err, v]
-            return head_pos[:, 1:7]
+            if len(head_pos):
+                return head_pos
+            # compute_head_pos returns (0, 10) when every fit is rejected; fall back to the static transform so that consumers always see at least one sample
+            LOG.warning("Raw head position: cHPI is active but no head position could be estimated for %s; using the static dev_head_t", ctx.state.get('subject'))
         dev_head_t = info.get('dev_head_t')
         if dev_head_t is None:
             return None
         trans = dev_head_t['trans']
         quat = mne.transforms.rot_to_quat(trans[:3, :3])
-        return numpy.array([[*quat, *trans[:3, 3]]])
+        return numpy.array([[raw.first_time, *quat, *trans[:3, 3], 0., 0., 0.]])
+
+    def save(self, ctx: Request, path: Path, value: numpy.ndarray | None) -> None:
+        if value is None:
+            path.touch()
+        else:
+            mne.chpi.write_head_pos(path, value)
+
+    def load(self, ctx: Request, path: Path) -> numpy.ndarray | None:
+        if path.stat().st_size == 0:
+            return None
+        return mne.chpi.read_head_pos(path)
+
+
+def mean_head_position(positions: numpy.ndarray) -> mne.transforms.Transform | None:
+    """Representative device-to-head transform for a set of head position samples.
+
+    The rotation is the Fréchet mean on SO(3) computed via
+    :meth:`scipy.spatial.transform.Rotation.mean` (eigenvector method); the
+    translation is the arithmetic mean.
+
+    Parameters
+    ----------
+    positions
+        ``(n, 6)`` array with columns ``[q1, q2, q3, tx, ty, tz]``, using MNE's
+        compact quaternion convention.
+
+    Returns
+    -------
+    Transform | None
+        ``None`` when fewer than two distinct samples are available, in which
+        case each file's own ``dev_head_t`` should be used directly to avoid
+        round-trip conversion noise.
+    """
+    if len(positions) <= 1 or numpy.allclose(positions[1:], positions[0]):
+        return None
+    # MNE compact quaternions [q1, q2, q3] → scipy [x, y, z, w] (scalar last)
+    q = positions[:, :3]
+    q0 = numpy.sqrt(numpy.maximum(1.0 - numpy.sum(q ** 2, axis=1), 0.0))
+    trans = numpy.eye(4)
+    trans[:3, :3] = Rotation.from_quat(numpy.column_stack([q, q0])).mean().as_matrix()
+    trans[:3, 3] = numpy.mean(positions[:, 3:], axis=0)
+    return mne.transforms.Transform(fro='meg', to='head', trans=trans)
 
 
 class CanonicalHeadPositionDerivative(Derivative):
@@ -1195,14 +1238,10 @@ class CanonicalHeadPositionDerivative(Derivative):
     subject, session, and acquisition, suitable as the ``destination`` parameter of
     :func:`mne.preprocessing.maxwell_filter`.
 
-    The rotation is the Fréchet mean on SO(3) computed via
-    :meth:`scipy.spatial.transform.Rotation.mean` (eigenvector method).
-    The translation is the arithmetic mean.  For recordings with cHPI all
-    tracked position samples contribute, not just the starting position.
-
-    Returns ``None`` when only one position sample exists across all
-    tasks/runs, in which case each file's own ``dev_head_t`` is used directly
-    by Maxwell filtering to avoid round-trip conversion noise.
+    All samples from all tasks and runs are averaged with
+    :func:`mean_head_position`. ``None`` when fewer than two distinct position samples
+    exist across all tasks/runs, in which case each file's own ``dev_head_t`` is used
+    directly by Maxwell filtering to avoid round-trip conversion noise.
 
     Parameters
     ----------
@@ -1218,7 +1257,7 @@ class CanonicalHeadPositionDerivative(Derivative):
 
     name = 'canonical-head-position'
     key_fields = ('subject', 'session', 'acquisition')
-    cache_suffix = '.fif'
+    cache_suffix = '-trans.fif'  # MNE warns about trans files that do not use this suffix
 
     def __init__(
             self,
@@ -1247,21 +1286,12 @@ class CanonicalHeadPositionDerivative(Derivative):
     def build(self, ctx: Request) -> mne.transforms.Transform | None:
         all_positions = []
         for label in ctx.declared_dependencies:
-            positions = ctx.load(label)  # (n, 6): [q1, q2, q3, tx, ty, tz], or None
+            positions = ctx.load(label)  # (n, 10) MaxFilter format, or None
             if positions is not None:
-                all_positions.append(positions)
-        if len(all_positions) <= 1:
+                all_positions.append(positions[:, 1:7])  # [q1, q2, q3, tx, ty, tz]
+        if not all_positions:
             return None
-        all_pos = numpy.vstack(all_positions)  # (N, 6): [q1, q2, q3, tx, ty, tz]
-        if numpy.allclose(all_pos[1:], all_pos[0]):
-            return None
-        # MNE compact quaternions [q1, q2, q3] → scipy [x, y, z, w] (scalar last)
-        q = all_pos[:, :3]
-        q0 = numpy.sqrt(numpy.maximum(1.0 - numpy.sum(q ** 2, axis=1), 0.0))
-        trans = numpy.eye(4)
-        trans[:3, :3] = Rotation.from_quat(numpy.column_stack([q, q0])).mean().as_matrix()
-        trans[:3, 3] = numpy.mean(all_pos[:, 3:], axis=0)
-        return mne.transforms.Transform(fro='meg', to='head', trans=trans)
+        return mean_head_position(numpy.vstack(all_positions))
 
     def save(self, ctx: Request, path: Path, value: mne.transforms.Transform | None) -> None:
         if value is None:

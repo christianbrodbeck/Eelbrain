@@ -1012,6 +1012,32 @@ class Pipeline(StateModel):
         raw_name = self.get('raw', **kwargs)
         return self._load_derivative(raw_node_name(raw_name), options={'noise': noise}, view='bads')
 
+    def load_head_position(self, **state) -> np.ndarray | None:
+        """Load head position samples for a recording
+
+        Parameters
+        ----------
+        ...
+            State parameters.
+
+        Returns
+        -------
+        head_pos
+            ``(n, 10)`` array in MaxFilter format, with columns
+            ``[t, q1, q2, q3, tx, ty, tz, gof, err, v]``, as produced by
+            :func:`mne.chpi.compute_head_pos` and suitable for
+            :func:`mne.viz.plot_head_positions`. For recordings without
+            continuous HPI, the static ``dev_head_t`` is returned as a single
+            sample. ``None`` when the recording has no head position
+            information at all.
+
+        See Also
+        --------
+        pipeline.RawMaxwell : Maxwell filtering with head movement compensation
+        """
+        self.set(**state)
+        return self._load_derivative('raw-head-position')
+
     def load_cov(self, **kwargs):
         """Load the covariance matrix
 

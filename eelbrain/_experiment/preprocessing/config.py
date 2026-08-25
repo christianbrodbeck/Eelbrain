@@ -18,6 +18,7 @@ from collections.abc import Mapping, Sequence
 
 import mne
 from mne_bids import BIDSPath
+import numpy
 from scipy import signal
 
 from ..._data_obj import NDVar, Sensor, normalize_sensor_names
@@ -703,9 +704,16 @@ class RawMaxwell(CachedRawPipe):
     bad_condition
         How to deal with ill-conditioned SSS matrices; by default, an error is
         raised, which might prevent the process to complete for some subjects.
-        Set to ``'warning'`` to proceed anyways.
+        Set to ``'warning'`` to proceed anyway.
     cache
         Cache the resulting raw files (default ``True``).
+    head_pos
+        Compensate for head movement using continuous HPI (default ``False``).
+        Head positions are estimated with :func:`mne.chpi.compute_head_pos`,
+        cached, and can be retrieved with
+        :meth:`Pipeline.load_head_position`. This requires ``mne > 1.12.1``, and
+        has no effect for recordings without continuous HPI or for empty room
+        data.
     ...
         Supported :func:`mne.preprocessing.maxwell_filter` parameters are
         ``origin``, ``int_order``, ``ext_order``, ``regularize``,
@@ -718,15 +726,18 @@ class RawMaxwell(CachedRawPipe):
     See Also
     --------
     Pipeline.raw
+    Pipeline.show_head_position_overview
 
     Notes
     -----
     For empty room recordings, there is no ``dev_head_t`` information, ``coord_frame = 'meg'`` will be used automatically.
     Flat channels are automatically marked as bad by :func:`mne.preprocessing.find_bad_channels_maxwell`.
+    :meth:`Pipeline.show_head_position_overview` marks recordings with continuous HPI with ``†``; those are the recordings that benefit from ``head_pos=True``.
     """
 
     _bad_chs_affect_cache = True
-    DICT_ATTRS = CachedRawPipe.DICT_ATTRS + ('bad_condition', 'kwargs')
+    DICT_ATTRS = CachedRawPipe.DICT_ATTRS + ('bad_condition', 'head_pos', 'kwargs')
+    DICT_DEFAULTS = {'head_pos': False}  # omitted from the fingerprint when unset, so caches predating head_pos stay valid
     _shared_kwargs = frozenset((
         'origin', 'int_order', 'ext_order', 'regularize', 'ignore_ref',
         'mag_scale', 'skip_by_annotation', 'extended_proj',
@@ -742,6 +753,7 @@ class RawMaxwell(CachedRawPipe):
         source: str,
         bad_condition: str = 'error',
         cache: bool = True,
+        head_pos: bool = False,
         **kwargs,
     ):
         CachedRawPipe.__init__(self, source, cache)
@@ -750,6 +762,7 @@ class RawMaxwell(CachedRawPipe):
             raise TypeError(f"Invalid RawMaxwell keyword argument{'' if len(invalid_kwargs) == 1 else 's'}: {enumeration(invalid_kwargs)}")
         self.kwargs = kwargs
         self.bad_condition = bad_condition
+        self.head_pos = head_pos
 
     def _make(
             self,
@@ -763,6 +776,7 @@ class RawMaxwell(CachedRawPipe):
             calibration: Path | None = None,
             cross_talk: Path | None = None,
             destination: mne.transforms.Transform | None = None,
+            head_pos: numpy.ndarray | None = None,
     ) -> mne.io.BaseRaw:
         logger = log or LOG
         logger.info("Raw %s: computing Maxwell filter for %s", raw_name, path.fpath if not noise else path.find_empty_room().fpath)
@@ -771,10 +785,15 @@ class RawMaxwell(CachedRawPipe):
             destination = None
         else:
             coord_frame = 'head'
+        # A single sample is the static dev_head_t, which is what maxwell_filter assumes anyways; passing it would only add the CHPI position channels. Head positions require coord_frame='head', so they are never used for empty room data.
+        if head_pos is not None and (len(head_pos) <= 1 or noise):
+            if not noise:
+                logger.warning("Raw %s: head_pos=True, but this recording has no usable continuous HPI (single head position sample); applying Maxwell filter without movement compensation", raw_name)
+            head_pos = None
 
         with user_activity:
             shared_kwargs = {key: value for key, value in self.kwargs.items() if key in self._shared_kwargs}
-            shared_kwargs.update(calibration=calibration, cross_talk=cross_talk, bad_condition=self.bad_condition, coord_frame=coord_frame)
+            shared_kwargs.update(calibration=calibration, cross_talk=cross_talk, bad_condition=self.bad_condition, coord_frame=coord_frame, head_pos=head_pos)
             # find bad channels
             detector_kwargs = {key: value for key, value in self.kwargs.items() if key in self._detector_only_kwargs}
             noisy_chs, flat_chs = mne.preprocessing.find_bad_channels_maxwell(raw, verbose=MNE_VERBOSITY, **shared_kwargs, **detector_kwargs)
@@ -788,7 +807,13 @@ class RawMaxwell(CachedRawPipe):
                 n_samples = int(round(st_duration * raw.info['sfreq']))
                 if n_samples % 2:
                     kwargs = {**kwargs, 'st_duration': (n_samples + 1) / raw.info['sfreq']}
-            return mne.preprocessing.maxwell_filter(raw, destination=destination, verbose=MNE_VERBOSITY, **kwargs)
+            raw_sss = mne.preprocessing.maxwell_filter(raw, destination=destination, verbose=MNE_VERBOSITY, **kwargs)
+            # maxwell_filter appends the head position as 'chpi' channels
+            if head_pos is not None:
+                chpi_names = [name for name, ch_type in zip(raw_sss.ch_names, raw_sss.get_channel_types()) if ch_type == 'chpi']
+                if chpi_names:
+                    raw_sss.drop_channels(chpi_names)
+            return raw_sss
 
     def _make_info(
             self,
