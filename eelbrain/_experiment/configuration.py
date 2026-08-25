@@ -11,6 +11,8 @@ from .._utils.parse import find_variables
 
 class Configuration:
     DICT_ATTRS = None
+    # Default values for DICT_ATTRS entries that are omitted in _as_dict(), so that adding a field does not invalidate caches built before it existed
+    DICT_DEFAULTS = {}
     name = None
 
     def _as_dict(self) -> dict[str, Any]:
@@ -46,8 +48,11 @@ class Configuration:
         """
         if self.DICT_ATTRS is None:
             raise NotImplementedError(f"{self.__class__.__name__}.DICT_ATTRS")
-        out = {'type': self.__class__.__name__}
-        out.update({k: getattr(self, k) for k in self.DICT_ATTRS})
+        out = {key: getattr(self, key) for key in self.DICT_ATTRS}
+        out['type'] = self.__class__.__name__
+        for key, value in self.DICT_DEFAULTS.items():
+            if out[key] == value:
+                del out[key]
         return out
 
     def _store_name(self, name: str) -> None:
