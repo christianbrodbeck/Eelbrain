@@ -434,7 +434,7 @@ class Pipeline(StateModel):
         # TRF: named models, estimators, predictors, stimulus variables
         self._named_models: dict[str, Model] = ConfigurationDict('model')
         for name, value in self.models.items():
-            self._named_models[name] = Model.coerce(value).initialize(self._named_models)
+            self._named_models[name] = Model.coerce(value, self._named_models)
         estimators = {'boosting': Boosting(), **self.estimators}
         for name, estimator in estimators.items():
             if not isinstance(estimator, Estimator):
@@ -1244,7 +1244,7 @@ class Pipeline(StateModel):
             State parameters.
         """
         self.set(**state)
-        term = parse_term(code)
+        term = parse_term(code).without_lags()  # lag overrides do not affect the predictor itself
         predictor = self.predictors[term.predictor_key]
         if not isinstance(predictor, (UTSPredictor, NUTSPredictor)):
             raise NotImplementedError(f"{term.string}: load_predictor only supports file predictors; load {type(predictor).__name__} through load_trf")
@@ -1286,7 +1286,7 @@ class Pipeline(StateModel):
             data_string = 'sensor'
         else:
             data_string = self._resolve_data(data).string
-        x_ = self._eval_trf_x(x, comparison).sorted()
+        x_ = self._eval_trf_x(x, comparison)
         return {'x': x_, 'tstart': float(tstart), 'tstop': float(tstop), 'estimator': estimator, 'data': data_string, 'samplingrate': samplingrate, 'filter_x': filter_x}
 
     def load_trf(
@@ -1307,7 +1307,9 @@ class Pipeline(StateModel):
         Parameters
         ----------
         x
-            Model (e.g. ``'gammatone + word'``).
+            Model (e.g. ``'gammatone + word'``). A term can override the lag
+            window with slice syntax, e.g. ``'gammatone[0.2:] + word[-0.1:0.8]'``
+            (an omitted boundary uses ``tstart``/``tstop``).
         tstart
             Start of the TRF in seconds.
         tstop
@@ -1379,7 +1381,9 @@ class Pipeline(StateModel):
         Parameters
         ----------
         x
-            Model (e.g. ``'gammatone + word'``).
+            Model (e.g. ``'gammatone + word'``). A term can override the lag
+            window with slice syntax, e.g. ``'gammatone[0.2:] + word[-0.1:0.8]'``
+            (an omitted boundary uses ``tstart``/``tstop``).
         tstart
             Start of the TRF in seconds.
         tstop
@@ -1428,7 +1432,9 @@ class Pipeline(StateModel):
             group name such as ``'all'``. ``1`` to use the current subject;
             ``-1`` for the current group.
         x
-            Model (e.g. ``'gammatone + word'``).
+            Model (e.g. ``'gammatone + word'``). A term can override the lag
+            window with slice syntax, e.g. ``'gammatone[0.2:] + word[-0.1:0.8]'``
+            (an omitted boundary uses ``tstart``/``tstop``).
         tstart
             Start of the TRF in seconds.
         tstop
@@ -1494,7 +1500,11 @@ class Pipeline(StateModel):
         x
             Model comparison, such as ``'acoustic + lexical > acoustic'`` or
             ``'acoustic + lexical @ lexical'``. Comparisons against ``0`` test
-            one model's predictive power against zero.
+            one model's predictive power against zero. A term can override the
+            lag window with slice syntax, e.g.
+            ``'acoustic + lexical @ lexical[0.2:]'`` tests the contribution of
+            ``lexical`` at lags from 0.2 s to ``tstop`` (an omitted boundary
+            uses ``tstart``/``tstop``).
         tstart
             Start of the TRF in seconds.
         tstop
@@ -3272,7 +3282,7 @@ class Pipeline(StateModel):
         if any(operator in x for operator in ('@', '=', '<', '>')):
             out = Comparison.coerce(x, self._named_models)
         else:
-            out = Model.coerce(x).initialize(self._named_models)
+            out = Model.coerce(x, self._named_models)
         if comparison and not isinstance(out, Comparison):
             raise TypeError(f"{x=}: need a model comparison, such as 'a + b > a'")
         elif comparison is False and isinstance(out, Comparison):

@@ -60,7 +60,7 @@ class EventPredictor(Configuration):
         self.latency = typed_arg(latency, float, str)
         self.sel = typed_arg(sel, str)
 
-    def _generate(self, uts: UTS, ds: Dataset, term: Term):
+    def _generate(self, uts: UTS, ds: Dataset, term: Term) -> NDVar:
         assert term.stimulus is None
         if self.sel:
             raise NotImplementedError

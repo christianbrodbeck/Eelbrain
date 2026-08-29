@@ -320,9 +320,10 @@ class OptionSpec:
     normalize
         Called as ``normalize(value)`` before validation; the return
         value replaces the option value for the whole request (key,
-        fingerprint, and build all see the normalized value). Must be
-        idempotent, since child requests are normalized again when they are
-        resolved.
+        fingerprint, and build all see the normalized value). Runs for every
+        non-default value, including values that already have ``type``, so it
+        can canonicalize typed values. Must be idempotent, since child
+        requests are normalized again when they are resolved.
     """
 
     default: Any
@@ -334,12 +335,12 @@ class OptionSpec:
         """Normalize and validate one option value for ``ctx``."""
         if value is None and self.default is None:
             return value
-        elif self.type and isinstance(value, self.type):
-            return value
         elif self.normalize:
             value = self.normalize(value)
             if self.type:
                 assert isinstance(value, self.type)
+            return value
+        elif self.type and isinstance(value, self.type):
             return value
         elif self.type:
             if not isinstance(self.type, tuple):
@@ -578,14 +579,19 @@ class DependencyNode(Generic[T]):
         return {*cls.key_options, *cls.view_options}
 
     def validate_options(self, ctx: Request) -> None:
-        """Reject invalid combinations of option values.
+        """Normalize and reject invalid combinations of option values.
 
         Called exactly once per request, after :class:`OptionSpec` normalization
         and before the cache key is computed, so an invalid combination can fail
-        before any expensive work.
+        before any expensive work. Combinations that are canonical only in
+        combination may be normalized by updating ``ctx.options`` in place, so
+        equivalent spellings share one canonical key; such normalization must be
+        idempotent, since child requests are normalized again when they are
+        resolved.
 
-        Override this for constraints spanning several options, or options and state
-        (validate individual options in :class:`OptionSpec`).
+        Override this for constraints or canonicalization spanning several
+        options, or options and state (handle individual options in
+        :class:`OptionSpec`).
         """
 
     def override_key_fields(self, ctx: Request) -> tuple[str, ...] | None:
