@@ -20,8 +20,7 @@ import mne
 from mne_bids import BIDSPath
 from scipy import signal
 
-from ... import load
-from ..._data_obj import NDVar, Sensor
+from ..._data_obj import NDVar, Sensor, normalize_sensor_names
 from ..._exceptions import ConfigurationError
 from ..._io.fiff import KIT_NEIGHBORS
 from ..._io.txt import read_adjacency
@@ -91,12 +90,18 @@ class RawSource(RawPipe):
         Used to determine sensor positions (not needed for KIT files, or when a
         montage is specified).
     rename_channels
-        Rename channels based on a ``{from: to}`` dictionary. This happens
-        *after* calling the ``reader``, and *before* applying the ``montage``.
-        Useful to convert system-specific channel names to those of a standard montages.
+        The names the ``montage`` uses for channels in the data, as a
+        ``{data_name: montage_name}`` dictionary. The montage is renamed
+        accordingly before it is applied, so that channel names in the data
+        (as defined by the BIDS dataset) are never modified. If ``adjacency``
+        is a builtin adjacency name, its channels are renamed in the same way.
+        Useful when the data uses a naming convention different from a
+        standard montage.
     montage
-        Name of a montage that is applied to raw data to set sensor positions
-        (see :meth:`mne.io.Raw.set_montage`).
+        Montage that is applied to raw data to set sensor positions (see
+        :meth:`mne.io.Raw.set_montage`), as a standard montage name (see
+        :func:`mne.channels.make_standard_montage`) or
+        :class:`mne.channels.DigMontage` instance.
     adjacency
         Adjacency between sensors. Can be specified as:
 
@@ -112,6 +117,10 @@ class RawSource(RawPipe):
           property checks are disabled to improve efficiency.
 
         If unspecified, it is inferred from ``sysname`` if possible.
+        When using ``rename_channels``, only a builtin adjacency name is
+        translated to data channel names; an adjacency specified as a file or
+        as an explicit list of connections must already use the channel names
+        in the data (edges with unknown channel names are silently dropped).
     ...
     """
     DICT_ATTRS = ('sysname', 'rename_channels', 'montage', 'adjacency', 'kwargs')
@@ -120,7 +129,7 @@ class RawSource(RawPipe):
             self,
             sysname: str = None,
             rename_channels: dict = None,
-            montage: str = None,
+            montage: str | mne.channels.DigMontage = None,
             adjacency: str | list[tuple[str, str]] | Path = None,
             **kwargs,
     ):
@@ -132,6 +141,28 @@ class RawSource(RawPipe):
             adjacency = read_adjacency(adjacency)
         self.sysname = sysname
         self.rename_channels = typed_arg(rename_channels, dict)
+        if self.rename_channels:
+            if montage is None:
+                raise ConfigurationError(f"RawSource: {rename_channels=} without montage; rename_channels specifies the names the montage uses and requires a montage.")
+            if isinstance(montage, str):
+                montage = mne.channels.make_standard_montage(montage)
+            else:
+                montage = montage.copy()
+            missing = [name for name in self.rename_channels.values() if name not in montage.ch_names]
+            if missing:
+                raise ConfigurationError(f"RawSource: rename_channels values missing from the montage: {enumeration(missing)}. Values need to be names the montage uses.")
+            mapping = {montage_name: data_name for data_name, montage_name in self.rename_channels.items()}
+            # Unused montage channels whose name collides with a target data name are renamed out of the way
+            for data_name in list(mapping.values()):
+                if data_name in montage.ch_names and data_name not in mapping:
+                    mapping[data_name] = f'unused-{data_name}'
+            montage.rename_channels(mapping)
+            # Builtin adjacencies use montage names; resolve to an edge list with data names
+            if isinstance(adjacency, str) and adjacency in mne.channels.get_builtin_ch_adjacencies():
+                c_matrix, adj_ch_names = mne.channels.read_ch_adjacency(adjacency)
+                adj_ch_names = [mapping.get(name, name) for name in adj_ch_names]
+                coo = c_matrix.tocoo()
+                adjacency = sorted({(adj_ch_names[min(i, j)], adj_ch_names[max(i, j)]) for i, j in zip(coo.row, coo.col) if i != j})
         self.montage = montage
         self.adjacency = adjacency
         self.kwargs = kwargs
@@ -140,26 +171,9 @@ class RawSource(RawPipe):
         return True
 
     def _normalize_channel_names(self, raw: mne.io.BaseRaw, bad_chs: list[str]) -> list[str]:
-        """Validate and normalize channel names against the raw file's sensor layout."""
-        sensor = load.mne.sensor_dim(raw.info, adjacency=self.adjacency)
-        return sensor._normalize_sensor_names(bad_chs)
-
-    def _detect_flat_channels(self, path: BIDSPath, raw: mne.io.BaseRaw, flat: float = None) -> list[str] | None:
-        """Detect flat channels; returns None if the operation should be skipped."""
-        if flat is None:
-            if path.datatype == 'meg':
-                flat = 1e-14
-            elif path.datatype == 'eeg':
-                return None
-            else:
-                raise NotImplementedError(f"{path.datatype=}")
-        elif flat == 0:
-            return None
-        bad_chs = list(raw.info['bads'])
-        sysname = self._get_sysname(raw.info, path.subject, path.datatype)
-        raw_ndvar = load.mne.raw_ndvar(raw, sysname=sysname, adjacency=self.adjacency)
-        bad_chs.extend(raw_ndvar.sensor.names[raw_ndvar.std('time') < flat])
-        return bad_chs
+        """Validate and normalize channel names against the raw file's data channels."""
+        picks = mne.pick_types(raw.info, meg=True, eeg=True, ref_meg=False, exclude=())
+        return normalize_sensor_names(bad_chs, [raw.ch_names[i] for i in picks])
 
     def _as_dict(self) -> dict:
         out = RawPipe._as_dict(self)

@@ -529,7 +529,7 @@ class Pipeline(StateModel):
             if isinstance(pipe, RawSource):
                 raw_input = RawSourceInput(raw_name, pipe, self._raw_extension)
                 self._derivatives.register(raw_input)
-                self._derivatives.register(RawBadChannelsInput(raw_name, pipe, self._raw_extension))
+                self._derivatives.register(RawBadChannelsInput(raw_input))
                 self._derivatives.register(RawSourceDerivative(raw_name, pipe, self._raw_extension))
                 self._derivatives.register(RawHeadPositionDerivative(raw_input.name))
                 self._derivatives.register(CanonicalHeadPositionDerivative(self._recordings, self._tasks, self._runs))
@@ -2224,42 +2224,58 @@ class Pipeline(StateModel):
             bad_chs = (bad_chs,)
         raw = self._load_derivative(raw_input_name(source_name), options={'noise': noise})
         bads_ctx = self._resolve_derivative(raw_bad_channels_input_name(source_name), options={'noise': noise})
-        bads_ctx.node.write(bads_ctx, raw, bad_chs, redo, create=True)
+        bads_ctx.node.write(bads_ctx, raw, bad_chs, redo)
 
     def make_bad_channels_auto(
         self,
-        flat: float = None,
+        meg: float = 1e-14,
+        eeg: float = 0,
         redo: bool = False,
         noise: bool = False,
         **state: Any,
     ) -> None:
-        """Automatically detect bad channels
+        """Automatically detect flat channels and mark them as bad
 
-        Works on ``raw='raw'``
+        Works on ``raw='raw'``. Only implemented for MEG channels.
 
         Parameters
         ----------
-        flat
-            Threshold for detecting flat channels: channels with ``std < flat``
-            are considered bad (default 1e-14 for MEG and 0 for EEG).
+        meg
+            Threshold for detecting flat MEG channels: channels with ``std < flat``
+            are considered bad (default 1e-14; set to 0 to skip detection).
+        eeg
+            Threshold for detecting flat EEG channels (default 0).
         redo
             If the file already exists, replace it (instead of adding).
         noise
             If True, make bad channels for the empty-room recording instead of the current subject's recording.
         ...
             State parameters.
+
+        Notes
+        -----
+        Pipelines that include :class:`RawMaxwell` do not need this: flat channels
+        are marked as bad automatically by
+        :func:`mne.preprocessing.find_bad_channels_maxwell`.
         """
-        if state:
-            self.set(**state)
+        self.set(**state)
+        assert meg or eeg
         source_name = self._raw.root_source_name('raw')
-        pipe = self._raw[source_name]
-        raw_ctx = self._resolve_derivative(raw_input_name(source_name), options={'noise': noise, 'preload': True})
+        raw_ctx = self._resolve_derivative(raw_node_name(source_name), options={'noise': noise, 'preload': True})
         raw = raw_ctx.load()
+        if redo:
+            raw.info['bads'] = []
+        picks_meg = mne.pick_types(raw.info, meg=bool(meg), ref_meg=False)
+        picks_eeg = mne.pick_types(raw.info, eeg=bool(eeg))
+        detected = []
+        for picks, flat in ((picks_meg, meg), (picks_eeg, eeg)):
+            if len(picks) == 0:
+                continue
+            data = raw.get_data(picks)
+            detected.extend([raw.ch_names[pick] for pick in picks[data.std(axis=1) < flat]])
+        # save
         bads_ctx = self._resolve_derivative(raw_bad_channels_input_name(source_name), options={'noise': noise})
-        bids_path = raw_ctx.node._resolve_bids_path(raw_ctx)
-        detected = pipe._detect_flat_channels(bids_path, raw, flat)
-        if detected is not None:
-            bads_ctx.node.write(bads_ctx, raw, detected, redo, create=True)
+        bads_ctx.node.write(bads_ctx, raw, detected, redo)
 
     def make_bad_channels_neighbor_correlation(
             self,
@@ -2440,8 +2456,8 @@ class Pipeline(StateModel):
 
         Opens :func:`eelbrain.gui.select_channels` for the current subject.
         The document is the Pipeline-specific ``*_channels.tsv`` file under
-        the ``derivatives/mne/`` hierarchy (seeded from the BIDS source the
-        first time it is written). Events come from labeled-events.
+        the ``derivatives/mne/`` hierarchy (built from the BIDS source when
+        first accessed). Events come from labeled-events.
 
         Parameters
         ----------
@@ -2459,10 +2475,10 @@ class Pipeline(StateModel):
         subject = self.get('subject')
         # Load raw at the requested pipeline stage (unprocessed input if source)
         raw_data = self._load_derivative(raw_node_name(raw_name), options={'preload': False, 'noise': False})
-        # Bad channels are stored in the derivatives/mne hierarchy; ensure the
-        # file exists (seeded from the BIDS source) so the GUI can read/write it
+        # Bad channels are stored in the derivatives/mne hierarchy; loading
+        # builds a missing file (seeded from the BIDS source) so the GUI can read/write it
         bads_ctx = self._resolve_derivative(raw_bad_channels_input_name(source_name))
-        bads_ctx.node.write(bads_ctx, raw_data, [], redo=False, create=True)
+        bads_ctx.load()
         channels_path = bads_ctx.node.path(bads_ctx)
         # Labeled events for the timeline
         events = self._load_derivative('labeled-events')
