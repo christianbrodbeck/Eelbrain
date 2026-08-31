@@ -29,5 +29,6 @@ from .base import (
     dependencies_match,
     file_fingerprint,
 )
+from .dependency_tree import DependencyTree, DependencyTreeNode
 from .job import Job, JobProvenance, JobSpec
 from .garbage_collection import GC_KEPT_CATEGORIES, GCCategory, GCEntry, GCReport, _format_size

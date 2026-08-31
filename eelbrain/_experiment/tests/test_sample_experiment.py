@@ -21,7 +21,7 @@ from eelbrain import *
 from eelbrain.pipeline import *
 from eelbrain._exceptions import ConfigurationError
 from eelbrain._experiment.covariance import EpochCovariance
-from eelbrain._experiment.derivative_cache import ALLOW_PROTECTED_OVERWRITE, ProtectedArtifactError
+from eelbrain._experiment.derivative_cache import ALLOW_PROTECTED_OVERWRITE, DependencyTree, ProtectedArtifactError
 from eelbrain._experiment.parc.nodes import AnnotDerivative
 from eelbrain._experiment.pathing import BIDS_ENTITY_KEYS, LOG_DIR, ica_file_path
 from eelbrain._experiment.preprocessing import RawFilterElliptic, ica_input_name, raw_node_name
@@ -193,6 +193,10 @@ def test_sample(samples_experiment):
     assert 'epochs [uncached]' in tree
     wrapped_tree = e._show_dependencies('evoked', max_line_length=60, return_str=True)
     assert all(len(line) <= 60 for line in wrapped_tree.splitlines())
+    dep_tree = e.load_evoked(show_dependencies=True)
+    assert isinstance(dep_tree, DependencyTree)
+    assert 'evoked [derivative]' in str(dep_tree)
+    assert 'epochs [uncached]' in str(dep_tree)
 
     # wildcard formatting
     with e._temporary_state:

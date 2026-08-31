@@ -65,7 +65,6 @@ import logging
 from pathlib import Path
 import pickle
 import re
-import shutil
 import tomllib
 from typing import Any, Generic, TYPE_CHECKING, TypeVar
 from uuid import uuid4
@@ -78,6 +77,7 @@ from ..._data_obj import Factor, Interaction, NDVar, Var
 from ..configuration import Configuration
 from ..logging import CacheInvalidation, diff_invalidation
 from ..pathing import CACHE_DIR, DERIV_DIR, LOG_DIR
+from .dependency_tree import DependencyTree, DependencyTreeNode
 
 if TYPE_CHECKING:
     from .garbage_collection import GCReport
@@ -2227,75 +2227,35 @@ class DerivativeRegistry:
                 out.append((dep, request))
         return out
 
-    @staticmethod
-    def _tree_mapping_text(mapping: dict[str, Any] | None, *, values: bool = True) -> str | None:
-        if not mapping:
-            return None
-        items = list(mapping.items())
-        max_items = 6 if values else 8
-        if values:
-            parts = [f"{key}={value!r}" for key, value in items[:max_items]]
+    def _tree_identity(self, handle: Request[Any]) -> str:
+        """Stable id for the artifact/value a request resolves to.
+
+        Derived from the node's effective key (key fields and key options,
+        both context-sensitive), not the full request state, so requests that
+        differ only in key-irrelevant state share one identity.
+        """
+        node = handle.node
+        if node.cache_policy is CachePolicy.NEVER:
+            content = {
+                'state': canonical_state_subset(handle.state, node._get_key_fields(handle)),
+                'options': self.canonicalize({**handle.options, **handle.view_options}),
+            }
         else:
-            parts = [str(key) for key, _ in items[:max_items]]
-        if len(items) > max_items:
-            parts.append(f"+{len(items) - max_items}")
-        return ', '.join(parts)
-
-    def _tree_request_id(self, handle: Request[Any], view: str | None = None) -> str:
-        return json.dumps({
-            'name': handle.node.name,
-            'state': self.canonicalize(handle.state),
-            'options': self.canonicalize({**handle.options, **handle.view_options}),
-            'view': view,
-        }, sort_keys=True, separators=(',', ':'))
-
-    @staticmethod
-    def _tree_line_width(max_line_length: int | None) -> int:
-        if max_line_length is None:
-            return shutil.get_terminal_size(fallback=(100, 24)).columns
-        if max_line_length < 16:
-            raise ValueError(f"{max_line_length=}: needs to be at least 16")
-        return max_line_length
-
-    @staticmethod
-    def _clip_tree_segment(text: str, available: int) -> str:
-        if len(text) <= available:
-            return text
-        if available <= 1:
-            return '…'
-        return text[:available - 1].rstrip() + '…'
-
-    def _format_tree_line(
-            self,
-            first_prefix: str,
-            continuation_prefix: str,
-            segments: list[str],
-            max_line_length: int,
-    ) -> list[str]:
-        lines = []
-        current = first_prefix
-        current_prefix = first_prefix
-        for segment in segments:
-            if len(current) + len(segment) <= max_line_length:
-                current += segment
-                continue
-            if current != current_prefix:
-                lines.append(current)
-                current = continuation_prefix
-                current_prefix = continuation_prefix
-            available = max_line_length - len(current)
-            current += self._clip_tree_segment(segment.lstrip(), available)
-        lines.append(current)
-        return lines
+            content = {'key': handle.key()}
+        return json.dumps({'name': node.name, **content}, sort_keys=True, separators=(',', ':'))
 
     def dependency_tree(
             self,
             name: str,
             state: dict[str, Any] | None = None,
             options: dict[str, Any] | None = None,
-            max_line_length: int | None = None,
-    ) -> str:
-        """Format one resolved dependency request as an ASCII tree.
+    ) -> DependencyTree:
+        """Resolve one request and return its dependency tree for display.
+
+        Since dependency edges are context-sensitive, the tree describes the
+        request resolved from the given ``state`` and ``options``; resolving it
+        may load upstream artifacts that a node needs to enumerate its edges
+        (e.g. events for TRF predictors).
 
         Parameters
         ----------
@@ -2305,68 +2265,47 @@ class DerivativeRegistry:
             State for resolving the request.
         options
             Options for resolving the request.
-        max_line_length
-            Maximum line length for the formatted tree. By default, infer the
-            current terminal width and wrap long node descriptions onto
-            continuation lines.
+
+        Returns
+        -------
+        tree
+            Tree whose ``repr`` is an ASCII rendering; in Jupyter notebooks it
+            displays as a graphviz flow chart when the optional ``graphviz``
+            package is installed (see :class:`~eelbrain._experiment.derivative_cache.dependency_tree.DependencyTree`).
         """
-        root = self.resolve(name, state=state, options=options)
-        line_width = self._tree_line_width(max_line_length)
         seen = set()
-        lines = []
 
-        def append_node(
-                handle: Request[Any],
-                dep: Dependency | None,
-                prefix: str,
-                is_last: bool,
-        ) -> None:
-            first_prefix = ''
-            continuation_prefix = '    '
-            if dep is not None:
-                first_prefix = prefix + ('└── ' if is_last else '├── ')
-                continuation_prefix = prefix + ('    ' if is_last else '│   ')
-            parts = []
-            if dep and dep.label and dep.label != dep.name:
-                parts.append(f"{dep.label} -> ")
-            parts.append(handle.node.name)
-            if isinstance(handle.node, Derivative):
-                if handle.node.cache_policy == CachePolicy.NEVER:
-                    parts.append(' [uncached]')
-                else:
-                    parts.append(' [derivative]')
-                    key_text = self._tree_mapping_text(handle.key())
-                    if key_text:
-                        parts.append(f" {{{key_text}}}")
+        def make_node(handle: Request[Any], dep: Dependency | None) -> DependencyTreeNode:
+            node = handle.node
+            if isinstance(node, Derivative):
+                kind = 'uncached' if node.cache_policy is CachePolicy.NEVER else 'derivative'
             else:
-                parts.append(' [input]')
-            if dep and dep.state:
-                state_text = self._tree_mapping_text(self.canonicalize(dep.state))
-                if state_text:
-                    parts.append(f" [state: {state_text}]")
-            if dep and dep.view:
-                parts.append(f" [view: {dep.view}]")
-            option_source = {**handle.options, **handle.view_options} if dep is None else dep.options
-            if option_source:
-                option_text = self._tree_mapping_text(self.canonicalize(option_source), values=False)
-                if option_text:
-                    parts.append(f" [options: {option_text}]")
+                kind = 'input'
+            if dep is None:
+                node_options = self.canonicalize({**handle.options, **handle.view_options})
+            else:
+                node_options = self.canonicalize(dep.options) if dep.options else {}
+            identity = self._tree_identity(handle)
+            tree_node = DependencyTreeNode(
+                name=node.name,
+                kind=kind,
+                label=dep.label if dep and dep.label and dep.label != dep.name else None,
+                key=handle.key() if kind == 'derivative' else None,
+                state=self.canonicalize(dep.state) if dep and dep.state else {},
+                options=node_options,
+                view=dep.view if dep else None,
+                identity=identity,
+                seen=identity in seen,
+            )
+            if tree_node.seen:
+                return tree_node
+            seen.add(identity)
+            for child_dep, child_handle in self._dependency_handles(handle):
+                tree_node.children.append(make_node(child_handle, child_dep))
+            return tree_node
 
-            request_id = self._tree_request_id(handle, dep.view if dep else None)
-            if request_id in seen:
-                parts.append(' [seen]')
-                lines.extend(self._format_tree_line(first_prefix, continuation_prefix, parts, line_width))
-                return
-
-            seen.add(request_id)
-            lines.extend(self._format_tree_line(first_prefix, continuation_prefix, parts, line_width))
-            children = self._dependency_handles(handle)
-            child_prefix = continuation_prefix if dep is not None else prefix
-            for i, (child_dep, child_handle) in enumerate(children):
-                append_node(child_handle, child_dep, child_prefix, i == len(children) - 1)
-
-        append_node(root, None, '', True)
-        return '\n'.join(lines)
+        root = self.resolve(name, state=state, options=options)
+        return DependencyTree(make_node(root, None))
 
     def is_cache_artifact(self, path: Path) -> bool:
         return path.is_relative_to(self.cache_dir)

@@ -1060,7 +1060,7 @@ def test_unique_cache_paths_do_not_create_disambiguation_sidecar():
 def test_dependency_tree_formats_ascii_dependencies():
     _, registry, _, _, _, _, _, _, _root = make_registry()
 
-    tree = registry.dependency_tree('comparison', state=DEFAULT_STATE)
+    tree = str(registry.dependency_tree('comparison', state=DEFAULT_STATE))
 
     assert "comparison [derivative] {subject='s1'}" in tree
     assert "current -> value [derivative] {subject='s1'}" in tree
@@ -1073,13 +1073,74 @@ def test_dependency_tree_formats_ascii_dependencies():
 def test_dependency_tree_respects_max_line_length():
     _, registry, _, _, _, _, _, _, _root = make_registry()
 
-    tree = registry.dependency_tree('comparison', state=DEFAULT_STATE, max_line_length=44)
+    tree = registry.dependency_tree('comparison', state=DEFAULT_STATE).text(max_line_length=44)
     lines = tree.splitlines()
 
     assert len(lines) > 4
     assert all(len(line) <= 44 for line in lines)
     assert "other -> value [derivative]" in tree
     assert "{subject='s2'} [state: subject='s2']" in tree
+
+
+class ModeAgnosticDerivative(Derivative[str]):
+    """Two edges to the same 'value' request that differ only in key-irrelevant state."""
+    name = 'mode-agnostic'
+    key_fields = ('subject',)
+    cache_suffix = '.txt'
+
+    def dependencies(self, ctx: Request) -> tuple[Dependency, ...]:
+        return (
+            Dependency('value', label='current'),
+            Dependency('value', label='alt-mode', state={'mode': 'alt'}),
+        )
+
+    def fingerprint(self, ctx: Request) -> dict[str, object]:
+        return {}
+
+    def build(self, ctx: Request) -> str:
+        return f"{ctx.load('current')}|{ctx.load('alt-mode')}"
+
+    def load(self, ctx: Request, path: str) -> str:
+        return Path(path).read_text()
+
+    def save(self, ctx: Request, path: str, value: str) -> None:
+        Path(path).write_text(value)
+
+
+def test_dependency_tree_dedups_key_equivalent_requests():
+    _, registry, _, _, _, _, _, _, _root = make_registry()
+    registry.register(ModeAgnosticDerivative())
+
+    tree = registry.dependency_tree('mode-agnostic', state=DEFAULT_STATE)
+    text = str(tree)
+
+    # 'value' does not key on 'mode', so the mode-override edge resolves to the same artifact
+    assert "alt-mode -> value [derivative] {subject='s1'} [state: mode='alt'] [seen]" in text
+    seen_node = tree.root.children[1]
+    assert seen_node.seen
+    assert not seen_node.children
+    # ... while a key-relevant state override stays distinct
+    comparison_text = str(registry.dependency_tree('comparison', state=DEFAULT_STATE))
+    assert '[seen]' not in comparison_text
+
+
+def test_dependency_tree_graph():
+    pytest.importorskip('graphviz')
+    _, registry, _, _, _, _, _, _, _root = make_registry()
+    registry.register(ModeAgnosticDerivative())
+
+    tree = registry.dependency_tree('mode-agnostic', state=DEFAULT_STATE)
+    source = tree.graph().source
+
+    # one node per unique request: mode-agnostic + one value (deduplicated) + source
+    assert source.count('shape=box') == 2
+    assert source.count('shape=ellipse') == 1
+    assert 'alt-mode' in source  # edge label survives
+    assert 'rankdir=LR' in tree.graph(rankdir='LR').source
+
+    html = tree._repr_html_()
+    if html is not None:  # needs the graphviz binary
+        assert html.startswith('<svg style="max-width:100%;height:auto"')
 
 
 def test_uncached_derivative_rebuilds_every_time():

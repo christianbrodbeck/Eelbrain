@@ -620,7 +620,10 @@ class Pipeline(StateModel):
             view: str | None = None,
             *,
             controls: frozenset[str] | set[str] | tuple[str, ...] = (),
+            show_dependencies: bool = False,
     ) -> Any:
+        if show_dependencies:
+            return self._derivatives.dependency_tree(name, state=self.state, options=options)
         return self._resolve_derivative(name, options=options, controls=controls).load(view=view)
 
     def _job_spec(
@@ -985,27 +988,34 @@ class Pipeline(StateModel):
         """
         return label_groups(subject, groups, self._groups)
 
-    def load_annot(self, **state):
+    def load_annot(self, show_dependencies: bool = False, **state):
         """Load a parcellation (from an annot file)
+
+        Parameters
+        ----------
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks).
+        ...
+            State parameters.
 
         Returns
         -------
         labels : list of Label
             Labels in the parcellation (output of
             :func:`mne.read_labels_from_annot`).
-        ...
-            State parameters.
         """
         self.set(**state)
-        return self._load_derivative('annot')
+        return self._load_derivative('annot', show_dependencies=show_dependencies)
 
-    def load_bad_channels(self, noise: bool = False, **kwargs) -> list[str]:
+    def load_bad_channels(self, noise: bool = False, show_dependencies: bool = False, **kwargs) -> list[str]:
         """Load bad channels
 
         Parameters
         ----------
         noise
             Load bad channels for empty-room noise recording instead of the subject recording.
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks).
         ...
             State parameters.
 
@@ -1015,17 +1025,20 @@ class Pipeline(StateModel):
             Bad channels.
         """
         raw_name = self.get('raw', **kwargs)
-        return self._load_derivative(raw_node_name(raw_name), options={'noise': noise}, view='bads')
+        return self._load_derivative(raw_node_name(raw_name), options={'noise': noise}, view='bads', show_dependencies=show_dependencies)
 
-    def load_cov(self, **kwargs):
+    def load_cov(self, show_dependencies: bool = False, **state):
         """Load the covariance matrix
 
         Parameters
         ----------
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks).
         ...
             State parameters.
         """
-        return self._load_derivative('cov', **kwargs)
+        self.set(**state)
+        return self._load_derivative('cov', show_dependencies=show_dependencies)
 
     def _resolve_data(
             self,
@@ -1073,6 +1086,7 @@ class Pipeline(StateModel):
             src_baseline: BaselineArg = False,
             morph: bool = None,
             keep_mne: bool = False,
+            show_dependencies: bool = False,
             **state,
     ) -> Dataset:
         """
@@ -1132,6 +1146,8 @@ class Pipeline(StateModel):
         keep_mne
             Also include the underlying :class:`mne.Epochs` (sensor space) or
             sensor-space data (source space) in the returned :class:`Dataset`.
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks).
         ...
             Applicable :ref:`state-parameters`:
 
@@ -1159,7 +1175,7 @@ class Pipeline(StateModel):
                 'ndvar': ndvar,
                 'reject': reject,
             }
-            return self._load_derivative('epochs-stc', options=options)
+            return self._load_derivative('epochs-stc', options=options, show_dependencies=show_dependencies)
 
         # sensor space
         if isinstance(ndvar, str):
@@ -1185,9 +1201,9 @@ class Pipeline(StateModel):
             'interpolate_bads': bool(interpolate_bads),
             'reset_bads': interpolate_bads == True,
         }
-        return self._load_derivative('epochs', options=options)
+        return self._load_derivative('epochs', options=options, show_dependencies=show_dependencies)
 
-    def load_events(self, **state) -> Dataset:
+    def load_events(self, show_dependencies: bool = False, **state) -> Dataset:
         """
         Load events from a raw file.
 
@@ -1196,6 +1212,8 @@ class Pipeline(StateModel):
 
         Parameters
         ----------
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks).
         ...
             Applicable :ref:`state-parameters`:
 
@@ -1204,7 +1222,7 @@ class Pipeline(StateModel):
 
         """
         self.set(**state)
-        return self._load_derivative('labeled-events')
+        return self._load_derivative('labeled-events', show_dependencies=show_dependencies)
 
     def load_predictor(
             self,
@@ -1214,6 +1232,7 @@ class Pipeline(StateModel):
             tmin: float = None,
             filter_x: bool | Literal['continuous'] = False,
             name: str = None,
+            show_dependencies: bool = False,
             **state,
     ) -> NDVar:
         """Load a file predictor as an :class:`NDVar`
@@ -1253,6 +1272,8 @@ class Pipeline(StateModel):
             see :class:`UTSPredictor`).
         name
             Reassign the name of the predictor :class:`NDVar`.
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks).
         ...
             State parameters.
         """
@@ -1261,6 +1282,8 @@ class Pipeline(StateModel):
         predictor = self.predictors[term.predictor_key]
         if not isinstance(predictor, (UTSPredictor, NUTSPredictor)):
             raise NotImplementedError(f"{term.string}: load_predictor only supports file predictors; load {type(predictor).__name__} through load_trf")
+        if show_dependencies:
+            return self._load_derivative('predictor', options={'term': term}, show_dependencies=True)
         contents = self._load_derivative('predictor', options={'term': term})
         x = predictor._generate(contents, tmin, tstep, n_samples, term)
         x = filter_predictor(x, self._raw, self.get('raw'), filter_x)
@@ -1313,6 +1336,7 @@ class Pipeline(StateModel):
             samplingrate: int = None,
             filter_x: bool | Literal['continuous'] = False,
             path_only: bool = False,
+            show_dependencies: bool = False,
             **state,
     ):
         """Load (or compute) the TRF for a model and the current subject
@@ -1347,10 +1371,14 @@ class Pipeline(StateModel):
             Filter predictors like the M/EEG data (see :meth:`load_predictor`).
         path_only
             Return the path to the cache file instead of loading the TRF.
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks; resolving the tree loads the events needed to enumerate the predictors).
         ...
             State parameters.
         """
         options = self._trf_options(x, tstart, tstop, estimator, data, samplingrate, filter_x, state)
+        if show_dependencies:
+            return self._derivatives.dependency_tree('trf', state=self.state, options=options)
         ctx = self._resolve_derivative('trf', options=options)
         if path_only:
             return ctx.artifact_path
@@ -1430,6 +1458,7 @@ class Pipeline(StateModel):
             scale: Literal['original'] = None,
             smooth: float = None,
             trfs: bool = True,
+            show_dependencies: bool = False,
             **state,
     ) -> Dataset:
         """Load TRFs for a group (or subject) as a :class:`Dataset`
@@ -1470,6 +1499,8 @@ class Pipeline(StateModel):
             in [m]; only for source data).
         trfs
             Include the TRF kernels. Set ``False`` to load only the fit metrics.
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks; resolving the tree loads the events needed to enumerate the predictors).
         ...
             State parameters.
 
@@ -1485,9 +1516,9 @@ class Pipeline(StateModel):
         trf_options = self._trf_options(x, tstart, tstop, estimator, data, samplingrate, filter_x)
         options = {**trf_options, 'scale': scale, 'smooth': smooth, 'trfs': trfs}
         if group is not None:
-            ds = self._load_derivative('trf-group-dataset', options=options)
+            ds = self._load_derivative('trf-group-dataset', options=options, show_dependencies=show_dependencies)
         else:
-            ds = self._load_derivative('trf-dataset', options=options)
+            ds = self._load_derivative('trf-dataset', options=options, show_dependencies=show_dependencies)
         return ds
 
     def load_model_test(
@@ -1506,6 +1537,7 @@ class Pipeline(StateModel):
             pmin: PMinArg = 'tfce',
             samples: int = 10000,
             return_data: bool = False,
+            show_dependencies: bool = False,
             **state,
     ) -> Any:
         """Test a difference in predictive power between two TRF models
@@ -1553,6 +1585,8 @@ class Pipeline(StateModel):
         return_data
             Return the :class:`Dataset` used for the test together with the
             statistical result.
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks; resolving the tree loads the events needed to enumerate the predictors).
         ...
             State parameters. Use ``group`` to select the subjects.
 
@@ -1585,7 +1619,7 @@ class Pipeline(StateModel):
             'samples': samples,
             'return_data': return_data,
         }
-        return self._load_derivative('trf-model-test', options=options)
+        return self._load_derivative('trf-model-test', options=options, show_dependencies=show_dependencies)
 
     def load_evoked(
             self,
@@ -1600,6 +1634,7 @@ class Pipeline(StateModel):
             morph: bool = None,
             keep_mne: bool = False,
             model: str = '',
+            show_dependencies: bool = False,
             **state):
         """
         Load a Dataset with condition average responses for each subject.
@@ -1647,6 +1682,8 @@ class Pipeline(StateModel):
             How to group trials into conditions before averaging (e.g.
             ``'condition'`` or ``'a % b'``). The default (``''``) is the grand
             average across all trials.
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks).
         ...
             Applicable :ref:`state-parameters`:
 
@@ -1684,8 +1721,8 @@ class Pipeline(StateModel):
                 'ndvar': ndvar,
             }
             if group is not None:
-                return self._load_derivative('evoked-stc-group-dataset', options=options)
-            return self._load_derivative('evoked-stc', options=options)
+                return self._load_derivative('evoked-stc-group-dataset', options=options, show_dependencies=show_dependencies)
+            return self._load_derivative('evoked-stc', options=options, show_dependencies=show_dependencies)
 
         # sensor space
         if isinstance(ndvar, str):
@@ -1714,13 +1751,14 @@ class Pipeline(StateModel):
         if group is not None:
             # Group data is merged in a common sensor space, so bad channels are always interpolated (the interpolate_bads argument only controls single-subject loads).
             options['interpolate_bads'] = True
-            return self._load_derivative('evoked-group-dataset', options=options)
-        return self._load_derivative('evoked', options=options)
+            return self._load_derivative('evoked-group-dataset', options=options, show_dependencies=show_dependencies)
+        return self._load_derivative('evoked', options=options, show_dependencies=show_dependencies)
 
     def load_fwd(
             self,
             surf_ori: bool = True,
             ndvar: bool = False,
+            show_dependencies: bool = False,
             **state,
     ) -> mne.Forward | NDVar:
         """Load the forward solution
@@ -1734,6 +1772,8 @@ class Pipeline(StateModel):
         ndvar
             Return forward solution as :class:`NDVar` (default is
             :class:`mne.Forward`).
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks).
         ...
             State parameters.
 
@@ -1743,6 +1783,8 @@ class Pipeline(StateModel):
             Forward operator.
         """
         self.set(**state)
+        if show_dependencies:
+            return self._load_derivative('fwd', show_dependencies=True)
         fwd = self._load_derivative('fwd')
         if ndvar:
             src = self.get('src')
@@ -1760,6 +1802,7 @@ class Pipeline(StateModel):
     def load_ica(
             self,
             accept_stale: bool = False,
+            show_dependencies: bool = False,
             **state,
     ) -> mne.preprocessing.ICA:
         """Load the mne-python ICA object
@@ -1777,6 +1820,8 @@ class Pipeline(StateModel):
             the ICA. When Eelbrain detects a mismatch, the error message names
             the raw step and setting that changed so you can decide whether to
             revert that change.
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks).
         ...
             State parameters.
 
@@ -1786,6 +1831,8 @@ class Pipeline(StateModel):
         """
         raw_name = self.get('raw', **state)
         ica_raw_name = self._raw.ica_name(raw_name)
+        if show_dependencies:
+            return self._derivatives.dependency_tree(ica_input_name(ica_raw_name), state={**self.state, 'raw': ica_raw_name})
         return self._derivatives.resolve(
             ica_input_name(ica_raw_name),
             state={**self.state, 'raw': ica_raw_name},
@@ -1795,6 +1842,7 @@ class Pipeline(StateModel):
     def load_inv(
             self,
             ndvar: bool = False,
+            show_dependencies: bool = False,
             **state,
     ) -> mne.minimum_norm.InverseOperator | NDVar:
         """Load the inverse operator
@@ -1806,6 +1854,8 @@ class Pipeline(StateModel):
             :class:`mne.minimum_norm.InverseOperator`). The NDVar representation
             does not take into account any direction selectivity (loose/free
             orientation) or noise normalization properties.
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks).
         ...
             Applicable :ref:`state-parameters`:
 
@@ -1817,6 +1867,8 @@ class Pipeline(StateModel):
 
         """
         self.set(**state)
+        if show_dependencies:
+            return self._load_derivative('inv', show_dependencies=True)
         inv = self._load_derivative('inv')
 
         if ndvar:
@@ -1851,11 +1903,13 @@ class Pipeline(StateModel):
         else:
             raise ValueError(f"Label {label!r} could not be found in parc {self.get('parc')!r}.")
 
-    def load_source_morph(self, **state):
+    def load_source_morph(self, show_dependencies: bool = False, **state):
         """Load the source morph from mrisubject to common_brain
 
         Parameters
         ----------
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks).
         ...
             State parameters.
 
@@ -1868,13 +1922,14 @@ class Pipeline(StateModel):
         compatibility with public STC-based workflows.
         """
         self.set(**state)
-        return self._load_derivative('source-morph')
+        return self._load_derivative('source-morph', show_dependencies=show_dependencies)
 
     def load_neighbor_correlation(
             self,
             subjects: SubjectArg = None,
             epoch: str = None,
             return_data: bool = False,
+            show_dependencies: bool = False,
             **state,
     ) -> NDVar | Dataset | tuple[NDVar, NDVar]:
         """Load sensor neighbor correlation
@@ -1892,6 +1947,8 @@ class Pipeline(StateModel):
         return_data
             Return the data from which the correlation is calculated. Only
             possible when loading neighbor-correlation for a single subject.
+        show_dependencies
+            Return the dependency tree of the underlying data request instead of loading (displays as text, or as a flow chart in notebooks; only available for a single subject).
 
         Returns
         -------
@@ -1906,6 +1963,8 @@ class Pipeline(StateModel):
         if group is not None:
             if return_data:
                 raise ValueError(f"{return_data=} when loading data for group")
+            if show_dependencies:
+                raise ValueError(f"show_dependencies=True with group {group!r}: show dependencies for a single subject instead")
             if state:
                 self.set(**state)
             lines = [(subject, self.load_neighbor_correlation(1, epoch)) for subject in self]
@@ -1916,10 +1975,14 @@ class Pipeline(StateModel):
             epoch_params = self._epochs[epoch]
             if len(epoch_params.tasks) != 1:
                 raise ValueError(f"{epoch=}: epoch has multiple tasks")
+            if show_dependencies:
+                return self.load_epochs(epoch=epoch, reject=False, decim=1, show_dependencies=True, **state)
             ds = self.load_epochs(epoch=epoch, reject=False, decim=1, **state)
             key = ds.info['sensor_types'][0]
             data = concatenate(ds[key])
         else:
+            if show_dependencies:
+                return self.load_raw(ndvar=True, show_dependencies=True, **state)
             data = self.load_raw(ndvar=True, **state)
         n_corr = neighbor_correlation(data)
         if return_data:
@@ -1936,6 +1999,7 @@ class Pipeline(StateModel):
             tstart: float = None,
             tstop: float = None,
             noise: bool = False,
+            show_dependencies: bool = False,
             **kwargs,
     ) -> mne.io.Raw | NDVar:
         """
@@ -1960,12 +2024,16 @@ class Pipeline(StateModel):
             Crop the raw data.
         noise
             Load corresponding empty-room data instead of current subject's task data (default ``False``).
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks).
         ...
             Applicable :ref:`state-parameters`:
 
              - :ref:`state-raw`: preprocessing pipeline
         """
         raw_name = self.get('raw', **kwargs)
+        if show_dependencies:
+            return self._load_derivative(raw_node_name(raw_name), options={'preload': preload, 'noise': noise}, show_dependencies=True)
         raw = self._load_derivative(raw_node_name(raw_name), options={'preload': preload, 'noise': noise})
         if decim and decim > 1:
             assert samplingrate is None, "samplingrate and decim can't both be specified"
@@ -1996,6 +2064,7 @@ class Pipeline(StateModel):
             subjects: SubjectArg = None,
             reject: bool | Literal['keep'] = True,
             vardef: str | Variables = None,
+            show_dependencies: bool = False,
             **kwargs,
     ) -> Dataset:
         """
@@ -2018,6 +2087,8 @@ class Pipeline(StateModel):
             :class:`Variables` or the name of a test defining them.
             Across-subject variables are only added when loading data for a
             group.
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks; only available when loading a single subject).
         ...
             State parameters.
 
@@ -2030,6 +2101,8 @@ class Pipeline(StateModel):
             raise ValueError(f"{reject=}")
         state = dict(kwargs)
         subject, group = self._process_subject_arg(subjects, state)
+        if show_dependencies and group is not None:
+            raise ValueError(f"show_dependencies=True with group {group!r}: group-level events are combined outside the dependency graph; show dependencies for a single subject instead")
 
         if isinstance(vardef, str):
             vardef = self.tests[vardef].vars
@@ -2044,6 +2117,8 @@ class Pipeline(StateModel):
             raise RuntimeError(f"{subject=}, {group=}")
 
         options = {'reject': reject}
+        if show_dependencies:
+            return self._load_derivative('epoch-events', options=options, show_dependencies=True)
         ds = self._load_derivative('epoch-events', options=options)
         if vardef:
             vardef.resolve(ds)
@@ -2053,6 +2128,7 @@ class Pipeline(StateModel):
             self,
             add_geom: bool = False,
             ndvar: bool = False,
+            show_dependencies: bool = False,
             **state,
     ) -> mne.SourceSpaces | SourceSpace | VolumeSourceSpace:
         """Load the current source space
@@ -2063,6 +2139,8 @@ class Pipeline(StateModel):
             Parameter for :func:`mne.read_source_spaces`.
         ndvar
             Return as NDVar Dimension object (default False).
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks).
         ...
             State parameters.
 
@@ -2077,6 +2155,8 @@ class Pipeline(StateModel):
             mlab.show()
         """
         self.set(**state)
+        if show_dependencies:
+            return self._load_derivative('src', show_dependencies=True)
         src_spaces = self._load_derivative('src')
         if ndvar:
             src = self.get('src')
@@ -2104,6 +2184,7 @@ class Pipeline(StateModel):
             src_baseline: BaselineArg = None,
             samplingrate: int = None,
             return_data: bool = False,
+            show_dependencies: bool = False,
             **state,
     ) -> NDTest | ROITestResult | tuple[Dataset | ROIData, NDTest | ROITestResult]:
         """Create and load spatio-temporal cluster test results
@@ -2156,6 +2237,8 @@ class Pipeline(StateModel):
             definition).
         return_data
             Return the data along with the test result (see below).
+        show_dependencies
+            Return the request's dependency tree instead of loading the data (displays as text, or as a flow chart in notebooks).
         ...
             State parameters (Use the ``group`` state parameter to select the
             subject group for which to perform the test).
@@ -2188,6 +2271,8 @@ class Pipeline(StateModel):
             'samplingrate': samplingrate,
         }
         result_node = 'two-stage-level-2' if isinstance(test_obj, TwoStageTest) else 'test-result'
+        if show_dependencies:
+            return self._load_derivative(result_node, options=options, show_dependencies=True)
         result = self._load_derivative(result_node, options=options)
         if not return_data:
             return result
@@ -3505,10 +3590,11 @@ class Pipeline(StateModel):
             State parameters for resolving the requested node.
         """
         self.set(**state)
-        tree = self._derivatives.dependency_tree(name, state=self.state, options=options, max_line_length=max_line_length)
+        tree = self._derivatives.dependency_tree(name, state=self.state, options=options)
+        text = tree.text(max_line_length)
         if return_str:
-            return tree
-        print(tree)
+            return text
+        print(text)
         return None
 
     def show_head_position_overview(
