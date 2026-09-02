@@ -101,7 +101,7 @@ class Pipeline(StateModel):
 
     Parameters
     ----------
-    root : str | None
+    root
         the root directory for the experiment (usually the directory
         containing the 'meg' and 'mri' directories). The experiment can be
         initialized without the root for testing purposes.
@@ -648,7 +648,7 @@ class Pipeline(StateModel):
 
         Returns
         -------
-        report_table
+        report_table : fmtxt.Table | None
             Per-category summary of the scan (file counts and sizes).
         """
         report = self._derivatives.scan_cache(revalidate=revalidate)
@@ -739,9 +739,9 @@ class Pipeline(StateModel):
 
         Parameters
         ----------
-        field : str
+        field
             Field for which to find values.
-        exclude : list of str
+        exclude
             Exclude these values.
         ...
             State parameters.
@@ -765,21 +765,28 @@ class Pipeline(StateModel):
         else:
             return StateModel.get_field_values(self, field, exclude)
 
-    def iter(self, fields='subject', exclude=None, values=None, progress_bar=None, **state):
+    def iter(
+            self,
+            fields: str | Sequence[str] = 'subject',
+            exclude: dict = None,
+            values: dict = None,
+            progress_bar: str = None,
+            **state,
+    ):
         """
         Cycle the experiment's state through all values on the given fields
 
         Parameters
         ----------
-        fields : sequence | str
+        fields
             Field(s) over which should be iterated.
-        exclude : dict  {str: iterator over str}
+        exclude
             Exclude values from iteration (``{field: values_to_exclude}``).
-        values : dict  {str: iterator over str}
+        values
             Fields with custom values to iterate over (instead of the
             corresponding field values) with {name: (sequence of values)}
             entries.
-        progress_bar : str
+        progress_bar
             Message to show in the progress bar.
         ...
             State parameters.
@@ -826,7 +833,7 @@ class Pipeline(StateModel):
 
         Parameters
         ----------
-        ds : Dataset
+        ds
             A Dataset containing events (with variables as returned by
             :func:`load.mne.events`).
 
@@ -872,7 +879,7 @@ class Pipeline(StateModel):
 
         Parameters
         ----------
-        ds : Dataset
+        ds
             A Dataset containing events (with variables as returned by
             :func:`load.mne.events`).
 
@@ -946,22 +953,23 @@ class Pipeline(StateModel):
 
         Parameters
         ----------
-        ds : Dataset
+        ds
             A Dataset with 'subject' entry.
         """
         subject = ds['subject']
         for name, subjects in self._groups.items():
             ds[name] = Var(subject.isin(subjects))
 
-    def label_groups(self, subject, groups):
+    def label_groups(self, subject: Factor, groups: Sequence[str] | dict) -> Factor:
         """Generate Factor for group membership
 
         Parameters
         ----------
-        subject : Factor
+        subject
             A Factor with subjects.
-        groups : list of str | {str: str} dict
-            Groups which to label (raises an error if group membership is not
+        groups
+            Groups which to label as ``[group, ...]`` or ``{group: label}``
+            (raises an error if group membership is not
             unique). To use labels other than the group names themselves, use
             a ``{group: label}`` dict.
 
@@ -998,7 +1006,7 @@ class Pipeline(StateModel):
 
         Returns
         -------
-        bad_chs
+        bad_chs : list[str]
             Bad channels.
         """
         raw_name = self.get('raw', **kwargs)
@@ -1093,7 +1101,7 @@ class Pipeline(StateModel):
             definition).
         decim
             Data decimation factor (alternative to ``samplingrate``).
-        pad : scalar
+        pad
             Pad the epochs with this much time (in seconds; e.g. for spectral
             analysis).
         tmin
@@ -1237,7 +1245,7 @@ class Pipeline(StateModel):
             the :class:`RawFilter` pipes of the current ``raw`` pipeline).
             ``True`` to filter all predictors; ``'continuous'`` to filter only
             time-continuous predictors (those with ``sampling='continuous'``,
-            see :class:`FilePredictorBase`).
+            see :class:`UTSPredictor`).
         name
             Reassign the name of the predictor :class:`NDVar`.
         ...
@@ -1429,7 +1437,7 @@ class Pipeline(StateModel):
 
         Parameters
         ----------
-        subjects : str | 1 | -1
+        subjects
             Subject(s) for which to load data. Can be a single subject name or a
             group name such as ``'all'``. ``1`` to use the current subject;
             ``-1`` for the current group.
@@ -1449,7 +1457,7 @@ class Pipeline(StateModel):
             Samplingrate in Hz for the analysis.
         filter_x
             Filter predictors like the M/EEG data (see :meth:`load_predictor`).
-        scale : 'original'
+        scale
             Rescale the TRFs to the scale of the source data (the default is the
             scale based on normalized predictors and responses).
         smooth
@@ -1462,7 +1470,7 @@ class Pipeline(StateModel):
 
         Returns
         -------
-        trf_ds
+        trf_ds : Dataset
             Dataset with ``subject``, ``epoch``, ``task`` (unless an epoch
             combines several tasks), the estimator's fit metrics, and one
             :class:`NDVar` per TRF component. ``trf_ds.info['xs']`` lists the
@@ -1593,7 +1601,7 @@ class Pipeline(StateModel):
 
         Parameters
         ----------
-        subjects : str | 1 | -1
+        subjects
             Subject(s) for which to load data. Can be a single subject
             name or a group name such as ``'all'``. ``1`` to use the current
             subject; ``-1`` for the current group. Default is current subject
@@ -1709,7 +1717,7 @@ class Pipeline(StateModel):
             surf_ori: bool = True,
             ndvar: bool = False,
             **state,
-    ) -> mne.forward.Forward | NDVar:
+    ) -> mne.Forward | NDVar:
         """Load the forward solution
 
         Parameters
@@ -1720,13 +1728,13 @@ class Pipeline(StateModel):
             surface based).
         ndvar
             Return forward solution as :class:`NDVar` (default is
-            :class:`mne.forward.Forward`).
+            :class:`mne.Forward`).
         ...
             State parameters.
 
         Returns
         -------
-        forward_operator : mne.forward.Forward | NDVar
+        forward_operator : mne.Forward | NDVar
             Forward operator.
         """
         self.set(**state)
@@ -1758,7 +1766,7 @@ class Pipeline(StateModel):
             that it was created from the current data and ICA settings, for
             example after changing the raw preprocessing used to estimate the
             ICA. This rewrites the bookkeeping for that file instead of
-            raising :class:`ProtectedArtifactError`. Use this only when you
+            raising :exc:`ProtectedArtifactError`. Use this only when you
             intentionally want to keep the existing file on your own
             responsibility instead of reverting those changes or recomputing
             the ICA. When Eelbrain detects a mismatch, the error message names
@@ -1822,7 +1830,7 @@ class Pipeline(StateModel):
 
         Parameters
         ----------
-        label : str
+        label
             Name of the label. If the label name does not end in '-lh' or '-rh'
             the combination of the labels ``label + '-lh'`` and
             ``label + '-rh'`` is returned.
@@ -2154,7 +2162,7 @@ class Pipeline(StateModel):
             ``{roi: dataset}`` dictionary).
         res : NDTest | ROITestResult
             Test result for the specified test (for ROIs tests,
-            an :class:`~_experiment.ROITestResult` object).
+            an :class:`ROITestResult` object).
         """
         test_obj = self.tests[test]
         self.set(**state)
@@ -2285,7 +2293,7 @@ class Pipeline(StateModel):
             epoch: str = None,
             save: bool = True,
             **state,
-    ) -> (NDVar, list[str]):
+    ) -> tuple[NDVar, list[str]]:
         """Iteratively exclude bad channels based on low average neighbor-correlation
 
         Parameters
@@ -2501,7 +2509,7 @@ class Pipeline(StateModel):
 
         Returns
         -------
-        path : Path
+        path : pathlib.Path
             Path to the ICA file.
 
         Notes
@@ -2574,7 +2582,7 @@ class Pipeline(StateModel):
         samplingrate
             Samplingrate in Hz for the visualization (set to a lower value to
             improve GUI performance; the default is the epoch setting).
-        auto : scalar (optional)
+        auto
             Perform automatic rejection instead of showing the GUI by supplying
             a an absolute threshold (for example, ``1e-12`` to reject any epoch
             in which the absolute of at least one channel exceeds 1 picotesla).
@@ -2582,7 +2590,7 @@ class Pipeline(StateModel):
             When working with data from multiple sensor types, use a dictionary
             to set levels for all types,
             e.g. ``{'mag': 2e-12, 'grad': 5e-11, 'eeg': 1.5e-4}``.
-        overwrite : bool
+        overwrite
             If ``auto`` is specified and a rejection file already exists,
             overwrite the old file. The default is to raise an :exc:`IOError` if
             the file exists (``None``). Set to ``False`` to quietly keep the
@@ -2759,13 +2767,13 @@ class Pipeline(StateModel):
         parc
             Parcellation to plot. If None (default), use parc from the current
             state.
-        surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+        surf
             Freesurfer surface to use as brain geometry.
         views
             One or several views to show in the figure. The options are:
             ``'lateral', 'medial', 'ventral', 'dorsal', 'rostral', 'parietal',
             'frontal', 'caudal'``.
-        hemi : 'lh' | 'rh' | 'both' | 'split'
+        hemi
             Which hemispheres to plot (default includes hemisphere with more
             than one label in the annot file).
         borders
@@ -2774,9 +2782,9 @@ class Pipeline(StateModel):
             Alpha of the annotation (1=opaque, 0=transparent, default 0.7).
         axw
             Figure width per hemisphere.
-        foreground : mayavi color
+        foreground
             Figure foreground color (i.e., the text color).
-        background : mayavi color
+        background
             Figure background color.
         seeds
             Plot seeds as points (only applies to seeded parcellations).
@@ -2899,16 +2907,21 @@ class Pipeline(StateModel):
             fig.plotter.enable_parallel_projection()
         return fig
 
-    def plot_whitened_gfp(self, s_start=None, s_stop=None, run=None):
-        """Plot the GFP of the whitened evoked to evaluate the the covariance matrix
+    def plot_whitened_gfp(
+            self,
+            s_start: str | None = None,
+            s_stop: str | None = None,
+            run: bool | None = None,
+    ):
+        """Plot the GFP of the whitened evoked to evaluate the covariance matrix
 
         Parameters
         ----------
-        s_start : str
+        s_start
             Subject at which to start (default is the first subject).
         s_stop: str
             Subject at which to stop (default is the last subject).
-        run : bool
+        run
             Run the GUI after plotting (default depends on environment).
         """
         gfps = []
@@ -2926,7 +2939,7 @@ class Pipeline(StateModel):
 
         colors = plot.colors_for_oneway(subjects)
         title = f"Whitened Global Field Power ({self.get('cov')})"
-        fig = plot._base.Figure(1, title, h=7, run=run)
+        fig = plot._figure.Figure(1, title, h=7, run=run)
         ax = fig.axes[0]
         for subject, gfp in zip(subjects, gfps):
             ax.plot(whitened_evoked.times, gfp, label=subject, color=colors[subject])
@@ -3074,16 +3087,16 @@ class Pipeline(StateModel):
         brain.add_label(label, alpha=0.75)
         return brain
 
-    def plot_raw(self, decim=10, xlim=5, subtract_mean=False, **state):
+    def plot_raw(self, decim: int = 10, xlim: float = 5, subtract_mean: bool = False, **state):
         """Plot raw sensor data
 
         Parameters
         ----------
-        decim : int
+        decim
             Decimate data for faster plotting (default 10).
-        xlim : scalar
+        xlim
             Number of seconds to display (default 5 s).
-        subtract_mean : bool
+        subtract_mean
             Subtract the mean from each channel (useful when plotting raw data
             recorded with DC offset).
         ...
@@ -3144,7 +3157,7 @@ class Pipeline(StateModel):
             self,
             ori: str = 'free',
             snr: float = 3,
-            method: str = 'dSPM',
+            method: Literal['MNE', 'dSPM', 'sLORETA', 'eLORETA'] = 'dSPM',
             depth: float = 0,
             pick_normal: bool = False,
             **state,
@@ -3182,7 +3195,7 @@ class Pipeline(StateModel):
             estimates. 3 is recommended for averaged responses, 1 for raw or
             single trial data. Set to 0 for unregularized inverse solution
             (``λ = 0``).
-        method : 'MNE' | 'dSPM' | 'sLORETA' | 'eLORETA'
+        method
             Noise normalization method. ``MNE`` uses unnormalized current
             estimates. ``dSPM`` [1]_ (default) ``sLORETA`` [2]_ and eLORETA [3]_
             normalize each the estimate at each source with an estimate of the
@@ -3240,7 +3253,7 @@ class Pipeline(StateModel):
     def inv_str(
             ori: str = 'free',
             snr: float = 3,
-            method: str = 'dSPM',
+            method: Literal['MNE', 'dSPM', 'sLORETA', 'eLORETA'] = 'dSPM',
             depth: float = 0,
             pick_normal: bool = False,
     ):
@@ -3796,17 +3809,17 @@ class Pipeline(StateModel):
         ds = Dataset.from_caselist(['subject', 'reg'], rows)
         return ds
 
-    def show_rej_info(self, flagp=None, asds=False, bads=False, **state):
+    def show_rej_info(self, flagp: float = None, asds: bool = False, bads: bool = False, **state):
         """Information about artifact rejection
 
         Parameters
         ----------
-        flagp : scalar
+        flagp
             Flag entries whose percentage of good trials is lower than this
             number.
-        asds : bool
+        asds
             Return a Dataset with the information (default is to print it).
-        bads : bool
+        bads
             Display bad channel names (not just number of bad channels).
 
         See Also

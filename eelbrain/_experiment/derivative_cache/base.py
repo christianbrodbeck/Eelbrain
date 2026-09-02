@@ -1176,7 +1176,7 @@ class ExternalArtifactDerivative(Derivative[T]):
       files, or when a user-provided variant must stay a fingerprinted input
       rather than this node's writable artifact (e.g. parcellation ``*.annot``
       files, where anchoring on the user files outside ``cache-dir`` would route
-      them through :class:`ProtectedArtifactError`).
+      them through :exc:`pipeline.ProtectedArtifactError`).
 
     The :meth:`save` provided here materializes that stamp when, and only when,
     the anchor lives in ``cache-dir``; when :meth:`path` is the real external
@@ -2444,7 +2444,7 @@ class DerivativeRegistry:
 
         The output is suitable for fingerprints, keys, and manifests: dicts are
         sorted by key, sets are sorted, numpy scalars are unwrapped, and
-        :class:`Path` objects become strings. Unrecognized types fall back to
+        :class:`~pathlib.Path` objects become strings. Unrecognized types fall back to
         ``repr()``.
 
         Domain-specific types handled here (:class:`~eelbrain.Var`,
