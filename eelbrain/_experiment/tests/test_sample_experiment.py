@@ -1605,11 +1605,18 @@ def test_raw_reader_warnings_are_summarized(monkeypatch, samples_experiment):
     assert 'Synthetic raw reader warning 2' in text
     data = tomllib.loads(text)
     assert len(data['warning']) == 2
+    # each entry records where the warning was attributed to, the key-field state and the full call stack
+    entry = data['warning'][0]
+    assert entry['location'].endswith(f'{__file__}:{read_raw_fif.__code__.co_firstlineno + 1}')
+    assert json.loads(entry['state'])['subject'] == 'R0000'
+    assert any('read_raw_fif' in line for line in entry['stack'])
+    assert any('load_raw' in line for line in entry['stack'])
 
     log_path = Path(next(handler.baseFilename for handler in e._log.handlers if isinstance(handler, logging.FileHandler)))
     log_text = log_path.read_text()
     assert str(details_path) in log_text
     assert log_text.count('issued during raw-input@raw') == 1
+    assert 'Synthetic raw reader warning 1' in log_text
 
     e.load_raw(raw='raw')
     assert details_path.read_text() == text
