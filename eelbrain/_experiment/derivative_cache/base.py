@@ -1272,10 +1272,15 @@ def _dep_entry_matches(stored: dict[str, Any], current: dict[str, Any]) -> bool:
     ``key`` participates because fingerprints often describe configuration
     only: a dependency that resolves to a different artifact (different cache
     key) must invalidate the parent even when its fingerprint is unchanged.
+    A stored entry without ``key`` was recorded while the node was not cached;
+    its fingerprint and sub-dependencies validated it then and still do, so
+    caching a node does not invalidate the artifacts depending on it.
     """
-    for key in ('name', 'kind', 'view', 'key'):
+    for key in ('name', 'view'):
         if stored.get(key) != current.get(key):
             return False
+    if 'key' in stored and stored['key'] != current.get('key'):
+        return False
     stored_quick = stored.get('quick_fingerprint')
     current_quick = current.get('quick_fingerprint')
     if stored_quick is not None and current_quick is not None and stored_quick == current_quick:
@@ -1584,11 +1589,8 @@ class Request(Generic[T]):
         if view is not None:
             out['view'] = view
         if isinstance(self.node, Derivative) and self.node.cache_policy != CachePolicy.NEVER:
-            out['kind'] = 'derivative'
             out['key'] = self.key()
             out['manifest'] = self.manifest_path.relative_to(self.registry.cache_dir).as_posix()
-        else:
-            out['kind'] = 'input'
         return out
 
     def _require_derivative(self) -> Derivative[T]:
