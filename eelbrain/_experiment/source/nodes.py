@@ -13,12 +13,12 @@ The inverse-solution and source-space configurations they build on live in
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import product
 import os
 from pathlib import Path
 from typing import Any
+import warnings
 
 import mne
 import numpy as np
@@ -32,7 +32,7 @@ from ..derivative_cache import CachePolicy, Dependency, Derivative, ExternalArti
 from ..pathing import (
     MRI_SDIR, bem_dir, bem_file_path, mri_dir, src_file_path, trans_file_path,
 )
-from ..preprocessing import RawApplyICA, RawICA, RawMaxwell, RawPipe, Reference, canonical_recording, ica_input_name, raw_node_name
+from ..preprocessing import Reference, canonical_recording, raw_node_name
 from ..data import DataSpec
 from ..variable_def import Variables
 from ..._text import enumeration, plural
@@ -379,29 +379,6 @@ class FwdDerivative(Derivative[mne.Forward]):
         mne.write_forward_solution(path, value, overwrite=True)
 
 
-def sss_rank_ica_names(pipes: Sequence[RawPipe]) -> tuple[bool, tuple[str, ...]]:
-    """Whether the Maxwell filter header describes the MEG data rank, and which ICAs reduce it
-
-    Returns ``(has_sss, ica_names)``: ``has_sss`` is whether the raw lineage
-    includes a full SSS reconstruction (a :class:`RawMaxwell` step without
-    ``st_only``), and ``ica_names`` are the :class:`RawICA` pipes applied after
-    the last such step. The MEG rank is then the header rank minus the components
-    excluded by those ICAs (each excluded component removes one direction inside
-    the SSS subspace).
-    """
-    has_sss = False
-    ica_names = ()
-    for pipe in pipes:
-        if isinstance(pipe, RawMaxwell):
-            has_sss = not pipe.kwargs.get('st_only', False)
-            ica_names = ()  # SSS re-projects onto its subspace, so earlier ICAs no longer matter
-        elif has_sss and isinstance(pipe, (RawICA, RawApplyICA)):
-            ica_name = pipe.name if isinstance(pipe, RawICA) else pipe.ica_source
-            if ica_name not in ica_names:  # re-applying the same ICA removes nothing further
-                ica_names += (ica_name,)
-    return has_sss, ica_names
-
-
 class InvDerivative(Derivative[mne.minimum_norm.InverseOperator]):
     name = 'inv'
     key_fields = ('subject', 'session', 'acquisition', 'raw', 'epoch', 'epoch_rejection', 'cov', 'mrisubject', 'src', 'inv')
@@ -419,16 +396,11 @@ class InvDerivative(Derivative[mne.minimum_norm.InverseOperator]):
         # recording rather than key on the ambient task/run.
         recording = canonical_recording(self._recordings, ctx.state['subject'], ctx.state.get('session'), ctx.state.get('acquisition'))
         raw_state = {'task': recording[0], 'run': recording[1]} if recording else None
-        deps = [
+        return (
             Dependency(raw_node_name(ctx.state['raw']), label='raw', state=raw_state),
             Dependency('fwd'),
             Dependency('cov'),
-        ]
-        # ICAs whose excluded components reduce the SSS header rank
-        _, ica_names = sss_rank_ica_names(self.raw.lineage_pipes(ctx.state['raw']))
-        for ica_name in ica_names:
-            deps.append(Dependency(ica_input_name(ica_name), label=f'ica:{ica_name}', state=raw_state))
-        return tuple(deps)
+        )
 
     def fingerprint(self, ctx: Request) -> dict[str, Any]:
         return {
@@ -449,17 +421,10 @@ class InvDerivative(Derivative[mne.minimum_norm.InverseOperator]):
         if reference.add and _eeg_channel_names(fwd['info']) != _eeg_channel_names(raw.info):
             raise NotImplementedError(f"EEG channels differ between the forward solution and the {ctx.state['raw']!r} raw used for the inverse operator; source localization with a reconstructed reference channel ({reference.add}) requires the inverse raw to keep the same EEG channels as the root 'raw' source used for the forward solution.")
         cov = ctx.load('cov')
-        rank = None
-        has_sss, ica_names = sss_rank_ica_names(self.raw.lineage_pipes(ctx.state['raw']))
-        if has_sss:
-            # MEG rank from the Maxwell filter header, minus excluded ICA components (EEG stays data-driven)
-            info_rank = mne.compute_rank(cov, rank='info', info=raw.info, verbose=False)
-            n_excluded = 0
-            for ica_name in ica_names:
-                ica = ctx.load(f'ica:{ica_name}')
-                if mne.pick_types(ica.info, meg=True, exclude=[]).size:  # an ICA fitted without MEG channels does not reduce the MEG rank
-                    n_excluded += len(ica.exclude)
-            rank = {key: info_rank[key] - n_excluded for key in ('meg', 'mag', 'grad') if key in info_rank}
+        # Estimate the rank from the covariance. MNE warns when the estimate exceeds the SSS header rank in raw.info, but the header of the canonical recording does not describe a covariance pooled across recordings that were Maxwell filtered separately (regularization keeps a different set of in-components per recording) or one from the empty room. Passing the estimate explicitly makes make_inverse_operator check it against the covariance itself instead.
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', 'Something went wrong in the data-driven estimation')
+            rank = mne.compute_rank(cov, info=raw.info, verbose=False)
         return solution._build_operator(raw.info, fwd, cov, rank)
 
     def load(

@@ -879,29 +879,21 @@ def test_sample_source(samples_experiment):
             'ac': SubParc('aparc', ('superiortemporal',)),
         }
 
-    # Inverse operator rank after full SSS: from the Maxwell header instead of a data-driven estimate (reuses the R0000 forward solution)
-    e.set('R0000', epoch='auditory', epoch_rejection='')
-
-    # only an ICA after full SSS enters the inverse operator's dependencies
-    def dependency_names(raw):
-        request = e._derivatives.resolve('inv', state={**e.state, 'raw': raw})
-        return [dependency.name for dependency in request.node.dependencies(request)]
-    assert 'ica-input@sss-ica' in dependency_names('sss-ica')
-    assert not any(name.startswith('ica-input') for name in dependency_names('sss'))
-    assert not any(name.startswith('ica-input') for name in dependency_names('ica1-40'))  # tSSS-only
-
-    e.set(raw='sss')
+    # Inverse operator rank after full SSS (reuses the R0000 forward solution)
+    e.set('R0000', raw='sss', cov='noreg', epoch='auditory', epoch_rejection='')
     inv = e.load_inv()
     raw = e.load_raw()
     cov = e._load_derivative('cov')
     header_rank = mne.compute_rank(cov, rank='info', info=raw.info)['mag']  # the sample experiment keeps magnetometers only
-    assert header_rank < len(mne.pick_types(raw.info, meg=True, exclude='bads'))
+    n_channels = len(mne.pick_types(raw.info, meg=True, exclude='bads'))
+    assert header_rank < n_channels
+    # the data-driven estimate for an empirical covariance recovers the SSS rank
     assert mne.minimum_norm.compute_rank_inverse(inv) == header_rank
-    # the header rank was used, so MNE's rank-mismatch warning cannot have been issued
+    # MNE's comparison of the data-driven rank with the header is suppressed, so it never reaches the warning log
     warning_log = e.root / LOG_DIR / 'inv-warnings.toml'
     assert not warning_log.exists() or 'theoretical rank' not in warning_log.read_text()
 
-    # ICA after SSS: each excluded component removes one dimension from the header rank
+    # ICA after SSS: each excluded component removes one dimension from the data rank
     e.set(raw='sss-ica')
     with catch_warnings():
         filterwarnings('ignore', "FastICA did not converge", UserWarning)
@@ -914,6 +906,8 @@ def test_sample_source(samples_experiment):
     ica.exclude = [0]
     ica.save(ica_path, overwrite=True)
     assert mne.minimum_norm.compute_rank_inverse(e.load_inv()) == header_rank - 1
+    # a diagonal (ad hoc) covariance is full rank; imposing the SSS rank on it would zero arbitrary channel directions in the whitener
+    assert mne.minimum_norm.compute_rank_inverse(e.load_inv(cov='ad_hoc')) == n_channels
 
 
 @requires_mne_sample_data

@@ -3242,12 +3242,6 @@ class Pipeline(StateModel):
         To determine the string corresponding to a given set of parameters,
         use :meth:`Pipeline.inv_str`.
 
-        The noise covariance rank is estimated from the data, except when the
-        ``raw`` pipeline includes a full :class:`RawMaxwell` reconstruction
-        (without ``st_only``): then the MEG rank is taken from the Maxwell filter
-        header (``rank='info'`` in :func:`mne.minimum_norm.make_inverse_operator`),
-        minus the number of components excluded by any subsequent ICA.
-
         .. warning::
             Free and loose orientation inverse solutions have a non-zero
             expected value. In that case, when source localizing condition
