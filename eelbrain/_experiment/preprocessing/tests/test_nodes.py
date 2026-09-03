@@ -79,7 +79,7 @@ def test_mean_head_position():
     assert mean_head_position(positions[:1]) is None
     assert mean_head_position(np.tile(positions[:1], (5, 1))) is None
 
-    # a single cHPI recording with movement does yield a transform
+    # samples with movement yield a proper transform
     trans = mean_head_position(positions)
     assert trans['from'] == mne.io.constants.FIFF.FIFFV_COORD_DEVICE
     assert trans['to'] == mne.io.constants.FIFF.FIFFV_COORD_HEAD

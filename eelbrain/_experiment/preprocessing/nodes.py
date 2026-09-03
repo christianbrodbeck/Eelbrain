@@ -1239,9 +1239,13 @@ class CanonicalHeadPositionDerivative(Derivative):
     :func:`mne.preprocessing.maxwell_filter`.
 
     All samples from all tasks and runs are averaged with
-    :func:`mean_head_position`. ``None`` when fewer than two distinct position samples
-    exist across all tasks/runs, in which case each file's own ``dev_head_t`` is used
-    directly by Maxwell filtering to avoid round-trip conversion noise.
+    :func:`mean_head_position`. ``None`` when only one recording exists, or when
+    the recordings do not contain two distinct position samples; each file's own
+    ``dev_head_t`` is then used directly, by Maxwell filtering (which also
+    compensates head movement towards ``dev_head_t`` when no destination is
+    given) as well as by the forward solution, avoiding round-trip conversion
+    noise and keeping source estimates for pipelines without Maxwell filtering
+    aligned with the data.
 
     Parameters
     ----------
@@ -1289,7 +1293,7 @@ class CanonicalHeadPositionDerivative(Derivative):
             positions = ctx.load(label)  # (n, 10) MaxFilter format, or None
             if positions is not None:
                 all_positions.append(positions[:, 1:7])  # [q1, q2, q3, tx, ty, tz]
-        if not all_positions:
+        if len(all_positions) <= 1:
             return None
         return mean_head_position(numpy.vstack(all_positions))
 
