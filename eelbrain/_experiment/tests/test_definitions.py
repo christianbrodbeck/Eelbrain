@@ -465,3 +465,29 @@ def test_raw_configurations():
     }, ('sample1', 'sample2'))
     assert raw['ica'].task == ('sample1',)
     assert raw['ica']._concatenate_runs is True
+
+
+def test_sss_rank_rule():
+    "The Maxwell header describes the MEG rank after a full SSS reconstruction, minus components excluded by subsequent ICAs"
+    from eelbrain._experiment.source.nodes import sss_rank_ica_names
+
+    def rule(**pipes):
+        raw = assemble_raw_pipes({'raw': RawSource(), **pipes}, ('sample',))
+        return sss_rank_ica_names(raw.lineage_pipes(list(pipes)[-1]))
+
+    assert rule(filt=RawFilter('raw', 1, 40)) == (False, ())
+    assert rule(ica=RawICA('raw')) == (False, ())
+    assert rule(sss=RawMaxwell('raw')) == (True, ())
+    assert rule(sss=RawMaxwell('raw'), filt=RawFilter('sss', 1, 40)) == (True, ())
+    # tSSS-only leaves the spatial rank untouched and writes no SSS header
+    assert rule(tsss=RawMaxwell('raw', st_duration=10., st_only=True)) == (False, ())
+    assert rule(tsss=RawMaxwell('raw', st_duration=10., st_only=True), ica=RawICA('tsss')) == (False, ())
+    # ICA after SSS removes its excluded components from the SSS subspace
+    assert rule(sss=RawMaxwell('raw'), ica=RawICA('sss')) == (True, ('ica',))
+    assert rule(sss=RawMaxwell('raw'), ica=RawICA('sss'), filt=RawFilter('ica', 1, 40)) == (True, ('ica',))
+    # applying the same ICA again removes nothing further
+    assert rule(sss=RawMaxwell('raw'), ica=RawICA('sss'), apply=RawApplyICA('sss', 'ica')) == (True, ('ica',))
+    assert rule(sss=RawMaxwell('raw'), filt=RawFilter('sss', 1, 40), ica=RawICA('filt'), apply=RawApplyICA('sss', 'ica')) == (True, ('ica',))
+    # ICA before SSS is re-projected onto the SSS subspace, so only the later one counts
+    assert rule(ica=RawICA('raw'), sss=RawMaxwell('ica')) == (True, ())
+    assert rule(ica=RawICA('raw'), sss=RawMaxwell('ica'), ica2=RawICA('sss')) == (True, ('ica2',))

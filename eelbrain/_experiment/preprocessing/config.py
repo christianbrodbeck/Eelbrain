@@ -733,6 +733,7 @@ class RawMaxwell(CachedRawPipe):
     For empty room recordings, there is no ``dev_head_t`` information, ``coord_frame = 'meg'`` will be used automatically.
     Flat channels are automatically marked as bad by :func:`mne.preprocessing.find_bad_channels_maxwell`.
     :meth:`Pipeline.show_head_position_overview` marks recordings with continuous HPI with ``†``; those are the recordings that benefit from ``head_pos=True``.
+    For inverse operators, the MEG noise covariance rank is taken from the Maxwell filter header (unless ``st_only=True``), minus the components excluded by any subsequent ICA; see :meth:`Pipeline.set_inv`.
     """
 
     _bad_chs_affect_cache = True

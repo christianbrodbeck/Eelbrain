@@ -787,7 +787,15 @@ def test_sample_source(samples_experiment):
     from eelbrain._experiment.tests.sample_experiment import SampleExperiment
 
     root = samples_experiment(n_subjects=3, n_segments=1, mris=True)  # TODO: use sample MRI which already has forward solution
-    e = SampleExperiment(root)
+
+    class Experiment(SampleExperiment):
+        raw = {
+            **SampleExperiment.raw,
+            # full SSS (the default 'tsss' is tSSS-only), for the inverse operator rank checks below
+            'sss': RawMaxwell('raw', ignore_ref=True),
+            'sss-ica': RawICA('sss', 'sample', method='fastica', max_iter=1, n_components=0.95),
+        }
+    e = Experiment(root)
 
     # source space tests
     # ico-2 (320 vertices/hemi) keeps forward/inverse fast while still covering the transversetemporal ROI
@@ -870,6 +878,42 @@ def test_sample_source(samples_experiment):
             **SampleExperiment.parcs,
             'ac': SubParc('aparc', ('superiortemporal',)),
         }
+
+    # Inverse operator rank after full SSS: from the Maxwell header instead of a data-driven estimate (reuses the R0000 forward solution)
+    e.set('R0000', epoch='auditory', epoch_rejection='')
+
+    # only an ICA after full SSS enters the inverse operator's dependencies
+    def dependency_names(raw):
+        request = e._derivatives.resolve('inv', state={**e.state, 'raw': raw})
+        return [dependency.name for dependency in request.node.dependencies(request)]
+    assert 'ica-input@sss-ica' in dependency_names('sss-ica')
+    assert not any(name.startswith('ica-input') for name in dependency_names('sss'))
+    assert not any(name.startswith('ica-input') for name in dependency_names('ica1-40'))  # tSSS-only
+
+    e.set(raw='sss')
+    inv = e.load_inv()
+    raw = e.load_raw()
+    cov = e._load_derivative('cov')
+    header_rank = mne.compute_rank(cov, rank='info', info=raw.info)['mag']  # the sample experiment keeps magnetometers only
+    assert header_rank < len(mne.pick_types(raw.info, meg=True, exclude='bads'))
+    assert mne.minimum_norm.compute_rank_inverse(inv) == header_rank
+    # the header rank was used, so MNE's rank-mismatch warning cannot have been issued
+    warning_log = e.root / LOG_DIR / 'inv-warnings.toml'
+    assert not warning_log.exists() or 'theoretical rank' not in warning_log.read_text()
+
+    # ICA after SSS: each excluded component removes one dimension from the header rank
+    e.set(raw='sss-ica')
+    with catch_warnings():
+        filterwarnings('ignore', "FastICA did not converge", UserWarning)
+        ica_path = e.make_ica()
+    ica = e.load_ica()
+    ica.exclude = [0, 1]
+    ica.save(ica_path, overwrite=True)
+    assert mne.minimum_norm.compute_rank_inverse(e.load_inv()) == header_rank - 2
+    # the inverse operator follows the ICA selection
+    ica.exclude = [0]
+    ica.save(ica_path, overwrite=True)
+    assert mne.minimum_norm.compute_rank_inverse(e.load_inv()) == header_rank - 1
 
 
 @requires_mne_sample_data
