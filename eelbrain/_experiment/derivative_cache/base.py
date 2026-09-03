@@ -2097,16 +2097,17 @@ class DerivativeRegistry:
             item = str(path)
         else:
             item = node.name
-        key_fields = node.override_key_fields(ctx)
-        if key_fields is None:
-            key_fields = () if node.key_fields is UNSET else node.key_fields
-        state = json.dumps({key: ctx.state[key] for key in key_fields if key in ctx.state}, default=str)
         warning_list: list[tuple[Warning, str, list[str]]] = []
+        recorded: set[tuple[str, str]] = set()
 
         def showwarning(message, category, filename, lineno, file=None, line=None):
+            # Only the first occurrence of a warning is kept (see below); a warning issued in a loop must not extract its stack every time
+            if (category.__name__, str(message)) in recorded:
+                return
+            recorded.add((category.__name__, str(message)))
             # Record the full stack: libraries such as MNE attribute the warning to the first frame outside their own namespace, which hides the path within the library
-            stack = [frame for frame in traceback.extract_stack()[:-1] if frame.filename != warnings.__file__]
-            warning_list.append((message, f'{filename}:{lineno}', traceback.format_list(stack)))
+            stack = [f'{frame.filename}:{frame.lineno} in {frame.name}' for frame in traceback.extract_stack()[:-1] if frame.filename != warnings.__file__]
+            warning_list.append((message, f'{filename}:{lineno}', stack))
 
         with warnings.catch_warnings():
             warnings.simplefilter('always')
@@ -2115,6 +2116,7 @@ class DerivativeRegistry:
             yield
         if not warning_list:
             return
+        state = json.dumps({key: ctx.state[key] for key in node._get_key_fields(ctx) if key in ctx.state}, default=str)
         details_path = Path(self.root) / LOG_DIR / f'{node.name}-warnings.toml'
         details_path.parent.mkdir(parents=True, exist_ok=True)
         entries = _read_warning_log(details_path)
@@ -2127,7 +2129,7 @@ class DerivativeRegistry:
             if key in seen:
                 continue
             seen.add(key)
-            entry = {'item': item, 'category': category, 'message': text, 'state': state, 'location': location, 'stack': [line.rstrip('\n') for line in stack]}
+            entry = {'item': item, 'category': category, 'message': text, 'state': state, 'location': location, 'stack': stack}
             entries.append(entry)
             new_entries.append(entry)
         if not new_entries:
