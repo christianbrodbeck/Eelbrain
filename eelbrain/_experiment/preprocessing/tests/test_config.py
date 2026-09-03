@@ -4,6 +4,7 @@ import pytest
 
 from eelbrain._exceptions import ConfigurationError
 from eelbrain._experiment.preprocessing import RawMaxwell, RawSource
+from eelbrain.testing import requires_mne_head_pos
 
 
 def test_raw_source_rename_channels():
@@ -39,6 +40,7 @@ def test_raw_source_rename_channels():
         RawSource(montage='biosemi16', rename_channels={'A1': 'NoSuchChannel'})
 
 
+@requires_mne_head_pos
 def test_maxwell_head_pos_semantic_dict():
     "head_pos is omitted from the fingerprint when unset, so caches predating it stay valid"
     maxwell = RawMaxwell('raw', st_duration=10.)

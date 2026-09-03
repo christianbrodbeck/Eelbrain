@@ -28,6 +28,7 @@ from ..._io.txt import read_adjacency
 from ..._ndvar import filter_data
 from ..._text import enumeration
 from ..._utils import user_activity
+from ...mne_fixes._version import MNE_SUPPORTS_HEAD_POS
 from ..derivative_cache import Request
 from ..configuration import Configuration, ConfigurationDict, sequence_arg, typed_arg
 from ..exceptions import ICAMissingError
@@ -763,6 +764,8 @@ class RawMaxwell(CachedRawPipe):
             raise TypeError(f"Invalid RawMaxwell keyword argument{'' if len(invalid_kwargs) == 1 else 's'}: {enumeration(invalid_kwargs)}")
         self.kwargs = kwargs
         self.bad_condition = bad_condition
+        if head_pos and not MNE_SUPPORTS_HEAD_POS:
+            raise ConfigurationError(f"RawMaxwell(head_pos=True) requires mne > 1.12.1 (installed: {mne.__version__})")
         self.head_pos = head_pos
 
     def _make(
