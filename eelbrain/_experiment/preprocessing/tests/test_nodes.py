@@ -78,16 +78,28 @@ def test_head_position_none_roundtrip(tmp_path):
 
 
 def test_mean_head_position():
-    """mean_head_position returns the Fréchet mean, or None without movement"""
-    positions = generate_head_positions(5)[:, 1:7]
-    assert mean_head_position(positions[:1]) is None
-    assert mean_head_position(np.tile(positions[:1], (5, 1))) is None
+    """mean_head_position weights samples by the time they were held, or returns None without movement"""
+    info = mne.create_info(['MEG 0111'], 100., 'mag')
+    raws = [mne.io.RawArray(np.zeros((1, 1000)), info, first_samp=4200, verbose=False) for _ in range(2)]  # 10 s each, starting at t=42 s
+    positions = generate_head_positions(5)  # t = 42.00, 42.01, ..., 42.04
+    static = positions[:1]
+    assert mean_head_position(raws[:1], [static]) is None
+    assert mean_head_position(raws, [static, static]) is None
 
-    # samples with movement yield a proper transform
-    trans = mean_head_position(positions)
+    # a tracked recording with movement and a static recording
+    trans = mean_head_position(raws, [positions, static])
     assert trans['from'] == mne.io.constants.FIFF.FIFFV_COORD_DEVICE
     assert trans['to'] == mne.io.constants.FIFF.FIFFV_COORD_HEAD
-    assert np.allclose(trans['trans'][:3, 3], positions[:, 3:].mean(0))
+    # each sample counts until the next sample or the end of its recording: 4 x 10 ms, then 9.96 s for the last tracked sample and 10 s for the static one
+    weights = np.array([.01, .01, .01, .01, 9.96, 10.])
+    samples = np.vstack([positions, static])
+    assert np.allclose(trans['trans'][:3, 3], (weights / weights.sum()) @ samples[:, 4:7], atol=1e-6)
     # the rotation is a proper rotation, which an element-wise mean of rotation matrices would not be
     rot = trans['trans'][:3, :3]
     assert np.allclose(rot @ rot.T, np.eye(3))
+
+    # BAD segments are excluded: with the static recording marked bad, only the tracked recording contributes
+    raws[1].set_annotations(mne.Annotations(0., 10., 'BAD_all'))  # onset relative to the start of the data
+    trans_bad = mean_head_position(raws, [positions, static])
+    trans_tracked = mean_head_position(raws[:1], [positions])
+    assert np.allclose(trans_bad['trans'], trans_tracked['trans'])
