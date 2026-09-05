@@ -570,10 +570,12 @@ def _apply_source_baseline(stc_value, baseline) -> None:
 
 def _check_head_position_alignment(ctx: Request, info: mne.Info) -> None:
     """Raise if the data's head position doesn't match the canonical session position."""
-    median_head_pos = ctx.load('canonical-head-position')
-    if median_head_pos is not None:
-        if not np.allclose(info['dev_head_t']['trans'], median_head_pos['trans']):
-            raise RuntimeError("The data head position does not match the canonical session head position. Apply Maxwell filtering before computing source estimates.")
+    canonical = ctx.load('canonical-head-position')
+    if canonical is not None:
+        angle, distance = mne.transforms.angle_distance_between_rigid(info['dev_head_t']['trans'], canonical['trans'], angle_units='deg', distance_units='mm')
+        # Maxwell filtering towards the canonical position sets dev_head_t exactly; the tolerance only absorbs the float32 precision of transforms in FIFF files
+        if distance > 0.01 or angle > 0.001:
+            raise RuntimeError(f"The data head position differs from the canonical session head position by {distance:.1f} mm and {angle:.2f}°. Apply Maxwell filtering before computing source estimates.")
 
 
 def _source_dependencies(ctx: Request, sensor_dependency: Dependency) -> tuple[Dependency, ...]:

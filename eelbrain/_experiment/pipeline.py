@@ -3534,7 +3534,8 @@ class Pipeline(StateModel):
 
     def show_head_position_overview(
             self,
-            tolerance: float = 1e-3,
+            distance: float = 1.,
+            angle: float = .5,
             asds: bool = False,
             **state,
     ) -> 'fmtxt.Table | fmtxt.Section | Dataset':
@@ -3547,16 +3548,21 @@ class Pipeline(StateModel):
 
         Labels are assigned per subject, starting from A for the first task
         encountered. Tasks with the same label share the same head position
-        within ``tolerance``; labels are not comparable across subjects.
+        within ``distance`` and ``angle``; labels are not comparable across
+        subjects.
 
         Parameters
         ----------
-        tolerance
-            Maximum element-wise absolute difference in the ``dev_head_t``
-            transformation matrix for two recordings to be considered as having
-            the same head position. Default ``1e-3`` corresponds to approximately
-            1 mm for translation (and roughly 0.06° for rotation), which is
-            conservative enough to justify sharing a forward solution.
+        distance
+            Maximum distance (in mm) between the ``dev_head_t`` transforms of two
+            recordings for them to count as the same head position (see
+            :func:`mne.transforms.angle_distance_between_rigid`). The default
+            of 1 mm is conservative enough to justify sharing a forward solution.
+        angle
+            Maximum rotation (in degrees) between the ``dev_head_t`` transforms
+            of two recordings for them to count as the same head position. The
+            default of 0.5° moves a point 10 cm from the center of rotation by
+            less than 1 mm.
         asds
             Return a :class:`Dataset` instead of formatted output.
         ...
@@ -3568,7 +3574,7 @@ class Pipeline(StateModel):
             Table with tasks as rows and subjects as columns. Each cell contains
             a cluster label (A, B, C, ...) indicating the head position group;
             cells with the same label share the same head position within
-            ``tolerance``. Missing recordings are shown as "—". When the
+            ``distance`` and ``angle``. Missing recordings are shown as "—". When the
             experiment has multiple sessions with differing head positions, a
             :class:`fmtxt.Section` with one table per session is returned.
         Dataset
@@ -3641,7 +3647,8 @@ class Pipeline(StateModel):
                         any_missing = True
                         continue
                     for rep_label, rep_trans in representatives:
-                        if np.allclose(trans, rep_trans, atol=tolerance, rtol=0):
+                        rep_angle, rep_distance = mne.transforms.angle_distance_between_rigid(trans, rep_trans, angle_units='deg', distance_units='mm')
+                        if rep_distance <= distance and rep_angle <= angle:
                             subject_labels[key] = rep_label
                             break
                     else:
