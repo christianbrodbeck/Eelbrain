@@ -1190,7 +1190,7 @@ class RawHeadPositionDerivative(Derivative[numpy.ndarray]):
 
     def save(self, ctx: Request, path: Path, value: numpy.ndarray | None) -> None:
         if value is None:
-            path.touch()
+            path.write_bytes(b'')  # artifacts are rebuilt in place, so an earlier non-empty file has to be truncated
         else:
             mne.chpi.write_head_pos(path, value)
 
@@ -1299,7 +1299,7 @@ class CanonicalHeadPositionDerivative(Derivative):
 
     def save(self, ctx: Request, path: Path, value: mne.transforms.Transform | None) -> None:
         if value is None:
-            path.touch()
+            path.write_bytes(b'')  # artifacts are rebuilt in place, so an earlier non-empty file has to be truncated
         else:
             mne.write_trans(path, value, overwrite=True)
 

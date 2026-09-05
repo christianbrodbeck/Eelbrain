@@ -71,6 +71,10 @@ def test_head_position_none_roundtrip(tmp_path):
     node.save(None, path, None)
     assert path.stat().st_size == 0
     assert node.load(None, path) is None
+    # a rebuild writes over the previous artifact in place, so None has to replace earlier positions
+    node.save(None, path, generate_head_positions(5))
+    node.save(None, path, None)
+    assert node.load(None, path) is None
 
 
 def test_mean_head_position():
