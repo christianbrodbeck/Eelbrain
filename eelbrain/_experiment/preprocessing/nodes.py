@@ -43,7 +43,6 @@ from .config import (
     raw_node_name, raw_bad_channels_input_name, raw_input_name, ica_input_name,
 )
 
-LOG = logging.getLogger(__name__)
 REINDEX_ICA = 'reindex_ica'
 # Scaling factors from BIDS coordinate units to metres
 COORD_SCALE = {'mm': 1e-3, 'cm': 1e-2, 'm': 1.0}
@@ -253,7 +252,7 @@ class RawBadChannelsInput(Input[list[str]]):
         channels_df, path, exists, raw = self._load_df(ctx)
         if not exists and not ctx.registry._readonly:
             self._check_eeg_positions(ctx, channels_df, raw)
-            LOG.info("Creating bad-channels file at %s.", path)
+            ctx.registry.log.info("Creating bad-channels file at %s.", path)
             self._write_df(path, channels_df)
         return sorted(channels_df.loc[channels_df['status'] == 'bad', 'name'])
 
@@ -343,7 +342,7 @@ class RawBadChannelsInput(Input[list[str]]):
         new_bads = self.raw_input.pipe._normalize_channel_names(raw, new_bads)
         if not redo:
             new_bads = sorted(set(old_bads).union(new_bads))
-        LOG.info("Bad channels: %s -> %s for %s", old_bads, new_bads, path)
+        ctx.registry.log.info("Bad channels: %s -> %s for %s", old_bads, new_bads, path)
         if set(new_bads) == set(old_bads) and exists:
             return
 
@@ -1218,13 +1217,13 @@ class RawHeadPositionDerivative(Derivative[numpy.ndarray]):
             try:
                 chpi_locs = mne.chpi.extract_chpi_locs_kit(raw)
             except RuntimeError:  # the stim channel exists but does not carry cHPI data
-                LOG.info("Raw head position: no cHPI data in the KIT stim channel for %s; using the static dev_head_t", ctx.state.get('subject'))
+                ctx.registry.log.warning("Raw head position: no cHPI data in the KIT stim channel for %s; using the static dev_head_t", ctx.state.get('subject'))
         if chpi_locs is not None:
             head_pos = mne.chpi.compute_head_pos(info, chpi_locs)
             if len(head_pos):
                 return head_pos
             # compute_head_pos returns (0, 10) when every fit is rejected; fall back to the static transform so that consumers always see at least one sample
-            LOG.warning("Raw head position: cHPI is active but no head position could be estimated for %s; using the static dev_head_t", ctx.state.get('subject'))
+            ctx.registry.log.warning("Raw head position: cHPI is active but no head position could be estimated for %s; using the static dev_head_t", ctx.state.get('subject'))
         dev_head_t = info.get('dev_head_t')
         if dev_head_t is None:
             return None
