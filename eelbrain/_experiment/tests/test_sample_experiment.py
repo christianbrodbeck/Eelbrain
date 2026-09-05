@@ -1018,6 +1018,12 @@ def test_sample_tasks(monkeypatch, samples_experiment):
         ica_path = e.make_ica()
     assert ica_path == Path(root) / 'derivatives' / 'mne' / 'sub-R0000' / 'meg' / 'sub-R0000_desc-ica_ica.fif'
 
+    # head position overview: recordings with the same dev_head_t share a label
+    ds = e.show_head_position_overview(asds=True)
+    assert ds.n_cases == 4
+    assert set(ds['label']) == {'A'}
+    assert '†' not in str(e.show_head_position_overview())  # the sample raw has an initial HPI measurement, but no continuous HPI
+
 
 @requires_mne_sample_data
 def test_make_ica_job(samples_experiment):
@@ -1130,19 +1136,6 @@ def test_ica_all_tasks_after_maxwell(samples_experiment):
     assert isinstance(e.load_ica(), mne.preprocessing.ICA)
     # the ICA can be applied to an individual recording
     assert isinstance(e.load_raw(), mne.io.BaseRaw)
-
-
-@requires_mne_sample_data
-def test_head_position_overview(samples_experiment):
-    "Recordings with the same dev_head_t share a label; the sample data has no continuous HPI"
-    from eelbrain._experiment.tests.sample_experiment_sessions import SampleExperiment
-
-    root = samples_experiment(n_subjects=2, n_tasks=2, n_segments=1)
-    e = SampleExperiment(root)
-    ds = e.show_head_position_overview(asds=True)
-    assert ds.n_cases == 4
-    assert set(ds['label']) == {'A'}  # no † mark: the sample raw has an initial HPI measurement, but no continuous HPI
-    assert '†' not in str(e.show_head_position_overview())
 
 
 @requires_mne_sample_data

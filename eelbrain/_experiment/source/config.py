@@ -55,7 +55,6 @@ class InverseSolution(Configuration):
             info: mne.Info,
             fwd: mne.Forward,
             cov: mne.Covariance,
-            rank: dict[str, int] | None,
     ):
         raise NotImplementedError(f"{self.__class__.__name__}._build_operator()")
 
@@ -197,9 +196,8 @@ class MinimumNormInverseSolution(InverseSolution):
             info: mne.Info,
             fwd: mne.Forward,
             cov: mne.Covariance,
-            rank: dict[str, int] | None,
     ):
-        return make_inverse_operator(info, fwd, cov, rank=rank, use_cps=True, **self._make_kw)
+        return make_inverse_operator(info, fwd, cov, use_cps=True, **self._make_kw)
 
     def _load_operator(self, path: Path):
         return mne.minimum_norm.read_inverse_operator(path)
