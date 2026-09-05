@@ -1,10 +1,13 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from types import SimpleNamespace
+from unittest.mock import patch
+
 import mne
 import pytest
 
 from eelbrain._exceptions import ConfigurationError
 from eelbrain._experiment.preprocessing import RawMaxwell, RawSource
-from eelbrain.testing import requires_mne_head_pos
+from eelbrain.testing import requires_mne_head_pos, requires_mne_testing_data
 
 
 def test_raw_source_rename_channels():
@@ -65,3 +68,30 @@ def test_maxwell_head_pos_st_only():
     "Movement compensation happens in the SSS reconstruction, which st_only skips"
     with pytest.raises(ConfigurationError, match='st_only'):
         RawMaxwell('raw', st_duration=10., st_only=True, head_pos=True)
+
+
+@requires_mne_head_pos
+@requires_mne_testing_data
+def test_maxwell_head_pos_filter_chpi():
+    "cHPI signals are removed before Maxwell filtering, but only when movement compensation is applied"
+    sss_dir = mne.datasets.testing.data_path(download=False) / 'SSS'
+    raw = mne.io.read_raw_fif(sss_dir / 'test_move_anon_raw.fif', allow_maxshield='yes', verbose=False).crop(0, 2).load_data()
+    head_pos = mne.chpi.read_head_pos(sss_dir / 'test_move_anon_raw.pos')
+    path = SimpleNamespace(fpath='test_move_anon_raw.fif')
+    pipe = RawMaxwell('raw', head_pos=True)
+    heavy = {'find_bad_channels_maxwell': lambda raw, **kwargs: ([], []), 'maxwell_filter': lambda raw, **kwargs: raw}
+    with patch.multiple(mne.preprocessing, **heavy), patch.object(mne.chpi, 'filter_chpi') as filter_chpi:
+        pipe._make(raw, path=path, head_pos=head_pos)
+        filter_chpi.assert_called_once()
+        assert filter_chpi.call_args.args[0] is raw
+
+        # a single static sample means no compensation, so the coils are assumed off
+        filter_chpi.reset_mock()
+        pipe._make(raw, path=path, head_pos=head_pos[:1])
+        filter_chpi.assert_not_called()
+
+        # recordings without coil frequencies (CTF, KIT) cannot use filter_chpi
+        with raw.info._unlock():
+            raw.info['hpi_meas'] = []
+        pipe._make(raw, path=path, head_pos=head_pos)
+        filter_chpi.assert_not_called()
