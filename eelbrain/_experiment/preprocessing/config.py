@@ -822,10 +822,10 @@ class RawMaxwell(CachedRawPipe):
                 if n_samples % 2:
                     kwargs = {**kwargs, 'st_duration': (n_samples + 1) / raw.info['sfreq']}
             raw_sss = mne.preprocessing.maxwell_filter(raw, destination=destination, verbose=MNE_VERBOSITY, **kwargs)
-            # maxwell_filter appends the head position as 'chpi' channels; remove them, but keep chpi channels that were already in the input
+            # drop 'chpi' channels appended by maxwell_filter
             if head_pos is not None:
-                appended = [raw_sss.ch_names[i] for i in mne.pick_types(raw_sss.info, meg=False, chpi=True) if raw_sss.ch_names[i] not in raw.ch_names]
-                raw_sss.drop_channels(appended)
+                drop_picks = mne.pick_types(raw_sss.info, meg=False, chpi=True)
+                raw_sss.drop_channels([raw_sss.ch_names[i] for i in drop_picks])
             return raw_sss
 
     def _make_info(

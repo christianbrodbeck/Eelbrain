@@ -422,7 +422,6 @@ class InvDerivative(Derivative[mne.minimum_norm.InverseOperator]):
             raise NotImplementedError(f"EEG channels differ between the forward solution and the {ctx.state['raw']!r} raw used for the inverse operator; source localization with a reconstructed reference channel ({reference.add}) requires the inverse raw to keep the same EEG channels as the root 'raw' source used for the forward solution.")
         cov = ctx.load('cov')
         # Estimate the rank from the covariance. MNE warns when the estimate exceeds the SSS header rank in raw.info, but the header of the canonical recording does not describe a covariance pooled across recordings that were Maxwell filtered separately (regularization keeps a different set of in-components per recording) or one from the empty room. Passing the estimate explicitly makes make_inverse_operator check it against the covariance itself instead.
-        # Restrict the covariance to the channels that enter the inverse operator first: make_inverse_operator drops channels that are bad in raw.info or missing from the forward solution, whereas compute_rank ignores raw.info['bads'], so the rank of the full covariance can exceed the rank of the channels that are actually used
         ch_names = [name for name in cov['names'] if name in fwd['info']['ch_names'] and name not in raw.info['bads']]
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', 'Something went wrong in the data-driven estimation')
