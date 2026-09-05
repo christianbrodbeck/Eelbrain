@@ -53,7 +53,7 @@ from .pathing import (
 )
 from .parc import SEEDED_PARC_RE, AnnotDerivative, CombinationParc, EelbrainParc, FreeSurferParc, FSAverageParc, IndividualSeededParc, LabelParc, Parcellation, SeededParc, VolumeParc, _resolve_parc
 from .preprocessing import (
-    CachedRawPipe, ICAInput, MaxwellCalibrationInput, MaxwellCrosstalkInput, CanonicalHeadPositionDerivative, RawBadChannelsInput, RawDerivative, RawHeadPositionDerivative, RawPipe, RawSource, RawSourceDerivative, RawSourceInput, RawICA, RawMaxwell, Reference,
+    CachedRawPipe, ICAInput, MaxwellCalibrationInput, MaxwellCrosstalkInput, CanonicalHeadPositionDerivative, RawBadChannelsInput, RawDerivative, RawHeadPositionDerivative, RawPipe, RawSource, RawSourceDerivative, RawSourceInput, RawICA, RawMaxwell, Reference, find_chpi,
     REINDEX_ICA, assemble_raw_pipes, ica_input_name, raw_bad_channels_input_name, raw_node_name, raw_input_name,
 )
 from .data import DataSpec
@@ -3600,11 +3600,11 @@ class Pipeline(StateModel):
             if ctx.exists():
                 data.setdefault(session, {}).setdefault(subject, {})[key] = None
                 chl.setdefault(session, {}).setdefault(subject, {})[key] = False
-                info = self._load_derivative(node_name, view='info', options={'noise': False})
-                head_t = info.get('dev_head_t')
+                raw = self._load_derivative(node_name, options={'noise': False})
+                head_t = raw.info.get('dev_head_t')
                 if head_t is not None:
                     data[session][subject][key] = head_t['trans'].copy()
-                chl[session][subject][key] = bool(info.get('hpi_meas'))
+                chl[session][subject][key] = find_chpi(raw) is not None
 
         sessions = sorted(data.keys())
         task_order = {t: i for i, t in enumerate(tasks)}

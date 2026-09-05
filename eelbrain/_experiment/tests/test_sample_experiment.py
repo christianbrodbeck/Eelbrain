@@ -1133,6 +1133,19 @@ def test_ica_all_tasks_after_maxwell(samples_experiment):
 
 
 @requires_mne_sample_data
+def test_head_position_overview(samples_experiment):
+    "Recordings with the same dev_head_t share a label; the sample data has no continuous HPI"
+    from eelbrain._experiment.tests.sample_experiment_sessions import SampleExperiment
+
+    root = samples_experiment(n_subjects=2, n_tasks=2, n_segments=1)
+    e = SampleExperiment(root)
+    ds = e.show_head_position_overview(asds=True)
+    assert ds.n_cases == 4
+    assert set(ds['label']) == {'A'}  # no † mark: the sample raw has an initial HPI measurement, but no continuous HPI
+    assert '†' not in str(e.show_head_position_overview())
+
+
+@requires_mne_sample_data
 @requires_mne_head_pos
 def test_head_pos_without_chpi(samples_experiment):
     "RawMaxwell(head_pos=True) is a no-op for recordings without continuous HPI"

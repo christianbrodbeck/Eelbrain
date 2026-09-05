@@ -1171,7 +1171,12 @@ def find_chpi(raw: mne.io.BaseRaw) -> str | None:
     """
     hpi_freqs, _, _ = mne.chpi.get_chpi_info(raw.info, on_missing='ignore')
     if len(hpi_freqs):
-        return 'freqs'
+        # Neuromag files define the coil frequencies whether or not the coils were switched on; the stim channel status bits record which coils were active, and a position fit needs at least 3
+        try:
+            n_active = mne.chpi.get_active_chpi(raw, on_missing='ignore')
+        except NotImplementedError:  # not a Neuromag system: trust the header
+            return 'freqs'
+        return 'freqs' if (n_active >= 3).any() else None
     if len(mne.pick_channels_regexp(raw.ch_names, 'HLC00[123][123].*')) == 9:  # CTF head localization channels (also preserved in FIFF exports), the same pattern extract_chpi_locs_ctf uses
         return 'ctf'
     if isinstance(raw, RawKIT) and raw.info['hpi_results'] and 'MISC 064' in raw.ch_names:
