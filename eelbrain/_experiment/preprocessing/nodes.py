@@ -22,6 +22,7 @@ import warnings
 from collections.abc import Sequence
 
 import mne
+from mne.io.kit.kit import RawKIT
 import mne_bids
 from mne_bids import BIDSPath
 import numpy
@@ -1150,10 +1151,40 @@ class MaxwellCrosstalkInput(Input[Path]):
         return path if path.exists() else None
 
 
+def find_chpi(raw: mne.io.BaseRaw) -> str | None:
+    """Determine how a recording tracked head position continuously
+
+    Parameters
+    ----------
+    raw
+        Recording (the data need not be loaded).
+
+    Returns
+    -------
+    method
+        ``'freqs'`` for HPI coils driven at known frequencies (Neuromag, see
+        :func:`mne.chpi.compute_chpi_amplitudes`); ``'ctf'`` for CTF head
+        localization channels (see :func:`mne.chpi.extract_chpi_locs_ctf`);
+        ``'kit'`` for KIT recordings with cHPI in the stim channel (see
+        :func:`mne.chpi.extract_chpi_locs_kit`); ``None`` for recordings without
+        continuous head position information.
+    """
+    hpi_freqs, _, _ = mne.chpi.get_chpi_info(raw.info, on_missing='ignore')
+    if len(hpi_freqs):
+        return 'freqs'
+    if len(mne.pick_channels_regexp(raw.ch_names, 'HLC00[123][123].*')) == 9:  # CTF head localization channels (also preserved in FIFF exports), the same pattern extract_chpi_locs_ctf uses
+        return 'ctf'
+    if isinstance(raw, RawKIT) and raw.info['hpi_results'] and 'MISC 064' in raw.ch_names:
+        return 'kit'
+    return None
+
+
 class RawHeadPositionDerivative(Derivative[numpy.ndarray]):
     """Head position samples extracted from one raw recording.
 
-    For recordings with cHPI, the tracked position time-series (see :func:`mne.chpi.compute_head_pos`).
+    For recordings with continuous head position information (see
+    :func:`find_chpi`), the tracked position time-series (see
+    :func:`mne.chpi.compute_head_pos`).
     Otherwise, the static ``dev_head_t`` transform as a single sample.
     ``None`` when the file has no head position information at all.
     """
@@ -1171,10 +1202,19 @@ class RawHeadPositionDerivative(Derivative[numpy.ndarray]):
     def build(self, ctx: Request) -> numpy.ndarray | None:
         raw = ctx.load(self._raw_input_name)
         info = raw.info
-        hpi_freqs, _, _ = mne.chpi.get_chpi_info(info, on_missing='ignore')
-        if len(hpi_freqs):
+        method = find_chpi(raw)
+        chpi_locs = None
+        if method == 'freqs':
             chpi_amplitudes = mne.chpi.compute_chpi_amplitudes(raw)
             chpi_locs = mne.chpi.compute_chpi_locs(info, chpi_amplitudes)
+        elif method == 'ctf':
+            chpi_locs = mne.chpi.extract_chpi_locs_ctf(raw)
+        elif method == 'kit':
+            try:
+                chpi_locs = mne.chpi.extract_chpi_locs_kit(raw)
+            except RuntimeError:  # the stim channel exists but does not carry cHPI data
+                LOG.info("Raw head position: no cHPI data in the KIT stim channel for %s; using the static dev_head_t", ctx.state.get('subject'))
+        if chpi_locs is not None:
             head_pos = mne.chpi.compute_head_pos(info, chpi_locs)
             if len(head_pos):
                 return head_pos

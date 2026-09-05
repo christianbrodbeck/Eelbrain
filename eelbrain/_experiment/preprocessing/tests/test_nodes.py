@@ -1,11 +1,15 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from types import SimpleNamespace
+from warnings import catch_warnings, filterwarnings
+
 import mne
 import numpy as np
 import pandas as pd
 import pytest
 from mne_bids import BIDSPath
 
-from eelbrain._experiment.preprocessing.nodes import RawHeadPositionDerivative, RawSourceInput, mean_head_position
+from eelbrain._experiment.preprocessing.nodes import RawHeadPositionDerivative, RawSourceInput, find_chpi, mean_head_position
+from eelbrain.testing import requires_mne_testing_data
 
 
 def test_read_raw_applies_bids_channels(tmp_path):
@@ -103,3 +107,39 @@ def test_mean_head_position():
     trans_bad = mean_head_position(raws, [positions, static])
     trans_tracked = mean_head_position(raws[:1], [positions])
     assert np.allclose(trans_bad['trans'], trans_tracked['trans'])
+
+
+def build_head_position(raw: mne.io.BaseRaw) -> np.ndarray | None:
+    "Run RawHeadPositionDerivative.build on one recording"
+    ctx = SimpleNamespace(load=lambda name: raw, state={'subject': 'test'})
+    return RawHeadPositionDerivative('raw').build(ctx)
+
+
+@requires_mne_testing_data
+def test_head_position_ctf():
+    """Continuous head localization from CTF HLC channels"""
+    path = mne.datasets.testing.data_path(download=False) / 'CTF' / 'testdata_ctf_mc.ds'
+    raw = mne.io.read_raw_ctf(path, verbose=False)
+    assert find_chpi(raw) == 'ctf'
+    with catch_warnings():
+        filterwarnings('ignore', 'HPI.*is poor', RuntimeWarning)
+        head_pos = build_head_position(raw)
+    assert head_pos.shape[1] == 10
+    assert len(head_pos) > 1
+    # within a few mm of the positions computed by the CTF software, shipped with the data set
+    reference = mne.chpi.read_head_pos(path.with_suffix('.pos'))
+    for column in (4, 5, 6):
+        assert np.allclose(head_pos[:, column], np.interp(head_pos[:, 0], reference[:, 0], reference[:, column]), atol=5e-3)
+
+
+@requires_mne_testing_data
+def test_head_position_kit():
+    """cHPI from the KIT stim channel; KIT recordings without cHPI fall back to the static transform"""
+    kit_dir = mne.datasets.testing.data_path(download=False) / 'KIT'
+    raw = mne.io.read_raw_kit(kit_dir / 'MQKIT_125_2sec.con', kit_dir / 'MQKIT_125.mrk', kit_dir / 'MQKIT_125.elp', kit_dir / 'MQKIT_125.hsp', verbose=False)
+    assert find_chpi(raw) == 'kit'
+    assert build_head_position(raw).shape == (2, 10)
+
+    raw_berlin = mne.io.read_raw_kit(kit_dir / 'data_berlin.con', verbose=False)
+    assert find_chpi(raw_berlin) is None
+    assert build_head_position(raw_berlin).shape == (1, 10)

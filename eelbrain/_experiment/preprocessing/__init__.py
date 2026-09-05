@@ -38,6 +38,7 @@ from .nodes import (
     RawBadChannelsInput,
     RawDerivative,
     RawHeadPositionDerivative,
+    find_chpi,
     RawSourceDerivative,
     RawSourceInput,
     load_raw_dependency,
