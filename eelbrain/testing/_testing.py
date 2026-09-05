@@ -223,7 +223,7 @@ def requires_mne_head_pos(function):
     if MNE_SUPPORTS_HEAD_POS:
         return function
     else:
-        return pytest.mark.skip(f'head movement compensation requires mne > 1.12.1 (installed: {mne.__version__})')(function)
+        return pytest.mark.skip(f'head movement compensation requires mne >= 1.13 (installed: {mne.__version__})')(function)
 
 
 def skip_on_windows(function):

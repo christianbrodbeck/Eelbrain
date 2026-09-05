@@ -57,7 +57,7 @@ New in 0.43
     channels in the montage/adjacency instead of renaming channels in the data.
   - :class:`pipeline.RawMaxwell` can compensate for head movement in recordings
     with continuous HPI through the ``head_pos`` parameter. This requires
-    ``mne > 1.12.1``.
+    ``mne >= 1.13``.
 
 * Boosting:
 

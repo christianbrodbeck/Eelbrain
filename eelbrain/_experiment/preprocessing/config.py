@@ -712,7 +712,7 @@ class RawMaxwell(CachedRawPipe):
         Compensate for head movement using continuous HPI (default ``False``).
         Head positions are estimated with :func:`mne.chpi.compute_head_pos`,
         cached, and can be retrieved with
-        :meth:`Pipeline.load_head_position`. This requires ``mne > 1.12.1``, and
+        :meth:`Pipeline.load_head_position`. This requires ``mne >= 1.13``, and
         has no effect for recordings without continuous HPI or for empty room
         data. Incompatible with ``st_only=True``, because movement compensation
         is applied in the SSS reconstruction that ``st_only`` skips.
@@ -768,7 +768,7 @@ class RawMaxwell(CachedRawPipe):
             if kwargs.get('st_only'):
                 raise ConfigurationError("RawMaxwell(head_pos=True, st_only=True): head movement compensation is applied in the SSS reconstruction, which st_only=True skips; the output would not be compensated. Use head_pos=True without st_only.")
             if not MNE_SUPPORTS_HEAD_POS:
-                raise ConfigurationError(f"RawMaxwell(head_pos=True) requires mne > 1.12.1 (installed: {mne.__version__})")
+                raise ConfigurationError(f"RawMaxwell(head_pos=True) requires mne >= 1.13 (installed: {mne.__version__})")
         self.head_pos = head_pos
 
     def _make(
