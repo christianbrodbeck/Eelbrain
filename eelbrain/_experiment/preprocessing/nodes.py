@@ -1222,11 +1222,8 @@ def mean_head_position(positions: numpy.ndarray) -> mne.transforms.Transform | N
     """
     if len(positions) <= 1 or numpy.allclose(positions[1:], positions[0]):
         return None
-    # MNE compact quaternions [q1, q2, q3] → scipy [x, y, z, w] (scalar last)
-    q = positions[:, :3]
-    q0 = numpy.sqrt(numpy.maximum(1.0 - numpy.sum(q ** 2, axis=1), 0.0))
     trans = numpy.eye(4)
-    trans[:3, :3] = Rotation.from_quat(numpy.column_stack([q, q0])).mean().as_matrix()
+    trans[:3, :3] = Rotation.from_matrix(mne.transforms.quat_to_rot(positions[:, :3])).mean().as_matrix()
     trans[:3, 3] = numpy.mean(positions[:, 3:], axis=0)
     return mne.transforms.Transform(fro='meg', to='head', trans=trans)
 
