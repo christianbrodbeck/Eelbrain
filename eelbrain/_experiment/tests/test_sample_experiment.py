@@ -1144,7 +1144,9 @@ def test_head_pos_without_chpi(samples_experiment):
     class Experiment(SampleExperiment):
         raw = {
             **SampleExperiment.raw,
-            'tsss_hp': RawMaxwell('raw', st_duration=10., ignore_ref=True, st_correlation=.9, st_only=True, st_overlap=False, head_pos=True),
+            # full SSS: head_pos is incompatible with the st_only=True default pipe
+            'sss': RawMaxwell('raw', ignore_ref=True),
+            'sss_hp': RawMaxwell('raw', ignore_ref=True, head_pos=True),
         }
     e = Experiment(root)
     e.set('R0000')
@@ -1158,15 +1160,15 @@ def test_head_pos_without_chpi(samples_experiment):
     assert pos_request.manifest_path.exists()
 
     # with a single position sample there is nothing to compensate, so the output is unchanged
-    raw_hp = e.load_raw(raw='tsss_hp', preload=True)
-    raw = e.load_raw(raw='tsss', preload=True)
+    raw_hp = e.load_raw(raw='sss_hp', preload=True)
+    raw = e.load_raw(raw='sss', preload=True)
     assert raw_hp.ch_names == raw.ch_names
     assert 'chpi' not in raw_hp.get_channel_types()
     assert_array_equal(raw_hp.get_data(), raw.get_data())
 
     # head_pos still separates the two pipes in the cache
-    manifests = {raw: e._derivatives.resolve(raw_node_name(raw), state={**e.state, 'raw': raw}, options={'noise': False}).manifest_path for raw in ('tsss', 'tsss_hp')}
-    assert manifests['tsss_hp'] != manifests['tsss']
+    manifests = {raw: e._derivatives.resolve(raw_node_name(raw), state={**e.state, 'raw': raw}, options={'noise': False}).manifest_path for raw in ('sss', 'sss_hp')}
+    assert manifests['sss_hp'] != manifests['sss']
 
 
 @requires_mne_sample_data

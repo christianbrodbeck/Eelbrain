@@ -59,3 +59,9 @@ def test_maxwell_head_pos_semantic_dict():
     assert movecomp.kwargs == {'st_duration': 10.}
     with pytest.raises(TypeError):
         RawMaxwell('raw', head_position=True)
+
+
+def test_maxwell_head_pos_st_only():
+    "Movement compensation happens in the SSS reconstruction, which st_only skips"
+    with pytest.raises(ConfigurationError, match='st_only'):
+        RawMaxwell('raw', st_duration=10., st_only=True, head_pos=True)

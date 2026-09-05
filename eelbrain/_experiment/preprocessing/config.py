@@ -714,7 +714,8 @@ class RawMaxwell(CachedRawPipe):
         cached, and can be retrieved with
         :meth:`Pipeline.load_head_position`. This requires ``mne > 1.12.1``, and
         has no effect for recordings without continuous HPI or for empty room
-        data.
+        data. Incompatible with ``st_only=True``, because movement compensation
+        is applied in the SSS reconstruction that ``st_only`` skips.
     ...
         Supported :func:`mne.preprocessing.maxwell_filter` parameters are
         ``origin``, ``int_order``, ``ext_order``, ``regularize``,
@@ -763,8 +764,11 @@ class RawMaxwell(CachedRawPipe):
             raise TypeError(f"Invalid RawMaxwell keyword argument{'' if len(invalid_kwargs) == 1 else 's'}: {enumeration(invalid_kwargs)}")
         self.kwargs = kwargs
         self.bad_condition = bad_condition
-        if head_pos and not MNE_SUPPORTS_HEAD_POS:
-            raise ConfigurationError(f"RawMaxwell(head_pos=True) requires mne > 1.12.1 (installed: {mne.__version__})")
+        if head_pos:
+            if kwargs.get('st_only'):
+                raise ConfigurationError("RawMaxwell(head_pos=True, st_only=True): head movement compensation is applied in the SSS reconstruction, which st_only=True skips; the output would not be compensated. Use head_pos=True without st_only.")
+            if not MNE_SUPPORTS_HEAD_POS:
+                raise ConfigurationError(f"RawMaxwell(head_pos=True) requires mne > 1.12.1 (installed: {mne.__version__})")
         self.head_pos = head_pos
 
     def _make(
