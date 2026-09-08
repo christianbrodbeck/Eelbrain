@@ -988,7 +988,11 @@ class Pipeline(StateModel):
         """
         return label_groups(subject, groups, self._groups)
 
-    def load_annot(self, show_dependencies: bool = False, **state):
+    def load_annot(
+            self,
+            show_dependencies: bool = False,
+            **state,
+    ) -> list[mne.Label]:
         """Load a parcellation (from an annot file)
 
         Parameters
@@ -1007,7 +1011,12 @@ class Pipeline(StateModel):
         self.set(**state)
         return self._load_derivative('annot', show_dependencies=show_dependencies)
 
-    def load_bad_channels(self, noise: bool = False, show_dependencies: bool = False, **kwargs) -> list[str]:
+    def load_bad_channels(
+            self,
+            noise: bool = False,
+            show_dependencies: bool = False,
+            **kwargs,
+    ) -> list[str]:
         """Load bad channels
 
         Parameters
@@ -1027,7 +1036,11 @@ class Pipeline(StateModel):
         raw_name = self.get('raw', **kwargs)
         return self._load_derivative(raw_node_name(raw_name), options={'noise': noise}, view='bads', show_dependencies=show_dependencies)
 
-    def load_cov(self, show_dependencies: bool = False, **state):
+    def load_cov(
+            self,
+            show_dependencies: bool = False,
+            **state,
+    ) -> mne.Covariance:
         """Load the covariance matrix
 
         Parameters
@@ -1203,7 +1216,11 @@ class Pipeline(StateModel):
         }
         return self._load_derivative('epochs', options=options, show_dependencies=show_dependencies)
 
-    def load_events(self, show_dependencies: bool = False, **state) -> Dataset:
+    def load_events(
+            self,
+            show_dependencies: bool = False,
+            **state,
+    ) -> Dataset:
         """
         Load events from a raw file.
 
@@ -1338,7 +1355,7 @@ class Pipeline(StateModel):
             path_only: bool = False,
             show_dependencies: bool = False,
             **state,
-    ):
+    ) -> Any:
         """Load (or compute) the TRF for a model and the current subject
 
         Parameters
@@ -1635,7 +1652,8 @@ class Pipeline(StateModel):
             keep_mne: bool = False,
             model: str = '',
             show_dependencies: bool = False,
-            **state):
+            **state,
+    ) -> Dataset:
         """
         Load a Dataset with condition average responses for each subject.
 
@@ -1903,7 +1921,11 @@ class Pipeline(StateModel):
         else:
             raise ValueError(f"Label {label!r} could not be found in parc {self.get('parc')!r}.")
 
-    def load_source_morph(self, show_dependencies: bool = False, **state):
+    def load_source_morph(
+            self,
+            show_dependencies: bool = False,
+            **state,
+    ) -> mne.SourceMorph:
         """Load the source morph from mrisubject to common_brain
 
         Parameters
