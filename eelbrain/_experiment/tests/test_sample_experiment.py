@@ -1193,6 +1193,43 @@ def test_head_pos_without_chpi(samples_experiment):
 
 
 @requires_mne_sample_data
+def test_covariance_max_condition(samples_experiment):
+    "max_condition regularizes only where needed, and only invalidates dependents where it did"
+    from eelbrain._experiment.covariance import RawCovariance
+    from eelbrain._experiment.tests.sample_experiment import SampleExperiment
+
+    root = samples_experiment(n_subjects=1, n_segments=2)
+
+    def experiment(max_condition):
+        class Experiment(SampleExperiment):
+            _covs = {**SampleExperiment._covs, 'emptyroom': RawCovariance(max_condition=max_condition)}
+        e = Experiment(root)
+        e.set(subject='R0000', cov='emptyroom', raw='1-40')
+        return e, e._derivatives.resolve('cov', state=e.state)
+
+    e, handle = experiment(1e6)
+    cov = e.load_cov()
+    condition = handle.artifact_metadata['condition']['mag']
+    assert 10 < condition < 1e6, "sample data covariance is expected to be well conditioned"
+    assert 'regularization' not in handle.artifact_metadata
+    fingerprint = handle.current_dependency_fingerprint()
+
+    # the same covariance without the setting: the artifact is rebuilt because its own
+    # definition changed, but dependents stay valid because the covariance did not
+    e_off, handle_off = experiment(0)
+    assert_array_equal(e_off.load_cov().data, cov.data)
+    assert handle_off.artifact_metadata == {}
+    assert handle_off.current_fingerprint() != handle.current_fingerprint()
+    assert handle_off.current_dependency_fingerprint() == fingerprint
+
+    # a target below the actual condition number does change the covariance, and says so
+    e_reg, handle_reg = experiment(condition / 10)
+    assert not np.array_equal(e_reg.load_cov().data, cov.data)
+    assert handle_reg.artifact_metadata['regularization']['mag'] > 0
+    assert handle_reg.current_dependency_fingerprint() != fingerprint
+
+
+@requires_mne_sample_data
 @requires_mne_head_pos
 def test_head_pos_movement_compensation(samples_experiment):
     "RawMaxwell(head_pos=True) compensates movement, drops the CHPI channels, and keeps mixed runs concatenable"

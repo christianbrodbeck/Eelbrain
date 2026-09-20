@@ -32,7 +32,7 @@ from .._text import enumeration
 from .._types import PathArg
 from .._utils import ask, keydefaultdict, log_level, user_activity, ScreenHandler
 from .._utils.mne_utils import is_fake_mri
-from .covariance import CovDerivative, EpochCovariance, RawCovariance
+from .covariance import Covariance, CovDerivative, EpochCovariance, RawCovariance
 from .derivative_cache import ALLOW_PROTECTED_OVERWRITE, DerivativeRegistry, JobSpec, ProtectedArtifactError, Request, _format_size
 from .configuration import Configuration, ConfigurationDict, sequence_arg
 from .epochs import (
@@ -403,7 +403,7 @@ class Pipeline(StateModel):
         # Sensor noise covariance estimates
         self._covs = ConfigurationDict('covariance', self._covs)
         for name, cov in self._covs.items():
-            if not isinstance(cov, (RawCovariance, EpochCovariance)):
+            if not isinstance(cov, Covariance):
                 raise TypeError(f"_covs[{name!r}]={cov!r}: need RawCovariance or EpochCovariance")
             cov._store_name(name)
 

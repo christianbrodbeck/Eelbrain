@@ -1960,6 +1960,9 @@ class Request(Generic[T]):
         the target is an :class:`Input`, which has no artifact to materialize.
         Views are irrelevant here and are ignored: they shape a loaded value,
         not the artifact this builds.
+
+        During a read-only scan (cache garbage collection) nothing is built:
+        a stale artifact is left as it is.
         """
         with self.registry._load_context():
             self._ensure(name, state, options, controls=controls)
@@ -1979,7 +1982,7 @@ class Request(Generic[T]):
 
         if state is not None or options is not None or controls:
             raise TypeError("Request.ensure() without a dependency name takes no overrides")
-        if self.is_valid():
+        if self.registry._readonly or self.is_valid():
             return
         with self._build_deps_context():
             self.load_artifact()
