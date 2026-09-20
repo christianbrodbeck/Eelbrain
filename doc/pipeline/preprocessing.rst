@@ -304,8 +304,8 @@ Examples::
         # some primary epochs:
         'picture': PrimaryEpoch('words', "stimulus == 'picture'"),
         'word': PrimaryEpoch('words', "stimulus == 'word'"),
-        # use the picture baseline for the sensor covariance estimate
-        'cov': SecondaryEpoch('picture', tmax=0),
+        # the picture baseline (e.g., for the noise covariance estimate)
+        'baseline': SecondaryEpoch('picture', tmax=0),
         # another secondary epoch:
         'animal_words': SecondaryEpoch('noun', sel="word_type == 'animal'"),
         # a superset-epoch:
@@ -326,10 +326,6 @@ selection strings::
 For datasets with a ``run`` entity, :class:`PrimaryEpoch` combines all runs for
 the selected subject/session/task/acquisition by default. To analyze a single run, set the
 epoch's ``run`` parameter, for example ``PrimaryEpoch('task', run='1')``.
-
-There is one special epoch name, ``'cov'``: the
-data epoch that will be used to estimate the sensor noise covariance matrix for
-source estimation (see :doc:`source`).
 
 :class:`ContinuousEpoch` extracts continuous data segments spanning multiple
 events, which is mainly useful for TRF analysis of continuous stimuli

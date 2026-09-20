@@ -70,8 +70,6 @@ from .trf.model import Comparison, parse_term
 from .variable_def import Variables, label_groups
 
 
-# Allowable parameters
-COV_PARAMS = {'epoch', 'method', 'reg', 'keep_sample_mean', 'reg_eval_win_pad'}
 # Argument types
 BaselineArg = bool | tuple[float | None, float | None]
 DataArg = str | DataSpec
@@ -195,15 +193,15 @@ class Pipeline(StateModel):
     # or by exclusion: {'group': {'base': 'all', 'exclude': ('member1', 'member2')}}
     groups = {}
 
-    # kwargs for regularization of the covariance matrix
-    _covs = {
-        'auto': EpochCovariance('cov', 'auto'),
-        'bestreg': EpochCovariance('cov', 'best'),
-        'reg': EpochCovariance('cov', 'diagonal_fixed'),
-        'noreg': EpochCovariance('cov', 'empirical'),
+    # Noise covariance estimates, selected through the 'cov' state
+    _default_covs = {
         'emptyroom': RawCovariance(),
         'ad_hoc': RawCovariance(method='ad_hoc'),
     }
+    # noise_covariance: named RawCovariance/EpochCovariance configurations; the
+    # built-in entries in _default_covs are always available and can be overridden
+    # here (e.g. {'baseline': EpochCovariance('baseline')})
+    noise_covariance: dict[str, Covariance] = {}
 
     # MRI subject names: {subject: mrisubject} mappings
     # selected with e.set(mri=dict_name)
@@ -401,10 +399,15 @@ class Pipeline(StateModel):
         self._mri_subjects = self.mri_subjects.copy()
 
         # Sensor noise covariance estimates
-        self._covs = ConfigurationDict('covariance', self._covs)
+        for name, cov in self.noise_covariance.items():
+            if not isinstance(name, str):
+                raise TypeError(f"noise_covariance[{name!r}]: name must be a string")
+            elif not name:
+                raise ValueError(f"noise_covariance[{name!r}]: name can't be empty")
+            elif not isinstance(cov, (RawCovariance, EpochCovariance)):
+                raise TypeError(f"noise_covariance[{name!r}]={cov!r}: need RawCovariance or EpochCovariance")
+        self._covs = ConfigurationDict('covariance', {**self._default_covs, **self.noise_covariance})
         for name, cov in self._covs.items():
-            if not isinstance(cov, Covariance):
-                raise TypeError(f"_covs[{name!r}]={cov!r}: need RawCovariance or EpochCovariance")
             cov._store_name(name)
 
         # parcellations
@@ -476,7 +479,7 @@ class Pipeline(StateModel):
         self._register_field('reference', self._references.keys(), allow_empty=True)
 
         # cov
-        self._register_field('cov', sorted(self._covs))
+        self._register_field('cov', sorted(self._covs), default='emptyroom')
         # inv determines the analysis space: a non-empty inverse means source space, inv='' means sensor space.
         self._register_field('inv', default='', eval_handler=self._eval_inv, allow_empty=True)
         # default sensor-space data kind for analyses (see .default_data)

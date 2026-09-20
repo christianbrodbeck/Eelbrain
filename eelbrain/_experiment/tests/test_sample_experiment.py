@@ -799,7 +799,7 @@ def test_sample_source(samples_experiment):
 
     # source space tests
     # ico-2 (320 vertices/hemi) keeps forward/inverse fast while still covering the transversetemporal ROI
-    e.set(epoch='auditory', epoch_rejection='', src='ico-2', parc='ac', inv='free-3-dSPM')
+    e.set(epoch='auditory', epoch_rejection='', src='ico-2', parc='ac', inv='free-3-dSPM', cov='empirical')
     morph = e.load_source_morph(subject='R0000')
     assert isinstance(morph, mne.SourceMorph)
     assert exists(e._resolve_derivative('source-morph').manifest_path)
@@ -880,7 +880,7 @@ def test_sample_source(samples_experiment):
         }
 
     # Inverse operator rank after full SSS (reuses the R0000 forward solution)
-    e.set('R0000', raw='sss', cov='noreg', epoch='auditory', epoch_rejection='')
+    e.set('R0000', raw='sss', cov='empirical', epoch='auditory', epoch_rejection='')
     inv = e.load_inv()
     raw = e.load_raw()
     cov = e._load_derivative('cov')
@@ -1202,7 +1202,7 @@ def test_covariance_max_condition(samples_experiment):
 
     def experiment(max_condition):
         class Experiment(SampleExperiment):
-            _covs = {**SampleExperiment._covs, 'emptyroom': RawCovariance(max_condition=max_condition)}
+            noise_covariance = {'emptyroom': RawCovariance(max_condition=max_condition)}
         e = Experiment(root)
         e.set(subject='R0000', cov='emptyroom', raw='1-40')
         return e, e._derivatives.resolve('cov', state=e.state)
