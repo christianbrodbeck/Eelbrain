@@ -65,6 +65,8 @@ New in 0.43
   - :class:`pipeline.RawMaxwell` can compensate for head movement in recordings
     with continuous HPI through the ``head_pos`` parameter. This requires
     ``mne >= 1.13``.
+  - New :attr:`pipeline.Pipeline.event_factors` attribute to read numeric
+    ``events.tsv`` columns as categorial (:class:`Factor`).
 
 * Boosting:
 

@@ -20,6 +20,7 @@ from numpy.testing import assert_allclose, assert_almost_equal, assert_array_equ
 from eelbrain import *
 from eelbrain.pipeline import *
 from eelbrain._exceptions import ConfigurationError
+from eelbrain._experiment.covariance import EpochCovariance
 from eelbrain._experiment.derivative_cache import ALLOW_PROTECTED_OVERWRITE, ProtectedArtifactError
 from eelbrain._experiment.parc.nodes import AnnotDerivative
 from eelbrain._experiment.pathing import BIDS_ENTITY_KEYS, LOG_DIR, ica_file_path
@@ -1419,9 +1420,25 @@ def test_variable_length_epochs(samples_experiment):
             # every selected event forms an equal-length segment
             'cont-equal': ContinuousEpoch('sample', "event == 'target'", pad_start=0.1, pad_end=0.1, split=0),
         }
+        # covariance from variable-length epochs
+        noise_covariance = {
+            **SampleExperiment.noise_covariance,
+            'varlen': EpochCovariance('varlen', 'empirical'),
+            'varlen-mean': EpochCovariance('varlen', 'empirical', keep_sample_mean=False),
+        }
 
     e = Experiment(root)
     e.set(subject='R0000', epoch='varlen', epoch_rejection='', raw='raw')
+
+    # covariance from variable-length epochs
+    e.set(cov='varlen')
+    cov = e._load_derivative('cov')
+    assert isinstance(cov, mne.Covariance)
+    assert cov.nfree > 0
+    e.set(cov='varlen-mean')
+    with pytest.raises(NotImplementedError, match='keep_sample_mean'):
+        e._load_derivative('cov')
+    e.set(cov='empirical')
 
     ds = e.load_epochs()
     n = ds.n_cases
@@ -2088,6 +2105,44 @@ def test_labeled_events_sidecar_copies_raw_info_from_raw(samples_experiment):
     assert labeled_events.info['raw.samplingrate'] == raw.info['sfreq']
     assert labeled_events.info['raw.first_samp'] == raw.first_samp
     assert labeled_events.info['raw.last_samp'] == raw.last_samp
+
+
+@requires_mne_sample_data
+def test_events_input(samples_experiment):
+    """Test reading events from events.tsv sidecar file"""
+    set_log_level('warning', 'mne')
+    from eelbrain._experiment.tests.sample_experiment import SampleExperiment
+
+    root = samples_experiment(n_subjects=1, n_segments=2, mris=False)
+
+    # Add a numeric-looking column with n/a values to the events.tsv sidecar
+    path = Path(root) / 'sub-R0000' / 'meg' / 'sub-R0000_task-sample_events.tsv'
+    lines = path.read_text().splitlines()
+    lines[0] += '\tcondition'
+    for i in range(1, len(lines)):
+        lines[i] += '\t' + ('n/a' if i % 3 == 0 else str(i % 2 + 1))
+    path.write_text('\n'.join(lines) + '\n')
+
+    # By default, a column with only numbers and n/a is read as Var
+    e = SampleExperiment(root)
+    ds = e.load_events(subject='R0000')
+    assert isinstance(ds['condition'], Var)
+
+    class FactorExperiment(SampleExperiment):
+        event_factors = 'condition'
+
+    # event_factors also needs to invalidate the cached labeled-events
+    e = FactorExperiment(root)
+    ds = e.load_events(subject='R0000')
+    assert isinstance(ds['condition'], Factor)
+    assert set(ds['condition'].cells) == {'n/a', '1', '2'}
+
+    # Column names are validated
+    class ReservedExperiment(SampleExperiment):
+        event_factors = ('condition', 'sample')
+
+    with pytest.raises(ConfigurationError, match="reserved"):
+        ReservedExperiment(root)
 
 
 @requires_mne_sample_data

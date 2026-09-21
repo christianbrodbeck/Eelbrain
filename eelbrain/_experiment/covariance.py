@@ -11,6 +11,7 @@ import mne
 from mne._fiff.pick import _picks_by_type
 import numpy
 
+from .._data_obj import Datalist
 from .._text import enumeration
 from .configuration import Configuration
 from .derivative_cache import Dependency, Derivative, Request
@@ -269,10 +270,43 @@ class EpochCovariance(Covariance):
         self.epoch = epoch
         self.keep_sample_mean = keep_sample_mean
 
-    def _make(self, data: mne.BaseEpochs, log_path: Path) -> mne.Covariance:
-        # MNE expects zero mean data
-        data.apply_baseline((None, None))
+    def make(
+            self,
+            epochs_list: list[mne.BaseEpochs],
+            log_path: Path,
+    ) -> mne.Covariance:
+        """Estimate the covariance from one or more :class:`mne.Epochs` objects, bounding its condition number.
 
+        Parameters
+        ----------
+        epochs_list
+            Epochs to estimate the covariance from (variable-length epochs arrive as one object per epoch).
+        log_path
+            Path for the method's log file, when it writes one.
+        """
+        if len(epochs_list) > 1:
+            if not self.keep_sample_mean:
+                raise NotImplementedError(f"cov={self.name!r}: keep_sample_mean=False is not implemented for variable-length epochs (MNE would subtract a separate mean for each epoch)")
+            if self.method == 'best':
+                raise NotImplementedError(f"cov={self.name!r}: method={self.method!r} for variable-length epochs (requires averaging epochs)")
+        # MNE expects zero mean data
+        for epochs in epochs_list:
+            epochs.apply_baseline((None, None))
+        info = epochs_list[0].info
+        # We need a single Epochs object
+        if len(epochs_list) == 1:
+            epochs = epochs_list[0]
+        else:
+            for epochs in epochs_list[1:]:
+                if epochs.ch_names != info['ch_names'] or epochs.info['bads'] != info['bads']:
+                    raise ValueError(f"cov={self.name!r}: variable-length epochs must have the same channels and bad channels")
+                if (epochs.info['dev_head_t'] is None) != (info['dev_head_t'] is None) or (info['dev_head_t'] is not None and not numpy.allclose(epochs.info['dev_head_t']['trans'], info['dev_head_t']['trans'])):
+                    raise ValueError(f"cov={self.name!r}: variable-length epochs must have the same head position (dev_head_t)")
+            data = numpy.concatenate([epochs.get_data() for epochs in epochs_list], axis=-1)
+            epochs = mne.EpochsArray(data, info, baseline=None, proj=False, verbose=False)
+        return Covariance.make(self, epochs, log_path)
+
+    def _make(self, data: mne.BaseEpochs, log_path: Path) -> mne.Covariance:
         method = 'empirical' if self.method == 'best' else self.method
         cov = mne.compute_covariance(data, self.keep_sample_mean, method=method)
 
@@ -357,13 +391,17 @@ class CovDerivative(Derivative[mne.Covariance]):
         montage = self.raw.root_source_pipe(ctx.state['raw']).montage
         if isinstance(cov, EpochCovariance):
             data = ctx.load('epochs')['epochs']
+            # Variable-length epochs arrive as one Epochs object per epoch
+            data = list(data) if isinstance(data, Datalist) else [data]
+            for epochs in data:
+                reference._prepare_source_data(epochs, montage)
         elif isinstance(cov, RawCovariance):
             data = ctx.load('raw')
             if reference.add:
                 data.load_data()
+            reference._prepare_source_data(data, montage)
         else:
             raise NotImplementedError(f"{cov=}")
-        reference._prepare_source_data(data, montage)
         cov_path = self.path(ctx)
         cov_path.parent.mkdir(parents=True, exist_ok=True)
         return cov.make(data, cov_path.with_suffix('.info.txt'))
