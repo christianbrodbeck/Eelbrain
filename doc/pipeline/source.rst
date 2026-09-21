@@ -51,7 +51,11 @@ Noise covariance
 .. py:attribute:: Pipeline.noise_covariance
 
 Source estimation with MNE methods requires an estimate of the sensor noise covariance matrix.
-How it is estimated is controlled through the :ref:`state-cov` state, which selects an entry from the :attr:`Pipeline.noise_covariance` dictionary of ``{name: covariance_definition}`` entries:
+How it is estimated is controlled through the :ref:`state-cov` state.
+Two entries are always available: ``'emptyroom'`` (the default), which estimates the covariance from an empty room recording (see :ref:`Pipeline-intro-cov`), and ``'ad_hoc'``, a diagonal covariance with nominal sensor noise levels from :func:`mne.make_ad_hoc_cov`.
+Both bound the condition number of the covariance through the default ``max_condition`` (see :class:`Covariance`).
+
+Additional noise covariance estimates can be configured in :attr:`Pipeline.noise_covariance` as adictionary of ``{name: covariance_definition}`` entries using:
 
 .. autosummary::
    :toctree: ../generated
@@ -60,8 +64,7 @@ How it is estimated is controlled through the :ref:`state-cov` state, which sele
    RawCovariance
    EpochCovariance
 
-Two entries are always available: ``'emptyroom'`` (the default), which estimates the covariance from an empty room recording (see :ref:`Pipeline-intro-cov`), and ``'ad_hoc'``, a diagonal covariance with nominal sensor noise levels from :func:`mne.make_ad_hoc_cov`.
-Both bound the condition number of the covariance through the default ``max_condition`` (see :class:`Covariance`).
+Defining a noise covariance with a name from an existing definition (``'emptyroom'``, ``'ad_hoc'``) will override that definition.
 
 .. _Pipeline-intro-cov:
 
