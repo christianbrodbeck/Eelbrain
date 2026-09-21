@@ -201,7 +201,7 @@ class Covariance(Configuration):
 
     def make(
             self,
-            data: mne.io.BaseRaw | mne.BaseEpochs,
+            data: mne.io.BaseRaw | mne.BaseEpochs | list[mne.BaseEpochs],
             log_path: Path,
     ) -> mne.Covariance:
         """Estimate the covariance from ``data``, bounding its condition number.
@@ -209,12 +209,14 @@ class Covariance(Configuration):
         Parameters
         ----------
         data
-            Data to estimate the covariance from.
+            Data to estimate the covariance from (variable-length epochs arrive as a
+            list with one :class:`mne.Epochs` object per epoch).
         log_path
             Path for the method's log file, when it writes one.
         """
         cov = self._make(data, log_path)
-        cov, condition_info = bound_condition_number(cov, data.info, self.max_condition)
+        info = (data[0] if isinstance(data, list) else data).info
+        cov, condition_info = bound_condition_number(cov, info, self.max_condition)
         if condition_info:
             cov[CONDITION_INFO] = condition_info
         return cov
@@ -270,20 +272,7 @@ class EpochCovariance(Covariance):
         self.epoch = epoch
         self.keep_sample_mean = keep_sample_mean
 
-    def make(
-            self,
-            epochs_list: list[mne.BaseEpochs],
-            log_path: Path,
-    ) -> mne.Covariance:
-        """Estimate the covariance from one or more :class:`mne.Epochs` objects, bounding its condition number.
-
-        Parameters
-        ----------
-        epochs_list
-            Epochs to estimate the covariance from (variable-length epochs arrive as one object per epoch).
-        log_path
-            Path for the method's log file, when it writes one.
-        """
+    def _make(self, epochs_list: list[mne.BaseEpochs], log_path: Path) -> mne.Covariance:
         if len(epochs_list) > 1:
             if not self.keep_sample_mean:
                 raise NotImplementedError(f"cov={self.name!r}: keep_sample_mean=False is not implemented for variable-length epochs (MNE would subtract a separate mean for each epoch)")
@@ -295,18 +284,18 @@ class EpochCovariance(Covariance):
         info = epochs_list[0].info
         # We need a single Epochs object
         if len(epochs_list) == 1:
-            epochs = epochs_list[0]
+            data = epochs_list[0]
         else:
             for epochs in epochs_list[1:]:
                 if epochs.ch_names != info['ch_names'] or epochs.info['bads'] != info['bads']:
                     raise ValueError(f"cov={self.name!r}: variable-length epochs must have the same channels and bad channels")
                 if (epochs.info['dev_head_t'] is None) != (info['dev_head_t'] is None) or (info['dev_head_t'] is not None and not numpy.allclose(epochs.info['dev_head_t']['trans'], info['dev_head_t']['trans'])):
                     raise ValueError(f"cov={self.name!r}: variable-length epochs must have the same head position (dev_head_t)")
-            data = numpy.concatenate([epochs.get_data() for epochs in epochs_list], axis=-1)
-            epochs = mne.EpochsArray(data, info, baseline=None, proj=False, verbose=False)
-        return Covariance.make(self, epochs, log_path)
+            # Each epoch is already zero-mean, so the full-window baseline is a numerical
+            # no-op; it marks the data as baseline-corrected for mne.compute_covariance
+            concatenated = numpy.concatenate([epochs.get_data() for epochs in epochs_list], axis=-1)
+            data = mne.EpochsArray(concatenated, info, baseline=(None, None), proj=False, verbose=False)
 
-    def _make(self, data: mne.BaseEpochs, log_path: Path) -> mne.Covariance:
         method = 'empirical' if self.method == 'best' else self.method
         cov = mne.compute_covariance(data, self.keep_sample_mean, method=method)
 
