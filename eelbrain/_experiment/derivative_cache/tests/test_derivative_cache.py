@@ -1082,6 +1082,22 @@ def test_dependency_tree_respects_max_line_length():
     assert "{subject='s2'} [state: subject='s2']" in tree
 
 
+def test_dependency_tree_shows_root_view():
+    root, registry = make_empty_registry()
+    registry.register(OptionDerivative(root))
+
+    tree = registry.dependency_tree('optioned', state=DEFAULT_STATE, view='echo')
+
+    assert tree.root.view == 'echo'
+    assert " [view: echo]" in str(tree).splitlines()[0]
+    assert '[view: echo]' not in '\n'.join(str(tree).splitlines()[1:])
+    try:
+        import graphviz  # noqa: F401
+    except ImportError:
+        return
+    assert 'view: echo' in tree.graph().source
+
+
 class ModeAgnosticDerivative(Derivative[str]):
     """Two edges to the same 'value' request that differ only in key-irrelevant state."""
     name = 'mode-agnostic'

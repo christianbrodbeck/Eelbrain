@@ -2250,6 +2250,8 @@ class DerivativeRegistry:
             name: str,
             state: dict[str, Any] | None = None,
             options: dict[str, Any] | None = None,
+            view: str | None = None,
+            controls: frozenset[str] | set[str] | tuple[str, ...] = (),
     ) -> DependencyTree:
         """Resolve one request and return its dependency tree for display.
 
@@ -2266,6 +2268,10 @@ class DerivativeRegistry:
             State for resolving the request.
         options
             Options for resolving the request.
+        view
+            Named view that would be loaded from the root request (shown on the root; it does not affect the tree).
+        controls
+            Controls for resolving the request (see :meth:`resolve`).
 
         Returns
         -------
@@ -2294,7 +2300,7 @@ class DerivativeRegistry:
                 key=handle.key() if kind == 'derivative' else None,
                 state=self.canonicalize(dep.state) if dep and dep.state else {},
                 options=node_options,
-                view=dep.view if dep else None,
+                view=dep.view if dep else view,
                 identity=identity,
                 seen=identity in seen,
             )
@@ -2305,7 +2311,7 @@ class DerivativeRegistry:
                 tree_node.children.append(make_node(child_handle, child_dep))
             return tree_node
 
-        root = self.resolve(name, state=state, options=options)
+        root = self.resolve(name, state=state, options=options, controls=controls)
         return DependencyTree(make_node(root, None))
 
     def is_cache_artifact(self, path: Path) -> bool:

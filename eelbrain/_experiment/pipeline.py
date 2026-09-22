@@ -623,7 +623,7 @@ class Pipeline(StateModel):
             show_dependencies: bool = False,
     ) -> Any:
         if show_dependencies:
-            return self._derivatives.dependency_tree(name, state=self.state, options=options)
+            return self._derivatives.dependency_tree(name, state=self.state, options=options, view=view, controls=controls)
         return self._resolve_derivative(name, options=options, controls=controls).load(view=view)
 
     def _job_spec(
@@ -1849,13 +1849,11 @@ class Pipeline(StateModel):
         """
         raw_name = self.get('raw', **state)
         ica_raw_name = self._raw.ica_name(raw_name)
+        state = {**self.state, 'raw': ica_raw_name}
+        controls = {REINDEX_ICA} if accept_stale else ()
         if show_dependencies:
-            return self._derivatives.dependency_tree(ica_input_name(ica_raw_name), state={**self.state, 'raw': ica_raw_name})
-        return self._derivatives.resolve(
-            ica_input_name(ica_raw_name),
-            state={**self.state, 'raw': ica_raw_name},
-            controls={REINDEX_ICA} if accept_stale else (),
-        ).load()
+            return self._derivatives.dependency_tree(ica_input_name(ica_raw_name), state=state, controls=controls)
+        return self._derivatives.resolve(ica_input_name(ica_raw_name), state=state, controls=controls).load()
 
     def load_inv(
             self,

@@ -112,7 +112,8 @@ class DependencyTreeNode:
         Canonicalized options: the effective request options for the root, the
         options declared on the edge for dependencies.
     view
-        Data view loaded through the edge leading here, if any.
+        Data view loaded through the edge leading here (or requested for the
+        root), if any.
     identity
         Stable id for the artifact/value this request resolves to, derived
         from the node's effective key (not the full request state), so
@@ -234,6 +235,8 @@ class DependencyTree:
             label_lines = [node.name, *_label_lines(node.key)]
             if not node.key and node.options:
                 label_lines.extend(_label_lines(node.options, values=False))
+            if node is self.root and node.view:
+                label_lines.append(f"view: {node.view}")
             label = '\n'.join(label_lines)
             if node.kind == 'derivative':
                 dot.node(node_id, label, shape='box', style='rounded,filled', fillcolor='lightblue')
