@@ -33,7 +33,7 @@ from .._types import PathArg
 from .._utils import ask, keydefaultdict, log_level, ScreenHandler
 from .._utils.mne_utils import is_fake_mri
 from .covariance import CovDerivative, EpochCovariance, RawCovariance
-from .derivative_cache import ALLOW_PROTECTED_OVERWRITE, DerivativeRegistry, JobSpec, ProtectedArtifactError, Request, _format_size
+from .derivative_cache import ALLOW_PROTECTED_OVERWRITE, DependencyTree, DerivativeRegistry, JobSpec, ProtectedArtifactError, Request, _format_size
 from .configuration import Configuration, ConfigurationDict, sequence_arg
 from .epochs import (
     ContinuousEpoch, EpochBase, EpochsDerivative, RecordingEpochsDerivative, EvokedDerivative,
@@ -992,7 +992,7 @@ class Pipeline(StateModel):
             self,
             show_dependencies: bool = False,
             **state,
-    ) -> list[mne.Label]:
+    ) -> list[mne.Label] | DependencyTree:
         """Load a parcellation (from an annot file)
 
         Parameters
@@ -1016,7 +1016,7 @@ class Pipeline(StateModel):
             noise: bool = False,
             show_dependencies: bool = False,
             **kwargs,
-    ) -> list[str]:
+    ) -> list[str] | DependencyTree:
         """Load bad channels
 
         Parameters
@@ -1040,7 +1040,7 @@ class Pipeline(StateModel):
             self,
             show_dependencies: bool = False,
             **state,
-    ) -> mne.Covariance:
+    ) -> mne.Covariance | DependencyTree:
         """Load the covariance matrix
 
         Parameters
@@ -1101,7 +1101,7 @@ class Pipeline(StateModel):
             keep_mne: bool = False,
             show_dependencies: bool = False,
             **state,
-    ) -> Dataset:
+    ) -> Dataset | DependencyTree:
         """
         Load a :class:`Dataset` with epochs for a given epoch definition
 
@@ -1220,7 +1220,7 @@ class Pipeline(StateModel):
             self,
             show_dependencies: bool = False,
             **state,
-    ) -> Dataset:
+    ) -> Dataset | DependencyTree:
         """
         Load events from a raw file.
 
@@ -1251,7 +1251,7 @@ class Pipeline(StateModel):
             name: str = None,
             show_dependencies: bool = False,
             **state,
-    ) -> NDVar:
+    ) -> NDVar | DependencyTree:
         """Load a file predictor as an :class:`NDVar`
 
         Reads the predictor file's relevant data and shapes it into a predictor
@@ -1477,7 +1477,7 @@ class Pipeline(StateModel):
             trfs: bool = True,
             show_dependencies: bool = False,
             **state,
-    ) -> Dataset:
+    ) -> Dataset | DependencyTree:
         """Load TRFs for a group (or subject) as a :class:`Dataset`
 
         Assembles the per-subject TRFs (see :meth:`load_trf`) into a group-level
@@ -1653,7 +1653,7 @@ class Pipeline(StateModel):
             model: str = '',
             show_dependencies: bool = False,
             **state,
-    ) -> Dataset:
+    ) -> Dataset | DependencyTree:
         """
         Load a Dataset with condition average responses for each subject.
 
@@ -1778,7 +1778,7 @@ class Pipeline(StateModel):
             ndvar: bool = False,
             show_dependencies: bool = False,
             **state,
-    ) -> mne.Forward | NDVar:
+    ) -> mne.Forward | NDVar | DependencyTree:
         """Load the forward solution
 
         Parameters
@@ -1822,7 +1822,7 @@ class Pipeline(StateModel):
             accept_stale: bool = False,
             show_dependencies: bool = False,
             **state,
-    ) -> mne.preprocessing.ICA:
+    ) -> mne.preprocessing.ICA | DependencyTree:
         """Load the mne-python ICA object
 
         Parameters
@@ -1862,7 +1862,7 @@ class Pipeline(StateModel):
             ndvar: bool = False,
             show_dependencies: bool = False,
             **state,
-    ) -> mne.minimum_norm.InverseOperator | NDVar:
+    ) -> mne.minimum_norm.InverseOperator | NDVar | DependencyTree:
         """Load the inverse operator
 
         Parameters
@@ -1925,7 +1925,7 @@ class Pipeline(StateModel):
             self,
             show_dependencies: bool = False,
             **state,
-    ) -> mne.SourceMorph:
+    ) -> mne.SourceMorph | DependencyTree:
         """Load the source morph from mrisubject to common_brain
 
         Parameters
@@ -1953,7 +1953,7 @@ class Pipeline(StateModel):
             return_data: bool = False,
             show_dependencies: bool = False,
             **state,
-    ) -> NDVar | Dataset | tuple[NDVar, NDVar]:
+    ) -> NDVar | Dataset | tuple[NDVar, NDVar] | DependencyTree:
         """Load sensor neighbor correlation
 
         Parameters
@@ -2023,7 +2023,7 @@ class Pipeline(StateModel):
             noise: bool = False,
             show_dependencies: bool = False,
             **kwargs,
-    ) -> mne.io.Raw | NDVar:
+    ) -> mne.io.Raw | NDVar | DependencyTree:
         """
         Load a raw file as mne Raw object.
 
@@ -2088,7 +2088,7 @@ class Pipeline(StateModel):
             vardef: str | Variables = None,
             show_dependencies: bool = False,
             **kwargs,
-    ) -> Dataset:
+    ) -> Dataset | DependencyTree:
         """
         Load events and return a subset based on epoch and rejection
 
@@ -2152,7 +2152,7 @@ class Pipeline(StateModel):
             ndvar: bool = False,
             show_dependencies: bool = False,
             **state,
-    ) -> mne.SourceSpaces | SourceSpace | VolumeSourceSpace:
+    ) -> mne.SourceSpaces | SourceSpace | VolumeSourceSpace | DependencyTree:
         """Load the current source space
 
         Parameters
@@ -2208,7 +2208,7 @@ class Pipeline(StateModel):
             return_data: bool = False,
             show_dependencies: bool = False,
             **state,
-    ) -> NDTest | ROITestResult | tuple[Dataset | ROIData, NDTest | ROITestResult]:
+    ) -> NDTest | ROITestResult | tuple[Dataset | ROIData, NDTest | ROITestResult] | DependencyTree:
         """Create and load spatio-temporal cluster test results
 
         Parameters
