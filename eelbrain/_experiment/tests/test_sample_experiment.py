@@ -187,16 +187,14 @@ def test_sample(samples_experiment):
     assert e._raw['raw'].name == 'raw'
     assert e._parcs['ac'].name == 'ac'
     assert e._parcs['lobes'].name == 'lobes'
-    tree = e._show_dependencies('evoked', return_str=True)
+    dep_tree = e.load_evoked(show_dependencies=True)
+    assert isinstance(dep_tree, DependencyTree)
+    tree = str(dep_tree)
     assert 'evoked [derivative]' in tree
     # Dataset assembly is always uncached
     assert 'epochs [uncached]' in tree
-    wrapped_tree = e._show_dependencies('evoked', max_line_length=60, return_str=True)
+    wrapped_tree = dep_tree.text(max_line_length=60)
     assert all(len(line) <= 60 for line in wrapped_tree.splitlines())
-    dep_tree = e.load_evoked(show_dependencies=True)
-    assert isinstance(dep_tree, DependencyTree)
-    assert 'evoked [derivative]' in str(dep_tree)
-    assert 'epochs [uncached]' in str(dep_tree)
 
     # wildcard formatting
     with e._temporary_state:
@@ -247,22 +245,8 @@ def test_sample(samples_experiment):
     assert ds[0, 'evoked'].info['bads'] == ['MEG 0331']
 
     e.set(epoch_rejection='manual')
-    test_tree = e._show_dependencies(
-        'test-result',
-        options={
-            'data': DataSpec.coerce('meg.rms'),
-            'samples': 100,
-            'test': 'a>v',
-            'tstart': 0.05,
-            'tstop': 0.2,
-            'pmin': 0.05,
-            'baseline': False,
-            'src_baseline': None,
-            'smooth': None,
-            'samplingrate': None,
-        },
-        return_str=True,
-    )
+    test_tree = str(e.load_test('a>v', tstart=0.05, tstop=0.2, pmin=0.05, samples=100, data='meg.rms', baseline=False, show_dependencies=True))
+    assert 'test-result [derivative]' in test_tree
     assert 'evoked-test-data [uncached]' in test_tree
     assert 'evoked-group-dataset [uncached]' in test_tree
     sds = []
