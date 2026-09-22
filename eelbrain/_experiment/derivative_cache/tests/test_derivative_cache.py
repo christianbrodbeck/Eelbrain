@@ -1124,6 +1124,62 @@ def test_dependency_tree_dedups_key_equivalent_requests():
     assert '[seen]' not in comparison_text
 
 
+class ViewedUncachedDerivative(Derivative[str]):
+    """Uncached derivative with a view option (never enters any key)."""
+    name = 'viewed-uncached'
+    key_fields = ('subject',)
+    cache_policy = CachePolicy.NEVER
+    view_options = {'view': 0}
+
+    def dependencies(self, ctx: Request) -> tuple[Dependency, ...]:
+        return (Dependency('value'),)
+
+    def fingerprint(self, ctx: Request) -> dict[str, object]:
+        return {}
+
+    def build(self, ctx: Request) -> str:
+        return f"{ctx.load('value')}|view:{ctx.view_options['view']}"
+
+
+class ViewAgnosticDerivative(Derivative[str]):
+    """Two edges to the same uncached request that differ only in a view option."""
+    name = 'view-agnostic'
+    key_fields = ('subject',)
+    cache_suffix = '.txt'
+
+    def dependencies(self, ctx: Request) -> tuple[Dependency, ...]:
+        return (
+            Dependency('viewed-uncached', label='default'),
+            Dependency('viewed-uncached', label='alt-view', options={'view': 1}),
+        )
+
+    def fingerprint(self, ctx: Request) -> dict[str, object]:
+        return {}
+
+    def build(self, ctx: Request) -> str:
+        return f"{ctx.load('default')}|{ctx.load('alt-view')}"
+
+    def load(self, ctx: Request, path: str) -> str:
+        return Path(path).read_text()
+
+    def save(self, ctx: Request, path: str, value: str) -> None:
+        Path(path).write_text(value)
+
+
+def test_dependency_tree_dedups_view_option_requests():
+    _, registry, _, _, _, _, _, _, _root = make_registry()
+    registry.register(ViewedUncachedDerivative())
+    registry.register(ViewAgnosticDerivative())
+
+    tree = registry.dependency_tree('view-agnostic', state=DEFAULT_STATE)
+
+    # view options do not enter the identity of an uncached node either
+    assert "alt-view -> viewed-uncached [uncached] [options: view] [seen]" in str(tree)
+    seen_node = tree.root.children[1]
+    assert seen_node.seen
+    assert not seen_node.children
+
+
 def test_dependency_tree_graph():
     pytest.importorskip('graphviz')
     _, registry, _, _, _, _, _, _, _root = make_registry()

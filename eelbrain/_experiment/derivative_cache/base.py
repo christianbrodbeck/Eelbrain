@@ -2231,14 +2231,15 @@ class DerivativeRegistry:
         """Stable id for the artifact/value a request resolves to.
 
         Derived from the node's effective key (key fields and key options,
-        both context-sensitive), not the full request state, so requests that
-        differ only in key-irrelevant state share one identity.
+        both context-sensitive), not the full request state or view options,
+        so requests that differ only in key-irrelevant state or in view options
+        share one identity.
         """
         node = handle.node
         if node.cache_policy is CachePolicy.NEVER:
             content = {
                 'state': canonical_state_subset(handle.state, node._get_key_fields(handle)),
-                'options': self.canonicalize({**handle.options, **handle.view_options}),
+                'options': self.canonicalize(handle.options),
             }
         else:
             content = {'key': handle.key()}
