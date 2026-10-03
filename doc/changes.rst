@@ -69,9 +69,19 @@ New in 0.43
 
 * Boosting:
 
+  - API change: :func:`boosting` now performs cross-validation by default
+    (``test=1``), so that fit metrics reflect predictive power for held-out
+    data. The default number of partitions is now 5 (instead of 10).
+    ``test=0`` and ``partitions=10`` restores the previous TRF estimation, but
+    fit metrics are no longer computed because they would overestimate predictive power.
   - API change: the proportion of explained variance is now called ``ev``
     instead of ``det``, in the :class:`Dataset` returned by
     :meth:`BoostingResult.partition_result_data`
+  - Fix: :attr:`BoostingResult.proportion_explained` inside
+    :attr:`BoostingResult.partition_results` is now computed relative
+    to the variability in the evaluated data segments. Previously, it was
+    computed relative to the variability in all data, which strongly
+    overestimated it.
 
 * ICA-GUI (:func:`gui.select_components`): The *Find Bad Channels* tool now also
   detects defective channels through gaps in the component maps — channels whose
