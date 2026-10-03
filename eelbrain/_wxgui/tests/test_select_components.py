@@ -6,7 +6,7 @@ import mne
 from eelbrain import gui, load
 from eelbrain.testing import gui_test, TempDir, requires_mne_testing_data
 from eelbrain._wxgui import ID
-from eelbrain._wxgui.select_components import AddBadChannelsDialog, ComponentMapDialog, FindBadChannelsDialog, HelpDialog, YScaleDialog, _FIND_BAD_CHANNELS_HELP, _find_bad_channels_help
+from eelbrain._wxgui.select_components import AddBadChannelsDialog, CardiacReferenceDialog, ComponentMapDialog, FindBadChannelsDialog, HelpDialog, YScaleDialog, _CARDIAC_REFERENCE_SETTINGS, _FIND_BAD_CHANNELS_HELP, _find_bad_channels_help
 
 
 @gui_test
@@ -58,6 +58,13 @@ def test_select_components():
     assert not pattern.match('2.5')
     dlg.Destroy()
 
+    # cardiac reference: epochs are 0.2 s long, so the window needs to be short
+    assert len(frame.doc.source_segments()) == len(frame.doc.sources)
+    frame.ShowCardiacCandidates(0, tstart=-0.05, tstop=0.05, min_interval=0.05, threshold=1)
+    cardiac_dlg = CardiacReferenceDialog(frame, 0)
+    assert cardiac_dlg.get_parameters() == {key: default for key, _, _, default, _, _ in _CARDIAC_REFERENCE_SETTINGS}
+    cardiac_dlg.Destroy()
+
     # layout and scale: one text box per value
     scale_dlg = YScaleDialog(frame, 5, 8, 2., 3., frame.doc.continuous)
     assert scale_dlg.GetValues() == (5, 8, 2., 3.)
@@ -75,4 +82,13 @@ def test_select_components():
         frame.butterfly_baseline = i
         frame.OnPlotGrandAverage(None)
 
+    frame.Close()
+
+    # continuous data: display windows are joined back into continuous segments
+    frame = gui.select_components(path, raw)
+    assert frame.doc.continuous
+    segments = frame.doc.source_segments()
+    assert len(segments) == 1
+    assert segments[0].shape == (frame.doc.ica.n_components_, len(frame.doc.sources) * round(1 / frame.doc.sources.time.tstep))
+    frame.ShowCardiacCandidates(0, tstart=-0.1, tstop=0.2, min_interval=0.1, threshold=1)
     frame.Close()
