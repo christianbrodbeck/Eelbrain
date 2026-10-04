@@ -41,7 +41,8 @@ def test_peak_locked_sources():
     assert 0.7 <= result.intervals.min() and result.intervals.max() <= 0.9
     assert result.time[0] == pytest.approx(-0.3)
     assert result.time[-1] == pytest.approx(0.6 - TSTEP)
-    assert result.evoked.shape == result.sem.shape == (4, 90)
+    assert result.evoked.shape == result.sd.shape == (4, 90)
+    assert (result.sd ** 2).mean(1) == pytest.approx(1)
     # the reference peak is at time 0 (in its original polarity)
     assert result.time[result.evoked[0].argmin()] == 0
     # the lagged response is found, but not noise or an unrelated rhythm
@@ -50,6 +51,11 @@ def test_peak_locked_sources():
     assert result.score[2] < 3
     assert result.score[3] < 3
     assert 0.2 < result.time[result.evoked[1].argmax()] < 0.35
+    # effect size: the reference consists of the heartbeat, the lagged response only partly
+    assert result.explained[0] > 0.9
+    assert 0.03 < result.explained[1] < 0.2
+    assert result.explained[2] < 0.02
+    assert result.explained[3] < 0.02
 
     # the same data split into segments: beats whose window crosses a boundary are dropped
     segments = np.split(x, 20, axis=1)

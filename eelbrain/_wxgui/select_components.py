@@ -70,8 +70,10 @@ _THRESHOLD_DEFAULT_SI = {
 _CHANNEL_RATIO_DEFAULT = 3.
 # Maximum number of defective channels listed with a topomap
 _GAP_MAX_ROWS = 20
-# Cardiac candidates: minimum peak-locking score (~1 for a component unrelated to the heartbeat)
-# and maximum number of components listed
+# Cardiac candidates: default minimum proportion of a component's variance that is time-locked
+# to the heartbeat [%]; minimum peak-locking score (~1 for a component unrelated to the
+# heartbeat), which only matters with few heartbeats; maximum number of components listed
+_CARDIAC_MIN_VARIANCE_DEFAULT = 10.
 _CARDIAC_MIN_SCORE = 3.
 _CARDIAC_MAX_ROWS = 20
 # CardiacReferenceDialog settings: (key, label, unit, default, pattern, description)
@@ -80,6 +82,7 @@ _CARDIAC_REFERENCE_SETTINGS = (
     ('tstop', "Window end", "s", TSTOP_DEFAULT, FLOAT_PATTERN, "End of the window around each heartbeat. ICA often splits the heartbeat into a sharp component and slower components that lag the peak by a few hundred milliseconds."),
     ('min_interval', "Min. interval", "s", MIN_INTERVAL_DEFAULT, POS_FLOAT_PATTERN, "Minimum interval between heartbeats"),
     ('threshold', "Peak threshold", "SD", PEAK_THRESHOLD_DEFAULT, POS_FLOAT_PATTERN, "Minimum prominence of a peak in the reference component to count as a heartbeat, in standard deviations of the reference component"),
+    ('min_variance', "Min. variance", "%", _CARDIAC_MIN_VARIANCE_DEFAULT, POS_FLOAT_PATTERN, "Minimum proportion of a component's variance that is time-locked to the heartbeat for the component to be listed. ICA components are rarely perfectly independent, so many components contain a small trace of the heartbeat."),
 )
 # ComponentMapDialog: size of each component map, and initial dialog size, in pixels
 _COMPONENT_MAP_SIZE = 90
@@ -576,6 +579,7 @@ class SharedToolsMenu:  # Frame mixin
             tstop: float = TSTOP_DEFAULT,
             min_interval: float = MIN_INTERVAL_DEFAULT,
             threshold: float = PEAK_THRESHOLD_DEFAULT,
+            min_variance: float = _CARDIAC_MIN_VARIANCE_DEFAULT,
     ):
         """Find and display components that follow the heartbeat of a reference component (separate from :class:`CardiacReferenceDialog` for testing)
 
@@ -592,17 +596,20 @@ class SharedToolsMenu:  # Frame mixin
         threshold
             Minimum prominence of a peak in the reference component to count as a heartbeat
             [SD of the reference component].
+        min_variance
+            Minimum proportion of a component's variance that is time-locked to the
+            heartbeat for the component to be listed [%].
         """
         try:
             result = peak_locked_sources(self.doc.source_segments(), reference, self.doc.sources.time.tstep, tstart, tstop, min_interval, threshold)
         except ValueError as error:
             wx.MessageBox(str(error), "No Heartbeats Found", style=wx.ICON_WARNING)
             return
-        candidates = [c for c in np.argsort(result.score)[::-1] if c != reference and result.score[c] >= _CARDIAC_MIN_SCORE]
+        candidates = [c for c in np.argsort(result.explained)[::-1] if c != reference and result.explained[c] >= min_variance / 100 and result.score[c] >= _CARDIAC_MIN_SCORE]
 
         # format output
         doc = fmtxt.Section("Cardiac Candidates")
-        doc.add_paragraph(f"Components with activity that is time-locked to the heartbeats in component #{reference}. Heartbeats are peaks in #{reference} that exceed {threshold:g} SD and are at least {min_interval:g} s apart. The score is the variance of the peak-locked average relative to the variance expected for a component that is unrelated to the heartbeat (~1 for an unrelated component). The plots show the peak-locked average (±2 SEM), in units of the component's standard deviation across heartbeats.")
+        doc.add_paragraph(f"Components with activity that is time-locked to the heartbeats in component #{reference}. Heartbeats are peaks in #{reference} that exceed {threshold:g} SD and are at least {min_interval:g} s apart. Components are ranked by the proportion of their variance that is time-locked to the heartbeat (the variance of the peak-locked average relative to the total variance across heartbeats). The score is the same variance relative to what is expected for a component that is unrelated to the heartbeat (~1 for an unrelated component); it grows with the number of heartbeats, so in a long recording even a small trace of the heartbeat reaches a high score. The plots show the peak-locked average (black) with the standard deviation of single heartbeats around it (gray): a component that is dominated by the heartbeat has an average that stands out from the band, whereas a component that merely contains a trace of it has an average buried in the band.")
         desc = f"{result.n_beats} heartbeats"
         if result.n_beats < result.n_peaks:
             desc += f" ({result.n_peaks} detected; the {tstart:g} - {tstop:g} s window extends past the data for the others)"
@@ -625,13 +632,13 @@ class SharedToolsMenu:  # Frame mixin
                 plot.Topomap(comp_ndvar[component], axes=figure.add_subplot(1, n_types, j + 1), **TOPO_ARGS)
             topomaps = fmtxt.Image(f'#{component}', 'jpg')
             canvas.print_jpeg(topomaps)
-            # peak-locked average
+            # peak-locked average with the spread of single heartbeats
             evoked = result.evoked[component]
-            sem = result.sem[component]
+            sd = result.sd[component]
             figure = matplotlib.figure.Figure(figsize=(3, 1))
             canvas = FigureCanvasAgg(figure)
             axes = figure.add_axes((0.03, 0.25, 0.94, 0.72))
-            axes.fill_between(result.time, evoked - 2 * sem, evoked + 2 * sem, color='0.75', lw=0)
+            axes.fill_between(result.time, evoked - sd, evoked + sd, color='0.8', lw=0)
             axes.plot(result.time, evoked, color='k', lw=1)
             axes.axvline(0, color='r', lw=0.5)
             axes.axhline(0, color='0.5', lw=0.5)
@@ -644,7 +651,7 @@ class SharedToolsMenu:  # Frame mixin
             average = fmtxt.Image(f'#{component} peak-locked average', 'png')
             canvas.print_png(average)
             # description
-            desc = fmtxt.FMText([hash_char[self.doc.accept[component]], fmtxt.Link(f"{component}", f'component:{component}'), fmtxt.linebreak, f"score {result.score[component]:.1f}"])
+            desc = fmtxt.FMText([hash_char[self.doc.accept[component]], fmtxt.Link(f"{component}", f'component:{component}'), fmtxt.linebreak, f"{result.explained[component]:.0%} of variance", fmtxt.linebreak, f"score {result.score[component]:.0f}"])
             table.cells(topomaps, desc, average)
 
         section = doc.add_section("Reference")
@@ -654,10 +661,10 @@ class SharedToolsMenu:  # Frame mixin
 
         section = doc.add_section("Candidates")
         if not candidates:
-            section.add_paragraph(f"No other component has a score of at least {_CARDIAC_MIN_SCORE:g}.")
+            section.add_paragraph(f"No other component has at least {min_variance:g}% of its variance time-locked to the heartbeat.")
         else:
             if len(candidates) > _CARDIAC_MAX_ROWS:
-                section.add_paragraph(f"Showing the {_CARDIAC_MAX_ROWS} highest-scoring of {len(candidates)} components with a score of at least {_CARDIAC_MIN_SCORE:g}.")
+                section.add_paragraph(f"Showing the {_CARDIAC_MAX_ROWS} highest-ranking of {len(candidates)} components with at least {min_variance:g}% of their variance time-locked to the heartbeat.")
             table = fmtxt.Table('lll', rules=False)
             section.add_paragraph(table)
             for component in candidates[:_CARDIAC_MAX_ROWS]:

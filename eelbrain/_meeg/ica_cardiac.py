@@ -38,12 +38,19 @@ class CardiacResult:
     evoked
         Peak-locked average of each component, ``(n_components, n_times)``, in units of the
         component's standard deviation across heartbeats.
-    sem
-        Standard error of the mean of ``evoked``, in the same units.
+    sd
+        Standard deviation of single heartbeats around ``evoked``, in the same units (its
+        average over time is 1 by construction).
+    explained
+        Proportion of each component's variance that is time-locked to the heartbeat, i.e.
+        the variance of ``evoked`` across time relative to the total variance across
+        heartbeats and time. This is the effect size: ~1 for a component that consists of
+        the heartbeat alone, and small for a component that merely contains a trace of it.
     score
-        Variance across time of the peak-locked average, relative to the variance expected
-        for a component that is unrelated to the heartbeat (~1 for an unrelated component;
-        larger for components with heartbeat-locked activity, without bound).
+        Variance across time of ``evoked``, relative to the variance expected for a
+        component that is unrelated to the heartbeat (~1 for an unrelated component). This
+        is a measure of statistical reliability that grows with the number of heartbeats,
+        so that even a small trace of the heartbeat becomes significant in a long recording.
     """
     reference: int
     n_peaks: int
@@ -51,7 +58,8 @@ class CardiacResult:
     intervals: np.ndarray
     time: np.ndarray
     evoked: np.ndarray
-    sem: np.ndarray
+    sd: np.ndarray
+    explained: np.ndarray
     score: np.ndarray
 
 
@@ -123,8 +131,10 @@ def peak_locked_sources(
     beat_sd = np.sqrt(beat_var.mean(1, keepdims=True))
     beat_sd[beat_sd == 0] = 1
     evoked = beats.mean(0) / beat_sd
-    sem = np.sqrt(beat_var / n_beats) / beat_sd
+    sd = np.sqrt(beat_var) / beat_sd
+    evoked_var = evoked.var(1)
+    explained = evoked_var / (1 + evoked_var)
     # for unrelated activity, the variance of the mean across n beats is ~1 / n_beats
-    score = evoked.var(1) * n_beats
+    score = evoked_var * n_beats
     time = np.arange(-pre, post) * tstep
-    return CardiacResult(reference, n_peaks, n_beats, np.concatenate(intervals), time, evoked, sem, score)
+    return CardiacResult(reference, n_peaks, n_beats, np.concatenate(intervals), time, evoked, sd, explained, score)
