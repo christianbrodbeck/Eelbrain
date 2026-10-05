@@ -799,11 +799,17 @@ class RawMaxwell(CachedRawPipe):
         position, or the recording's initial head position) with a
         ``BAD_mov_dist`` annotation (requires ``head_pos=True`` and the HPI coil
         locations in the file header).
+    st_only
+        Only apply the temporal projection (tSSS) and skip the SSS
+        reconstruction (default ``False``; requires ``st_duration``, see
+        :func:`mne.preprocessing.maxwell_filter`). With ``st_only=True``,
+        the data keep their original head position instead of being moved to the
+        canonical head position.
     ...
         Supported :func:`mne.preprocessing.maxwell_filter` parameters are
         ``origin``, ``int_order``, ``ext_order``, ``regularize``,
         ``ignore_ref``, ``mag_scale``, ``skip_by_annotation``,
-        ``extended_proj``, ``st_duration``, ``st_correlation``, ``st_only``,
+        ``extended_proj``, ``st_duration``, ``st_correlation``,
         ``st_fixed``, and ``st_overlap``. The ``limit``, ``duration``, and
         ``min_count`` parameters configure
         :func:`mne.preprocessing.find_bad_channels_maxwell`.
@@ -818,6 +824,7 @@ class RawMaxwell(CachedRawPipe):
     Empty room recordings are prepared with :func:`mne.preprocessing.maxwell_filter_prepare_emptyroom` before filtering: the device-to-head transform, digitization and bad channels of the task recording are injected, so that the empty room is filtered in the same coordinate frame, with the same origin and destination, and retains the same SSS components as the task recording (the ``'in'`` regularization selects components from the sensor geometry alone). The noise covariance therefore spans the same subspace as the data. Bad channels are the union of the task recording's and the empty room's own.
     Flat channels are automatically marked as bad by :func:`mne.preprocessing.find_bad_channels_maxwell`.
     :meth:`Pipeline.show_head_position_overview` marks recordings with continuous HPI with ``†``; those are the recordings that benefit from ``head_pos=True``.
+    When a subject has several recordings at different head positions, the SSS reconstruction moves them all to a common position (the duration-weighted average) so that they share one forward solution. With ``st_only=True``, only the temporal projection is applied and the data keep their original head position; source estimates then require all recordings of a subject to share one head position.
     """
 
     _bad_chs_affect_cache = True
@@ -851,16 +858,20 @@ class RawMaxwell(CachedRawPipe):
         rotation_velocity_limit: float | None = None,
         translation_velocity_limit: float | None = None,
         mean_distance_limit: float | None = None,
+        st_only: bool = False,
         **kwargs,
     ):
         CachedRawPipe.__init__(self, source, cache)
         invalid_kwargs = sorted(set(kwargs).difference(self._valid_kwargs))
         if invalid_kwargs:
             raise TypeError(f"Invalid RawMaxwell keyword argument{'' if len(invalid_kwargs) == 1 else 's'}: {enumeration(invalid_kwargs)}")
+        if st_only:
+            kwargs['st_only'] = True  # fingerprinted as part of kwargs, as before it became an explicit parameter
         self.kwargs = kwargs
+        self.st_only = st_only
         self.bad_condition = bad_condition
         if head_pos:
-            if kwargs.get('st_only'):
+            if st_only:
                 warnings.warn("RawMaxwell(head_pos=True, st_only=True): head movement compensation is applied in the SSS reconstruction, which st_only=True skips; the head positions only enter the temporal projection basis and the output is not compensated", stacklevel=2)
         elif any(limit is not None for limit in (rotation_velocity_limit, translation_velocity_limit, mean_distance_limit)):
             raise ConfigurationError("RawMaxwell: rotation_velocity_limit, translation_velocity_limit and mean_distance_limit require head_pos=True")

@@ -256,6 +256,16 @@ class ProtectedArtifactError(RuntimeError):
         super().__init__(text)
 
 
+class UnverifiableArtifactError(RuntimeError):
+    """An artifact's validity can not be determined without building something.
+
+    Raised by node hooks (such as :meth:`DependencyNode.dependency_fingerprint_override`)
+    during read-only validation when the answer would require building a
+    dependency; :meth:`DerivativeRegistry.scan_cache` then keeps the artifact
+    as unverifiable.
+    """
+
+
 class JobInputsChangedError(RuntimeError):
     """Refuse to compute a job whose inputs moved while its data was being loaded.
 
@@ -530,11 +540,13 @@ class DependencyNode(Generic[T]):
     dependency_fingerprint_from_artifact
         Declare that :meth:`dependency_fingerprint` describes the built
         artifact (e.g. through :attr:`Request.artifact_metadata`) rather than
-        the configuration, so that rebuilding this node does not necessarily
-        change how it appears to its dependents. A read-only cache scan cannot
-        rebuild the artifact to find out, so it keeps the dependents of a stale
-        instance of such a node as unverifiable instead of collecting them as
-        stale (see :meth:`DerivativeRegistry.scan_cache`).
+        the configuration, or that dependents describe this node by its
+        artifact through :meth:`dependency_fingerprint_override`, so that
+        rebuilding this node does not necessarily change how it appears to its
+        dependents. A read-only cache scan cannot rebuild the artifact to find
+        out, so it keeps the dependents of a stale instance of such a node as
+        unverifiable instead of collecting them as stale (see
+        :meth:`DerivativeRegistry.scan_cache`).
     """
 
     name: str
@@ -698,6 +710,23 @@ class DependencyNode(Generic[T]):
         ----------
         fingerprint
             A stored (canonicalized) fingerprint of this node; modify in place.
+        """
+
+    def normalize_stored_dependencies(self, dependencies: dict[str, Any]) -> None:
+        """Update the stored dependency manifest of this node to the current schema, in place.
+
+        Called by :meth:`DerivativeRegistry.read_manifest` on every dependency
+        manifest of this node read back from disk — in the node's own manifest
+        and in the copies embedded in dependents' manifests. Override to
+        migrate stored dependency entries after a change to
+        :meth:`dependencies` (e.g., drop an edge that turned out not to affect
+        the artifact) without invalidating existing caches. The default does
+        nothing.
+
+        Parameters
+        ----------
+        dependencies
+            The stored dependency manifest of this node, keyed by edge label; modify in place.
         """
 
     def dependency_fingerprint(self, ctx: Request, view: str | None = None) -> dict[str, Any]:
@@ -2528,6 +2557,8 @@ class DerivativeRegistry:
         if node is not None and isinstance(manifest.fingerprint, dict):
             node.normalize_stored_fingerprint(manifest.fingerprint)
         if isinstance(manifest.dependencies, dict):
+            if node is not None:
+                node.normalize_stored_dependencies(manifest.dependencies)
             self._normalize_dependency_fingerprints(manifest.dependencies)
         return manifest
 
@@ -2535,12 +2566,15 @@ class DerivativeRegistry:
         for entry in dependencies.values():
             if not isinstance(entry, dict):
                 continue
+            entry.pop('kind', None)  # recorded before 0.43 and ignored since; dropped so that a mismatch report names the actual difference
             node = self._nodes.get(entry.get('name'))
             fingerprint = entry.get('fingerprint')
             if node is not None and isinstance(fingerprint, dict):
                 node.normalize_stored_fingerprint(fingerprint)
             sub = entry.get('dependencies')
             if isinstance(sub, dict):
+                if node is not None:
+                    node.normalize_stored_dependencies(sub)
                 self._normalize_dependency_fingerprints(sub)
 
     def write_manifest(self, path: str | Path, manifest: ArtifactManifest) -> None:

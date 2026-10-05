@@ -22,6 +22,7 @@ from eelbrain.pipeline import *
 from eelbrain._exceptions import ConfigurationError
 from eelbrain._experiment.covariance import EpochCovariance
 from eelbrain._experiment.derivative_cache import ALLOW_PROTECTED_OVERWRITE, ProtectedArtifactError
+from eelbrain._experiment.derivative_cache.garbage_collection import GCCategory
 from eelbrain._experiment.parc.nodes import AnnotDerivative
 from eelbrain._experiment.pathing import BIDS_ENTITY_KEYS, LOG_DIR, ica_file_path
 from eelbrain._experiment.preprocessing import RawFilterElliptic, ica_input_name, raw_node_name
@@ -1179,6 +1180,12 @@ def test_head_pos_without_chpi(samples_experiment):
     # head_pos still separates the two pipes in the cache
     manifests = {raw: e._derivatives.resolve(raw_node_name(raw), state={**e.state, 'raw': raw}, options={'noise': False}).manifest_path for raw in ('sss', 'sss_hp')}
     assert manifests['sss_hp'] != manifests['sss']
+    # the Maxwell manifest records the destination that was used, not how the canonical head position was derived
+    with open(manifests['sss']) as fid:
+        sss_manifest = json.load(fid)
+    canonical_entry = sss_manifest['dependencies']['canonical-head-position']
+    assert canonical_entry['fingerprint'] == {'destination': None}
+    assert 'dependencies' not in canonical_entry
 
     # the empty room is filtered in the task recording's head frame and retains the same SSS components
     e.set(raw='sss')
@@ -1190,6 +1197,60 @@ def test_head_pos_without_chpi(samples_experiment):
     # so the empty room covariance has exactly the rank of the task data, and MNE's header comparison holds
     cov = e.load_cov(cov='emptyroom')
     assert mne.compute_rank(cov, info=raw.info) == mne.compute_rank(cov, rank='info', info=raw.info)
+
+    # A read-only cache scan does not build the canonical head position; with a stale canonical head position, the Maxwell artifacts are kept as unverifiable (their destination might not change)
+    canonical_manifest_path = e._derivatives.resolve('canonical-head-position', state=e.state).manifest_path
+    canonical_manifest = json.loads(canonical_manifest_path.read_text())
+    canonical_manifest['derivative_version'] += 1
+    canonical_manifest_path.write_text(json.dumps(canonical_manifest))
+    report = e._derivatives.scan_cache()
+    categories = {entry.manifest_path: entry.category for entry in report.entries}
+    assert categories[canonical_manifest_path] == GCCategory.DERIVATIVE_VERSION
+    assert categories[manifests['sss']] == GCCategory.UNVERIFIABLE
+    assert categories[manifests['sss_hp']] == GCCategory.UNVERIFIABLE
+    assert not report.errors
+    assert json.loads(canonical_manifest_path.read_text()) == canonical_manifest  # not rebuilt by the scan
+    # without the stored artifact, the destination can not be verified at all
+    canonical_manifest_path.unlink()
+    e._derivatives.resolve('canonical-head-position', state=e.state).artifact_path.unlink()
+    report = e._derivatives.scan_cache()
+    categories = {entry.manifest_path: entry.category for entry in report.entries}
+    assert categories[manifests['sss']] == GCCategory.UNVERIFIABLE
+    assert not report.errors
+    assert e._derivatives.resolve(raw_node_name('sss'), state={**e.state, 'raw': 'sss'}, options={'noise': False}).is_valid()  # a regular load rebuilds the canonical head position and finds the destination unchanged
+
+
+@requires_mne_sample_data
+def test_maxwell_st_only_destination(samples_experiment):
+    "With st_only=True the destination does not enter the output, so the canonical head position is not a dependency; manifests that still record it remain valid"
+    set_log_level('warning', 'mne')
+    from eelbrain._experiment.tests.sample_experiment import SampleExperiment
+
+    root = samples_experiment(n_subjects=1, n_segments=1)
+    e = SampleExperiment(root)
+    e.set('R0000', raw='1-40')
+    e.load_raw()
+
+    def request(raw):
+        return e._derivatives.resolve(raw_node_name(raw), state={**e.state, 'raw': raw}, options={'noise': False})
+
+    tsss_manifest_path, filter_manifest_path = request('tsss').manifest_path, request('1-40').manifest_path
+    with open(tsss_manifest_path) as fid:
+        tsss_manifest = json.load(fid)
+    assert 'canonical-head-position' not in tsss_manifest['dependencies']
+
+    # manifests written while the dependency was still declared: the stale entry is dropped, in the node's own manifest and nested in a dependent's
+    stale_entry = {'name': 'canonical-head-position', 'fingerprint': {}, 'dependencies': {'task-sample': {'name': 'raw-head-position', 'fingerprint': {}, 'dependencies': {}}}, 'key': 'stale', 'manifest': 'stale.json'}
+    tsss_manifest['dependencies']['canonical-head-position'] = stale_entry
+    with open(tsss_manifest_path, 'w') as fid:
+        json.dump(tsss_manifest, fid)
+    with open(filter_manifest_path) as fid:
+        filter_manifest = json.load(fid)
+    filter_manifest['dependencies'][raw_node_name('tsss')]['dependencies']['canonical-head-position'] = stale_entry
+    with open(filter_manifest_path, 'w') as fid:
+        json.dump(filter_manifest, fid)
+    assert request('tsss').is_valid()
+    assert request('1-40').is_valid()
 
 
 @requires_mne_sample_data
@@ -1271,6 +1332,15 @@ def test_head_pos_movement_compensation(samples_experiment):
         # ... but not the channel layout: the 'chpi' position channels maxwell_filter appends are removed
         assert 'chpi' not in raw_hp.get_channel_types()
         assert raw_hp.ch_names == raw.ch_names
+        # the Maxwell manifest records the destination (the canonical head position, which the filtered data were moved to)
+        manifest_path = e._derivatives.resolve(raw_node_name('tsss_static'), state={**e.state, 'raw': 'tsss_static'}, options={'noise': False}).manifest_path
+        with open(manifest_path) as fid:
+            canonical_entry = json.load(fid)['dependencies']['canonical-head-position']
+        assert 'dependencies' not in canonical_entry
+        assert_allclose(canonical_entry['fingerprint']['destination'], raw.info['dev_head_t']['trans'], atol=1e-6)
+        # the same destination is recorded for a filtered run that it is applied to
+        tsss_request = e._derivatives.resolve(raw_node_name('tsss'), state={**e.state, 'raw': 'tsss'}, options={'noise': False})
+        assert tsss_request.is_valid()
 
         assert e.load_head_position(run='2').shape == (1, 10)  # run 2 has nothing to compensate
         e.set(raw='ica')
