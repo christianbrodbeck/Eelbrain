@@ -190,6 +190,7 @@ class Document(FileDocument):
         self.continuous = isinstance(data, mne.io.BaseRaw)
         if self.continuous:
             mne_events = mne.make_fixed_length_events(data)
+            self._window_samples = data.info['sfreq']  # raw samples per 1 s display window
             if decim is None:
                 decim = int(round(data.info['sfreq'] / 100))
             ds = Dataset({'epochs': mne.Epochs(data, mne_events, 1, 0, 1, baseline=None, proj=False, decim=decim, preload=True)})
@@ -314,8 +315,8 @@ class Document(FileDocument):
             return list(x)
         # consecutive windows share their last sample with the first sample of the next window
         n_keep = int(round(1 / self.sources.time.tstep))
-        steps = np.diff(self.epochs.events[:, 0])
-        breaks = np.flatnonzero(steps > 1.5 * steps.min()) + 1 if len(steps) else []
+        steps = np.diff(self.epochs.events[:, 0])  # in raw samples
+        breaks = np.flatnonzero(steps > 1.5 * self._window_samples) + 1
         return [x[run, :, :n_keep].transpose(1, 0, 2).reshape(x.shape[1], -1) for run in np.split(np.arange(len(x)), breaks)]
 
     def set_case(self, index, state):
