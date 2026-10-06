@@ -102,8 +102,9 @@ def peak_locked_sources(
     post = int(round(tstop / tstep))
     distance = max(1, int(round(min_interval / tstep)))
     reference_x = [segment[reference] for segment in segments]
-    mean = np.mean(np.concatenate(reference_x))
-    sd = np.std(np.concatenate(reference_x))
+    reference_all = np.concatenate(reference_x)
+    mean = reference_all.mean()
+    sd = reference_all.std()
     reference_x = [x - mean for x in reference_x]
     if -min(x.min() for x in reference_x) > max(x.max() for x in reference_x):
         reference_x = [-x for x in reference_x]
