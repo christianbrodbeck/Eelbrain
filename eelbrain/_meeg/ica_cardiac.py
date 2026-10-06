@@ -40,8 +40,8 @@ class CardiacResult:
         Peak-locked average of each component, ``(n_components, n_times)``, in units of the
         component's standard deviation across heartbeats.
     sd
-        Standard deviation of single heartbeats around ``evoked``, in the same units (its
-        average over time is 1 by construction).
+        Standard deviation of single heartbeats around ``evoked``, in the same units (the
+        mean of ``sd ** 2`` over time is 1 by construction).
     explained
         Proportion of each component's variance that is time-locked to the heartbeat, i.e.
         the variance of ``evoked`` across time relative to the total variance across
