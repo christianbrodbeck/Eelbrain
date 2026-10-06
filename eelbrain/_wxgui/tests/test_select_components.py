@@ -92,3 +92,12 @@ def test_select_components():
     assert segments[0].shape == (frame.doc.ica.n_components_, len(frame.doc.sources) * round(1 / frame.doc.sources.time.tstep))
     frame.ShowCardiacCandidates(0, tstart=-0.1, tstop=0.2, min_interval=0.1, threshold=1)
     frame.Close()
+
+    # a dropped display window (bad annotation in 2-3 s) splits the data into two segments
+    raw_bad = raw.copy().set_annotations(mne.Annotations(2.2, 0.5, 'bad'))
+    frame = gui.select_components(path, raw_bad)
+    n_keep = round(1 / frame.doc.sources.time.tstep)
+    assert len(frame.doc.sources) == 19
+    segments = frame.doc.source_segments()
+    assert [segment.shape[1] for segment in segments] == [2 * n_keep, 17 * n_keep]
+    frame.Close()
