@@ -79,6 +79,8 @@ def test_peak_locked_sources():
     # errors
     with pytest.raises(ValueError, match="window must have positive length"):
         peak_locked_sources([x], 0, TSTEP, tstart=0.1, tstop=0.)
+    with pytest.raises(ValueError, match="window must have positive length"):
+        peak_locked_sources([x], 0, TSTEP, tstart=-0.001, tstop=0.001)
     with pytest.raises(ValueError, match="No peaks"):
         peak_locked_sources([x], 0, TSTEP, threshold=100)
     with pytest.raises(ValueError, match="shorten the window"):

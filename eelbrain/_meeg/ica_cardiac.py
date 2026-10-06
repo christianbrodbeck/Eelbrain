@@ -98,10 +98,10 @@ def peak_locked_sources(
         Minimum peak prominence in the reference component, in standard deviations of the
         reference component.
     """
-    if tstart >= tstop:
-        raise ValueError(f"{tstart=}, {tstop=}: the window must have positive length")
     pre = int(round(-tstart / tstep))
     post = int(round(tstop / tstep))
+    if pre + post < 1:
+        raise ValueError(f"{tstart=}, {tstop=}: the window must have positive length (at least one sample of {tstep} s)")
     distance = max(1, int(round(min_interval / tstep)))
     reference_x = [segment[reference] for segment in segments]
     prominence = threshold * np.concatenate(reference_x).std()
