@@ -84,6 +84,8 @@ _CARDIAC_REFERENCE_SETTINGS = (
     ('threshold', "Peak threshold", "SD", PEAK_THRESHOLD_DEFAULT, POS_FLOAT_PATTERN, "Minimum prominence of a peak in the reference component to count as a heartbeat, in standard deviations of the reference component"),
     ('min_variance', "Min. variance", "%", _CARDIAC_MIN_VARIANCE_DEFAULT, POS_FLOAT_PATTERN, "Minimum proportion of a component's variance that is time-locked to the heartbeat for the component to be listed. ICA components are rarely perfectly independent, so many components contain a small trace of the heartbeat."),
 )
+# Marker for accepted (green) and rejected (red) components in reports
+_HASH_CHAR = {True: fmtxt.FMTextElement('#', 'font', {'color': 'green'}), False: fmtxt.FMTextElement('#', 'font', {'color': 'red'})}
 # ComponentMapDialog: size of each component map, and initial dialog size, in pixels
 _COMPONENT_MAP_SIZE = 90
 _COMPONENT_DIALOG_SIZE = (700, 600)
@@ -474,7 +476,6 @@ class SharedToolsMenu:  # Frame mixin
             res_by_component = None
 
         # format output
-        n_types = len(self.doc.components_by_type)
         threshold_descs = ", ".join(d for _, _, d in type_thresholds)
         doc = fmtxt.Section("Noisy epochs")
         doc.add_paragraph(f"Epochs with signal exceeding {threshold_descs}")
@@ -488,14 +489,7 @@ class SharedToolsMenu:  # Frame mixin
                 max_channel_ratio = channel_values[-1] / channel_values[-2]
                 if max_ch_ratio and max_channel_ratio > max_ch_ratio:
                     continue
-                # plot all channel-type topomaps side by side
-                figure = matplotlib.figure.Figure(figsize=(n_types, 1))
-                canvas = FigureCanvasAgg(figure)
-                for j, (ch_type, comp_ndvar) in enumerate(self.doc.components_by_type):
-                    ax = figure.add_subplot(1, n_types, j + 1)
-                    plot.Topomap(comp_ndvar[component], axes=ax)
-                image = fmtxt.Image(f'#{component}', 'jpg')
-                canvas.print_jpeg(image)
+                image = _component_maps_image(self.doc.components_by_type, component)
                 # Component properties
                 sec = doc
                 heading = fmtxt.FMTextElement(f"#{component}", 'h2')
@@ -552,11 +546,9 @@ class SharedToolsMenu:  # Frame mixin
         doc = fmtxt.Section("Rare Events")
         doc.add_paragraph(f"Components that disproportionally affect a small number of epochs (z-scored peak-to-peak > {threshold:g}). Epochs are ranked by peak-to-peak.")
         doc.append(fmtxt.linebreak)
-        hash_char = {True: fmtxt.FMTextElement('# ', 'font', {'color': 'green'}),
-                     False: fmtxt.FMTextElement('# ', 'font', {'color': 'red'})}
         for c, ft, epochs in res:
-            doc.append(hash_char[self.doc.accept[c]])
-            doc.append(f"{c} ({ft:.1f}):  ")
+            doc.append(_HASH_CHAR[self.doc.accept[c]])
+            doc.append(f" {c} ({ft:.1f}):  ")
             doc.append(fmtxt.delim_list(fmtxt.Link(self.doc.epoch_labels[e], f'component:{c} epoch:{e}') for e in epochs))
             doc.append(fmtxt.linebreak)
         InfoFrame(self, "Rare Events", doc, 500)
@@ -621,18 +613,9 @@ class SharedToolsMenu:  # Frame mixin
             if irregular > 0.1:
                 desc += "; heartbeat detection may be unreliable, check the peak threshold and the minimum interval"
         doc.add_paragraph(desc + '.')
-        n_types = len(self.doc.components_by_type)
-        hash_char = {True: fmtxt.FMTextElement('#', 'font', {'color': 'green'}),
-                     False: fmtxt.FMTextElement('#', 'font', {'color': 'red'})}
 
         def add_row(table: fmtxt.Table, component: int):
-            # topomaps for all channel types
-            figure = matplotlib.figure.Figure(figsize=(n_types, 1))
-            canvas = FigureCanvasAgg(figure)
-            for j, (ch_type, comp_ndvar) in enumerate(self.doc.components_by_type):
-                plot.Topomap(comp_ndvar[component], axes=figure.add_subplot(1, n_types, j + 1), **TOPO_ARGS)
-            topomaps = fmtxt.Image(f'#{component}', 'jpg')
-            canvas.print_jpeg(topomaps)
+            topomaps = _component_maps_image(self.doc.components_by_type, component)
             # peak-locked average with the spread of single heartbeats
             evoked = result.evoked[component]
             sd = result.sd[component]
@@ -652,7 +635,7 @@ class SharedToolsMenu:  # Frame mixin
             average = fmtxt.Image(f'#{component} peak-locked average', 'png')
             canvas.print_png(average)
             # description
-            desc = fmtxt.FMText([hash_char[self.doc.accept[component]], fmtxt.Link(f"{component}", f'component:{component}'), fmtxt.linebreak, f"{result.explained[component]:.0%} of variance", fmtxt.linebreak, f"score {result.score[component]:.0f}"])
+            desc = fmtxt.FMText([_HASH_CHAR[self.doc.accept[component]], fmtxt.Link(f"{component}", f'component:{component}'), fmtxt.linebreak, f"{result.explained[component]:.0%} of variance", fmtxt.linebreak, f"score {result.score[component]:.0f}"])
             table.cells(topomaps, desc, average)
 
         section = doc.add_section("Reference")
@@ -2335,6 +2318,18 @@ class HelpDialog(EelbrainDialog):
         sizer.Add(button_sizer, flag=wx.ALL, border=5)
         self.SetSizer(sizer)
         self.SetSize(_HELP_DIALOG_SIZE)
+
+
+def _component_maps_image(components_by_type: Sequence[tuple[str, NDVar]], component: int) -> fmtxt.Image:
+    "Render the maps of one component for all channel types side by side, for a report"
+    n_types = len(components_by_type)
+    figure = matplotlib.figure.Figure(figsize=(n_types, 1))
+    canvas = FigureCanvasAgg(figure)
+    for j, (ch_type, comp_ndvar) in enumerate(components_by_type):
+        plot.Topomap(comp_ndvar[component], axes=figure.add_subplot(1, n_types, j + 1), **TOPO_ARGS)
+    image = fmtxt.Image(f'#{component}', 'jpg')
+    canvas.print_jpeg(image)
+    return image
 
 
 def _topomap_bitmap(component: NDVar, size: int = _COMPONENT_MAP_SIZE, dpi: float = 100.) -> wx.Bitmap:
