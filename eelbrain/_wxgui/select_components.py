@@ -604,7 +604,7 @@ class SharedToolsMenu:  # Frame mixin
         try:
             result = peak_locked_sources(self.doc.source_segments(), reference, self.doc.sources.time.tstep, tstart, tstop, min_interval, threshold)
         except ValueError as error:
-            wx.MessageBox(str(error), "No Heartbeats Found", style=wx.ICON_WARNING)
+            wx.MessageBox(str(error), "Use as Cardiac Reference", style=wx.ICON_WARNING)
             return
         candidates = [c for c in np.argsort(result.explained)[::-1] if c != reference and result.explained[c] >= min_variance / 100 and result.score[c] >= _CARDIAC_MIN_SCORE]
 
@@ -2508,6 +2508,7 @@ class CardiacReferenceDialog(EelbrainDialog):
         button_sizer = wx.StdDialogButtonSizer()
         btn = wx.Button(self, wx.ID_OK)
         btn.SetDefault()
+        btn.Bind(wx.EVT_BUTTON, self.OnOK)
         button_sizer.AddButton(btn)
         btn = wx.Button(self, wx.ID_CANCEL)
         button_sizer.AddButton(btn)
@@ -2520,6 +2521,15 @@ class CardiacReferenceDialog(EelbrainDialog):
     def get_parameters(self) -> dict[str, float]:
         "Settings as keyword arguments for :meth:`SharedToolsMenu.ShowCardiacCandidates`"
         return {key: float(ctrl.GetValue()) for key, ctrl in self.ctrls.items()}
+
+    def OnOK(self, event):
+        if not self.Validate():
+            return
+        parameters = self.get_parameters()
+        if parameters['tstart'] >= parameters['tstop']:
+            wx.MessageBox("The window end must be later than the window start.", "Invalid Window", wx.ICON_EXCLAMATION)
+            return
+        event.Skip()
 
     def OnSetDefault(self, event):
         for key, _, _, default, _, _ in _CARDIAC_REFERENCE_SETTINGS:
