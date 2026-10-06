@@ -661,11 +661,12 @@ class SharedToolsMenu:  # Frame mixin
         add_row(table, reference)
 
         section = doc.add_section("Candidates")
+        criteria = f"at least {min_variance:g}% of the variance time-locked to the heartbeat and a score of at least {_CARDIAC_MIN_SCORE:g}"
         if not candidates:
-            section.add_paragraph(f"No other component has at least {min_variance:g}% of its variance time-locked to the heartbeat.")
+            section.add_paragraph(f"No other component has {criteria}.")
         else:
             if len(candidates) > _CARDIAC_MAX_ROWS:
-                section.add_paragraph(f"Showing the {_CARDIAC_MAX_ROWS} highest-ranking of {len(candidates)} components with at least {min_variance:g}% of their variance time-locked to the heartbeat.")
+                section.add_paragraph(f"Showing the {_CARDIAC_MAX_ROWS} highest-ranking of {len(candidates)} components with {criteria}.")
             table = fmtxt.Table('lll', rules=False)
             section.add_paragraph(table)
             for component in candidates[:_CARDIAC_MAX_ROWS]:
