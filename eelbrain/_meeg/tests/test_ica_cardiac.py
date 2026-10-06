@@ -68,6 +68,14 @@ def test_peak_locked_sources():
     assert result_segments.score[1] > 10
     assert result_segments.score[2] < 3
 
+    # polarity: a single large artifact of the opposite sign does not flip the reference
+    y = -x
+    y[0, 5000] = -50
+    result_artifact = peak_locked_sources([y], 0, TSTEP)
+    assert result_artifact.n_peaks == len(beats)
+    assert result_artifact.time[result_artifact.evoked[0].argmax()] == 0
+    assert result_artifact.score[1] > 10
+
     # errors
     with pytest.raises(ValueError, match="window must have positive length"):
         peak_locked_sources([x], 0, TSTEP, tstart=0.1, tstop=0.)

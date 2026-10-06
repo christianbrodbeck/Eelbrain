@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from operator import itemgetter
 
 import numpy as np
 from scipy.signal import find_peaks
@@ -75,7 +76,8 @@ def peak_locked_sources(
     """Average ICA sources around the heartbeats detected in a reference component.
 
     A heartbeat is a peak in the reference component. The sign of an ICA component is
-    arbitrary, so the reference is flipped if its largest deflection is negative.
+    arbitrary, so peaks are detected in the polarity in which they are more prominent (the
+    polarity with the larger sum of peak prominences).
 
     Parameters
     ----------
@@ -102,23 +104,23 @@ def peak_locked_sources(
     post = int(round(tstop / tstep))
     distance = max(1, int(round(min_interval / tstep)))
     reference_x = [segment[reference] for segment in segments]
-    reference_all = np.concatenate(reference_x)
-    mean = reference_all.mean()
-    sd = reference_all.std()
-    reference_x = [x - mean for x in reference_x]
-    if -min(x.min() for x in reference_x) > max(x.max() for x in reference_x):
-        reference_x = [-x for x in reference_x]
-    prominence = threshold * sd
+    prominence = threshold * np.concatenate(reference_x).std()
+    # the sign of an ICA component is arbitrary: use the polarity in which peaks are more prominent overall
+    polarity_peaks = []
+    for sign in (1, -1):
+        peaks_by_segment = [find_peaks(sign * x, distance=distance, prominence=prominence) for x in reference_x]
+        total_prominence = sum(properties['prominences'].sum() for _, properties in peaks_by_segment)
+        polarity_peaks.append((total_prominence, [peaks for peaks, _ in peaks_by_segment]))
+    _, peaks_by_segment = max(polarity_peaks, key=itemgetter(0))
 
     n_peaks = 0
     intervals = []
     beats = []  # (n_components, n_window) for each heartbeat
-    for segment, x in zip(segments, reference_x):
-        peaks, _ = find_peaks(x, distance=distance, prominence=prominence)
+    for segment, peaks in zip(segments, peaks_by_segment):
         n_peaks += len(peaks)
         intervals.append(np.diff(peaks) * tstep)
         for peak in peaks:
-            if peak >= pre and peak + post <= len(x):
+            if peak >= pre and peak + post <= segment.shape[1]:
                 beats.append(segment[:, peak - pre: peak + post])
     if not n_peaks:
         raise ValueError(f"No peaks exceeding {threshold:g} SD found in component {reference}")
