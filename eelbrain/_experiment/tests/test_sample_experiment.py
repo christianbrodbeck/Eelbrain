@@ -21,7 +21,7 @@ from eelbrain import *
 from eelbrain.pipeline import *
 from eelbrain._exceptions import ConfigurationError
 from eelbrain._experiment.covariance import EpochCovariance
-from eelbrain._experiment.derivative_cache import ALLOW_PROTECTED_OVERWRITE, ProtectedArtifactError
+from eelbrain._experiment.derivative_cache import ALLOW_PROTECTED_OVERWRITE, DependencyTree, ProtectedArtifactError
 from eelbrain._experiment.derivative_cache.garbage_collection import GCCategory
 from eelbrain._experiment.parc.nodes import AnnotDerivative
 from eelbrain._experiment.pathing import BIDS_ENTITY_KEYS, LOG_DIR, ica_file_path
@@ -188,11 +188,13 @@ def test_sample(samples_experiment):
     assert e._raw['raw'].name == 'raw'
     assert e._parcs['ac'].name == 'ac'
     assert e._parcs['lobes'].name == 'lobes'
-    tree = e._show_dependencies('evoked', return_str=True)
+    dep_tree = e.load_evoked(show_dependencies=True)
+    assert isinstance(dep_tree, DependencyTree)
+    tree = dep_tree.text(1000)
     assert 'evoked [derivative]' in tree
     # Dataset assembly is always uncached
     assert 'epochs [uncached]' in tree
-    wrapped_tree = e._show_dependencies('evoked', max_line_length=60, return_str=True)
+    wrapped_tree = dep_tree.text(max_line_length=60)
     assert all(len(line) <= 60 for line in wrapped_tree.splitlines())
 
     # wildcard formatting
@@ -244,22 +246,8 @@ def test_sample(samples_experiment):
     assert ds[0, 'evoked'].info['bads'] == ['MEG 0331']
 
     e.set(epoch_rejection='manual')
-    test_tree = e._show_dependencies(
-        'test-result',
-        options={
-            'data': DataSpec.coerce('meg.rms'),
-            'samples': 100,
-            'test': 'a>v',
-            'tstart': 0.05,
-            'tstop': 0.2,
-            'pmin': 0.05,
-            'baseline': False,
-            'src_baseline': None,
-            'smooth': None,
-            'samplingrate': None,
-        },
-        return_str=True,
-    )
+    test_tree = e.load_test('a>v', tstart=0.05, tstop=0.2, pmin=0.05, samples=100, data='meg.rms', baseline=False, show_dependencies=True).text(1000)
+    assert 'test-result [derivative]' in test_tree
     assert 'evoked-test-data [uncached]' in test_tree
     assert 'evoked-group-dataset [uncached]' in test_tree
     sds = []
@@ -1161,6 +1149,7 @@ def test_head_pos_without_chpi(samples_experiment):
     # the sample data has no cHPI, so the derivative falls back to the static dev_head_t
     head_pos = e.load_head_position()
     assert head_pos.shape == (1, 10)
+    assert 'raw-head-position [derivative]' in e.load_head_position(show_dependencies=True).text(1000)
     pos_request = e._derivatives.resolve('raw-head-position', state=e.state)
     assert pos_request.artifact_path.suffix == '.pos'
     assert pos_request.artifact_path.exists()

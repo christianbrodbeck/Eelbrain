@@ -4,6 +4,7 @@ import json
 import logging
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 import pytest
 
@@ -1062,7 +1063,7 @@ def test_unique_cache_paths_do_not_create_disambiguation_sidecar():
 def test_dependency_tree_formats_ascii_dependencies():
     _, registry, _, _, _, _, _, _, _root = make_registry()
 
-    tree = registry.dependency_tree('comparison', state=DEFAULT_STATE)
+    tree = registry.dependency_tree('comparison', state=DEFAULT_STATE).text(1000)
 
     assert "comparison [derivative] {subject='s1'}" in tree
     assert "current -> value [derivative] {subject='s1'}" in tree
@@ -1075,13 +1076,159 @@ def test_dependency_tree_formats_ascii_dependencies():
 def test_dependency_tree_respects_max_line_length():
     _, registry, _, _, _, _, _, _, _root = make_registry()
 
-    tree = registry.dependency_tree('comparison', state=DEFAULT_STATE, max_line_length=44)
+    tree = registry.dependency_tree('comparison', state=DEFAULT_STATE).text(max_line_length=44)
     lines = tree.splitlines()
 
     assert len(lines) > 4
     assert all(len(line) <= 44 for line in lines)
     assert "other -> value [derivative]" in tree
     assert "{subject='s2'} [state: subject='s2']" in tree
+
+
+def test_dependency_tree_shows_root_view():
+    root, registry = make_empty_registry()
+    registry.register(OptionDerivative(root))
+
+    tree = registry.dependency_tree('optioned', state=DEFAULT_STATE, view='echo')
+
+    assert tree.root.view == 'echo'
+    assert " [view: echo]" in tree.text(1000).splitlines()[0]
+    assert '[view: echo]' not in '\n'.join(tree.text(1000).splitlines()[1:])
+    try:
+        import graphviz  # noqa: F401
+    except ImportError:
+        return
+    assert 'view: echo' in tree.graph().source
+
+
+class ModeAgnosticDerivative(Derivative[str]):
+    """Two edges to the same 'value' request that differ only in key-irrelevant state."""
+    name = 'mode-agnostic'
+    key_fields = ('subject',)
+    cache_suffix = '.txt'
+
+    def dependencies(self, ctx: Request) -> tuple[Dependency, ...]:
+        return (
+            Dependency('value', label='current'),
+            Dependency('value', label='alt-mode', state={'mode': 'alt'}),
+        )
+
+    def fingerprint(self, ctx: Request) -> dict[str, object]:
+        return {}
+
+    def build(self, ctx: Request) -> str:
+        return f"{ctx.load('current')}|{ctx.load('alt-mode')}"
+
+    def load(self, ctx: Request, path: str) -> str:
+        return Path(path).read_text()
+
+    def save(self, ctx: Request, path: str, value: str) -> None:
+        Path(path).write_text(value)
+
+
+def test_dependency_tree_dedups_key_equivalent_requests():
+    _, registry, _, _, _, _, _, _, _root = make_registry()
+    registry.register(ModeAgnosticDerivative())
+
+    tree = registry.dependency_tree('mode-agnostic', state=DEFAULT_STATE)
+    text = tree.text(1000)
+
+    # 'value' does not key on 'mode', so the mode-override edge resolves to the same artifact
+    assert "alt-mode -> value [derivative] {subject='s1'} [state: mode='alt'] [seen]" in text
+    seen_node = tree.root.children[1]
+    assert seen_node.seen
+    assert not seen_node.children
+    # ... while a key-relevant state override stays distinct
+    comparison_text = registry.dependency_tree('comparison', state=DEFAULT_STATE).text(1000)
+    assert '[seen]' not in comparison_text
+
+
+class ViewedUncachedDerivative(Derivative[str]):
+    """Uncached derivative with a view option (never enters any key)."""
+    name = 'viewed-uncached'
+    key_fields = ('subject',)
+    cache_policy = CachePolicy.NEVER
+    view_options = {'view': 0}
+
+    def dependencies(self, ctx: Request) -> tuple[Dependency, ...]:
+        return (Dependency('value'),)
+
+    def fingerprint(self, ctx: Request) -> dict[str, object]:
+        return {}
+
+    def build(self, ctx: Request) -> str:
+        return f"{ctx.load('value')}|view:{ctx.view_options['view']}"
+
+
+class ViewAgnosticDerivative(Derivative[str]):
+    """Two edges to the same uncached request that differ only in a view option."""
+    name = 'view-agnostic'
+    key_fields = ('subject',)
+    cache_suffix = '.txt'
+
+    def dependencies(self, ctx: Request) -> tuple[Dependency, ...]:
+        return (
+            Dependency('viewed-uncached', label='default'),
+            Dependency('viewed-uncached', label='alt-view', options={'view': 1}),
+        )
+
+    def fingerprint(self, ctx: Request) -> dict[str, object]:
+        return {}
+
+    def build(self, ctx: Request) -> str:
+        return f"{ctx.load('default')}|{ctx.load('alt-view')}"
+
+    def load(self, ctx: Request, path: str) -> str:
+        return Path(path).read_text()
+
+    def save(self, ctx: Request, path: str, value: str) -> None:
+        Path(path).write_text(value)
+
+
+def test_dependency_tree_dedups_view_option_requests():
+    _, registry, _, _, _, _, _, _, _root = make_registry()
+    registry.register(ViewedUncachedDerivative())
+    registry.register(ViewAgnosticDerivative())
+
+    tree = registry.dependency_tree('view-agnostic', state=DEFAULT_STATE)
+
+    # view options do not enter the identity of an uncached node either
+    assert "alt-view -> viewed-uncached [uncached] [options: view] [seen]" in tree.text(1000)
+    seen_node = tree.root.children[1]
+    assert seen_node.seen
+    assert not seen_node.children
+    try:
+        import graphviz  # noqa: F401
+    except ImportError:
+        return
+    # the deduplicated node carries no options; the edges do
+    source = tree.graph().source
+    assert 'label="viewed-uncached"' in source
+    assert 'label="alt-view\nview"' in source
+
+
+def test_dependency_tree_graph():
+    graphviz = pytest.importorskip('graphviz')
+    _, registry, _, _, _, _, _, _, _root = make_registry()
+    registry.register(ModeAgnosticDerivative())
+
+    tree = registry.dependency_tree('mode-agnostic', state=DEFAULT_STATE)
+    source = tree.graph().source
+
+    # one node per unique request: mode-agnostic + one value (deduplicated) + source
+    assert source.count('shape=box') == 2
+    assert source.count('shape=ellipse') == 1
+    assert 'alt-mode' in source  # edge label survives
+    assert 'rankdir=LR' in tree.graph(rankdir='LR').source
+
+    html = tree._repr_html_()
+    if html is not None:  # needs the graphviz binary
+        assert html.startswith('<svg style="max-width:100%;height:auto"')
+    # without a working binary, fall back to text with a warning
+    with mock.patch.object(graphviz.Digraph, 'pipe', side_effect=graphviz.ExecutableNotFound(['dot'])), pytest.warns(UserWarning, match='graphviz binaries'):
+        assert tree._repr_html_() is None
+    with mock.patch.object(graphviz.Digraph, 'pipe', side_effect=graphviz.CalledProcessError(1, ['dot'])), pytest.warns(UserWarning, match='rendering the flow chart failed'):
+        assert tree._repr_html_() is None
 
 
 def test_uncached_derivative_rebuilds_every_time():

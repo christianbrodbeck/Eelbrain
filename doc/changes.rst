@@ -66,6 +66,11 @@ New in 0.43
     with continuous HPI through the ``head_pos`` parameter.
   - New :attr:`pipeline.Pipeline.event_factors` attribute to read numeric
     ``events.tsv`` columns as categorial (:class:`Factor`).
+  - The ``load_...`` methods accept ``show_dependencies=True`` to return the
+    request's resolved dependency tree instead of loading the data. The tree
+    displays as text in a terminal; in Jupyter notebooks it displays as a flow
+    chart when the optional `graphviz <https://graphviz.org>`_ package is
+    installed.
 
 * Boosting:
 
