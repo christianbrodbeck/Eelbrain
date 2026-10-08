@@ -30,7 +30,7 @@ from .. import load, plot, fmtxt
 from .._colorspaces import UNAMBIGUOUS_COLORS
 from .._data_obj import Dataset, Factor, NDVar, Categorial, Scalar, combine
 from .._io.fiff import _picks, sensor_dim
-from .._meeg.ica_bad_channels import CH_TYPE_DEFAULT, CONSISTENCY_DEFAULT, GAP_RATIO_DEFAULT, MIN_COMPONENTS_DEFAULT, SMOOTHNESS_DEFAULT, ChannelGapResult, find_channel_gaps, map_smoothness, neighbor_matrix
+from .._meeg.ica_bad_channels import CH_TYPE_DEFAULT, CONSISTENCY_DEFAULT, FLAT_DEFAULT, GAP_RATIO_DEFAULT, MIN_COMPONENTS_DEFAULT, SMOOTHNESS_DEFAULT, ChannelGapResult, find_channel_gaps, map_smoothness, neighbor_matrix
 from .._ndvar import concatenate, neighbor_correlation
 from .._types import PathArg
 from .._utils.numpy_utils import INT_TYPES
@@ -39,6 +39,7 @@ from .._utils.system import IS_OSX
 from ..plot._base import AxisData, DataLayer, PlotType
 from ..plot._topo import AxTopomap
 from ._ch_types import CH_TYPE_PICK_KWARGS, CH_TYPE_COLORS, CH_TYPE_DEFAULT_VLIM_SI, ch_type_scale
+from .bad_channel_summary import Additions, BadChannelSummaryFrame, bad_channel_evidence
 from .frame import EelbrainDialog
 from .frame import NavigableFrame
 from .history import Action, FileDocument, FileModel, FileFrame, FileFrameChild
@@ -74,8 +75,7 @@ _COMPONENT_MAP_SIZE = 90
 _COMPONENT_DIALOG_SIZE = (700, 600)
 _HELP_DIALOG_SIZE = (520, 620)
 # InfoFrame link scheme for adding channels to the bad channels
-_BAD_CHANNELS_URL = 'bad-channels:'
-_BAD_CHANNELS_DIALOG_WIDTH = 400
+_BAD_CHANNELS_URL = 'bad-channels:'  # link in the Find Bad Channels report that opens the summary window
 # FindBadChannelsDialog settings: {setting: (label, description)}. Used both for the hover
 # help of the individual controls and for the help dialog, in the order listed here.
 _FIND_BAD_CHANNELS_HELP = {
@@ -259,12 +259,21 @@ class Document(FileDocument):
         self.epoch_labels = tuple(labels)
 
         # properties which are not modified by ICA
-        # global mean
+        # global mean and component maps in data units (pre-whitening reverted)
         if ica.noise_cov is None:  # revert standardization
             global_mean = ica.pca_mean_ * ica.pre_whitener_[:, 0]
+            mixing_raw = mixing_data * ica.pre_whitener_[:, 0]
         else:
-            global_mean = np.dot(linalg.pinv(ica.pre_whitener_), ica.pca_mean_)
+            pre_whitener_inv = linalg.pinv(ica.pre_whitener_)
+            global_mean = np.dot(pre_whitener_inv, ica.pca_mean_)
+            mixing_raw = np.dot(mixing_data, pre_whitener_inv.T)
         self.global_mean = NDVar(global_mean[picks], (self.epochs_ndvar.sensor,))
+        # channel data ≈ mixing.T @ sources + global_mean (up to the residual PCA components); all
+        # channels the ICA was estimated from, not only the primary type shown in epochs_ndvar
+        self.mixing = NDVar(mixing_raw, (ic_dim, Categorial('channel', ica.ch_names)), 'mixing')
+        # channels that are screened for being bad: every topographic type, in the ICA's channel order
+        self.screened_channels = [ica.ch_names[i] for i in topo_picks]
+        self.screened_channel_types = ica.info.get_channel_types(topo_picks)
         # pre-ICA signal range, normalized so it displays at a fixed scale.
         primary_ch_type = components_by_type[0][0]
         self.pre_ica_range_scale = 2 * CH_TYPE_DEFAULT_VLIM_SI[primary_ch_type]
@@ -306,6 +315,135 @@ class Document(FileDocument):
                 return ', '.join([f'{k}: {v:.1%}' for k, v in desc_dict.items()])
         return desc_dict
 
+    def flat_channels(self, thresholds: dict[str, float] = None) -> list[tuple[str, str]]:
+        """Channels whose standard deviation is below a channel type specific threshold
+
+        Parameters
+        ----------
+        thresholds
+            ``{ch_type: max_std}`` in SI units (default :data:`FLAT_DEFAULT`); channel types
+            that are missing are not screened.
+
+        Returns
+        -------
+        flat
+            ``(ch_name, ch_type)`` per flat channel, in channel order. Every topographic
+            channel type the ICA was estimated from is screened (see
+            :attr:`screened_channels`), not only the type shown in :attr:`epochs_ndvar`.
+
+        Notes
+        -----
+        A flat EEG channel can be the reference, which is not defective; marking it as bad is
+        left to the user (as in :meth:`Pipeline.make_bad_channels_auto`).
+        """
+        if thresholds is None:
+            thresholds = FLAT_DEFAULT
+        std = self.epochs.get_data(picks=self.screened_channels).std(axis=(0, 2))
+        return [(name, ch_type) for name, ch_type, ch_std in zip(self.screened_channels, self.screened_channel_types, std) if ch_type in thresholds and ch_std < thresholds[ch_type]]
+
+    def channel_variance_fraction(self, component: int, ch_name: str) -> float:
+        """Share of the variance of a channel that is due to one component
+
+        Parameters
+        ----------
+        component
+            Index of the component.
+        ch_name
+            Name of the channel (any channel the ICA was estimated from).
+        """
+        i_ch = self.ica.ch_names.index(ch_name)
+        contribution = self.mixing.x[component, i_ch] * self.sources.x[:, component, :]
+        return contribution.var() / self.epochs.get_data(picks=[ch_name]).var()
+
+    def channel_gaps(
+            self,
+            smoothness: dict[str, float] = None,
+            gap_ratio: float = GAP_RATIO_DEFAULT,
+            min_components: int = MIN_COMPONENTS_DEFAULT,
+            min_consistency: float = CONSISTENCY_DEFAULT,
+    ) -> tuple[list[tuple[NDVar, ChannelGapResult]], list[tuple[str, str]]]:
+        """Channels that are missing from component maps (see :func:`find_channel_gaps`)
+
+        Parameters
+        ----------
+        smoothness
+            ``{ch_type: threshold}`` for the channel types to analyze; channel types that are
+            missing are skipped. If unspecified, the default types and thresholds are used.
+        gap_ratio
+            Maximum relative weight for a channel to count as a gap.
+        min_components
+            Minimum number of components in which a channel needs to be a gap.
+        min_consistency
+            Minimum fraction of the testable components in which a channel needs to be a gap.
+
+        Returns
+        -------
+        gap_results
+            ``(components, result)`` for each channel type that was analyzed.
+        skipped
+            ``(ch_type, reason)`` for each channel type that was not analyzed.
+        """
+        if smoothness is None:
+            smoothness = {ch_type: SMOOTHNESS_DEFAULT[ch_type] for ch_type, _ in self.components_by_type if CH_TYPE_DEFAULT.get(ch_type)}
+        source_variance = self.sources.x.var(axis=(0, 2))
+        gap_results = []
+        skipped = []
+        for ch_type, components in self.components_by_type:
+            if ch_type not in smoothness:
+                reason = "not selected; gradiometer maps are spatial derivatives and are not spatially smooth" if ch_type == 'grad' else "not selected"
+                skipped.append((ch_type, reason))
+                continue
+            try:
+                result = find_channel_gaps(components, source_variance, smoothness[ch_type], gap_ratio, min_components, min_consistency, ch_type)
+            except RuntimeError as error:  # sensor adjacency undefined
+                skipped.append((ch_type, str(error)))
+            else:
+                gap_results.append((components, result))
+        return gap_results, skipped
+
+    def single_channel_components(
+            self,
+            channel_ratio: float = _CHANNEL_RATIO_DEFAULT,
+            flat: Sequence[tuple[str, str]] = None,
+    ) -> list[tuple[int, str, float]]:
+        """Components whose map loads predominantly on a single channel (likely channel-specific noise)
+
+        Parameters
+        ----------
+        channel_ratio
+            Minimum ratio between the largest and the second largest channel weight in a
+            component map.
+        flat
+            Flat channels, as returned by :meth:`flat_channels` (computed if unspecified).
+
+        Returns
+        -------
+        candidates
+            ``(component, ch_name, variance_fraction)`` for each qualifying component, sorted
+            by ``variance_fraction``, the share of the channel's variance that is due to the
+            component (see :meth:`channel_variance_fraction`), descending. The weights are
+            compared within each channel type (see :attr:`components_by_type`), so a
+            component can be listed once per type. Flat channels are skipped, because the
+            share of their variance is undefined.
+        """
+        if flat is None:
+            flat = self.flat_channels()
+        flat = {ch_name for ch_name, _ in flat}
+        candidates = []
+        for ch_type, components in self.components_by_type:
+            names = components.sensor.names
+            if len(names) < 2:
+                continue
+            for i, component_map in enumerate(components):
+                abs_comp = abs(component_map.x)
+                argsort = np.argsort(abs_comp)
+                if abs_comp[argsort[-1]] > abs_comp[argsort[-2]] * channel_ratio:
+                    ch_name = names[argsort[-1]]
+                    if ch_name in flat:
+                        continue
+                    candidates.append((i, ch_name, self.channel_variance_fraction(i, ch_name)))
+        return sorted(candidates, key=itemgetter(-1), reverse=True)
+
 
 class Model(FileModel):
     """Manages a document with its history"""
@@ -344,6 +482,7 @@ class SharedToolsMenu:  # Frame mixin
     # MakeToolsMenu() might be called before __init__
     butterfly_baseline = ID.BASELINE_NONE
     last_model = ""
+    _bad_channel_results = None  # set by ShowBadChannels, for the summary window
 
     def AddToolbarButtons(self, tb):
         button = wx.Button(tb, label="PSD")
@@ -574,8 +713,6 @@ class SharedToolsMenu:  # Frame mixin
         """
         import seaborn  # lazy: pulls in ipywidgets/IPython/statsmodels, ~10% of GUI import time
 
-        if smoothness is None:
-            smoothness = {ch_type: SMOOTHNESS_DEFAULT[ch_type] for ch_type, _ in self.doc.components_by_type if CH_TYPE_DEFAULT.get(ch_type)}
         nc_before = neighbor_correlation(concatenate(self.doc.epochs_ndvar))
         if self.doc.accept.all():
             nc_after = None
@@ -584,39 +721,21 @@ class SharedToolsMenu:  # Frame mixin
             nc_after = neighbor_correlation(concatenate(epochs))
 
         # Find channels that are missing from component maps
-        source_variance = self.doc.sources.x.var(axis=(0, 2))
-        gap_results = []  # [(components, result), ...]
-        skipped = []  # [(ch_type, reason), ...]
-        for ch_type, components in self.doc.components_by_type:
-            if ch_type not in smoothness:
-                reason = "not selected; gradiometer maps are spatial derivatives and are not spatially smooth" if ch_type == 'grad' else "not selected"
-                skipped.append((ch_type, reason))
-                continue
-            try:
-                result = find_channel_gaps(components, source_variance, smoothness[ch_type], gap_ratio, min_components, min_consistency, ch_type)
-            except RuntimeError as error:  # sensor adjacency undefined
-                skipped.append((ch_type, str(error)))
-            else:
-                gap_results.append((components, result))
+        gap_results, skipped = self.doc.channel_gaps(smoothness, gap_ratio, min_components, min_consistency)
+
+        # Flat channels
+        flat = self.doc.flat_channels()
 
         # Find ICA components that load on a single channel
-        candidates = []
-        for i, component_map in enumerate(self.doc.components):
-            abs_comp = abs(component_map.x)
-            argsort = np.argsort(abs_comp)
-            if abs_comp[argsort[-1]] > abs_comp[argsort[-2]] * channel_ratio:
-                ch_name = self.doc.epochs_ndvar.sensor.names[argsort[-1]]
-                # Explained variance
-                explained_desc = self.doc.explained_variance(i, format=True)
-                explained_variance = max(self.doc.explained_variance(i).values())
-                # Loading by epoch
-                max_loadings = self.doc.sources[:, i].extrema('time').abs().x
-                # Store
-                candidates.append([i, ch_name, max_loadings, explained_desc, explained_variance])
-        candidates = sorted(candidates, key=itemgetter(-1), reverse=True)
+        candidates = self.doc.single_channel_components(channel_ratio, flat)
+
+        # for the summary window, opened through the link in the report
+        self._bad_channel_results = [((), *bad_channel_evidence(candidates, gap_results, flat))]
 
         # format output
         doc = fmtxt.Section("Bad Channels")
+        if self.doc.bad_channels_callback is not None:
+            doc.add_paragraph(fmtxt.Link("Select channels to mark as bad…", _BAD_CHANNELS_URL))
 
         # Neighbor correlation map
         section = doc.add_section("Neighbor correlation")
@@ -626,35 +745,47 @@ class SharedToolsMenu:  # Frame mixin
                 continue
             figure = matplotlib.figure.Figure(figsize=(4, 3))
             axes = figure.add_axes((0.1, 0.1, .7, 0.8))
-            p = plot.Topomap(nc, axes=axes, vmax=1, interpolation='linear')
+            p = plot.Topomap(nc, axes=axes, vmax=1, interpolation='linear', axtitle=desc)
             p.plot_colorbar(right_of=axes, ticks=3)
             image = fmtxt.Image(f'Neighbor correlation {desc}', 'jpg')
             canvas = FigureCanvasAgg(figure)
             canvas.print_jpeg(image)
             section.append(image)
 
+        # Flat channels
+        section = doc.add_section("Flat channels")
+        section.add_paragraph(f"Channels whose standard deviation is below {', '.join(f'{threshold:g} ({ch_type})' for ch_type, threshold in FLAT_DEFAULT.items())}. A flat EEG channel can be the reference, which is not defective.")
+        if flat:
+            section.add_paragraph(', '.join(f"{ch_name} ({ch_type})" for ch_name, ch_type in flat))
+        else:
+            section.add_paragraph("No flat channel.")
+
         # Channels missing from component maps
         self._AddChannelGapSection(doc, gap_results, skipped, gap_ratio, min_components, min_consistency)
 
         # Candidate components
         section = doc.add_section("Components loading on a single channel")
-        section.add_paragraph(f"Components whose largest channel weight exceeds the second largest by a factor of {channel_ratio:g}, ranked by explained variance. The histogram shows the distribution across epochs of the component's peak loading: a permanently defective channel loads on every epoch, whereas an intermittent artifact concentrates near zero with a few large outliers and is better addressed through epoch rejection.")
-        for component, ch_name, max_loadings, explained_desc, _ in candidates:
-            # plot component map
+        section.add_paragraph([f"Components whose largest channel weight exceeds the second largest by a factor of {channel_ratio:g}, ranked by the share of the channel's variance that is due to the component (i.e., likely due to channel-specific noise). The histogram shows the distribution across epochs of the component's peak loading: a permanently defective channel loads on every epoch, whereas an intermittent artifact concentrates near zero with a few large outliers and may be better addressed through epoch rejection. ", fmtxt.symbol('Var', 'ch'), " is the share of the channel's variance that is due to the component, and ", fmtxt.symbol('R', 'n'), " is the channel's neighbor correlation."])
+        table = fmtxt.Table('lll', rules=False)
+        components_of = {name: components for _, components in self.doc.components_by_type for name in components.sensor.names}
+        for component, ch_name, variance_fraction in candidates:
+            # plot the component map of the channel's type
             figure = matplotlib.figure.Figure(figsize=(1, 1))
             canvas = FigureCanvasAgg(figure)
             axes = figure.add_subplot()
-            plot.Topomap(self.doc.components[component], axes=axes, interpolation='linear')
+            plot.Topomap(components_of[ch_name][component], axes=axes, interpolation='linear')
             image = fmtxt.Image(f'#{component}', 'jpg')
             canvas.print_jpeg(image)
 
             # Text desc
             component_link = fmtxt.Link(f"#{component}", f'component:{component}')
-            desc = fmtxt.FMText([ch_name, fmtxt.linebreak, component_link, fmtxt.linebreak, explained_desc])
-            table = fmtxt.Table('lll', rules=False)
-            section.add_paragraph(table)
+            desc = [ch_name, fmtxt.linebreak, component_link, fmtxt.linebreak, fmtxt.eq('Var', 100 * variance_fraction, 'ch', fmt='%.0f%%')]
+            if ch_name in nc_before.sensor.channel_idx:  # the neighbor correlation map covers the primary channel type
+                desc += [fmtxt.linebreak, fmtxt.eq('R', nc_before[ch_name], 'n', fmt='%.2f')]
+            desc = fmtxt.FMText(desc)
 
-            # Loadings
+            # Loadings: the component's peak loading in each epoch
+            max_loadings = self.doc.sources[:, component].extrema('time').abs().x
             binrange = [0, max_loadings.max()]
             figure = matplotlib.figure.Figure(figsize=(2, 1))
             canvas = FigureCanvasAgg(figure)
@@ -664,6 +795,7 @@ class SharedToolsMenu:  # Frame mixin
             canvas.print_jpeg(histogram)
 
             table.cells(image, desc, histogram)
+        section.add_paragraph(table)
 
         InfoFrame(self, "Bad Channels", doc, 500)
 
@@ -699,7 +831,6 @@ class SharedToolsMenu:  # Frame mixin
         if skipped:
             section.add_paragraph(f"Not analyzed: {'; '.join(f'{ch_type} ({reason})' for ch_type, reason in skipped)}.")
 
-        names = []
         for components, result in gap_results:
             n_solid = result.solid.sum()
             sub_section = section.add_section(f"{result.ch_type}: {n_solid} of {len(result.solid)} components with a realistic field pattern")
@@ -726,7 +857,6 @@ class SharedToolsMenu:  # Frame mixin
             if not result.channels:
                 sub_section.add_paragraph("No channel is missing from the component maps.")
                 continue
-            names.extend(channel.name for channel in result.channels)
             if len(result.channels) > _GAP_MAX_ROWS:
                 sub_section.add_paragraph(f"Showing the {_GAP_MAX_ROWS} strongest of {len(result.channels)} channels.")
             table = fmtxt.Table('ll', rules=False)
@@ -747,29 +877,44 @@ class SharedToolsMenu:  # Frame mixin
                     desc += [f"{len(channel.no_gap_components)} no gap: ", _component_links(channel.no_gap_components)]
                 table.cells(image, fmtxt.FMText(desc))
 
-        if names:
-            section.add_paragraph("To exclude these channels, mark them as bad and re-compute the ICA decomposition:")
-            section.add_paragraph(', '.join(names))
-            if self.doc.bad_channels_callback is not None:
-                section.add_paragraph(fmtxt.Link(f"Add {len(names)} channel{'s' if len(names) > 1 else ''} to bad channels…", f"{_BAD_CHANNELS_URL}{','.join(names)}"))
+    def ShowBadChannelSummary(self) -> BadChannelSummaryFrame:
+        """Open the window for selecting which of the channels found by :meth:`ShowBadChannels` to mark as bad
 
-    def AddBadChannels(self, names: Sequence[str]):
+        The same window as Bad-Chs in the pipeline GUI, restricted to this recording. Shows
+        the channels found by the last :meth:`ShowBadChannels`, or, before any report, the
+        channels found with the default settings.
+        """
+        if self._bad_channel_results is None:
+            gap_results, _ = self.doc.channel_gaps()
+            flat = self.doc.flat_channels()
+            self._bad_channel_results = [((), *bad_channel_evidence(self.doc.single_channel_components(flat=flat), gap_results, flat))]
+        frame = BadChannelSummaryFrame(self, self._bad_channel_results, (), self.AddBadChannels)
+        frame.Show()
+        return frame
+
+    def AddBadChannels(
+            self,
+            additions: Additions,
+            recompute: bool,
+    ) -> None:
         """Add channels to the bad channels of the host application
 
         Only available when the GUI was opened by an application that can write bad channels
         (i.e., when :attr:`Document.bad_channels_callback` is set). Since the ICA was computed
         with these channels included, it is invalidated by this and the GUI is closed.
+
+        Parameters
+        ----------
+        additions
+            ``[(combo, names), ...]`` as the summary window's apply callback supplies it; the
+            combos are ignored, because the ICA GUI shows a single recording.
+        recompute
+            Queue the new ICA decomposition right away.
         """
         callback = self.doc.bad_channels_callback
         if callback is None:
             return
-        dlg = AddBadChannelsDialog(self, names)
-        confirmed = dlg.ShowModal() == wx.ID_OK
-        recompute = dlg.recompute.GetValue()
-        dlg.Destroy()
-        if not confirmed:
-            return
-        callback(list(names), recompute)
+        callback([name for _, names in additions for name in names], recompute)
         # force close: the ICA is invalid, so saving component selection would be pointless
         frame = self if self.owns_file else self.Parent
         frame.Close(True)
@@ -2157,11 +2302,17 @@ def _component_links(components: Sequence[int]) -> fmtxt.FMText:
 def _find_bad_channels_help() -> fmtxt.Section:
     "Help text for FindBadChannelsDialog (hover help is unreliable on some platforms)"
     doc = fmtxt.Section("Find Bad Channels")
-    doc.add_paragraph("This tool looks for bad channels in two ways: channels that are missing from the ICA component maps, and components that load on a single channel.")
+    doc.add_paragraph("This tool looks for bad channels in three ways: flat channels, channels that are missing from the ICA component maps, and components that load on a single channel.")
+
+    section = doc.add_section("Flat channels")
+    section.add_paragraph("A channel whose standard deviation is below a sensor type specific threshold records nothing. A flat EEG channel can be the reference, which is not defective: whether to mark it as bad is left to the user.")
 
     section = doc.add_section("Channels missing from component maps")
     section.add_paragraph("A channel that does not record any signal appears as a gap in the component maps: its weight is ~0 where the surrounding channels carry a strong field. A weight of ~0 in a single component is not diagnostic, because the channel could be located on the null line of a polarity reversal. Two properties make it diagnostic: the weight is ≤ ~0 in multiple components that reflect realistic field patterns, and it is ≤ ~0 while the surrounding channels all have the same polarity.")
     section.add_paragraph("A channel that is already excluded as bad is not part of the ICA decomposition and can not be evaluated. An empty result does therefore not imply that all previously excluded channels were rightly excluded. Conversely, acting on a result means marking the channel as bad and re-computing the ICA decomposition.")
+
+    section = doc.add_section("Components loading on a single channel")
+    section.add_paragraph("A component whose map is dominated by a single channel usually reflects noise in that channel rather than a field pattern. Because the component's unmixing weights predict the channel from all other channels, rejecting it amounts to interpolating the channel, which adds no independent information for source estimation. The choice is therefore between keeping the channel with its noise and marking it as bad. The share of the channel's variance that is due to the component indicates how strong the noise is compared to the signal in the channel: stationary noise with a small share is accounted for by the noise covariance in source estimation, whereas a channel dominated by noise, or by intermittent noise, is better marked as bad.")
 
     section = doc.add_section("Settings")
     for label, description in _FIND_BAD_CHANNELS_HELP.values():
@@ -2198,33 +2349,6 @@ def _topomap_bitmap(component: NDVar, size: int = _COMPONENT_MAP_SIZE, dpi: floa
     canvas.draw()
     width, height = canvas.get_width_height()
     return wx.Bitmap.FromBufferRGBA(width, height, canvas.buffer_rgba())
-
-
-class AddBadChannelsDialog(EelbrainDialog):
-    "Confirm adding channels to the bad channels, which invalidates the ICA"
-
-    def __init__(self, parent, names: Sequence[str], **kwargs):
-        super().__init__(parent, wx.ID_ANY, "Add Bad Channels", **kwargs)
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self, label=f"Add to the bad channels: {', '.join(names)}?\n\nThe ICA was computed with these channels included, so it will be deleted, along with the current component selection. This window will close.")
-        label.Wrap(_BAD_CHANNELS_DIALOG_WIDTH)
-        sizer.Add(label, flag=wx.ALL, border=10)
-
-        self.recompute = ctrl = wx.CheckBox(self, label="Re-compute the ICA now")
-        ctrl.SetValue(True)
-        ctrl.SetToolTip("Start computing the new ICA decomposition right away; otherwise it needs to be computed before component selection can continue")
-        sizer.Add(ctrl, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM, border=10)
-
-        button_sizer = wx.StdDialogButtonSizer()
-        btn = wx.Button(self, wx.ID_OK, "Add Bad Channels")
-        btn.SetDefault()
-        button_sizer.AddButton(btn)
-        button_sizer.AddButton(wx.Button(self, wx.ID_CANCEL))
-        button_sizer.Realize()
-        sizer.Add(button_sizer, flag=wx.ALL, border=10)
-
-        self.SetSizer(sizer)
-        sizer.Fit(self)
 
 
 class ComponentMapDialog(EelbrainDialog):
@@ -2351,8 +2475,8 @@ class InfoFrame(HTMLFrame):
         return pos, (w, h)
 
     def OpenURL(self, url):
-        if url.startswith(_BAD_CHANNELS_URL):
-            self.Parent.AddBadChannels(url[len(_BAD_CHANNELS_URL):].split(','))
+        if url == _BAD_CHANNELS_URL:
+            self.Parent.ShowBadChannelSummary()
             return
         component = epoch = None
         for part in url.split():

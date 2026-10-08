@@ -11,7 +11,7 @@ from eelbrain._exceptions import ConfigurationError, DataError
 from eelbrain._experiment.derivative_cache import ProtectedArtifactError
 from eelbrain._experiment.epoch_rejection import ChannelModelRejection, ManualRejection
 from eelbrain._experiment.exceptions import FileMissingError
-from eelbrain._wxgui import pipeline_gui
+from eelbrain._wxgui import bad_channel_summary, pipeline_gui
 from eelbrain._wxgui.pipeline_gui import COMMON_BRAIN_ROW, GREY, PLACEHOLDER, TASKS, TASKS_BY_NAME, Layout, PipelineFrame, _format_user_error
 
 
@@ -368,17 +368,22 @@ def test_status_bar_shows_progress_while_rows_load():
 def test_compute_button_waits_for_the_table_but_stop_does_not():
     "Computing needs every row, so that one click queues every missing row; stopping a run never waits"
     frame = _table_frame('ica')
-    labels, enabled = [], []
+    labels, enabled, bad_chs_enabled = [], [], []
     button = SimpleNamespace(SetLabel=labels.append, SetToolTip=lambda tip: None, Show=lambda show: None, Enable=enabled.append)
-    frame.__dict__.update(_pipeline=pipeline(), _current_epoch_rejection=lambda: None, _compute_btn=button, _panel=SimpleNamespace(Layout=lambda: None), _compute_token=None, _n_loading=2)
+    bad_chs_button = SimpleNamespace(Show=lambda show: None, Enable=bad_chs_enabled.append)
+    frame.__dict__.update(_pipeline=pipeline(), _current_epoch_rejection=lambda: None, _compute_btn=button, _bad_chs_btn=bad_chs_button, _panel=SimpleNamespace(Layout=lambda: None), _compute_token=None, _n_loading=2)
     frame._update_compute_button()
     frame._n_loading = 0
     frame._update_compute_button()
     frame._n_loading = 2
     frame._compute_token = object()
     frame._update_compute_button()
-    assert labels == ["Make ICA", "Make ICA", "Stop"]
-    assert enabled == [False, True, True]
+    frame._n_loading = 0
+    frame._update_compute_button()
+    assert labels == ["Make ICA", "Make ICA", "Stop", "Stop"]
+    assert enabled == [False, True, True, True]
+    # the bad channel search needs every row's job spec and the pipeline, so it waits for both
+    assert bad_chs_enabled == [False, True, False, False]
 
 
 def test_activate_row_waits_for_the_table_to_load():
@@ -481,28 +486,133 @@ def test_compute_job_holds_the_pipeline_lock_except_for_the_fit():
     assert not frame._pipeline_lock.locked()
 
 
-def test_ica_bad_channels_callback_waits_for_the_pipeline(monkeypatch, tmp_path):
-    "Bad channels found in the ICA window are filed once no other thread is using the pipeline"
+def test_ica_bad_channels_wait_for_the_pipeline(monkeypatch, tmp_path):
+    "Bad channels found for an ICA are filed once no other thread is using the pipeline, and the ICA is deleted"
     monkeypatch.setattr(pipeline_gui.wx, 'CallAfter', lambda *args: posted.append(args))
     monkeypatch.setattr(pipeline_gui.wx, 'CallLater', lambda ms, *args: deferred.append(args))
     posted, deferred, filed = [], [], []
     node = SimpleNamespace(_source_states=lambda ctx, task: [{'task': 't0'}], pipe=SimpleNamespace(task='t0'))
-    spec = SimpleNamespace(ctx=SimpleNamespace(node=node))
+    ica_path = tmp_path / 'ica.fif'
+    ica_path.touch()
+    spec = SimpleNamespace(ctx=SimpleNamespace(node=node), path=ica_path)
     p = SimpleNamespace(set=lambda **state: None, _job_spec=lambda name: spec, make_bad_channels=lambda names, **state: filed.append((names, state)))
     frame = _frame(_pipeline=p, _pipeline_lock=threading.Lock())
-    doc = SimpleNamespace(path=str(tmp_path / 'ica.fif'))
-    args = ('ica', {'subject': 'R01'}, _ICA_SCOPE, ('R01',), doc, ['MEG 0111'], True)
+    args = (_ICA_SCOPE, [(('R01',), ['MEG 0111'])], True)
 
-    # while a refresh pass holds the pipeline, the callback is retried rather than interleaved with it
+    # while a refresh pass holds the pipeline, the call is retried rather than interleaved with it
     with frame._pipeline_lock:
-        frame._on_ica_bad_channels(*args)
-    assert deferred == [(frame._on_ica_bad_channels, *args)]
+        frame._add_ica_bad_channels(*args)
+    assert deferred == [(frame._add_ica_bad_channels, *args)]
     assert filed == [] and posted == []
+    assert ica_path.exists()
 
-    frame._on_ica_bad_channels(*args)
-    assert filed == [(['MEG 0111'], {'raw': 'ica', 'subject': 'R01', 'task': 't0'})]
+    frame._add_ica_bad_channels(*args)
+    assert filed == [(['MEG 0111'], {'raw': '1-40', 'subject': 'R01', 'task': 't0'})]
     assert posted == [(frame._queue_jobs, _ICA_SCOPE, [(('R01',), spec)])]
+    assert not ica_path.exists()
     assert not frame._pipeline_lock.locked()
+
+    # without recompute, the table is re-read instead
+    posted.clear()
+    frame._add_ica_bad_channels(_ICA_SCOPE, [(('R01',), ['MEG 0111'])], False)
+    assert posted == [(frame._start_refresh,)]
+
+
+def test_ica_bad_channels_report_a_failed_write(monkeypatch, tmp_path):
+    "A recording whose bad channels can not be written is reported, and the rows that were written are still queued"
+    monkeypatch.setattr(pipeline_gui.wx, 'CallAfter', lambda *args: posted.append(args))
+    posted, filed = [], []
+    node = SimpleNamespace(_source_states=lambda ctx, task: [{'task': 't0'}], pipe=SimpleNamespace(task='t0'))
+    spec = SimpleNamespace(ctx=SimpleNamespace(node=node), path=tmp_path / 'ica.fif')
+
+    def make_bad_channels(names, **state):
+        if state['subject'] == 'R02':
+            raise DataError("no positions")
+        filed.append((names, state))
+
+    p = SimpleNamespace(set=lambda **state: None, _job_spec=lambda name: spec, make_bad_channels=make_bad_channels)
+    frame = _frame(_pipeline=p, _pipeline_lock=threading.Lock())
+    frame._add_ica_bad_channels(_ICA_SCOPE, [(('R01',), ['MEG 0111']), (('R02',), ['MEG 0112']), (('R03',), ['MEG 0113'])], True)
+    assert [state['subject'] for _, state in filed] == ['R01']  # the loop stops at the failure
+    assert posted[0] == (frame._queue_jobs, _ICA_SCOPE, [(('R01',), spec)])
+    assert posted[1][0] == frame._show_error
+    assert posted[2] == (frame._start_refresh,)
+    assert not frame._pipeline_lock.locked()
+
+
+def test_channel_summary_rows():
+    "One row per channel: flat first, then gaps, then the component that explains most of the channel's variance, strongest first"
+    results = [
+        (('R01',), [('MEG 0111', 3, 0.6), ('MEG 0112', 5, 0.2), ('MEG 0111', 7, 0.8)], [('MEG 0112', 4, 6), ('MEG 0113', 2, 2)], [('EEG 001', 'eeg'), ('MEG 0113', 'mag')]),
+        (('R02',), [], [], [('EEG 001', 'eeg')]),
+        (('R03',), [('MEG 0113', 1, 0.5)], [], [('EEG 001', 'eeg'), ('EEG 002', 'eeg')]),
+    ]
+    rows = bad_channel_summary._channel_summary_rows(results)
+    assert rows == [
+        (('R01',), 'MEG 0113', None, None, (2, 2), True),
+        (('R01',), 'EEG 001', None, None, None, True),
+        (('R01',), 'MEG 0112', 5, 0.2, (4, 6), False),
+        (('R01',), 'MEG 0111', 7, 0.8, None, False),
+        (('R02',), 'EEG 001', None, None, None, True),
+        (('R03',), 'EEG 001', None, None, None, True),
+        (('R03',), 'EEG 002', None, None, None, True),
+        (('R03',), 'MEG 0113', 1, 0.5, None, False),
+    ]
+    # flat channels and gaps count regardless of the threshold
+    assert bad_channel_summary._bad_channels_above(rows, 0.5) == [(('R01',), ['MEG 0113', 'EEG 001', 'MEG 0112', 'MEG 0111']), (('R02',), ['EEG 001']), (('R03',), ['EEG 001', 'EEG 002', 'MEG 0113'])]
+    assert bad_channel_summary._bad_channels_above(rows, 0.9) == [(('R01',), ['MEG 0113', 'EEG 001', 'MEG 0112']), (('R02',), ['EEG 001']), (('R03',), ['EEG 001', 'EEG 002'])]
+    # excluded channels are never marked, whatever the evidence
+    assert bad_channel_summary._bad_channels_above(rows, 0.9, ['EEG 001', 'MEG 0113']) == [(('R01',), ['MEG 0112']), (('R03',), ['EEG 002'])]
+    # an EEG channel that is flat in every recording is most likely the reference
+    assert bad_channel_summary._flat_in_every_recording(results) == ['EEG 001']
+    assert bad_channel_summary._flat_in_every_recording(results[:1]) == ['EEG 001']
+    assert bad_channel_summary._flat_in_every_recording([]) == []
+
+
+def test_find_bad_channels_thread_holds_the_pipeline_lock(monkeypatch):
+    "Every recording is analyzed under the pipeline lock; a failing one is reported, the rest are summarized"
+    monkeypatch.setattr(pipeline_gui.wx, 'CallAfter', lambda func, *args: func(*args))
+    locked, updates = [], []
+    progress = SimpleNamespace(Update=lambda i, msg: updates.append((i, msg)) or (True, False), WasCancelled=lambda: False, Destroy=lambda: None)
+
+    def candidates(raw_name, spec):
+        locked.append(frame._pipeline_lock.locked())
+        if spec == 'bad':
+            raise DataError("no positions")
+        return [('MEG 0111', 3, 0.6)], [('MEG 0112', 4, 6)], [('EEG 001', 'eeg')]
+
+    frame = _frame(
+        _pipeline_lock=threading.Lock(),
+        _ica_bad_channel_candidates=candidates,
+        _show_bad_channel_summary=lambda *args: summary.append(args),
+    )
+    summary = []
+    frame._find_bad_channels_thread(_ICA_SCOPE, [(('R01',), 'ok'), (('R02',), 'bad')], progress)
+    assert locked == [True, True]
+    assert not frame._pipeline_lock.locked()
+    assert [i for i, _ in updates] == [0, 1]
+    (scope, results, errors, progress_), = summary
+    assert scope is _ICA_SCOPE and progress_ is progress
+    assert results == [(('R01',), [('MEG 0111', 3, 0.6)], [('MEG 0112', 4, 6)], [('EEG 001', 'eeg')])]
+    assert [combo for combo, _ in errors] == [('R02',)] and isinstance(errors[0][1], DataError)
+
+    # Abort in the progress dialog while a recording loads stops the search before the next one
+    progress.Update = lambda i, msg: (i == 0, False)
+    summary.clear()
+    locked.clear()
+    frame._find_bad_channels_thread(_ICA_SCOPE, [(('R01',), 'ok'), (('R02',), 'ok'), (('R03',), 'ok')], progress)
+    assert locked == [True]
+    assert summary[0][1] == [(('R01',), [('MEG 0111', 3, 0.6)], [('MEG 0112', 4, 6)], [('EEG 001', 'eeg')])]
+
+    # the summary asks the dialog whether Abort was clicked, which also covers the last recording (the frame's own method is mocked above)
+    monkeypatch.setattr(pipeline_gui, 'BadChannelSummaryFrame', lambda *args: opened.append(args) or SimpleNamespace(Show=lambda: None))
+    opened, destroyed = [], []
+    progress = SimpleNamespace(WasCancelled=lambda: True, Destroy=lambda: destroyed.append(True))
+    PipelineFrame._show_bad_channel_summary(frame, _ICA_SCOPE, summary[0][1], [], progress)
+    assert destroyed == [True] and opened == []
+    progress.WasCancelled = lambda: False
+    PipelineFrame._show_bad_channel_summary(frame, _ICA_SCOPE, summary[0][1], [], progress)
+    assert len(opened) == 1 and opened[0][1] == summary[0][1]
 
 
 def test_refresh_holds_the_pipeline_lock(monkeypatch):

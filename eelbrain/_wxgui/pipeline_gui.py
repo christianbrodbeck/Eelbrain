@@ -26,6 +26,7 @@ from .._experiment.exceptions import FileMissingError, ICAChannelsChangedError, 
 from .._experiment.pathing import MRI_SDIR
 from .._experiment.preprocessing import REINDEX_ICA, RawICA, RawSource, ica_input_name, raw_bad_channels_input_name, raw_input_name
 from .._utils.mne_utils import is_fake_mri
+from .bad_channel_summary import BadChannelSummaryFrame, CandidateList, FlatList, GapList, RecordingResult, bad_channel_evidence
 from .frame import EelbrainFrame
 from .select_components import Document as ICADocument
 from .utils import StaleICADialog, TracebackDialog
@@ -58,6 +59,8 @@ class _AbortRequested(Exception):
 
 
 _USER_ERROR_TYPES = (ConfigurationError, DataError, FileMissingError, FileNotFoundError)
+# Seconds the bad channel search waits for the main thread to process a progress update before loading the next row
+_PROGRESS_UPDATE_TIMEOUT = 1.
 
 
 def _format_user_error(error: Exception) -> tuple[str, str] | None:
@@ -673,6 +676,12 @@ class PipelineFrame(EelbrainFrame):
 
         toolbar.AddStretchSpacer()
 
+        # Bad channel search of the ICA task; shown and enabled along with the compute button
+        self._bad_chs_btn = wx.Button(self._panel, label="Bad-Chs", style=wx.BU_EXACTFIT)
+        self._bad_chs_btn.SetToolTip("Find flat channels and channels dominated by a single ICA component in every recording with a selected ICA")
+        self._bad_chs_btn.Bind(wx.EVT_BUTTON, self._on_find_bad_channels)
+        toolbar.Add(self._bad_chs_btn, flag=wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, border=6)
+
         # Compute button + progress; label and visibility follow the task
         self._compute_btn = wx.Button(self._panel, label="", style=wx.BU_EXACTFIT)
         self._compute_btn.Bind(wx.EVT_BUTTON, self._on_compute)
@@ -708,7 +717,7 @@ class PipelineFrame(EelbrainFrame):
         for w in (self._epoch_rejection_label, self._epoch_rejection_choice,
                   self._epoch_label, self._epoch_choice,
                   self._raw_label, self._raw_choice,
-                  self._compute_btn, self._progress_gauge, self._progress_label):
+                  self._bad_chs_btn, self._compute_btn, self._progress_gauge, self._progress_label):
             w.Hide()
 
     # ------------------------------------------------------------------
@@ -797,6 +806,11 @@ class PipelineFrame(EelbrainFrame):
             # Computing waits until every row is in, so that one click queues every missing row; stopping never waits
             self._compute_btn.Enable(self._compute_token is not None or not self._n_loading)
         self._compute_btn.Show(computable)
+        shows_bad_chs = task.name == 'ica'
+        if shows_bad_chs:
+            # needs every row's job spec, and the pipeline, which the worker uses while computing
+            self._bad_chs_btn.Enable(self._compute_token is None and not self._n_loading)
+        self._bad_chs_btn.Show(shows_bad_chs)
         self._panel.Layout()
 
     def _on_epoch_rejection_changed(self, event):
@@ -955,7 +969,7 @@ class PipelineFrame(EelbrainFrame):
                 if frame is not None:
                     doc = frame.model.doc
                     # enables the ICA GUI to add bad channels it finds
-                    doc.bad_channels_callback = partial(self._on_ica_bad_channels, raw_name, state, scope, combo, doc)
+                    doc.bad_channels_callback = lambda names, recompute: self._add_ica_bad_channels(scope, [(combo, names)], recompute)
                     doc.callbacks.subscribe(
                         'saved',
                         lambda: wx.CallAfter(self._update_ica_row, scope, combo, doc),
@@ -981,40 +995,28 @@ class PipelineFrame(EelbrainFrame):
         finally:
             wx.EndBusyCursor()
 
-    def _on_ica_bad_channels(
+    def _add_ica_bad_channels(
             self,
-            raw_name: str,
-            state: dict[str, str],
             scope: tuple,
-            combo: tuple,
-            doc: ICADocument,
-            names: Sequence[str],
+            additions: Sequence[tuple[tuple[str, ...], Sequence[str]]],
             recompute: bool,
-    ):
-        """Add bad channels found in the ICA GUI.
+    ) -> None:
+        """Add bad channels to recordings whose ICA was estimated with these channels included
 
-        The ICA was estimated with these channels included, so it is deleted; the ICA GUI
-        closes itself after invoking this.
+        Each ICA is invalidated by this, so its file is deleted; the row then either
+        queues the new decomposition or shows the ICA as missing. Called from the ICA GUI
+        (which closes itself after this) and from the bad channel summary window.
 
         Parameters
         ----------
-        raw_name
-            ICA raw step the decomposition belongs to.
-        state
-            Subject and key fields of the recording, from its row.
         scope
-            Table the row belongs to, captured when this ICA GUI was opened: by the
+            Table the rows belong to, captured when the channels were found: by the
             time the user gets here the pipeline GUI may show a different one, and
-            ``combo`` would then name an unrelated recording.
-        combo
-            Row combo, for queueing the recompute against the right row.
-        doc
-            Document of the ICA GUI that found the channels; its file is the one
-            invalidated here.
-        names
-            Channels to add to the bad channels.
+            a combo would then name an unrelated recording.
+        additions
+            ``(combo, names)``: channels to add to the bad channels, per row.
         recompute
-            Whether to queue the new ICA decomposition right away.
+            Whether to queue the new ICA decompositions right away.
 
         Notes
         -----
@@ -1025,22 +1027,154 @@ class PipelineFrame(EelbrainFrame):
         needs the main thread for a dialog.
         """
         if not self._pipeline_lock.acquire(blocking=False):
-            wx.CallLater(100, self._on_ica_bad_channels, raw_name, state, scope, combo, doc, names, recompute)
+            wx.CallLater(100, self._add_ica_bad_channels, scope, additions, recompute)
             return
+        raw_name, layout = scope[3], scope[4]
+        jobs = []  # [(combo, spec), ...] whose ICA was deleted
+        error = None
         try:
-            self._pipeline.set(raw=raw_name, **state)
-            spec = self._pipeline._job_spec(ica_input_name(raw_name))
-            # ICA combines bad channels across tasks/runs
-            node = spec.ctx.node
-            for source_state in node._source_states(spec.ctx, node.pipe.task):
-                self._pipeline.make_bad_channels(names, raw=raw_name, **{**state, **source_state})
+            for combo, names in additions:
+                state = dict(zip(layout.key_fields, combo))
+                self._pipeline.set(raw=raw_name, **state)
+                spec = self._pipeline._job_spec(ica_input_name(raw_name))
+                # ICA combines bad channels across tasks/runs
+                node = spec.ctx.node
+                for source_state in node._source_states(spec.ctx, node.pipe.task):
+                    self._pipeline.make_bad_channels(names, raw=raw_name, **{**state, **source_state})
+                spec.path.unlink(missing_ok=True)
+                jobs.append((combo, spec))
+        except Exception as exc:  # any error: the ICAs deleted so far still need to be queued or shown as missing
+            error = exc
         finally:
             self._pipeline_lock.release()
-        Path(doc.path).unlink(missing_ok=True)
         if recompute:
-            wx.CallAfter(self._queue_jobs, scope, [(combo, spec)])
-        else:
+            wx.CallAfter(self._queue_jobs, scope, jobs)
+        if error is not None:
+            # the recording whose bad channels could not be written may be half updated, so re-read every row;
+            # _error_dialog_args presents an unexpected error as a bug report
+            wx.CallAfter(self._show_error, *_error_dialog_args(error))
             wx.CallAfter(self._start_refresh)
+        elif not recompute:
+            wx.CallAfter(self._start_refresh)
+
+    def _on_find_bad_channels(self, event) -> None:
+        """Bad-Chs button: find flat channels and channels dominated by a single ICA component in every recording with a selected ICA."""
+        scope = self._table_scope()
+        task = scope[0]
+        rows = []  # [(combo, spec), ...]
+        for i in range(self._list.GetItemCount()):
+            combo = self._row_combo(i)
+            if self._list.GetItemText(i, self._layout.status_col) == task.done_status and (scope, combo) in self._job_specs:
+                rows.append((combo, self._job_specs[scope, combo]))
+        if not rows:
+            dlg = wx.MessageDialog(self, "No recording has a selected ICA to analyze.", "No ICA", wx.OK | wx.ICON_INFORMATION)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
+        progress = wx.ProgressDialog("Find Bad Channels", f"Loading {' '.join(rows[0][0])}…  (1 / {len(rows)})", len(rows), self, style=wx.PD_CAN_ABORT | wx.PD_APP_MODAL | wx.PD_AUTO_HIDE | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
+        threading.Thread(target=self._find_bad_channels_thread, args=(scope, rows, progress), daemon=True).start()
+
+    def _find_bad_channels_thread(
+            self,
+            scope: tuple,  # see :meth:`_table_scope`
+            rows: Sequence[tuple[tuple[str, ...], JobSpec]],
+            progress: wx.ProgressDialog,
+    ) -> None:
+        """Compute the bad channel candidates of every row, then show the summary.
+
+        Holds the pipeline lock throughout, like a refresh pass: loading a recording's
+        raw data goes through the derivative cache. The progress dialog is updated on the
+        main thread, which is also where it reports a click on Abort; the update is awaited
+        before a row is loaded, so that the row being loaded when Abort is clicked is the
+        last one. An Abort during the last row is seen by :meth:`_show_bad_channel_summary`.
+        """
+        raw_name = scope[3]
+        cancelled = threading.Event()
+        updated = threading.Event()
+
+        def update(i: int, combo: tuple[str, ...]) -> None:
+            keep_going, _ = progress.Update(i, f"Loading {' '.join(combo)}…  ({i + 1} / {len(rows)})")
+            if not keep_going:
+                cancelled.set()
+            updated.set()
+
+        results = []  # [(combo, candidates, gaps, flat), ...]
+        errors = []  # [(combo, error), ...]
+        with self._pipeline_lock:
+            for i, (combo, spec) in enumerate(rows):
+                updated.clear()
+                wx.CallAfter(update, i, combo)
+                updated.wait(_PROGRESS_UPDATE_TIMEOUT)
+                if cancelled.is_set():
+                    break
+                try:
+                    results.append((combo, *self._ica_bad_channel_candidates(raw_name, spec)))
+                except Exception as error:
+                    errors.append((combo, error))
+        wx.CallAfter(self._show_bad_channel_summary, scope, results, errors, progress)
+
+    def _ica_bad_channel_candidates(
+            self,
+            raw_name: str,
+            spec: JobSpec,
+    ) -> tuple[CandidateList, GapList, FlatList]:
+        """Bad channel evidence of one recording
+
+        The metrics of the ICA GUI's Find Bad Channels tool, with its default parameters
+        (see :meth:`select_components.Document.single_channel_components`,
+        :meth:`select_components.Document.channel_gaps` and
+        :meth:`select_components.Document.flat_channels`), computed on the recording's ICA
+        and the raw data it was estimated from, without opening the GUI.
+
+        Parameters
+        ----------
+        raw_name
+            ICA raw step the decomposition belongs to.
+        spec
+            Job spec of the recording's ICA, from its row.
+
+        Returns
+        -------
+        candidates
+            ``(ch_name, component, variance_fraction)`` per component loading on a single
+            channel, where ``variance_fraction`` is the share of the channel's variance that
+            is due to the component.
+        gaps
+            ``(ch_name, n_evidence, n_testable)`` per channel that is missing from component
+            maps: the number of components in which it is a gap, and in which it could be
+            evaluated.
+        flat
+            ``(ch_name, ch_type)`` per flat channel.
+        """
+        ctx = spec.ctx
+        raw = ctx.node.load_concatenated_source_raw(ctx, ctx.node.pipe.task, preload=False)
+        sysname, adjacency = self._pipeline._ndvar_sensor_args(raw_name, raw.info, ctx.state['subject'])
+        doc = ICADocument(spec.path, raw, sysname, adjacency)
+        gap_results, _ = doc.channel_gaps()
+        flat = doc.flat_channels()
+        return bad_channel_evidence(doc.single_channel_components(flat=flat), gap_results, flat)
+
+    def _show_bad_channel_summary(
+            self,
+            scope: tuple,  # see :meth:`_table_scope`
+            results: list[RecordingResult],
+            errors: list[tuple[tuple[str, ...], Exception]],
+            progress: wx.ProgressDialog,
+    ) -> None:
+        """Close the progress dialog and open the summary window for the rows that were analyzed.
+
+        The first error is shown, as after a refresh pass; the rows that resolved are
+        still summarized. A cancelled search shows nothing, also when Abort was clicked
+        while the last row was loading.
+        """
+        cancelled = progress.WasCancelled()
+        progress.Destroy()
+        if cancelled:
+            return
+        if errors:
+            self._show_error(*_error_dialog_args(errors[0][1]))
+        if results:
+            BadChannelSummaryFrame(self, results, scope[4].key_fields, partial(self._add_ica_bad_channels, scope)).Show()
 
     def _on_mri_activated(self, row_idx: int, subject: str):
         """Handle double-click on an MRI row."""
@@ -1252,6 +1386,7 @@ class PipelineFrame(EelbrainFrame):
         self.SetStatusText("Loading…")
         if self._compute_token is None:  # during a computation the button is Stop, which a refresh must not block
             self._compute_btn.Disable()
+        self._bad_chs_btn.Disable()
 
         if task.shows_epoch:
             if epoch_rejection is None:
