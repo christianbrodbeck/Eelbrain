@@ -21,7 +21,7 @@ from ..derivative_cache import Dependency, Derivative, OptionSpec, Request, Unca
 from ..epochs.config import EpochBase
 from ..pathing import BIDS_ENTITY_KEYS, MRI_SDIR, mri_dir
 from ..preprocessing import RawFilter, RawPipe, RawSource
-from ..source.nodes import _subject_state
+from ..source.nodes import _drop_unknown_labels, _source_parc, _subject_state
 from ..statistics.config import ResolvedTestNDSpec, TTestOneSample, TTestRelated, Test, TwoStageTest
 from ..variable_def import Variables
 from .estimator import Estimator
@@ -83,6 +83,23 @@ def filter_predictor(x: NDVar, raw: dict[str, RawPipe], raw_name: str, filter_x:
             for pipe in filter_pipes(raw, raw_name):
                 x = pipe._filter_ndvar(x, pad='edge')
     return x
+
+
+def _is_source_space(ctx: Request, est: Estimator) -> bool:
+    "Whether the TRFs are in source space: fit to source-localized data (``inv``), or by an estimator that localizes internally"
+    return bool(ctx.state['inv']) or est.requires_sensor_space
+
+
+def _trf_dataset_key_fields(ctx: Request, estimators: dict[str, Estimator], *case_fields: str) -> tuple[str, ...]:
+    "Key fields shared by the TRF dataset nodes: ``case_fields`` identify the cases (subject or group), the rest the TRFs"
+    est = estimators[ctx.options['estimator']]
+    fields = [*case_fields, 'session', 'acquisition', 'epoch', 'epoch_rejection', 'raw', 'inv']
+    if _is_source_space(ctx, est):
+        fields += ['cov', 'src', 'parc', 'adjacency', 'mrisubject', 'common_brain']
+    else:
+        fields.append('reference')  # source modeling pins reference='' (see TRFDerivative)
+    fields += est.extra_input_fields
+    return tuple(fields)
 
 
 def _post_process_trfs(
@@ -260,12 +277,13 @@ class TRFDerivative(Derivative[object]):
         # field the build may read: 'inv' is always read (to pick the space).
         fields = ('subject', 'session', 'acquisition', 'raw', 'epoch', 'epoch_rejection', 'inv')
         est = self.estimators[ctx.options['estimator']]
-        if ctx.state['inv']:  # non-empty inverse → source space
-            fields += ('cov', 'mrisubject', 'src', 'parc')
-        if est.extra_input_fields:
-            fields += est.extra_input_fields
-        else:
+        if ctx.state['inv']:  # non-empty inverse → source space ('epochs-stc' pins reference='')
+            fields += ('cov', 'mrisubject', 'src')
+        elif not est.requires_sensor_space:  # sensor-space 'epochs' are keyed on the EEG reference; an estimator that localizes internally pins reference='' (see dependencies)
             fields += ('reference',)
+        if _is_source_space(ctx, est):
+            fields += ('parc',)  # masks the source space
+        fields += est.extra_input_fields  # e.g., NCRF: sensor data + forward solution
         return tuple(fields)
 
     def fingerprint(self, ctx: Request) -> dict[str, object]:
@@ -283,6 +301,7 @@ class TRFDerivative(Derivative[object]):
         est = self.estimators[ctx.options['estimator']]
 
         # M/EEG response: sensor (inv='') vs source space
+        state = None
         if ctx.state['inv']:  # source space
             node = 'epochs-stc'
             option_kwargs = {}
@@ -292,11 +311,15 @@ class TRFDerivative(Derivative[object]):
                 'data': ctx.options['data'],  # resolved sensor kind
                 'interpolate_bads': est.interpolate_bads,
             }
+            if est.requires_sensor_space:  # localizes internally: EEG referencing is part of source modeling, as for 'epochs-stc'
+                state = {'reference': ''}
         options = ctx.options_for(node, 'samplingrate', 'decim', **option_kwargs)
-        deps = [Dependency(node, label='response', options=options)]
+        deps = [Dependency(node, label='response', state=state, options=options)]
 
         for extra in est.extra_inputs:
             deps.append(Dependency(extra))
+        if est.requires_sensor_space and _source_parc(ctx.state):
+            deps.append(Dependency('annot'))  # parcellation for the forward operator's source space
 
         # One predictor-file edge per input. Stimulus predictors, including
         # per-event SubjectUTSPredictors, are shared across recordings;
@@ -374,7 +397,12 @@ class TRFDerivative(Derivative[object]):
             fwd = cov = None
             if 'fwd' in est.extra_inputs:
                 fwd = ctx.load('fwd')  # ensure built and tracked as a dependency
-                fwd = load.mne.forward_operator(fwd, ctx.state['src'], self.root / MRI_SDIR, None)
+                parc = _source_parc(ctx.state)
+                if parc:
+                    ctx.ensure('annot')
+                fwd = load.mne.forward_operator(fwd, ctx.state['src'], self.root / MRI_SDIR, parc, adjacency=False)
+                if parc:
+                    fwd = _drop_unknown_labels(fwd)
             if 'cov' in est.extra_inputs:
                 cov = ctx.load('cov')
         return TRFJob(est, y, xs, tstart, tstop, fwd, cov)
@@ -520,14 +548,11 @@ class TRFDatasetDerivative(UncachedDerivative[Dataset]):
         self.epochs = epochs
 
     def override_key_fields(self, ctx: Request) -> tuple[str, ...]:
-        fields = ['subject', 'session', 'acquisition', 'epoch', 'epoch_rejection', 'reference', 'raw', 'inv']
-        if ctx.state['inv']:
-            fields += ['cov', 'src', 'parc', 'adjacency', 'mrisubject', 'common_brain']
-        return tuple(fields)
+        return _trf_dataset_key_fields(ctx, self.estimators, 'subject')
 
     def validate_options(self, ctx: Request) -> None:
         _normalize_trf_options(ctx.options)
-        if not ctx.state['inv'] and (smooth := ctx.options['smooth']):
+        if (smooth := ctx.options['smooth']) and not _is_source_space(ctx, self.estimators[ctx.options['estimator']]):
             raise ValueError(f"{smooth=}: smoothing is only available for source-space data")
         if not ctx.options['trfs'] and not self.estimators[ctx.options['estimator']].metric_keys:
             raise ValueError(f"trfs=False: estimator {ctx.options['estimator']!r} provides no fit metrics, so the dataset would be empty")
@@ -539,7 +564,7 @@ class TRFDatasetDerivative(UncachedDerivative[Dataset]):
         trf_options = ctx.options_for('trf', 'x', 'tstart', 'tstop', 'estimator', 'data', 'samplingrate', 'decim', 'filter_x')
         epoch_def = self.epochs[ctx.state['epoch']]
         deps = [Dependency('trf', label=epoch, state={'epoch': epoch}, options=trf_options) for epoch in epoch_def.collected_epochs]
-        if ctx.state['inv'] and not is_fake_mri(self.root / mri_dir(ctx.state)):
+        if _is_source_space(ctx, self.estimators[ctx.options['estimator']]) and not is_fake_mri(self.root / mri_dir(ctx.state)):
             deps.append(Dependency('source-morph'))
         return tuple(deps)
 
@@ -551,7 +576,7 @@ class TRFDatasetDerivative(UncachedDerivative[Dataset]):
         dss = [est._result_dataset(ctx.load(epoch), scale=scale, trfs=trfs) for epoch in epoch_def.collected_epochs]
         ds = combine(dss, name=ctx.options['x'].name)
         # Morphing/smoothing
-        if ctx.state['inv']:
+        if _is_source_space(ctx, est):
             common_brain = ctx.state['common_brain']
             if is_fake_mri(self.root / mri_dir(ctx.state)):
                 source_morph = None
@@ -591,6 +616,9 @@ class TRFGroupDatasetDerivative(UncachedDerivative[Dataset]):
 
     Parameters
     ----------
+    estimators
+        Mapping of estimator name to :class:`Estimator` definition (the
+        :attr:`Pipeline.estimators` attribute).
     mri_subjects
         Mapping of ``mri`` value to subject→MRI-subject (for per-subject state).
     variables
@@ -615,19 +643,18 @@ class TRFGroupDatasetDerivative(UncachedDerivative[Dataset]):
 
     def __init__(
             self,
+            estimators: dict[str, Estimator],
             mri_subjects: dict[str, dict[str, str]],
             variables: Variables,
             groups: dict[str, tuple[str, ...]],
     ):
+        self.estimators = estimators
         self.mri_subjects = mri_subjects
         self.variables = variables
         self.groups = groups
 
     def override_key_fields(self, ctx: Request) -> tuple[str, ...]:
-        fields = ['group', 'mri', 'session', 'acquisition', 'epoch', 'epoch_rejection', 'reference', 'raw', 'inv']
-        if ctx.state['inv']:
-            fields += ['cov', 'src', 'parc', 'adjacency', 'mrisubject', 'common_brain']
-        return tuple(fields)
+        return _trf_dataset_key_fields(ctx, self.estimators, 'group', 'mri')
 
     def fingerprint(self, ctx: Request) -> dict[str, object]:
         return {'subjects': self.groups[ctx.state['group']]}
@@ -639,7 +666,7 @@ class TRFGroupDatasetDerivative(UncachedDerivative[Dataset]):
 
     def validate_options(self, ctx: Request) -> None:
         _normalize_trf_options(ctx.options)
-        if not ctx.state['inv'] and (smooth := ctx.options['smooth']):
+        if (smooth := ctx.options['smooth']) and not _is_source_space(ctx, self.estimators[ctx.options['estimator']]):
             raise ValueError(f"{smooth=}: smoothing is only available for source-space data")
 
     def dependencies(self, ctx: Request) -> tuple[Dependency, ...]:
@@ -686,6 +713,9 @@ class TRFModelTestDerivative(Derivative[Any]):
 
     Parameters
     ----------
+    estimators
+        Mapping of estimator name to :class:`Estimator` definition (the
+        :attr:`Pipeline.estimators` attribute).
     tests
         Configured :attr:`Pipeline.tests` definitions.
     groups
@@ -713,17 +743,16 @@ class TRFModelTestDerivative(Derivative[Any]):
 
     def __init__(
             self,
+            estimators: dict[str, Estimator],
             tests: dict[str, Test],
             groups: dict[str, tuple[str, ...]],
     ):
+        self.estimators = estimators
         self.tests = tests
         self.groups = groups
 
     def override_key_fields(self, ctx: Request) -> tuple[str, ...]:
-        fields = ['group', 'mri', 'session', 'acquisition', 'epoch', 'epoch_rejection', 'reference', 'raw', 'inv']
-        if ctx.state['inv']:
-            fields += ['cov', 'src', 'parc', 'adjacency', 'mrisubject', 'common_brain']
-        return tuple(fields)
+        return _trf_dataset_key_fields(ctx, self.estimators, 'group', 'mri')
 
     def validate_options(self, ctx: Request) -> None:
         _normalize_trf_options(ctx.options)
