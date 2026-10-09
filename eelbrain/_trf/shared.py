@@ -262,12 +262,9 @@ def _copy_segments(
     return _segment_views(flat, [seg.shape[-1] for seg in segments]), flat
 
 
-def _segment_moments(segments: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
-    "Mean and variance along time, across segments"
-    n = sum(seg.shape[-1] for seg in segments)
-    mean = sum(seg.sum(-1) for seg in segments) / n
-    mean_of_squares = sum((seg ** 2).sum(-1) for seg in segments) / n
-    return mean, mean_of_squares - mean ** 2
+def _segment_range(segments: list[np.ndarray]) -> np.ndarray:
+    "Range (max - min) of each row along time, across segments (NaN for rows containing NaN)"
+    return np.max([seg.max(-1) for seg in segments], 0) - np.min([seg.min(-1) for seg in segments], 0)
 
 
 def _center_and_scale(
@@ -781,14 +778,8 @@ class DeconvolutionData:
         self._record_x_normalization(x_mean, x_scale)
 
     def _check_data(self):
-        if self.x_scale is None:
-            _, x_check = _segment_moments(self.x_segments)
-        else:
-            x_check = self.x_scale
-        if self.y_scale is None:
-            _, y_check = _segment_moments(self.y_segments)
-        else:
-            y_check = self.y_scale
+        x_check = _segment_range(self.x_segments) if self.x_scale is None else self.x_scale
+        y_check = _segment_range(self.y_segments) if self.y_scale is None else self.y_scale
         # check for flat data
         zero_var = y_check == 0
         if np.any(zero_var):
