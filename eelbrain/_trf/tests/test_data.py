@@ -143,6 +143,21 @@ def test_deconvolution_data_segments():
     x.x[:] = x_copy
 
 
+def test_deconvolution_data_check():
+    "Flat and NaN data are detected across segments, regardless of DC offset"
+    ds = datasets.get_uts(True)
+    y = ds['utsnd'].copy()
+    x = ds['uts'].copy()
+    DeconvolutionData(y, x)._check_data()
+    y.x[:, 1, :] = 0.1
+    with pytest.raises(ValueError, match="1 flat time series"):
+        DeconvolutionData(y, x)._check_data()
+    y = ds['utsnd']
+    x.x[3, 10] = np.nan
+    with pytest.raises(ValueError, match="NaN in"):
+        DeconvolutionData(y, x)._check_data()
+
+
 def test_deconvolution_data_normalize_x():
     "Normalization can be restricted to x, and applied with given values"
     ds = datasets._get_continuous(ynd=True)
