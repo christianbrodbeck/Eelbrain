@@ -262,6 +262,27 @@ def _copy_segments(
     return _segment_views(flat, [seg.shape[-1] for seg in segments]), flat
 
 
+def _case_segments(cases: np.ndarray) -> tuple[list[np.ndarray], np.ndarray | None, bool]:
+    """Split a ``(n_cases, n_rows, n_times)`` array into per-case segments
+
+    Returns
+    -------
+    segments
+        One ``(n_rows, n_times)`` array per case.
+    flat
+        For a single row, the concatenated ``(1, n_cases * n_times)`` array,
+        which is a reshape of ``cases`` (a view when possible); otherwise
+        ``None`` (concatenating requires a transposed copy).
+    owned
+        Whether the data is a copy (and may be modified in place).
+    """
+    n_cases, n_rows, n_times = cases.shape
+    if n_rows != 1:
+        return list(cases), None, False
+    flat = cases.reshape((1, -1))
+    return _segment_views(flat, [n_times] * n_cases), flat, not np.may_share_memory(flat, cases)
+
+
 def _segment_range(segments: list[np.ndarray]) -> np.ndarray:
     "Range (max - min) of each row along time, across segments (NaN for rows containing NaN)"
     return np.max([seg.max(-1) for seg in segments], 0) - np.min([seg.min(-1) for seg in segments], 0)
@@ -435,9 +456,12 @@ class PredictorData:
             x_arrays = [xi.get_data(dimnames).reshape((n_cases, n, n_times)) for xi, dimnames, n in zip(xs, x_dimnames, x_ns)]
         else:
             x_arrays = [[xi.get_data(dimnames).reshape((n, n_times))] for xi, dimnames, n in zip(xs, x_dimnames, x_ns)]
+        x_flat = None
         if multiple_x:
             x_segments = [np.concatenate([arrays[i] for arrays in x_arrays]) for i in range(n_segments)]
             x_owned = True
+        elif case_to_segments:
+            x_segments, x_flat, x_owned = _case_segments(x_arrays[0])
         else:
             x_segments = list(x_arrays[0])
             x_owned = False
@@ -467,10 +491,11 @@ class PredictorData:
         self.x_meta = x_meta
         self.x_segments = x_segments
         self.x_owned = x_owned
-        self._x_flat = None
+        self._x_flat = x_flat
         self.segments = segments
         if copy:
-            self._x_flat, self.x_segments, self.x_owned = _flatten(x_segments, x_owned)
+            if self._x_flat is None:
+                self._x_flat, self.x_segments, self.x_owned = _flatten(x_segments, x_owned)
             if not self.x_owned:
                 self.x_segments, self._x_flat = _copy_segments(self.x_segments, self._x_flat)
                 self.x_owned = True
@@ -586,11 +611,13 @@ class DeconvolutionData:
         y_dimnames = y0.get_dimnames(last=last)
         ydims = y0.get_dims(y_dimnames[:n_ydims])
         n_flat = reduce(mul, map(len, ydims), 1)
+        y_flat = None
+        y_owned = False
         if x_data.is_ragged:
             y_segments = [yi.get_data(y_dimnames).reshape((n_flat, -1)) for yi in y]
         elif x_data.case_to_segments:
             y_array = y.get_data(('case', *y_dimnames[:n_ydims], 'time')).reshape((n_cases, n_flat, x_data.n_times))
-            y_segments = list(y_array)
+            y_segments, y_flat, y_owned = _case_segments(y_array)
         else:
             y_segments = [y.get_data(y_dimnames).reshape((n_flat, x_data.n_times))]
         self.time = x_data.time_dim[0] if x_data.is_ragged else x_data.time_dim
@@ -599,8 +626,8 @@ class DeconvolutionData:
         self.in_place = in_place
         # y
         self.y_segments = y_segments  # [(n_signals, n_times_i), ...]
-        self._y_flat = None
-        self._y_owned = False
+        self._y_flat = y_flat
+        self._y_owned = y_owned
         self.y_name = y.name
         self._y_repr = dataobj_repr(y)
         self.y_info = _info.copy(y0.info)
@@ -610,7 +637,7 @@ class DeconvolutionData:
         self.vector_dim = vector_dim  # vector dimension
         # x
         self.x_segments = x_data.x_segments  # [(n_predictors, n_times_i), ...]
-        self._x_flat = None
+        self._x_flat = x_data._x_flat
         self._x_owned = x_data.x_owned
         self.x_name = x_data.x_name
         self.x_names = x_data.x_names
