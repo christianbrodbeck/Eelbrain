@@ -140,6 +140,9 @@ def test_deconvolution_data_segments():
     data.normalize('l1')
     assert_array_equal(data.x_segments[0][0], x.x[0])
     assert not np.array_equal(x.x, x_copy)
+    # for a single predictor, the flat array is a view into the input (no copy)
+    assert np.shares_memory(data.x, x.x)
+    assert_array_equal(data.x[0, 100:200], x.x[1])
     x.x[:] = x_copy
 
 
