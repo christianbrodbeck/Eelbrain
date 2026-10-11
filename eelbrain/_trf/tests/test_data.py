@@ -16,6 +16,7 @@ def test_deconvolution_data_continuous():
     # normalizing
     data = DeconvolutionData(ds['y'][:8], ds['x1'][:8])
     data.normalize('l1')
+    data.flatten()
     assert data.x[0].mean() == pytest.approx(0, abs=1e-16)
     assert abs(data.x).mean() == pytest.approx(1, abs=1e-10)
     with pytest.raises(ValueError):
@@ -24,6 +25,7 @@ def test_deconvolution_data_continuous():
     data = DeconvolutionData(ds['y'][:8], ds['x1'][:8])
     data.apply_basis(0.500, 'hamming')
     data.normalize('l1')
+    data.flatten()
     assert data.x[0].mean() == pytest.approx(0, abs=1e-16)
     assert abs(data.x).mean() == pytest.approx(1, abs=1e-10)
 
@@ -123,6 +125,9 @@ def test_deconvolution_data_segments():
     data.normalize('l2')
     assert_array_equal(y.x, y_copy)
     # the flat array holds the same data, and the segments become views into it
+    with pytest.raises(RuntimeError):
+        data.y
+    data.flatten()
     assert data.y.shape == (5, 6000)
     assert_array_equal(data.y[:, 300:400], data.y_segments[3])
     assert np.shares_memory(data.y, data.y_segments[3])
@@ -131,6 +136,7 @@ def test_deconvolution_data_segments():
     # pickling drops the flat arrays, the segments keep the data
     data_2 = pickle.loads(pickle.dumps(data))
     assert data_2._y_flat is None
+    data_2.flatten()
     assert_array_equal(data_2.y, data.y)
     assert_array_equal(data_2.x_mean, data.x_mean)
 
@@ -177,10 +183,12 @@ def test_deconvolution_data_normalize_x():
     data.apply_x_normalization(1., 2.)
     assert data.x_mean[0] == pytest.approx(x_mean + x_scale)
     assert data.x_scale[0] == pytest.approx(x_scale * 2)
+    data.flatten()
     np.testing.assert_allclose(data.x[0], ((x.x - x_mean) / x_scale - 1) / 2)
     # the recorded values reproduce the normalized data
     data_2 = DeconvolutionData(y, x)
     data_2.apply_x_normalization(data.x_mean, data.x_scale)
+    data_2.flatten()
     np.testing.assert_allclose(data_2.x, data.x)
 
 

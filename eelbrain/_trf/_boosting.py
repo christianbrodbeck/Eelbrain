@@ -737,6 +737,7 @@ class Boosting:
             self,
             data: DeconvolutionData,
     ):
+        data.flatten()
         self.data = data
 
     def fit(

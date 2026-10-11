@@ -383,8 +383,7 @@ class PredictorData:
         Predictor data for each segment, ``(n_predictors, n_times_i)``.
     data : array
         All segments concatenated along time, ``(n_predictors, n_times_flat)``;
-        built from :attr:`x_segments` when first accessed, after which the
-        segments are views into it.
+        available after :meth:`flatten`.
     segments : array
         ``(n_segments, 2)`` array of segment ``[start, stop]`` indices on the
         concatenated time axis.
@@ -494,17 +493,25 @@ class PredictorData:
         self._x_flat = x_flat
         self.segments = segments
         if copy:
-            if self._x_flat is None:
-                self._x_flat, self.x_segments, self.x_owned = _flatten(x_segments, x_owned)
+            self.flatten()
             if not self.x_owned:
                 self.x_segments, self._x_flat = _copy_segments(self.x_segments, self._x_flat)
                 self.x_owned = True
+
+    def flatten(self):
+        """Build the concatenated array (:attr:`data`)
+
+        Afterwards, :attr:`x_segments` are views into the concatenated array,
+        so that any reference to the previous segment arrays is stale.
+        """
+        if self._x_flat is None:
+            self._x_flat, self.x_segments, self.x_owned = _flatten(self.x_segments, self.x_owned)
 
     @property
     def data(self) -> np.ndarray:
         "Predictors concatenated along time, ``(n_predictors, n_times_flat)``"
         if self._x_flat is None:
-            self._x_flat, self.x_segments, self.x_owned = _flatten(self.x_segments, self.x_owned)
+            raise RuntimeError("Concatenated data is only available after flatten()")
         return self._x_flat
 
 
@@ -513,7 +520,7 @@ class DeconvolutionData:
 
     The data is stored as one array per segment (trial); segments are views into
     the input :class:`NDVar` data when possible. Arrays concatenated along time
-    (:attr:`y`, :attr:`x`) are built when first accessed, after which the
+    (:attr:`y`, :attr:`x`) are built by :meth:`flatten`, after which the
     segments are views into them.
 
     Parameters
@@ -535,9 +542,11 @@ class DeconvolutionData:
     x_segments : list of array
         Predictors for each segment, ``(n_predictors, n_times_i)``.
     y : array
-        Dependent variable concatenated along time, ``(n_signals, n_times_flat)``.
+        Dependent variable concatenated along time, ``(n_signals, n_times_flat)``;
+        available after :meth:`flatten`.
     x : array
-        Predictors concatenated along time, ``(n_predictors, n_times_flat)``.
+        Predictors concatenated along time, ``(n_predictors, n_times_flat)``;
+        available after :meth:`flatten`.
     segments : np.ndarray
         ``(n_segments, 2)`` array of segment ``[start, stop]`` indices on the
         concatenated time axis. The segments delimit chunks of continuous data,
@@ -648,22 +657,34 @@ class DeconvolutionData:
         self.basis_window = None
 
     def __getstate__(self) -> dict:
-        # the segments hold all the data; a concatenated copy is rebuilt on demand
+        # the segments hold all the data; the concatenated arrays are rebuilt by flatten()
         state = {**self.__dict__, '_y_flat': None, '_x_flat': None, '_y_owned': True, '_x_owned': True}
         return state
+
+    def flatten(self):
+        """Build the concatenated arrays (:attr:`y` and :attr:`x`)
+
+        Afterwards, :attr:`y_segments` and :attr:`x_segments` are views into the
+        concatenated arrays, so that any reference to the previous segment
+        arrays is stale.
+        """
+        if self._y_flat is None:
+            self._y_flat, self.y_segments, self._y_owned = _flatten(self.y_segments, self._y_owned)
+        if self._x_flat is None:
+            self._x_flat, self.x_segments, self._x_owned = _flatten(self.x_segments, self._x_owned)
 
     @property
     def y(self) -> np.ndarray:
         "Dependent variable concatenated along time, ``(n_signals, n_times_flat)``"
         if self._y_flat is None:
-            self._y_flat, self.y_segments, self._y_owned = _flatten(self.y_segments, self._y_owned)
+            raise RuntimeError("Concatenated data is only available after flatten()")
         return self._y_flat
 
     @property
     def x(self) -> np.ndarray:
         "Predictors concatenated along time, ``(n_predictors, n_times_flat)``"
         if self._x_flat is None:
-            self._x_flat, self.x_segments, self._x_owned = _flatten(self.x_segments, self._x_owned)
+            raise RuntimeError("Concatenated data is only available after flatten()")
         return self._x_flat
 
     @property
