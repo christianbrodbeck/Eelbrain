@@ -190,6 +190,10 @@ def test_deconvolution_data_normalize_x():
     data_2.apply_x_normalization(data.x_mean, data.x_scale)
     data_2.flatten()
     np.testing.assert_allclose(data_2.x, data.x)
+    # the normalization is reported even though no error norm was used
+    y_mean, y_scale, x_mean_2, x_scale_2 = data_2.data_scale_ndvars()
+    assert y_mean is None and y_scale is None
+    assert x_mean_2 == pytest.approx(x_mean + x_scale) and x_scale_2 == pytest.approx(x_scale * 2)
 
 
 def test_lag_matrix():
