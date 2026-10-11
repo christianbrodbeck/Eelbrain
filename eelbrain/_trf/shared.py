@@ -635,6 +635,18 @@ class PredictorData:
             seg /= x_scale[:, newaxis]
         self._record_x_normalization(x_mean, x_scale)
 
+    def check_data(self):
+        "Raise an error for predictors that are flat or contain NaN"
+        x_check = _segment_range(self.x_segments) if self.x_scale is None else self.x_scale
+        zero_var = x_check == 0
+        if np.any(zero_var):
+            names = [self.x_names[i] for i in np.flatnonzero(zero_var)]
+            raise ValueError(f"x: flat data in {', '.join(names)}")
+        has_nan = np.isnan(x_check)
+        if np.any(has_nan):
+            names = [self.x_names[i] for i in np.flatnonzero(has_nan)]
+            raise ValueError(f"x: NaN in {', '.join(names)}")
+
 
 class DeconvolutionData(PredictorData):
     """Restructure input NDVars into arrays for deconvolution
@@ -831,25 +843,23 @@ class DeconvolutionData(PredictorData):
                 self.y_mean = self.y_mean + y_mean * np.repeat(self.y_scale, n_vector or 1)
                 self.y_scale = self.y_scale * y_scale
 
-    def _check_data(self):
-        x_check = _segment_range(self.x_segments) if self.x_scale is None else self.x_scale
+    def check_data(self, y: bool = True):
+        """Raise an error for data that is flat or contains NaN
+
+        Parameters
+        ----------
+        y
+            Check ``y`` as well as ``x``.
+        """
+        PredictorData.check_data(self)
+        if not y:
+            return
         y_check = _segment_range(self.y_segments) if self.y_scale is None else self.y_scale
-        # check for flat data
         zero_var = y_check == 0
         if np.any(zero_var):
             raise ValueError(f"y={self._y_repr}: contains {zero_var.sum()} flat time series")
-        zero_var = x_check == 0
-        if np.any(zero_var):
-            names = [self.x_names[i] for i in np.flatnonzero(zero_var)]
-            raise ValueError(f"x: flat data in {', '.join(names)}")
-        # check for NaN
-        has_nan = np.isnan(y_check.sum())
-        if has_nan:
+        if np.isnan(y_check.sum()):
             raise ValueError(f"y={self._y_repr}: contains NaN")
-        has_nan = np.isnan(x_check)
-        if np.any(has_nan):
-            names = [self.x_names[i] for i in np.flatnonzero(has_nan)]
-            raise ValueError(f"x: NaN in {', '.join(names)}")
 
     def initialize_cross_validation(
             self,

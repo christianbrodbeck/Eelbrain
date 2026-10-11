@@ -157,14 +157,14 @@ def test_deconvolution_data_check():
     ds = datasets.get_uts(True)
     y = ds['utsnd'].copy()
     x = ds['uts'].copy()
-    DeconvolutionData(y, x)._check_data()
+    DeconvolutionData(y, x).check_data()
     y.x[:, 1, :] = 0.1
     with pytest.raises(ValueError, match="1 flat time series"):
-        DeconvolutionData(y, x)._check_data()
+        DeconvolutionData(y, x).check_data()
     y = ds['utsnd']
     x.x[3, 10] = np.nan
     with pytest.raises(ValueError, match="NaN in"):
-        DeconvolutionData(y, x)._check_data()
+        DeconvolutionData(y, x).check_data()
 
 
 def test_deconvolution_data_normalize_x():
