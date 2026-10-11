@@ -873,7 +873,7 @@ class DeconvolutionData(PredictorData):
         self.splits = split_data(self.segments, partitions, model, data, validate, test)
 
     def data_scale_ndvars(self):
-        if self.scale_data:
+        if self.x_mean is not None:
             # y
             if self.y_mean is None:
                 y_mean = y_scale = None
@@ -924,7 +924,7 @@ class DeconvolutionData(PredictorData):
         """
         h_time = UTS(tstart, self.time.tstep, h.shape[-1], self.time.unit)
         hs = []
-        if self.scale_data:
+        if self.x_mean is not None:
             info = _info.for_normalized_data(self.y_info, 'Response')
         else:
             info = self.y_info
