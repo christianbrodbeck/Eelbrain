@@ -744,7 +744,7 @@ class Boosting:
             delta: float = 0.005,  # coordinate search step
             mindelta: float = None,  # narrow search by reducing delta until reaching mindelta
     ):
-        self.data._check_data()
+        self.data.check_data()
         assert error in ('l1', 'l2')
         error_id = int(error[1])
         mindelta_ = delta if mindelta is None else mindelta
