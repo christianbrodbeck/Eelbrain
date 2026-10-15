@@ -658,7 +658,8 @@ def _ndvar_segments(
     v
         NDVar, or list of NDVars for ragged trials.
     dimnames
-        Order of the dimensions other than case, with ``'time'`` last.
+        Order of the dimensions, with ``'time'`` last (and ``'case'`` first
+        when ``case_to_segments``).
     n_rows
         Product of the lengths of the dimensions other than case and time.
     case_to_segments
@@ -672,7 +673,7 @@ def _ndvar_segments(
     if not isinstance(v, NDVar):
         return [vi.get_data(dimnames).reshape((n_rows, -1)) for vi in v], None, False
     elif case_to_segments:
-        return _case_segments(v.get_data(('case', *dimnames)).reshape((len(v), n_rows, -1)))
+        return _case_segments(v.get_data(dimnames).reshape((len(v), n_rows, -1)))
     return [v.get_data(dimnames).reshape((n_rows, -1))], None, False
 
 
@@ -784,8 +785,8 @@ class DeconvolutionData:
         x_arrays = []  # (segments, flat, owned) for each predictor
         for xi in xs:
             x0i = xi[0] if is_ragged else xi
-            dimnames = x0i.get_dimnames(first='case' if case_to_segments else None, last='time')[case_to_segments:]
-            dims = x0i.get_dims(dimnames[:-1])
+            dimnames = x0i.get_dimnames(first='case' if case_to_segments else None, last='time')
+            dims = x0i.get_dims(dimnames[1:-1] if case_to_segments else dimnames[:-1])
             n_rows = reduce(mul, [len(dim) for dim in dims], 1)
             index = len(x_names) if n_rows == 1 else slice(len(x_names), len(x_names) + n_rows)
             x_repr = dataobj_repr(x0i)
@@ -842,8 +843,8 @@ class DeconvolutionData:
             raise NotImplementedError(f"{y=}: more than one vector dimension ({', '.join(vector_dims)})")
         # y rows: ydims x time
         last = (vector_dim.name, 'time') if vector_dim else ('time',)
-        y_dimnames = y0.get_dimnames(first='case' if case_to_segments else None, last=last)[case_to_segments:]
-        ydims = y0.get_dims(y_dimnames[:-1])
+        y_dimnames = y0.get_dimnames(first='case' if case_to_segments else None, last=last)
+        ydims = y0.get_dims(y_dimnames[1:-1] if case_to_segments else y_dimnames[:-1])
         n_rows = reduce(mul, map(len, ydims), 1)
         y_segments, y_flat, y_owned = _ndvar_segments(y, y_dimnames, n_rows, case_to_segments)
         n_vector = len(vector_dim) if vector_dim else 0
@@ -856,7 +857,7 @@ class DeconvolutionData:
         if is_ragged:
             self.full_y_dims = None
         elif case_to_segments:
-            self.full_y_dims = y.get_dims((*y_dimnames[:-1], 'case', 'time'))
+            self.full_y_dims = y.get_dims((*y_dimnames[1:-1], 'case', 'time'))
         else:
             self.full_y_dims = y.get_dims(y_dimnames)
 
