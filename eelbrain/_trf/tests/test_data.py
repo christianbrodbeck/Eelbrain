@@ -120,13 +120,13 @@ def test_deconvolution_data_segments():
     assert np.shares_memory(data.y.segments[0], y.x)
     assert_array_equal(data.y.segments[3], y.x[3])
     assert data.segment_slices(np.array([[0, 10], [95, 215]])) == [(0, 0, 10), (0, 95, 100), (1, 0, 100), (2, 0, 15)]
+    with pytest.raises(RuntimeError):
+        data.y.flat
     # modifying does not touch the input
     y_copy = y.x.copy()
     data.normalize('l2')
     assert_array_equal(y.x, y_copy)
     # the flat array holds the same data, and the segments become views into it
-    with pytest.raises(RuntimeError):
-        data.y.flat
     data.flatten()
     assert data.y.flat.shape == (5, 6000)
     assert_array_equal(data.y.flat[:, 300:400], data.y.segments[3])
