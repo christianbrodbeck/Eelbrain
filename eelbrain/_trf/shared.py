@@ -348,10 +348,18 @@ def _copy_segments(
         segments: list[np.ndarray],
         flat: np.ndarray | None,
 ) -> tuple[list[np.ndarray], np.ndarray | None]:
-    "Copy segment data, keeping the segments as views into ``flat`` when it exists"
-    if flat is None:
-        return [seg.copy() for seg in segments], None
-    flat = flat.copy()
+    """Copy segment data
+
+    Multiple segments are copied into a concatenated array (so that a later
+    :func:`_flatten` does not need to copy the data again), and the segments
+    become views into it.
+    """
+    if flat is None and len(segments) == 1:
+        return [segments[0].copy()], None
+    elif flat is None:
+        flat = np.concatenate(segments, axis=-1)
+    else:
+        flat = flat.copy()
     return _segment_views(flat, [seg.shape[-1] for seg in segments]), flat
 
 
@@ -788,8 +796,11 @@ class DeconvolutionData:
             x_meta.append((x0i.name, dims, index))
             x_arrays.append(_ndvar_segments(xi, dimnames, n_rows, case_to_segments))
         if multiple_x:
-            x_segments = [np.concatenate([segs[i] for segs, _, _ in x_arrays]) for i in range(n_segments)]
-            self.x = SegmentedArray(x_segments, True, name='x', names=x_names)
+            x_flat = np.empty((len(x_names), int(stops[-1])))
+            for (x_segments, _, _), (_, _, index) in zip(x_arrays, x_meta):
+                for seg, (start, stop) in zip(x_segments, segments):
+                    x_flat[index, start:stop] = seg
+            self.x = SegmentedArray(_segment_views(x_flat, segment_n_times), True, x_flat, name='x', names=x_names)
         else:
             x_segments, x_flat, x_owned = x_arrays[0]
             self.x = SegmentedArray(x_segments, x_owned or in_place, x_flat, name='x', names=x_names)
