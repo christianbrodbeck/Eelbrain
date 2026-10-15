@@ -271,3 +271,11 @@ def test_splits_eq():
     assert splits != split_data(segments, 4)
     assert splits.splits[0] == pickle.loads(pickle.dumps(splits.splits[0]))
     assert splits.splits[0] != splits.splits[1]
+    # with model
+    segments = np.array([[i * 10, (i + 1) * 10] for i in range(6)])
+    model = Factor('ab', repeat=3)
+    splits = split_data(segments, 3, model)
+    assert splits == split_data(segments, 3, model)
+    assert splits == pickle.loads(pickle.dumps(splits))
+    assert splits != split_data(segments, 3, Factor('ab', tile=3))
+    assert splits != split_data(segments, 3)
