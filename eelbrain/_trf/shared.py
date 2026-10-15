@@ -295,30 +295,40 @@ def split_data(
 
 def _flatten(
         segments: list[np.ndarray],
+        flat: np.ndarray | None,
         owned: bool,
 ) -> tuple[np.ndarray, list[np.ndarray], bool]:
-    """Concatenate segments along time, and replace them with views into the result
+    """Concatenate segments along time into a C-contiguous array, and replace them with views into the result
 
     Parameters
     ----------
     segments
         Per-segment arrays with time as the last axis.
+    flat
+        The segments concatenated along time, if already available (possibly
+        not C-contiguous).
     owned
         Whether ``segments`` are owned by the caller (and may be modified in place).
 
     Returns
     -------
     flat
-        Concatenated array.
+        Concatenated C-contiguous array.
     views
         Views into ``flat``, one per segment.
     owned
         Whether ``flat`` is owned by the caller.
     """
-    if len(segments) == 1:
-        return segments[0], segments, owned
-    flat = np.concatenate(segments, axis=-1)
-    return flat, _segment_views(flat, [seg.shape[-1] for seg in segments]), True
+    n_times = [seg.shape[-1] for seg in segments]
+    if flat is None and len(segments) > 1:
+        flat = np.concatenate(segments, axis=-1)
+        return flat, _segment_views(flat, n_times), True
+    if flat is None:
+        flat = segments[0]
+    contiguous = np.ascontiguousarray(flat)
+    if contiguous is flat:
+        return flat, segments, owned
+    return contiguous, _segment_views(contiguous, n_times), True
 
 
 def _segment_views(
@@ -523,11 +533,14 @@ class SegmentedArray:
     def flatten(self):
         """Build the concatenated array (:attr:`flat`)
 
-        Afterwards, :attr:`segments` are views into the concatenated array, so
-        that any reference to the previous segment arrays is stale.
+        Afterwards, :attr:`flat` is C-contiguous (as required by the Cython
+        routines) and :attr:`segments` are views into it, so that any reference
+        to the previous segment arrays is stale. The data is not modified in
+        place through :attr:`flat`; use :meth:`normalize` and
+        :meth:`apply_normalization`, which copy the data when it is not owned.
         """
-        if self._flat is None:
-            self._flat, self.segments, self._owned = _flatten(self.segments, self._owned)
+        if self._flat is None or not self._flat.flags.c_contiguous:
+            self._flat, self.segments, self._owned = _flatten(self.segments, self._flat, self._owned)
 
     def _copy_data(self):
         "Make sure the data is a copy before modifying"

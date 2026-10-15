@@ -5,7 +5,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 import pytest
 
-from eelbrain import Factor, datasets, epoch_impulse_predictor
+from eelbrain import Factor, NDVar, Scalar, datasets, epoch_impulse_predictor
 from eelbrain._ndvar._convolve import convolve_1d
 from eelbrain._trf.shared import DeconvolutionData, lag_matrix, split_data
 
@@ -160,6 +160,22 @@ def test_deconvolution_data_segments():
     assert data.x.flat.shape == (2, 6000)
     with pytest.raises(ValueError, match="same time dimension"):
         DeconvolutionData(x, y.sub(time=(0, 0.5)))
+
+    # non-contiguous input: the flat array is a contiguous copy
+    x_strided = NDVar(np.repeat(x.x, 2, 1)[:, ::2], x.dims, 'x_strided')
+    data = DeconvolutionData(x_strided, y)
+    assert not data.x.flat.flags.c_contiguous
+    data.flatten()
+    assert data.x.flat.flags.c_contiguous
+    assert_array_equal(data.x.flat[0, 100:200], x.x[1])
+    data.normalize('l1')
+    assert_array_equal(x_strided.x, x.x)
+    # predictor with time first
+    x_t = NDVar(np.stack([x.x[0], x.x[1]], 1), (x.time, Scalar('s', [0, 1])), 'x_t')
+    data = DeconvolutionData(x_t, y[0])
+    data.flatten()
+    assert data.x.flat.flags.c_contiguous
+    assert_array_equal(data.x.flat, x.x[:2])
 
 
 def test_deconvolution_data_check():
