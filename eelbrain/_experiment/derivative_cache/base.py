@@ -1746,18 +1746,24 @@ class Request(Generic[T]):
             software: dict[str, Any] | None = None,
             artifact_metadata: dict[str, Any] | None = None,
     ) -> ArtifactManifest:
-        """Manifest describing this request's artifact, given its fingerprint and dependency entries."""
-        derivative = self._require_derivative()
+        """Manifest describing this request's artifact, given its fingerprint and dependency entries.
+
+        ``software`` defaults to the versions running now; a validity check
+        passes the stored manifest's entry instead, so a refreshed manifest
+        keeps recording the software that built the artifact.
+        """
         resolve_state, resolve_options = self._resolve_context()
+        if software is None:
+            software = {'eelbrain_cache_schema': str(MANIFEST_SCHEMA_VERSION), 'mne': mne.__version__}
         return ArtifactManifest(
             schema_version=MANIFEST_SCHEMA_VERSION,
-            derivative=derivative.name,
-            derivative_version=derivative.version,
+            derivative=self.node.name,
+            derivative_version=self.node.version,
             key=self.key(),
             fingerprint=fingerprint,
             dependencies=dependencies,
-            cache_policy=derivative.cache_policy.value,
-            software=software or {},
+            cache_policy=self.node.cache_policy.value,
+            software=software,
             artifact_metadata=artifact_metadata or {},
             resolve_state=resolve_state,
             resolve_options=resolve_options,
@@ -1768,6 +1774,7 @@ class Request(Generic[T]):
             manifest: ArtifactManifest,
     ) -> CacheInvalidation | None:
         """Return why ``manifest`` is stale for this request, or ``None`` if valid."""
+        self._require_derivative()
         # The stored software and artifact metadata are kept: they describe the artifact as built, which this check does not change
         current = self._current_manifest(self.current_fingerprint(), self.dependency_fingerprints(stored=manifest.dependencies), manifest.software, manifest.artifact_metadata)
         reason = compare_manifests(manifest, current)
@@ -1883,8 +1890,7 @@ class Request(Generic[T]):
         artifact_metadata = self.registry.canonicalize(derivative.artifact_metadata(self, artifact))
         self.artifact_path.parent.mkdir(parents=True, exist_ok=True)
         derivative.save(self, self.artifact_path, artifact)
-        software = {'eelbrain_cache_schema': str(MANIFEST_SCHEMA_VERSION), 'mne': mne.__version__}
-        manifest = self._current_manifest(fingerprint, dependencies, software, artifact_metadata)
+        manifest = self._current_manifest(fingerprint, dependencies, artifact_metadata=artifact_metadata)
         self.registry.write_manifest(self.manifest_path, manifest)
         if provenance is None:
             # Only an in-place build is guaranteed to be up-to-date; a job result may already be stale
