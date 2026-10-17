@@ -156,9 +156,9 @@ class Splits(PickleableDataClass, EQMixIn):
 
 def split_data(
         segments: np.ndarray,
-        partitions: int = None,
-        model: CategorialArg = None,
-        data: Dataset = None,
+        partitions: int | None = None,
+        model: CategorialArg | None = None,
+        data: Dataset | None = None,
         validate: int = 1,
         test: int = 1,
 ) -> Splits:
@@ -184,12 +184,59 @@ def split_data(
 
     Notes
     -----
-    General solution:
+    Splitting always follows the same four steps:
 
-     - split data into even sized sections (hard and soft splits)
-     - assign sections to partitions, grouped by model cell
-     - create splits
-     - merge sections at soft boundaries
+    1. Divide the data into *sections*. A section is either a whole segment or
+       a piece of a segment. Boundaries between the original segments are
+       *hard*; boundaries introduced by cutting a segment are *soft*.
+    2. Assign each section to one of ``partitions`` partitions.
+    3. Create one :class:`Split` for each combination of test and validation
+       partition: the test and validation partitions are used as test and
+       validation set, all remaining partitions form the training set. With
+       ``validate=1`` and ``test=1`` this yields ``k * (k - 1)`` splits (for
+       *k* = ``partitions``); with one of them set to 0, it yields *k* splits
+       in which the corresponding set is ``None``.
+    4. Within each set of a split, merge adjacent sections at soft boundaries,
+       so that pieces of a segment that end up in the same set form one
+       continuous segment again. Hard boundaries are never merged.
+
+    How the sections are formed and assigned to partitions (steps 1 and 2)
+    depends on the data and on the arguments:
+
+    **Continuous data** (a single segment): the segment is cut into
+    ``partitions`` contiguous sections of equal length (default 5), and each
+    section is one partition. ``model`` is not allowed.
+
+    **Segmented data with at least as many segments as partitions** (``model``
+    is ``None`` and ``n_segments >= partitions``, or each cell of ``model`` has
+    at least ``partitions`` segments): whole segments are used as sections. The
+    segments are assigned to partitions in an interleaved fashion, i.e.,
+    partition *p* receives segments ``[p::partitions]``. With ``model``, this
+    is done separately within each cell, so that every partition samples each
+    cell evenly. The automatic default is ``partitions = n_segments`` (number
+    of segments in the smallest cell with ``model``), which amounts to
+    leave-one-out and is only available for 3 to 10 segments (per cell); with
+    ``model`` it further requires all cells to have the same size.
+
+    **Segmented data with more partitions than segments** (``model`` is
+    ``None`` and ``partitions > n_segments``; not implemented with ``model``):
+    segments are cut into pieces, and the pieces are used as sections.
+
+     - If ``partitions`` is a multiple of ``n_segments``, each segment is cut
+       into ``partitions / n_segments`` pieces of equal length, and each piece
+       is one partition. Partitions are thus numbered consecutively along the
+       time axis (the first pieces all come from the first segment), and
+       partition sizes depend on the length of the segment they come from.
+     - Otherwise, the concatenated time axis is divided into ``partitions``
+       spans of equal length, and the data is cut at these span boundaries
+       (soft) as well as at all segment boundaries (hard). Each section is
+       assigned to the partition whose span contains its start, so partitions
+       contain (approximately) equal numbers of samples, while a span that
+       straddles a segment boundary yields two sections in the same partition.
+
+    See :ref:`exa-data_split` for illustrations of these schemes, and use
+    :meth:`Splits.plot` (or :func:`plot.preview_partitions`) to inspect a
+    specific configuration.
     """
     if partitions and int(partitions) != partitions:
         raise TypeError(f"{partitions=}")
