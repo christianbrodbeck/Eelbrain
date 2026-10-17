@@ -297,44 +297,6 @@ def split_data(
     return Splits(splits, partitions_arg, partitions, validate, test, model, segments, split_segments)
 
 
-def _flatten(
-        segments: list[np.ndarray],
-        flat: np.ndarray | None,
-        owned: bool,
-) -> tuple[np.ndarray, list[np.ndarray], bool]:
-    """Concatenate segments along time into a C-contiguous array, and replace them with views into the result
-
-    Parameters
-    ----------
-    segments
-        Per-segment arrays with time as the last axis.
-    flat
-        The segments concatenated along time, if already available (possibly
-        not C-contiguous).
-    owned
-        Whether ``segments`` are owned by the caller (and may be modified in place).
-
-    Returns
-    -------
-    flat
-        Concatenated C-contiguous array.
-    views
-        Views into ``flat``, one per segment.
-    owned
-        Whether ``flat`` is owned by the caller.
-    """
-    n_times = [seg.shape[-1] for seg in segments]
-    if flat is None and len(segments) > 1:
-        flat = np.concatenate(segments, axis=-1)
-        return flat, _segment_views(flat, n_times), True
-    if flat is None:
-        flat = segments[0]
-    contiguous = np.ascontiguousarray(flat)
-    if contiguous is flat:
-        return flat, segments, owned
-    return contiguous, _segment_views(contiguous, n_times), True
-
-
 def _segment_views(
         flat: np.ndarray,
         n_times: Sequence[int],
@@ -342,95 +304,6 @@ def _segment_views(
     "Views into ``flat``, one per segment"
     stops = np.cumsum(n_times)
     return [flat[..., start:stop] for start, stop in zip(stops - n_times, stops)]
-
-
-def _copy_segments(
-        segments: list[np.ndarray],
-        flat: np.ndarray | None,
-) -> tuple[list[np.ndarray], np.ndarray | None]:
-    """Copy segment data
-
-    Multiple segments are copied into a concatenated array (so that a later
-    :func:`_flatten` does not need to copy the data again), and the segments
-    become views into it.
-    """
-    if flat is None and len(segments) == 1:
-        return [segments[0].copy()], None
-    elif flat is None:
-        flat = np.concatenate(segments, axis=-1)
-    else:
-        flat = flat.copy()
-    return _segment_views(flat, [seg.shape[-1] for seg in segments]), flat
-
-
-def _case_segments(cases: np.ndarray) -> tuple[list[np.ndarray], np.ndarray | None, bool]:
-    """Split a ``(n_cases, n_rows, n_times)`` array into per-case segments
-
-    Returns
-    -------
-    segments
-        One ``(n_rows, n_times)`` array per case.
-    flat
-        For a single row, the concatenated ``(1, n_cases * n_times)`` array,
-        which is a reshape of ``cases`` (a view when possible); otherwise
-        ``None`` (concatenating requires a transposed copy).
-    owned
-        Whether the data is a copy (and may be modified in place).
-    """
-    n_cases, n_rows, n_times = cases.shape
-    if n_rows != 1:
-        return list(cases), None, False
-    flat = cases.reshape((1, -1))
-    return _segment_views(flat, [n_times] * n_cases), flat, not np.may_share_memory(flat, cases)
-
-
-def _segment_range(segments: list[np.ndarray]) -> np.ndarray:
-    "Range (max - min) of each row along time, across segments (NaN for rows containing NaN)"
-    return np.max([seg.max(-1) for seg in segments], 0) - np.min([seg.min(-1) for seg in segments], 0)
-
-
-def _center_and_scale(
-        segments: list[np.ndarray],
-        error: str,
-        n_vector: int = 0,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Normalize segments in place, each row across all segments
-
-    Parameters
-    ----------
-    segments
-        Per-segment arrays, ``(n_rows, n_times_i)``.
-    error
-        Scale by the mean absolute value (``'l1'``) or the standard deviation (``'l2'``).
-    n_vector
-        For vector data, the number of components in each vector; rows are then
-        scaled by the vector norm, and the scale has ``n_rows / n_vector`` entries.
-
-    Returns
-    -------
-    mean
-        The mean of each row, which was subtracted.
-    scale
-        The scale of each row (or vector), by which the row was divided.
-    """
-    n = sum(seg.shape[-1] for seg in segments)
-    mean = sum(seg.sum(-1) for seg in segments) / n
-    for seg in segments:
-        seg -= mean[:, newaxis]
-    if n_vector:
-        magnitudes = [norm(seg.reshape((-1, n_vector, seg.shape[-1])), axis=1) for seg in segments]
-    else:
-        magnitudes = segments
-    if error == 'l1':
-        scale = sum(np.abs(x).sum(-1) for x in magnitudes) / n
-    elif error == 'l2':
-        scale = (sum((x ** 2).sum(-1) for x in magnitudes) / n) ** 0.5
-    else:
-        raise RuntimeError(f"{error=}")
-    row_scale = np.repeat(scale, n_vector) if n_vector else scale
-    for seg in segments:
-        seg /= row_scale[:, newaxis]
-    return mean, scale
 
 
 def lag_matrix(
@@ -536,6 +409,11 @@ class SegmentedArray:
         return len(self.segments[0])
 
     @property
+    def _n_times(self) -> list[int]:
+        "Number of time points in each segment"
+        return [seg.shape[-1] for seg in self.segments]
+
+    @property
     def flat(self) -> np.ndarray:
         "All segments concatenated along time, ``(n_rows, n_times_flat)``; available after :meth:`flatten`"
         if self._flat is None:
@@ -551,14 +429,32 @@ class SegmentedArray:
         place through :attr:`flat`; use :meth:`normalize` and
         :meth:`apply_normalization`, which copy the data when it is not owned.
         """
-        if self._flat is None or not self._flat.flags.c_contiguous:
-            self._flat, self.segments, self._owned = _flatten(self.segments, self._flat, self._owned)
+        if self._flat is None:
+            if len(self.segments) > 1:
+                self._flat = np.concatenate(self.segments, axis=-1)
+                self.segments = _segment_views(self._flat, self._n_times)
+                self._owned = True
+                return
+            self._flat = self.segments[0]
+        if not self._flat.flags.c_contiguous:
+            self._flat = np.ascontiguousarray(self._flat)
+            self.segments = _segment_views(self._flat, self._n_times)
+            self._owned = True
 
     def _copy_data(self):
         "Make sure the data is a copy before modifying"
-        if not self._owned:
-            self.segments, self._flat = _copy_segments(self.segments, self._flat)
-            self._owned = True
+        if self._owned:
+            return
+        # multiple segments are copied into a concatenated array (so that a later flatten() does not need to copy again)
+        if self._flat is None and len(self.segments) == 1:
+            self.segments = [self.segments[0].copy()]
+        else:
+            if self._flat is None:
+                self._flat = np.concatenate(self.segments, axis=-1)
+            else:
+                self._flat = self._flat.copy()
+            self.segments = _segment_views(self._flat, self._n_times)
+        self._owned = True
 
     def _row_scale(self, scale: np.ndarray) -> np.ndarray:
         "Expand a per-vector scale to one entry per row"
@@ -587,7 +483,23 @@ class SegmentedArray:
             deviation (``'l2'``).
         """
         self._copy_data()
-        mean, scale = _center_and_scale(self.segments, error, self.n_vector)
+        n = sum(self._n_times)
+        mean = sum(seg.sum(-1) for seg in self.segments) / n
+        for seg in self.segments:
+            seg -= mean[:, newaxis]
+        if self.n_vector:
+            magnitudes = [norm(seg.reshape((-1, self.n_vector, seg.shape[-1])), axis=1) for seg in self.segments]
+        else:
+            magnitudes = self.segments
+        if error == 'l1':
+            scale = sum(np.abs(x).sum(-1) for x in magnitudes) / n
+        elif error == 'l2':
+            scale = (sum((x ** 2).sum(-1) for x in magnitudes) / n) ** 0.5
+        else:
+            raise RuntimeError(f"{error=}")
+        row_scale = self._row_scale(scale)
+        for seg in self.segments:
+            seg /= row_scale[:, newaxis]
         self._record_normalization(mean, scale)
         self.scale_norm = error
 
@@ -625,7 +537,10 @@ class SegmentedArray:
 
     def check(self):
         "Raise an error for rows that are flat or contain NaN"
-        check = _segment_range(self.segments) if self.scale is None else self.scale
+        if self.scale is None:  # range of each row (NaN for rows containing NaN)
+            check = np.max([seg.max(-1) for seg in self.segments], 0) - np.min([seg.min(-1) for seg in self.segments], 0)
+        else:
+            check = self.scale
         is_flat = check == 0
         if np.any(is_flat):
             if self.names:
@@ -668,13 +583,19 @@ def _ndvar_segments(
     Returns
     -------
     segments, flat, owned
-        See :class:`SegmentedArray`.
+        See :class:`SegmentedArray`. ``flat`` is only available when splitting
+        the case dimension of a single row (a reshape of the data; otherwise
+        concatenating would require a transposed copy).
     """
     if not isinstance(v, NDVar):
         return [vi.get_data(dimnames).reshape((n_rows, -1)) for vi in v], None, False
-    elif case_to_segments:
-        return _case_segments(v.get_data(dimnames).reshape((len(v), n_rows, -1)))
-    return [v.get_data(dimnames).reshape((n_rows, -1))], None, False
+    elif not case_to_segments:
+        return [v.get_data(dimnames).reshape((n_rows, -1))], None, False
+    cases = v.get_data(dimnames).reshape((len(v), n_rows, -1))
+    if n_rows != 1:
+        return list(cases), None, False
+    flat = cases.reshape((1, -1))
+    return _segment_views(flat, [cases.shape[-1]] * len(v)), flat, not np.may_share_memory(flat, cases)
 
 
 class DeconvolutionData:
