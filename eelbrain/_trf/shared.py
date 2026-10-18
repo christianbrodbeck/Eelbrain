@@ -182,7 +182,8 @@ class Splits(PickleableDataClass, EQMixIn):
         splits = state['splits']
         if splits:
             _restore_validation_indices(splits, state['n_partitions'])
-        if splits and len({(split.is_test, split.i_reserved) for split in splits}) < len(splits):
+        test_splits = [split for split in splits if split.is_test] if splits else []
+        if len({split.i_reserved for split in test_splits}) < len(test_splits):
             # flat format (before nested splits): one top-level split per boosting run; merge test splits with the same test partition
             soft_splits = np.setdiff1d(state['split_segments'][1:, 0], state['segments'][:, 0])
             merged = {}
