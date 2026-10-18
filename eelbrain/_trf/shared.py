@@ -83,7 +83,8 @@ class Split(PickleableDataClass, EQMixIn):
     def __setstate__(self, state: dict):
         if 'validate' in state:
             # flat format (before nested splits): one split per boosting run
-            train, validate, test, i_test, i_validate = (state[key] for key in ['train', 'validate', 'test', 'i_test', 'i_validate'])
+            train, validate, test, i_test = (state[key] for key in ['train', 'validate', 'test', 'i_test'])
+            i_validate = state.get('i_validate')  # not stored before BoostingResult version 16 (restored by Splits.__setstate__)
             if validate is None:
                 state = {'train': train, 'reserved': test, 'i_reserved': None if test is None else i_test, 'is_test': test is not None}
             elif test is None:
@@ -121,6 +122,18 @@ def merge_segments(
                 out_segments[i - 1] = [pre_seg[0], max(pre_seg[1], post_seg[1])]
                 del out_segments[i]
     return np.vstack(out_segments)
+
+
+def _restore_validation_indices(
+        splits: list[Split],
+        n_partitions: int,
+        i_test: int | None = None,
+):
+    "Fill in validation partition indices missing from splits pickled before BoostingResult version 16 (created in partition order, skipping the test partition)"
+    partitions = [p for p in range(n_partitions) if p != i_test]
+    for p, split in zip(partitions, splits):
+        if split.i_reserved is None and split.reserved is not None:
+            split.i_reserved = p
 
 
 @dataclass(eq=False)
@@ -167,6 +180,8 @@ class Splits(PickleableDataClass, EQMixIn):
 
     def __setstate__(self, state: dict):
         splits = state['splits']
+        if splits:
+            _restore_validation_indices(splits, state['n_partitions'])
         if splits and len({(split.is_test, split.i_reserved) for split in splits}) < len(splits):
             # flat format (before nested splits): one top-level split per boosting run; merge test splits with the same test partition
             soft_splits = np.setdiff1d(state['split_segments'][1:, 0], state['segments'][:, 0])
@@ -178,6 +193,8 @@ class Splits(PickleableDataClass, EQMixIn):
                     split.train = merge_segments(split.train, soft_splits)
                     merged[split.i_reserved] = split
             state['splits'] = list(merged.values())
+            for split in state['splits']:
+                _restore_validation_indices(split.splits, state['n_partitions'], split.i_reserved)
         PickleableDataClass.__setstate__(self, state)
 
     def __repr__(self):
