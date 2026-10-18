@@ -302,13 +302,16 @@ def test_splits_legacy_format():
     segments = np.array([[0, 100], [100, 200]])
     # with test set
     splits = split_data(segments, 4)
-    flat = [flat_split({'train': split.train, 'validate': split.reserved, 'test': test_split.reserved, 'i_test': test_split.i_reserved, 'i_validate': split.i_reserved}) for test_split in splits.splits for split in test_split.splits]
-    assert len(flat) == 12
-    assert legacy_splits(splits, flat) == splits
+    states = [{'train': split.train, 'validate': split.reserved, 'test': test_split.reserved, 'i_test': test_split.i_reserved, 'i_validate': split.i_reserved} for test_split in splits.splits for split in test_split.splits]
+    assert len(states) == 12
+    assert legacy_splits(splits, [flat_split(state) for state in states]) == splits
+    # before BoostingResult version 16, i_validate was not stored
+    assert legacy_splits(splits, [flat_split({k: v for k, v in state.items() if k != 'i_validate'}) for state in states]) == splits
     # without test set
     splits = split_data(segments, 4, test=0)
-    flat = [flat_split({'train': split.train, 'validate': split.reserved, 'test': None, 'i_test': 0, 'i_validate': split.i_reserved}) for split in splits.splits]
-    assert legacy_splits(splits, flat) == splits
+    states = [{'train': split.train, 'validate': split.reserved, 'test': None, 'i_test': 0, 'i_validate': split.i_reserved} for split in splits.splits]
+    assert legacy_splits(splits, [flat_split(state) for state in states]) == splits
+    assert legacy_splits(splits, [flat_split({k: v for k, v in state.items() if k != 'i_validate'}) for state in states]) == splits
 
 
 def test_splits_eq():
