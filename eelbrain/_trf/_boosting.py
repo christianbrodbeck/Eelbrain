@@ -938,7 +938,7 @@ class Boosting:
         else:
             top_splits = []
         # kernel for each top-level split: average of its runs
-        partitions = [[result for result in self.split_results if result.top_split is split] for split in top_splits]
+        partitions = [[result for result in self.split_results if result.top_split == split] for split in top_splits]
         hs = [self._get_h(partition) for partition in partitions]
         n_samples = self.data.n_times_flat
 
