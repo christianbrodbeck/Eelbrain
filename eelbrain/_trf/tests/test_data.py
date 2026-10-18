@@ -264,6 +264,17 @@ def test_split_data_unequal_partitions():
     assert_array_equal(splits.splits[0].train, [[100, 300]])
 
 
+def test_split_data_no_validate_no_test():
+    "Without validation and test set, a single split uses all data for training"
+    segments = np.array([[0, 100], [100, 200]])
+    splits = split_data(segments, 3, validate=0, test=0)
+    assert len(splits.splits) == 1
+    split = splits.splits[0]
+    assert_array_equal(split.train, [[0, 100], [100, 200]])  # the segment boundary is hard
+    assert split.validate is None
+    assert split.test is None
+
+
 def test_splits_eq():
     segments = np.array([[0, 100]])
     splits = split_data(segments, 5)

@@ -195,7 +195,8 @@ def split_data(
        validation set, all remaining partitions form the training set. With
        ``validate=1`` and ``test=1`` this yields ``k * (k - 1)`` splits (for
        *k* = ``partitions``); with one of them set to 0, it yields *k* splits
-       in which the corresponding set is ``None``.
+       in which the corresponding set is ``None``; with both set to 0, a
+       single split that uses all data for training.
     4. Within each set of a split, merge adjacent sections at soft boundaries,
        so that pieces of a segment that end up in the same set form one
        continuous segment again. Hard boundaries are never merged.
@@ -321,7 +322,7 @@ def split_data(
     validate_iter = range(partitions) if validate else [None]
     for i_test in test_iter:
         for i_validate in validate_iter:
-            if i_test == i_validate:
+            if i_test is not None and i_test == i_validate:
                 continue
             train_set = np.ones(len(split_segments), bool)
             # test set
