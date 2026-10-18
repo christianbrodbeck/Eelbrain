@@ -702,17 +702,20 @@ def _ndvar_segments(
     segments, flat, owned
         See :class:`SegmentedArray`. ``flat`` is only available when splitting
         the case dimension of a single row (a reshape of the data; otherwise
-        concatenating would require a transposed copy).
+        concatenating would require a transposed copy). The data is ``owned``
+        when extracting it already required a copy.
     """
     if not isinstance(v, NDVar):
-        return [vi.get_data(dimnames).reshape((n_rows, -1)) for vi in v], None, False
+        segments = [vi.get_data(dimnames).reshape((n_rows, -1)) for vi in v]
+        return segments, None, not any(np.may_share_memory(seg, vi.x) for seg, vi in zip(segments, v))
     elif not case_to_segments:
-        return [v.get_data(dimnames).reshape((n_rows, -1))], None, False
+        data = v.get_data(dimnames).reshape((n_rows, -1))
+        return [data], None, not np.may_share_memory(data, v.x)
     cases = v.get_data(dimnames).reshape((len(v), n_rows, -1))
     if n_rows != 1:
-        return list(cases), None, False
+        return list(cases), None, not np.may_share_memory(cases, v.x)
     flat = cases.reshape((1, -1))
-    return _segment_views(flat, [cases.shape[-1]] * len(v)), flat, not np.may_share_memory(flat, cases)
+    return _segment_views(flat, [cases.shape[-1]] * len(v)), flat, not np.may_share_memory(flat, v.x)
 
 
 class DeconvolutionData:
