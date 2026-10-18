@@ -80,6 +80,14 @@ class Split(PickleableDataClass, EQMixIn):
         if self.reserved is not None and not self.is_test:
             assert not any(split.is_test for split in self.splits), "test split inside validation split"
 
+    @property
+    def train_and_reserved(self) -> np.ndarray:
+        "Training and held-out segments combined, sorted by time (all data available to the split)"
+        if self.reserved is None:
+            return self.train
+        segments = np.vstack([self.train, self.reserved])
+        return segments[np.argsort(segments[:, 0])]
+
     def __setstate__(self, state: dict):
         if 'validate' in state:
             # flat format (before nested splits): one split per boosting run
@@ -90,10 +98,8 @@ class Split(PickleableDataClass, EQMixIn):
             elif test is None:
                 state = {'train': train, 'reserved': validate, 'i_reserved': i_validate}
             else:  # nested: test split with a single validation split
-                train_and_validate = np.vstack([train, validate])
-                train_and_validate = train_and_validate[np.argsort(train_and_validate[:, 0])]
                 validation_split = Split(train, validate, i_validate)
-                state = {'train': train_and_validate, 'reserved': test, 'i_reserved': i_test, 'is_test': True, 'splits': [validation_split]}
+                state = {'train': validation_split.train_and_reserved, 'reserved': test, 'i_reserved': i_test, 'is_test': True, 'splits': [validation_split]}
         PickleableDataClass.__setstate__(self, state)
 
 

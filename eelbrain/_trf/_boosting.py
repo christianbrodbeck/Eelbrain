@@ -800,11 +800,11 @@ class Boosting:
 
         # boosting: one run per leaf split
         runs = [(top_split, split) for top_split in self.data.splits.splits for split in (top_split.splits or [top_split])]
-        train = [split.train for _, split in runs]
-        validate = [split.reserved for _, split in runs]
-        train_and_validate = [np.vstack([train_i, validate_i]) for train_i, validate_i in zip(train, validate)]
+        train = package_splits([split.train for _, split in runs])
+        validate = package_splits([split.reserved for _, split in runs])
+        train_and_validate = package_splits([split.train_and_reserved for _, split in runs])
         num_threads = CONFIG['n_workers']
-        hs, hs_failed = opt.boosting_runs(self.data.y.flat, self.data.x.flat, self.data.x.pads, package_splits(train), package_splits(validate), package_splits(train_and_validate), i_start_by_x, i_stop_by_x, delta, mindelta_, error_id, selective_stopping, num_threads)
+        hs, hs_failed = opt.boosting_runs(self.data.y.flat, self.data.x.flat, self.data.x.pads, train, validate, train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta_, error_id, selective_stopping, num_threads)
         self.split_results = [SplitResult(split, top_split, h, h_failed) for (top_split, split), h, h_failed in zip(runs, hs, hs_failed)]
 
         self.t_fit_done = time.time()
@@ -964,7 +964,7 @@ class Boosting:
             # Without test set, fit metrics would be computed from the data used to estimate h
             # (overestimating predictive power); only report validation and training fit for each split
             for h_i, split, evaluations_i in zip(hs, top_splits, partition_evaluations):
-                evaluators = self._evaluate(metrics, [(h_i, np.vstack([split.train, split.reserved]))], [split.reserved, split.train])
+                evaluators = self._evaluate(metrics, [(h_i, split.train_and_reserved)], [split.reserved, split.train])
                 evaluations_i.update({e.attr: e.get() for e in evaluators})
                 evaluations_i.update({f'train_{e.attr}': e.get(1) for e in evaluators})
 
