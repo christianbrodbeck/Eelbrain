@@ -184,9 +184,17 @@ def test_deconvolution_data_segments():
     # predictor with time first
     x_t = NDVar(np.stack([x.x[0], x.x[1]], 1), (x.time, Scalar('s', [0, 1])), 'x_t')
     data = DeconvolutionData(x_t, y[0])
+    assert not data.x._owned  # transposed view into the input
     data.flatten()
     assert data.x.flat.flags.c_contiguous
     assert_array_equal(data.x.flat, x.x[:2])
+    # predictor whose rows combine non-adjacent dimensions: get_data() has to copy, so the data is owned
+    x_ab = NDVar(np.ascontiguousarray(x.x[:4].reshape((2, 2, -1)).transpose((0, 2, 1))), (Scalar('a', [0, 1]), x.time, Scalar('b', [0, 1])), 'x_ab')
+    data = DeconvolutionData(x_ab, y[0])
+    assert data.x._owned
+    assert_array_equal(data.x.segments[0], x.x[:4])
+    data.normalize('l1')
+    assert_array_equal(x_ab.x[:, 0], x.x[:4].reshape((2, 2, -1))[:, :, 0])  # input unchanged
 
 
 def test_deconvolution_data_check():
