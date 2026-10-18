@@ -74,7 +74,7 @@ class DataSplit(EelFigure, LegendMixin):
                 for x0, x1 in segments:
                     rect = Rectangle((x0, y - 0.5), x1 - x0, 1, color=colors[role])
                     ax.add_artist(rect)
-                handles[role] = rect
+                    handles[role] = rect
             # separate splits (black line between groups of nested splits)
             if y:
                 ax.axhline(y - 0.5, color='k' if is_nested and top_split is not rows[y - 1][0] else 'white')
