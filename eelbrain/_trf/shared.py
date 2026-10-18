@@ -393,6 +393,8 @@ def split_data(
             split_segments = np.vstack([cuts[:-1], cuts[1:]]).T
             soft_splits = np.setdiff1d(split_points[1:-1], boundaries)
             piece_partition = np.searchsorted(split_points, split_segments[:, 0], side='right') - 1
+            if len(np.unique(piece_partition)) < partitions:
+                raise ValueError(f"{partitions=}: not enough samples ({segments[-1, 1] - segments[0, 0]}) to form {partitions} partitions")
     # create actual splits
 
     def make_split(
