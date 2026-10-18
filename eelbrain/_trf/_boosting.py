@@ -801,8 +801,8 @@ class Boosting:
         # boosting: one run per leaf split
         runs = [(top_split, split) for top_split in self.data.splits.splits for split in (top_split.splits or [top_split])]
         train = [split.train for _, split in runs]
-        validate = [None if split.is_test else split.reserved for _, split in runs]
-        train_and_validate = [train_i if validate_i is None else np.vstack([train_i, validate_i]) for train_i, validate_i in zip(train, validate)]
+        validate = [split.reserved for _, split in runs]
+        train_and_validate = [np.vstack([train_i, validate_i]) for train_i, validate_i in zip(train, validate)]
         num_threads = CONFIG['n_workers']
         hs, hs_failed = opt.boosting_runs(self.data.y.flat, self.data.x.flat, self.data.x.pads, package_splits(train), package_splits(validate), package_splits(train_and_validate), i_start_by_x, i_stop_by_x, delta, mindelta_, error_id, selective_stopping, num_threads)
         self.split_results = [SplitResult(split, top_split, h, h_failed) for (top_split, split), h, h_failed in zip(runs, hs, hs_failed)]
@@ -1209,12 +1209,11 @@ def boosting(
     return fit.evaluate_fit(debug=debug, partition_results=partition_results)
 
 
-def package_splits(splits: Sequence[np.ndarray | None]) -> np.ndarray:
-    "Stack segment arrays into one ``(n_splits, n_max, 2)`` array, padded with -1 (``None`` for no segments)"
-    n = max(0 if split is None else len(split) for split in splits)
+def package_splits(splits: Sequence[np.ndarray]) -> np.ndarray:
+    "Stack segment arrays into one ``(n_splits, n_max, 2)`` array, padded with -1"
+    n = max(len(split) for split in splits)
     out = np.empty((len(splits), n, 2), np.int64)
     out.fill(-1)
     for i, split in enumerate(splits):
-        if split is not None:
-            out[i, :len(split)] = split
+        out[i, :len(split)] = split
     return out
