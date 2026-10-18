@@ -120,6 +120,8 @@ def test_boosting():
     # fit res_cv on same data as res
     fit = res_cv.fit
     fit.data.splits = replace(fit.data.splits, splits=[fit.data.splits.splits[3]])
+    # the existing runs are still matched to the (equal) replaced split
+    assert_dataobj_equal(fit.evaluate_fit().h, res_cv.partition_results[3].h)
     fit.fit(0, 1, 0, 'l2')
     res_cv = fit.evaluate_fit(debug=True)
     assert_dataobj_equal(res_cv.h, res.h)
