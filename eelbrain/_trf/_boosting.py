@@ -799,7 +799,7 @@ class Boosting:
         self.t_fit_start = time.time()
 
         # boosting: one run per leaf split
-        runs = [(top_split, split) for top_split in self.data.splits.splits for split in (top_split.splits or [top_split])]
+        runs = self.data.splits.leaves
         train = package_splits([split.train for _, split in runs])
         validate = package_splits([split.reserved for _, split in runs])
         train_and_validate = package_splits([split.train_and_reserved for _, split in runs])

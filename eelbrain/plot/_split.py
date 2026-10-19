@@ -51,10 +51,7 @@ class DataSplit(EelFigure, LegendMixin):
         if colors is None:
             colors = colors_for_oneway(roles, unambiguous=[6, 3, 5])
 
-        # one row per leaf split (boosting run), grouped by top-level split
-        rows = []  # (top-level split, leaf split)
-        for top_split in splits.splits:
-            rows.extend((top_split, split) for split in top_split.splits or [top_split])
+        rows = splits.leaves  # one row per boosting run: (top-level split, leaf split)
         is_nested = any(top_split is not split for top_split, split in rows)
 
         h_default = max(2, 0.5 + 0.15 * len(rows))

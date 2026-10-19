@@ -88,6 +88,13 @@ class Split(PickleableDataClass, EQMixIn):
         segments = np.vstack([self.train, self.reserved])
         return segments[np.argsort(segments[:, 0])]
 
+    @property
+    def leaves(self) -> list[Split]:
+        "Splits without inner splits, each corresponding to one boosting run (``[self]`` for a leaf)"
+        if not self.splits:
+            return [self]
+        return [leaf for split in self.splits for leaf in split.leaves]
+
     def __setstate__(self, state: dict):
         if 'validate' in state:
             # flat format (before nested splits): one split per boosting run
@@ -218,6 +225,11 @@ class Splits(PickleableDataClass, EQMixIn):
             items.append(f'model={dataobj_repr(self.model)}')
         items = ', '.join(items)
         return f"<Splits: {desc} split into {len(self.split_segments)} sections{items}>"
+
+    @property
+    def leaves(self) -> list[tuple[Split, Split]]:
+        "``(top-level split, leaf split)`` for each boosting run, grouped by top-level split (see :attr:`Split.leaves`)"
+        return [(top_split, leaf) for top_split in self.splits for leaf in top_split.leaves]
 
     def plot(self, **kwargs) -> DataSplit:
         """Plot data splits (see :class:`plot.DataSplit` for parameters)"""
