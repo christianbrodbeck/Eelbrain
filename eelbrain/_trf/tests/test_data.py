@@ -188,6 +188,14 @@ def test_deconvolution_data_segments():
     data.flatten()
     assert data.x.flat.flags.c_contiguous
     assert_array_equal(data.x.flat, x.x[:2])
+    # several cases with time first: the segments are transposed views, the flat array is still C-contiguous
+    x_ct = NDVar(np.stack([x.x, x.x ** 2], 2), (x.dims[0], x.time, Scalar('s', [0, 1])), 'x_ct')
+    data = DeconvolutionData(x_ct, y)
+    assert not data.x._owned
+    assert not data.x.segments[0].flags.c_contiguous
+    data.flatten()
+    assert data.x.flat.flags.c_contiguous
+    assert_array_equal(data.x.flat[1, 100:200], x.x[1] ** 2)
     # predictor whose rows combine non-adjacent dimensions: get_data() has to copy, so the data is owned
     x_ab = NDVar(np.ascontiguousarray(x.x[:4].reshape((2, 2, -1)).transpose((0, 2, 1))), (Scalar('a', [0, 1]), x.time, Scalar('b', [0, 1])), 'x_ab')
     data = DeconvolutionData(x_ab, y[0])

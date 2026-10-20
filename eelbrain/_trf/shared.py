@@ -568,7 +568,7 @@ class SegmentedArray:
         """
         if self._flat is None:
             if len(self.segments) > 1:
-                self._flat = np.concatenate(self.segments, axis=-1)
+                self._flat = self._concatenated()
                 self.segments = _segment_views(self._flat, self._n_times)
                 self._owned = True
                 return
@@ -577,6 +577,11 @@ class SegmentedArray:
             self._flat = np.ascontiguousarray(self._flat)
             self.segments = _segment_views(self._flat, self._n_times)
             self._owned = True
+
+    def _concatenated(self) -> np.ndarray:
+        "Segments concatenated along time, as a new C-contiguous array (np.concatenate() would keep the memory layout of transposed segments)"
+        out = np.empty((self.n_rows, sum(self._n_times)), self.segments[0].dtype)
+        return np.concatenate(self.segments, axis=-1, out=out)
 
     def _copy_data(self):
         "Make sure the data is a copy before modifying"
@@ -587,7 +592,7 @@ class SegmentedArray:
             self.segments = [self.segments[0].copy()]
         else:
             if self._flat is None:
-                self._flat = np.concatenate(self.segments, axis=-1)
+                self._flat = self._concatenated()
             else:
                 self._flat = self._flat.copy()
             self.segments = _segment_views(self._flat, self._n_times)
