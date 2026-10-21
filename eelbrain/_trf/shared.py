@@ -798,8 +798,8 @@ class SegmentedArray:
     def package_values(
             self,
             value: np.ndarray,
-            name: str = None,
-            info: dict = None,
+            name: str | None = None,
+            info: dict | None = None,
             dims: tuple[Dimension, ...] = (),
     ) -> list[NDVar | float]:
         """Package per-row values (e.g., :attr:`mean`) as one NDVar per block
@@ -944,7 +944,7 @@ class DeconvolutionData:
     def __init__(
             self,
             x: NDVarArg | Sequence[NDVarArg],
-            y: NDVarArg = None,
+            y: NDVarArg | None = None,
             data: Dataset = None,
             in_place: bool = False,
     ):
@@ -1088,8 +1088,8 @@ class DeconvolutionData:
 
     def initialize_cross_validation(
             self,
-            partitions: int = None,
-            model: CategorialArg = None,
+            partitions: int | None = None,
+            model: CategorialArg | None = None,
             data: Dataset = None,
             validate: int = 1,
             test: int = 1,
