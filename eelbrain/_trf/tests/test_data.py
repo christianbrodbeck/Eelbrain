@@ -263,10 +263,10 @@ def test_deconvolution_data_vector_only():
     np.testing.assert_allclose(y_mean.x, y.mean('time').x)
     assert np.isscalar(y_scale)
     # per-row values keep the vector dimension, per-vector values are scalar
-    value = data.package_value(np.arange(2.), 'value')
+    value = data.y.package_values(np.arange(2.), 'value')[0]
     assert value.dims == (space,)
     assert_array_equal(value.x, [0, 1])
-    assert data.package_value(np.arange(1.), 'value') == 0
+    assert data.y.package_values(np.arange(1.), 'value')[0] == 0
 
 
 def test_lag_matrix():
