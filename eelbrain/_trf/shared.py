@@ -31,7 +31,7 @@ class EQMixIn:
             if isinstance(a, np.ndarray) or isinstance(b, np.ndarray):
                 if not np.array_equal(a, b):
                     return False
-            elif isinstance(a, (Factor, Interaction)):
+            elif isinstance(a, (Factor, Interaction)) or isinstance(b, (Factor, Interaction)):
                 # element-wise comparison
                 if not (isinstance(b, a.__class__) and len(a) == len(b) and np.all(a == b)):
                     return False
