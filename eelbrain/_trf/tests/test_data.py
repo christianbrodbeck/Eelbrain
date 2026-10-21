@@ -225,7 +225,7 @@ def test_deconvolution_data_normalize_x():
     ds = datasets._get_continuous(ynd=True)
     y, x = ds['y'], ds['x1']
     data = DeconvolutionData(x, y)
-    data.x.normalize('l2')
+    data.x.normalize(True, 'l2')
     assert data.y.mean is None
     assert_array_equal(data.y.segments[0][0], y.x)
     x_mean, x_scale = x.mean('time'), x.std('time')
@@ -233,14 +233,14 @@ def test_deconvolution_data_normalize_x():
     assert data.x.scale[0] == pytest.approx(x_scale)
     assert data.x.pads[0] == pytest.approx(-x_mean / x_scale)
     # applying a second normalization composes with the first
-    data.x.apply_normalization(1., 2.)
+    data.x.normalize(1., 2.)
     assert data.x.mean[0] == pytest.approx(x_mean + x_scale)
     assert data.x.scale[0] == pytest.approx(x_scale * 2)
     data.flatten()
     np.testing.assert_allclose(data.x.flat[0], ((x.x - x_mean) / x_scale - 1) / 2)
     # the recorded values reproduce the normalized data
     data_2 = DeconvolutionData(x, y)
-    data_2.x.apply_normalization(data.x.mean, data.x.scale)
+    data_2.x.normalize(data.x.mean, data.x.scale)
     data_2.flatten()
     np.testing.assert_allclose(data_2.x.flat, data.x.flat)
     # the normalization is reported even though no error norm was used
