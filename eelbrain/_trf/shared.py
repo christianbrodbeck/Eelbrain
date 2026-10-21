@@ -1067,45 +1067,31 @@ class DeconvolutionData:
 
         All four are ``None`` if the data was not normalized.
         """
-        if self.x.mean is not None:
-            # y
-            if self.y is None or self.y.mean is None:
-                y_mean = y_scale = None
-            else:
-                if self.yshape:
-                    y_mean = NDVar(self.y.mean.reshape(self.yshape), self.ydims, self.y_name, self.y_info)
-                else:
-                    y_mean = self.y.mean[0]
-                # scale does not include vector dim
-                if self.vector_dim:
-                    dims = self.ydims[:-1]
-                    shape = self.yshape[:-1]
-                else:
-                    dims = self.ydims
-                    shape = self.yshape
-                if shape:
-                    y_scale = NDVar(self.y.scale.reshape(shape), dims, self.y_name, self.y_info)
-                else:
-                    y_scale = self.y.scale[0]
-            # x
-            x_mean = []
-            x_scale = []
-            for name, xdims, index in self.x_meta:
-                if xdims:
-                    shape = [len(dim) for dim in xdims]
-                    x_mean.append(NDVar(self.x.mean[index].reshape(shape), xdims, name))
-                    x_scale.append(NDVar(self.x.scale[index].reshape(shape), xdims, name))
-                else:
-                    x_mean.append(self.x.mean[index])
-                    x_scale.append(self.x.scale[index])
-            if self.multiple_x:
-                x_mean = tuple(x_mean)
-                x_scale = tuple(x_scale)
-            else:
-                x_mean = x_mean[0]
-                x_scale = x_scale[0]
+        if self.x.mean is None:
+            return None, None, None, None
+        # y
+        if self.y is None or self.y.mean is None:
+            y_mean = y_scale = None
         else:
-            y_mean = y_scale = x_mean = x_scale = None
+            y_mean = self.package_value(self.y.mean, self.y_name)
+            y_scale = self.package_value(self.y.scale, self.y_name)
+        # x
+        x_mean = []
+        x_scale = []
+        for name, xdims, index in self.x_meta:
+            if xdims:
+                shape = [len(dim) for dim in xdims]
+                x_mean.append(NDVar(self.x.mean[index].reshape(shape), xdims, name))
+                x_scale.append(NDVar(self.x.scale[index].reshape(shape), xdims, name))
+            else:
+                x_mean.append(self.x.mean[index])
+                x_scale.append(self.x.scale[index])
+        if self.multiple_x:
+            x_mean = tuple(x_mean)
+            x_scale = tuple(x_scale)
+        else:
+            x_mean = x_mean[0]
+            x_scale = x_scale[0]
         return y_mean, y_scale, x_mean, x_scale
 
     def package_kernel(
