@@ -241,9 +241,11 @@ def test_deconvolution_data_normalize_x():
     assert data.x.scale[0] == pytest.approx(x_scale)
     assert data.x.pads[0] == pytest.approx(-x_mean / x_scale)
     # applying a second normalization composes with the first
+    assert data.x.scale_norm == 'l2'
     data.x.normalize(1., 2.)
     assert data.x.mean[0] == pytest.approx(x_mean + x_scale)
     assert data.x.scale[0] == pytest.approx(x_scale * 2)
+    assert data.x.scale_norm is None
     data.flatten()
     np.testing.assert_allclose(data.x.flat[0], ((x.x - x_mean) / x_scale - 1) / 2)
     # the recorded values reproduce the normalized data

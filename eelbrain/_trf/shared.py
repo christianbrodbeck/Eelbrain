@@ -757,6 +757,7 @@ class SegmentedArray:
             else:
                 raise RuntimeError(f"{scale=}")
         else:
+            self.scale_norm = None  # the data is no longer normalized to the norm
             n_scale = self.n_rows // self.n_vector if self.n_vector else self.n_rows
             scale = np.broadcast_to(scale, (n_scale,)).astype(np.float64)
         row_scale = self._row_scale(scale)
