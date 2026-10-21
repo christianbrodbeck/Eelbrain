@@ -212,7 +212,7 @@ def test_deconvolution_data_check():
     x = ds['uts'].copy()
     DeconvolutionData(x, y).check_data()
     y.x[:, 1, :] = 0.1
-    with pytest.raises(ValueError, match="1 flat time series"):
+    with pytest.raises(ValueError, match="flat data in utsnd-1"):
         DeconvolutionData(x, y).check_data()
     y = ds['utsnd']
     x.x[3, 10] = np.nan
