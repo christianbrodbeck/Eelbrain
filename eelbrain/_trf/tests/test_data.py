@@ -218,6 +218,14 @@ def test_deconvolution_data_check():
     x.x[3, 10] = np.nan
     with pytest.raises(ValueError, match="NaN in"):
         DeconvolutionData(x, y).check_data()
+    # vector data: the scale has one entry per vector
+    x = ds['uts']
+    y = NDVar(np.random.RandomState(0).normal(size=(60, 2, 3, 100)), (x.dims[0], Scalar('s', [0, 1]), Space('RAI'), x.time), 'y')
+    y.x[:, 1] = 0
+    data = DeconvolutionData(x, y)
+    data.normalize('l2')
+    with pytest.raises(ValueError, match="flat data in y-1$"):
+        data.check_data()
 
 
 def test_deconvolution_data_normalize_x():

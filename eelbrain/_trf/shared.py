@@ -524,13 +524,13 @@ class RowBlock:
         "Number of rows in the block"
         return self.index.stop - self.index.start
 
-    @property
-    def names(self) -> list[str]:
-        "Name of each row for error messages"
+    def names(self, per_vector: bool = False) -> list[str]:
+        "Name of each row (or, with ``per_vector``, of each vector) for error messages"
         name = self.name or '<NDVar>'
-        if not self.dims:
+        dims = self.dims[:-1] if per_vector else self.dims
+        if not dims:
             return [name]
-        return ["-".join((name, *map(str, values))) for values in product(*self.dims)]
+        return ["-".join((name, *map(str, values))) for values in product(*dims)]
 
 
 class SegmentedArray:
@@ -659,7 +659,7 @@ class SegmentedArray:
     @property
     def names(self) -> list[str]:
         "Name of each row for error messages (empty without :attr:`blocks`)"
-        return [name for block in self.blocks for name in block.names]
+        return [name for block in self.blocks for name in block.names()]
 
     @property
     def _n_times(self) -> list[int]:
@@ -782,17 +782,19 @@ class SegmentedArray:
         "Raise an error for rows that are flat or contain NaN"
         if self.scale is None:  # range of each row (NaN for rows containing NaN)
             check = np.max([seg.max(-1) for seg in self.segments], 0) - np.min([seg.min(-1) for seg in self.segments], 0)
-        else:
+            names = self.names
+        else:  # one entry per vector for vector data
             check = self.scale
+            names = [name for block in self.blocks for name in block.names(bool(self.n_vector))]
         is_flat = check == 0
         if np.any(is_flat):
-            if self.names:
-                raise ValueError(f"{self.name}: flat data in {', '.join(self.names[i] for i in np.flatnonzero(is_flat))}")
+            if names:
+                raise ValueError(f"{self.name}: flat data in {', '.join(names[i] for i in np.flatnonzero(is_flat))}")
             raise ValueError(f"{self.name}: contains {is_flat.sum()} flat time series")
         has_nan = np.isnan(check)
         if np.any(has_nan):
-            if self.names:
-                raise ValueError(f"{self.name}: NaN in {', '.join(self.names[i] for i in np.flatnonzero(has_nan))}")
+            if names:
+                raise ValueError(f"{self.name}: NaN in {', '.join(names[i] for i in np.flatnonzero(has_nan))}")
             raise ValueError(f"{self.name}: contains NaN")
 
     def package_values(
