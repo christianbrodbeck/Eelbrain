@@ -914,8 +914,6 @@ class Boosting:
             raise ValueError(f"{cross_fit=} for model without cross-validation")
         if partition_results and not cross_fit and self.data.splits.n_test:
             raise ValueError(f"{partition_results=} with {cross_fit=} for model with test set")
-        if partition_results and not cross_fit and not self.data.splits.n_validate:
-            raise ValueError(f"{partition_results=} for model without validation and test set")
 
         # fit evaluation
         if metrics is None:
