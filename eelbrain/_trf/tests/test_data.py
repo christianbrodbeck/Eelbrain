@@ -372,3 +372,4 @@ def test_splits_eq():
     assert splits == pickle.loads(pickle.dumps(splits))
     assert splits != split_data(segments, 3, Factor('ab', tile=3))
     assert splits != split_data(segments, 3)
+    assert split_data(segments, 3) != splits
