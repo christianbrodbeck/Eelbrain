@@ -942,31 +942,12 @@ class DeconvolutionData:
         Total number of time samples across all segments.
     x_name : str | list of str
         Name of the predictor (a list for multiple predictors).
-    x_meta : list of tuple
-        ``(name, dims, index)`` for each predictor variable: its name, its
-        dimensions other than case and time, and the index of its rows in ``x``.
     basis : float
         Length of the basis window applied to ``x`` (0 for none).
-    y_name : str
-        Name of the dependent variable.
-    ydims : tuple of Dimension
-        Dimensions of ``y`` other than case and time (vector dimension last).
-    yshape : tuple of int
-        Shape corresponding to ``ydims``.
-    vector_dim : Dimension
-        Vector dimension of ``y`` (``None`` for scalar data).
-    y_info : dict
-        Info dictionary of ``y``.
     splits : Splits
         Cross-validation scheme (``None`` before :meth:`initialize_cross_validation`).
     """
-    # y (None without y)
-    y: SegmentedArray | None = None
-    y_name: str | None = None
-    y_info: dict | None = None
-    ydims: tuple[Dimension, ...] | None = None
-    yshape: tuple[int, ...] | None = None
-    vector_dim: Dimension | None = None
+    y: SegmentedArray | None = None  # None without y
     # cross-validation
     splits: Splits | None = None
 
@@ -1013,7 +994,6 @@ class DeconvolutionData:
         self.n_times_flat = int(stops[-1])
         self.multiple_x = multiple_x
         self.x_name = [block.name for block in self.x.blocks] if multiple_x else self.x.blocks[0].name
-        self.x_meta = [(block.name, block.dims, block.index) for block in self.x.blocks]
         self.segments = segments
         self.shortest_segment_n_times = np.min(np.diff(segments, axis=1))
         # basis
@@ -1030,12 +1010,6 @@ class DeconvolutionData:
         if y_structure != structure:
             raise ValueError(f"y={dataobj_repr(y)}: does not have the same time dimension and cases as x: y={y_structure[1:]}, x={structure[1:]}")
         self.y = SegmentedArray.from_ndvars([y], case_to_segments, True, f"y={dataobj_repr(y)}", in_place)
-        y_block = self.y.blocks[0]
-        self.y_name = y_block.name
-        self.y_info = y_block.info
-        self.ydims = y_block.dims
-        self.yshape = y_block.shape
-        self.vector_dim = self.y.vector_dim
 
     def flatten(self):
         "Build the concatenated arrays (see :meth:`SegmentedArray.flatten`)"
@@ -1214,37 +1188,6 @@ class DeconvolutionData:
         if self.multiple_x:
             return tuple(hs)
         return hs[0]
-
-    def package_value(
-            self,
-            value: np.ndarray,
-            name: str,
-            info: dict = None,
-            meas: str = None,
-    ) -> NDVar | float:
-        """Package a per-signal value (e.g., a fit metric) like ``y``
-
-        Parameters
-        ----------
-        value
-            One value per signal, ``(n_y,)``, or one value per vector,
-            ``(n_y / n_vector,)``, for values pooled over the vector dimension.
-        name
-            NDVar name.
-        info
-            NDVar info (default: the info of ``y``).
-        meas
-            Measurement type, used to generate the NDVar info.
-
-        Returns
-        -------
-        value
-            :class:`NDVar` with the dimensions of ``y`` (without case and time),
-            or a scalar for a single time series.
-        """
-        if meas:
-            info = _info.for_stat_map(meas, old=info)
-        return self.y.package_values(value, name, info)[0]
 
     def package_y_like(
             self,
