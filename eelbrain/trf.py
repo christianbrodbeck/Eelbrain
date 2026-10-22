@@ -1,17 +1,13 @@
+# autoflake: skip_file
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Components for implementing TRF estimators
 
-The data layout (:class:`DeconvolutionData`), cross-validation scheme
-(:class:`Splits`) and lag-window conventions (:func:`lag_window`,
-:func:`lag_matrix`) that :func:`eelbrain.boosting` is built on, shared with the
-`NCRF <https://github.com/proloyd/neuro-currentRF>`_ package.
+Public to share with NCRF, but may change together with NCRF in the future.
 """
 import os
 
 from ._config import CONFIG
 from ._trf.shared import DeconvolutionData, RowBlock, SegmentedArray, Split, Splits, lag_matrix, lag_window, package_values, split_data
-
-__all__ = ['DeconvolutionData', 'RowBlock', 'SegmentedArray', 'Split', 'Splits', 'lag_matrix', 'lag_window', 'package_values', 'split_data', 'n_workers', 'init_worker']
 
 
 def n_workers() -> int:

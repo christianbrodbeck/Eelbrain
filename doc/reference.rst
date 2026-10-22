@@ -195,24 +195,6 @@ Temporal Response Functions
    epoch_impulse_predictor
    event_impulse_predictor
 
-.. py:module:: trf
-.. currentmodule:: eelbrain
-
-Components for implementing TRF estimators (shared with the `NCRF
-<https://github.com/proloyd/neuro-currentRF>`_ package):
-
-.. autosummary::
-   :toctree: generated
-
-    trf.DeconvolutionData
-    trf.SegmentedArray
-    trf.RowBlock
-    trf.package_values
-    trf.lag_matrix
-    trf.lag_window
-    trf.n_workers
-    trf.init_worker
-
 
 ^^^^^^
 Tables
