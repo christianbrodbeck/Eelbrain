@@ -790,7 +790,7 @@ class Boosting:
         h_n_times = i_stop - i_start
         # Data segments need to be at least as long as the TRF
         h_n_times_max = np.max(h_n_times)
-        if h_n_times_max > self.data.shortest_segment_n_times:
+        if h_n_times_max > min(self.data.segment_n_times):
             raise ValueError(f"{tstart=}, {tstop=}: the kernel is longer than shortest data segment")
         if not self.data.splits.n_validate:
             raise NotImplementedError("Boosting without validation set (validate=0): early stopping requires a validation set")
