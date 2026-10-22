@@ -507,12 +507,13 @@ class RowBlock:
     index
         Rows of the block in the array (the flattened ``dims``).
     info
-        Info dictionary of the NDVar.
+        Info dictionary of the NDVar (not considered for equality: two blocks
+        are equal when they describe the same rows).
     """
     name: str | None
     dims: tuple[Dimension, ...]
     index: slice
-    info: dict
+    info: dict = field(compare=False)
 
     @property
     def shape(self) -> tuple[int, ...]:

@@ -279,6 +279,19 @@ def test_deconvolution_data_vector_only():
     assert data.y.package_values(np.arange(1.), 'value')[0] == 0
 
 
+def test_row_block_equality():
+    "Blocks identify rows by name and dimensions; the NDVar info does not matter"
+    ds = datasets._get_continuous()
+    x = ds['x1']
+    data = DeconvolutionData([x, ds['x2']], ds['y'])
+    x_other = NDVar(x.x, x.dims, x.name, {'unit': 'other'})
+    data_other = DeconvolutionData([x_other, ds['x2']], ds['y'])
+    assert data_other.x.blocks == data.x.blocks
+    assert data_other.y.blocks == data.y.blocks
+    assert DeconvolutionData([ds['x2'], x], ds['y']).x.blocks != data.x.blocks
+    assert DeconvolutionData(x, ds['y']).x.blocks != data.x.blocks
+
+
 def test_lag_matrix():
     x = np.arange(10, dtype=float)
     lagged = lag_matrix(x, 0, 3, -1)
