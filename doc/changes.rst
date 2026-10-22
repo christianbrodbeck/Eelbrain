@@ -105,6 +105,8 @@ New in 0.43
   - The cross-validation scheme is public: :func:`split_data` creates the
     :class:`Splits`, and :class:`Split` objects are nested (test splits contain
     validation splits).
+  - New :mod:`trf` module with the components for implementing TRF
+    estimators (data layout, cross-validation splits, lag windows).
 
 * ICA-GUI (:func:`gui.select_components`): The *Find Bad Channels* tool now also
   detects defective channels through gaps in the component maps — channels whose
