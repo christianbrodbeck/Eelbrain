@@ -224,9 +224,11 @@ def test_deconvolution_data_check():
     y = NDVar(np.random.RandomState(0).normal(size=(60, 2, 3, 100)), (x.dims[0], Scalar('s', [0, 1]), Space('RAI'), x.time), 'y')
     y.x[:, 1] = 0
     data = DeconvolutionData(x, y)
-    # normalizing checks before dividing by the scale
+    # normalizing checks before modifying the data
     with pytest.raises(ValueError, match="flat data in y-1$"):
         data.normalize('l2')
+    assert data.y.mean is None and data.y.scale_norm is None
+    assert_array_equal(data.y.segments[0], y.x[0].reshape((6, 100)))
     x.x[3, 10] = np.nan
     with pytest.raises(ValueError, match="NaN in uts"):
         DeconvolutionData(x, y).x.normalize(True, 'l1')
