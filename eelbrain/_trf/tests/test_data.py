@@ -263,6 +263,13 @@ def test_deconvolution_data_normalize_x():
     y_mean, y_scale, x_mean_2, x_scale_2 = data_2.data_scale_ndvars()
     assert y_mean is None and y_scale is None
     assert x_mean_2 == pytest.approx(x_mean + x_scale) and x_scale_2 == pytest.approx(x_scale * 2)
+    # scaling without centering
+    data_3 = DeconvolutionData(x, y)
+    data_3.x.normalize(False, 'l1')
+    assert_array_equal(data_3.x.mean, [0])
+    assert data_3.x.scale[0] == pytest.approx(abs(x.x).mean())
+    assert data_3.x.pads[0] == 0
+    np.testing.assert_allclose(data_3.x.segments[0][0], x.x / abs(x.x).mean())
 
 
 def test_deconvolution_data_vector_only():

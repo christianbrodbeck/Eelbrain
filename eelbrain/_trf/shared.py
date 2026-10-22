@@ -859,10 +859,13 @@ class SegmentedArray:
             deviation (``'l2'``).
         """
         n = sum(self._n_times)
+        center = mean is not False
         if mean is True:
             mean = sum(seg.sum(-1) for seg in self.segments) / n
-        else:
+        elif center:
             mean = np.broadcast_to(mean, (self.n_rows,)).astype(np.float64)
+        else:
+            mean = np.zeros(self.n_rows)
         if isinstance(scale, str):
             if scale not in ('l1', 'l2'):
                 raise RuntimeError(f"{scale=}")
@@ -870,7 +873,7 @@ class SegmentedArray:
             # estimate the scale from the centered data without modifying it, so that the data is intact if the check below fails
             total = 0
             for seg in self.segments:
-                centered = seg - mean[:, newaxis]
+                centered = seg - mean[:, newaxis] if center else seg
                 if self.n_vector:
                     centered = norm(centered.reshape((-1, self.n_vector, seg.shape[-1])), axis=1)
                 total = total + (np.abs(centered).sum(-1) if scale == 'l1' else (centered ** 2).sum(-1))
@@ -884,7 +887,8 @@ class SegmentedArray:
         self._copy_data()
         row_scale = self._row_scale(scale)
         for seg in self.segments:
-            seg -= mean[:, newaxis]
+            if center:
+                seg -= mean[:, newaxis]
             seg /= row_scale[:, newaxis]
         self.scale_norm = scale_norm
 
