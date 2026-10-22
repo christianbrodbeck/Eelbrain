@@ -209,6 +209,7 @@ Components for implementing TRF estimators (shared with the `NCRF
     trf.RowBlock
     trf.package_values
     trf.lag_matrix
+    trf.lag_window
     trf.n_workers
     trf.init_worker
 
