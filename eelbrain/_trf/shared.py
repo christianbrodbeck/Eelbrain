@@ -25,6 +25,8 @@ class EQMixIn:
     """Add __eq__() for dataclasses with array and categorial fields"""
 
     def __eq__(self, other) -> bool:
+        if other is self:
+            return True
         if not isinstance(other, self.__class__):
             return False
         for field_i in fields(self):
