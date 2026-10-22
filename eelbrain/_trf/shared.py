@@ -878,6 +878,8 @@ class SegmentedArray:
                 scale = (sum((x ** 2).sum(-1) for x in magnitudes) / n) ** 0.5
             else:
                 raise RuntimeError(f"{scale=}")
+            # dividing by a scale of 0 would turn flat rows into NaN
+            self._check_values(scale, bool(self.n_vector))
         else:
             self.scale_norm = None  # the data is no longer normalized to the norm
             n_scale = self.n_rows // self.n_vector if self.n_vector else self.n_rows
@@ -904,17 +906,20 @@ class SegmentedArray:
     def check(self):
         "Raise an error for rows that are flat or contain NaN"
         if self.scale is None:  # range of each row (NaN for rows containing NaN)
-            check = np.max([seg.max(-1) for seg in self.segments], 0) - np.min([seg.min(-1) for seg in self.segments], 0)
-            names = self.names
+            values = np.max([seg.max(-1) for seg in self.segments], 0) - np.min([seg.min(-1) for seg in self.segments], 0)
+            self._check_values(values, False)
         else:  # one entry per vector for vector data
-            check = self.scale
-            names = [name for block in self.blocks for name in block.names(bool(self.n_vector))]
-        is_flat = check == 0
+            self._check_values(self.scale, bool(self.n_vector))
+
+    def _check_values(self, values: np.ndarray, per_vector: bool):
+        "Raise an error for rows (or vectors, with ``per_vector``) whose ``values`` are 0 (flat) or NaN"
+        names = [name for block in self.blocks for name in block.names(per_vector)]
+        is_flat = values == 0
         if np.any(is_flat):
             if names:
                 raise ValueError(f"{self.name}: flat data in {', '.join(names[i] for i in np.flatnonzero(is_flat))}")
             raise ValueError(f"{self.name}: contains {is_flat.sum()} flat time series")
-        has_nan = np.isnan(check)
+        has_nan = np.isnan(values)
         if np.any(has_nan):
             if names:
                 raise ValueError(f"{self.name}: NaN in {', '.join(names[i] for i in np.flatnonzero(has_nan))}")
