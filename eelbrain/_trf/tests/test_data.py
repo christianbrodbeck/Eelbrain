@@ -232,6 +232,16 @@ def test_deconvolution_data_check():
     x.x[3, 10] = np.nan
     with pytest.raises(ValueError, match="NaN in uts"):
         DeconvolutionData(x, y).x.normalize(True, 'l1')
+    # a scale supplied by the user does not vouch for the data
+    data = DeconvolutionData(x, y)
+    data.x.normalize(0., 1.)
+    with pytest.raises(ValueError, match="NaN in uts"):
+        data.check_data()
+    x.x[:] = 1
+    data = DeconvolutionData(x, y)
+    data.x.normalize(0., 1.)
+    with pytest.raises(ValueError, match="flat data in uts"):
+        data.check_data()
 
 
 def test_deconvolution_data_normalize_x():

@@ -911,10 +911,10 @@ class SegmentedArray:
 
     def check(self):
         "Raise an error for rows that are flat or contain NaN"
-        if self.scale is None:  # range of each row (NaN for rows containing NaN)
+        if self.scale_norm is None:  # range of each row (NaN for rows containing NaN)
             values = np.max([seg.max(-1) for seg in self.segments], 0) - np.min([seg.min(-1) for seg in self.segments], 0)
             self._check_values(values, False)
-        else:  # one entry per vector for vector data
+        else:  # the scale was estimated from the data (one entry per vector for vector data)
             self._check_values(self.scale, bool(self.n_vector))
 
     def _check_values(self, values: np.ndarray, per_vector: bool):
