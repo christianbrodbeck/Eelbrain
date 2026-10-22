@@ -534,6 +534,58 @@ class RowBlock:
         return ["-".join((name, *map(str, values))) for values in product(*dims)]
 
 
+def package_values(
+        blocks: Sequence[RowBlock],
+        value: np.ndarray,
+        name: str | None = None,
+        info: dict | None = None,
+        dims: tuple[Dimension, ...] = (),
+        n_vector: int = 0,
+) -> list[NDVar | float]:
+    """Package per-row values as one NDVar per block
+
+    Parameters
+    ----------
+    blocks
+        The blocks describing the rows of ``value`` (e.g., :attr:`SegmentedArray.blocks`).
+    value
+        One value per row, ``(n_rows, ...)``, or, for vector data, one
+        value per vector, ``(n_rows / n_vector, ...)``, for values pooled
+        over the vector dimension.
+    name
+        NDVar name (default: the name of the block's NDVar).
+    info
+        NDVar info (default: the info of the block's NDVar).
+    dims
+        Dimensions of any axes of ``value`` after the row axis.
+    n_vector
+        Number of components in each vector (0 for scalar data).
+
+    Returns
+    -------
+    values
+        For each block, an :class:`NDVar` with the block's dimensions
+        (without the vector dimension for pooled values) followed by
+        ``dims``, or a scalar for a block without dimensions.
+    """
+    per_vector = n_vector and len(value) != blocks[-1].index.stop
+    out = []
+    for block in blocks:
+        if per_vector:
+            block_dims = block.dims[:-1]
+            block_value = value[block.index.start // n_vector:block.index.stop // n_vector]
+        else:
+            block_dims = block.dims
+            block_value = value[block.index]
+        out_dims = (*block_dims, *dims)
+        if not out_dims:
+            out.append(block_value[0])
+        else:
+            shape = tuple(len(dim) for dim in out_dims)
+            out.append(NDVar(block_value.reshape(shape), out_dims, block.name if name is None else name, block.info if info is None else info))
+    return out
+
+
 class SegmentedArray:
     """Time series stored as one array per segment, with lazy concatenation and copy-on-write
 
@@ -806,44 +858,8 @@ class SegmentedArray:
             info: dict | None = None,
             dims: tuple[Dimension, ...] = (),
     ) -> list[NDVar | float]:
-        """Package per-row values (e.g., :attr:`mean`) as one NDVar per block
-
-        Parameters
-        ----------
-        value
-            One value per row, ``(n_rows, ...)``, or, for vector data, one
-            value per vector, ``(n_rows / n_vector, ...)``, for values pooled
-            over the vector dimension.
-        name
-            NDVar name (default: the name of the block's NDVar).
-        info
-            NDVar info (default: the info of the block's NDVar).
-        dims
-            Dimensions of any axes of ``value`` after the row axis.
-
-        Returns
-        -------
-        values
-            For each block, an :class:`NDVar` with the block's dimensions
-            (without the vector dimension for pooled values) followed by
-            ``dims``, or a scalar for a block without dimensions.
-        """
-        per_vector = self.n_vector and len(value) != self.n_rows
-        out = []
-        for block in self.blocks:
-            if per_vector:
-                block_dims = block.dims[:-1]
-                block_value = value[block.index.start // self.n_vector:block.index.stop // self.n_vector]
-            else:
-                block_dims = block.dims
-                block_value = value[block.index]
-            out_dims = (*block_dims, *dims)
-            if not out_dims:
-                out.append(block_value[0])
-            else:
-                shape = tuple(len(dim) for dim in out_dims)
-                out.append(NDVar(block_value.reshape(shape), out_dims, block.name if name is None else name, block.info if info is None else info))
-        return out
+        "Package per-row values (e.g., :attr:`mean`) as one NDVar per block (see :func:`package_values`)"
+        return package_values(self.blocks, value, name, info, dims, self.n_vector)
 
 
 def _time_structure(v: NDVar | Datalist) -> tuple[bool, int, UTS | list[UTS]]:
