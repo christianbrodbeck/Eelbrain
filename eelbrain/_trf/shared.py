@@ -859,7 +859,19 @@ class SegmentedArray:
             one entry per vector for vector data); or estimate it from the
             centered data as the mean absolute value (``'l1'``) or the standard
             deviation (``'l2'``).
+
+        Notes
+        -----
+        The data is checked for flat and NaN rows before it is modified.
         """
+        self._apply_normalization(*self._normalization(mean, scale))
+
+    def _normalization(
+            self,
+            mean: bool | np.ndarray | float,
+            scale: Literal['l1', 'l2'] | np.ndarray | float,
+    ) -> tuple[np.ndarray, np.ndarray, str | None]:
+        "``(mean, scale, scale_norm)`` for :meth:`normalize`, checking the data without modifying it"
         n = sum(self._n_times)
         center = mean is not False
         if mean is True:
@@ -886,7 +898,17 @@ class SegmentedArray:
             scale_norm = None  # the data is no longer normalized to the norm
             n_scale = self.n_rows // self.n_vector if self.n_vector else self.n_rows
             scale = np.broadcast_to(scale, (n_scale,)).astype(np.float64)
+        return mean, scale, scale_norm
+
+    def _apply_normalization(
+            self,
+            mean: np.ndarray,
+            scale: np.ndarray,
+            scale_norm: str | None,
+    ):
+        "Apply a normalization determined with :meth:`_normalization`"
         self._copy_data()
+        center = mean.any()
         row_scale = self._row_scale(scale)
         for seg in self.segments:
             if center:
@@ -1152,9 +1174,11 @@ class DeconvolutionData:
         -----
         To normalize only the predictors, use ``data.x.normalize(True, error)``.
         """
-        self.x.normalize(True, error)
-        if self.y is not None:
-            self.y.normalize(True, error)
+        arrays = [self.x] if self.y is None else [self.x, self.y]
+        # check all data before modifying any of it, so that a failure leaves the data intact
+        normalizations = [array._normalization(True, error) for array in arrays]
+        for array, normalization in zip(arrays, normalizations):
+            array._apply_normalization(*normalization)
 
     def check_data(self):
         "Raise an error for data that is flat or contains NaN (see :meth:`SegmentedArray.check`)"
