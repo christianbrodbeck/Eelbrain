@@ -858,35 +858,35 @@ class SegmentedArray:
             centered data as the mean absolute value (``'l1'``) or the standard
             deviation (``'l2'``).
         """
-        self._copy_data()
+        n = sum(self._n_times)
         if mean is True:
-            mean = sum(seg.sum(-1) for seg in self.segments) / sum(self._n_times)
+            mean = sum(seg.sum(-1) for seg in self.segments) / n
         else:
             mean = np.broadcast_to(mean, (self.n_rows,)).astype(np.float64)
-        for seg in self.segments:
-            seg -= mean[:, newaxis]
         if isinstance(scale, str):
-            self.scale_norm = scale
-            if self.n_vector:
-                magnitudes = [norm(seg.reshape((-1, self.n_vector, seg.shape[-1])), axis=1) for seg in self.segments]
-            else:
-                magnitudes = self.segments
-            n = sum(self._n_times)
-            if scale == 'l1':
-                scale = sum(np.abs(x).sum(-1) for x in magnitudes) / n
-            elif scale == 'l2':
-                scale = (sum((x ** 2).sum(-1) for x in magnitudes) / n) ** 0.5
-            else:
+            if scale not in ('l1', 'l2'):
                 raise RuntimeError(f"{scale=}")
+            scale_norm = scale
+            # estimate the scale from the centered data without modifying it, so that the data is intact if the check below fails
+            total = 0
+            for seg in self.segments:
+                centered = seg - mean[:, newaxis]
+                if self.n_vector:
+                    centered = norm(centered.reshape((-1, self.n_vector, seg.shape[-1])), axis=1)
+                total = total + (np.abs(centered).sum(-1) if scale == 'l1' else (centered ** 2).sum(-1))
+            scale = total / n if scale == 'l1' else (total / n) ** 0.5
             # dividing by a scale of 0 would turn flat rows into NaN
             self._check_values(scale, bool(self.n_vector))
         else:
-            self.scale_norm = None  # the data is no longer normalized to the norm
+            scale_norm = None  # the data is no longer normalized to the norm
             n_scale = self.n_rows // self.n_vector if self.n_vector else self.n_rows
             scale = np.broadcast_to(scale, (n_scale,)).astype(np.float64)
+        self._copy_data()
         row_scale = self._row_scale(scale)
         for seg in self.segments:
+            seg -= mean[:, newaxis]
             seg /= row_scale[:, newaxis]
+        self.scale_norm = scale_norm
 
         # Record normalization
         if self.mean is None:
