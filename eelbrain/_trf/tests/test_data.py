@@ -410,6 +410,34 @@ def test_split_data_no_validate_no_test():
     assert split.splits == []
 
 
+def test_split_data_within_cases():
+    "Each segment is cut into ``partitions`` pieces, and partition i pools the i-th piece of every segment"
+    segments = np.array([[0, 100], [100, 160]])
+    splits = split_data(segments, 3, validate=1, test=0, within_cases=True)
+    assert splits.within_cases
+    assert splits.n_partitions == 3
+    assert_array_equal(splits.split_segments, [[0, 33], [33, 67], [67, 100], [100, 120], [120, 140], [140, 160]])
+    assert_array_equal(splits.splits[0].reserved, [[0, 33], [100, 120]])
+    assert_array_equal(splits.splits[0].train, [[33, 100], [120, 160]])
+    assert_array_equal(splits.splits[1].reserved, [[33, 67], [120, 140]])
+    assert_array_equal(splits.splits[1].train, [[0, 33], [67, 100], [100, 120], [140, 160]])
+    assert_array_equal(splits.splits[2].reserved, [[67, 100], [140, 160]])
+    assert_array_equal(splits.splits[2].train, [[0, 67], [100, 140]])
+    assert 'within_cases=True' in repr(splits)
+    assert splits != split_data(segments, 3, validate=1, test=0)
+    assert splits == pickle.loads(pickle.dumps(splits))
+    # default number of partitions
+    assert split_data(segments, within_cases=True).n_partitions == 5
+    # continuous data is unaffected
+    assert split_data(segments[:1], 3, within_cases=True).splits == split_data(segments[:1], 3).splits
+    # also with enough segments for whole-segment partitions
+    segments = np.array([[i * 10, (i + 1) * 10] for i in range(6)])
+    splits = split_data(segments, 2, validate=1, test=0, within_cases=True)
+    assert_array_equal(splits.splits[0].reserved, [[0, 5], [10, 15], [20, 25], [30, 35], [40, 45], [50, 55]])
+    with pytest.raises(ValueError, match="not enough samples"):
+        split_data(np.array([[0, 2], [2, 4]]), 3, validate=1, test=0, within_cases=True)
+
+
 def test_splits_legacy_format():
     "Load Splits pickled before nested splits (one flat Split per boosting run)"
     def flat_split(state: dict) -> Split:

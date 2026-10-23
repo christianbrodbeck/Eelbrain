@@ -190,6 +190,9 @@ class Splits(PickleableDataClass, EQMixIn):
     split_segments
         ``(n_sections, 2)`` array of the sections into which the data was
         subdivided to form partitions.
+    within_cases
+        Whether each segment was divided into ``n_partitions`` pieces (see
+        :func:`split_data`).
     """
     splits: list[Split]
     partitions_arg: int | None
@@ -199,6 +202,7 @@ class Splits(PickleableDataClass, EQMixIn):
     model: CategorialArg = None
     segments: np.ndarray = None
     split_segments: np.ndarray = None
+    within_cases: bool = False
 
     def __setstate__(self, state: dict):
         # Backwards compatibility for BoostingResult version < 17
@@ -232,6 +236,8 @@ class Splits(PickleableDataClass, EQMixIn):
             items.append(f'n_test={self.n_test}')
         if self.model is not None:
             items.append(f'model={dataobj_repr(self.model)}')
+        if self.within_cases:
+            items.append('within_cases=True')
         items = ', '.join(items)
         return f"<Splits: {desc} split into {len(self.split_segments)} sections{items}>"
 
@@ -254,6 +260,7 @@ def split_data(
         data: Dataset | None = None,
         validate: int = 1,
         test: int = 1,
+        within_cases: bool = False,
 ) -> Splits:
     """Split data segments into train, validate and test segments
 
@@ -274,6 +281,12 @@ def split_data(
         Number of partitions in each validation set (0 or 1).
     test
         Number of partitions in each test set (0 or 1).
+    within_cases
+        Divide each segment into ``partitions`` pieces of equal length, and
+        form partition *i* from the *i*-th piece of every segment (default 5
+        partitions). By default, partitions are instead formed from whole
+        segments where possible, and from contiguous spans of the concatenated
+        time axis otherwise (see notes).
 
     Notes
     -----
@@ -300,7 +313,12 @@ def split_data(
        continuous segment again. Hard boundaries are never merged.
 
     How the sections are formed and assigned to partitions (steps 1 and 2)
-    depends on the data and on the arguments:
+    depends on the data and on the arguments. The default schemes keep whole
+    segments together where possible, and otherwise form partitions from
+    contiguous spans of time, so that a held-out partition typically
+    corresponds to a different time period (and often different segments)
+    than the training data. With ``within_cases=True``, every partition
+    instead contains a piece of every segment.
 
     **Continuous data** (a single segment): the segment is cut into
     ``partitions`` contiguous sections of equal length (default 5), and each
@@ -333,6 +351,15 @@ def split_data(
        contain (approximately) equal numbers of samples, while a span that
        straddles a segment boundary yields two sections in the same partition.
 
+    **Within cases** (``within_cases=True``, regardless of the number of
+    segments): each segment is cut into ``partitions`` pieces of equal length
+    (default 5), and partition *i* consists of the *i*-th piece of every
+    segment. Every partition thus samples every segment (and hence every cell
+    of ``model``, which is not needed in this scheme) in proportion to its
+    length, at the cost of more segment boundaries. Note that partition *i*
+    always covers the same relative position within the segments (e.g., the
+    first partition contains the beginning of every segment).
+
     See :ref:`exa-data_split` for illustrations of these schemes, and use
     :meth:`Splits.plot` (or :func:`plot.preview_partitions`) to inspect a
     specific configuration.
@@ -352,15 +379,14 @@ def split_data(
     assert test >= 0
     if test > 1:
         raise NotImplementedError
+    if within_cases and partitions is None:
+        partitions = 5
     if len(segments) == 1:
         if partitions is None:
             partitions = 5
         if model is not None:
             raise TypeError(f'model={dataobj_repr(model)!r}: model cannot be specified in unsegmented data')
-        n_times = segments[0, 1] - segments[0, 0]
-        split_points = np.round(np.linspace(0, n_times, partitions + 1)).astype(np.int64)
-        soft_splits = split_points[1:-1]
-        split_segments = np.vstack([split_points[i: i + 2] for i in range(partitions)])
+        split_segments, soft_splits = cut_segments(segments, partitions)
         piece_partition = np.arange(partitions)
     else:
         n_segments = len(segments)
@@ -383,7 +409,11 @@ def split_data(
             else:
                 raise NotImplementedError(f"Automatic partition for {cell_size} cases")
         # create segments, and assign each to a partition
-        if cell_size >= partitions:
+        if within_cases:
+            # the i-th piece of every segment forms partition i
+            split_segments, soft_splits = cut_segments(segments, partitions)
+            piece_partition = np.tile(np.arange(partitions), n_segments)
+        elif cell_size >= partitions:
             # whole segments, interleaved within each cell
             soft_splits = False
             split_segments = segments
@@ -395,16 +425,8 @@ def split_data(
         elif model is not None:
             raise NotImplementedError(f'{partitions=}: with model')
         elif partitions % cell_size == 0:
-            # subdivide each segment into the same number of parts
-            n_parts = partitions // cell_size
-            split_segments = []
-            soft_splits = []
-            for start, stop in segments:
-                split_points = np.round(np.linspace(start, stop, n_parts + 1)).astype(np.int64)
-                soft_splits.append(split_points[1:-1])
-                split_segments.extend(split_points[i: i + 2] for i in range(n_parts))
-            soft_splits = np.concatenate(soft_splits)
-            split_segments = np.vstack(split_segments)
+            # subdivide each segment into the same number of parts, each part its own partition
+            split_segments, soft_splits = cut_segments(segments, partitions // cell_size)
             piece_partition = np.arange(partitions)
         else:
             # partitions with equal numbers of samples, cut additionally at segment boundaries
@@ -442,7 +464,29 @@ def split_data(
         splits = [make_split([p for p in all_partitions if p != i], i, False) for i in all_partitions]
     else:
         splits = [make_split(all_partitions, None, False)]
-    return Splits(splits, partitions_arg, partitions, validate, test, model, segments, split_segments)
+    return Splits(splits, partitions_arg, partitions, validate, test, model, segments, split_segments, within_cases)
+
+
+def cut_segments(
+        segments: np.ndarray,
+        n_parts: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Cut each segment into ``n_parts`` pieces of equal length
+
+    Returns
+    -------
+    split_segments
+        ``(n_segments * n_parts, 2)`` array of the pieces, in order.
+    soft_splits
+        Indices of the cuts within segments (boundaries that can be merged).
+    """
+    split_segments = []
+    soft_splits = []
+    for start, stop in segments:
+        split_points = np.round(np.linspace(start, stop, n_parts + 1)).astype(np.int64)
+        soft_splits.append(split_points[1:-1])
+        split_segments.extend(split_points[i: i + 2] for i in range(n_parts))
+    return np.vstack(split_segments), np.concatenate(soft_splits)
 
 
 def _segment_views(
@@ -1219,6 +1263,7 @@ class DeconvolutionData:
             data: Dataset = None,
             validate: int = 1,
             test: int = 1,
+            within_cases: bool = False,
     ):
         """Initialize the cross-validation scheme (:attr:`splits`)
 
@@ -1236,12 +1281,15 @@ class DeconvolutionData:
             Number of partitions in each validation set (0 or 1).
         test
             Number of partitions in each test set (0 or 1).
+        within_cases
+            Divide each segment into ``partitions`` pieces and form each
+            partition from one piece of every segment.
 
         Notes
         -----
         See :func:`split_data` for the algorithm.
         """
-        self.splits = split_data(self.segments, partitions, model, data, validate, test)
+        self.splits = split_data(self.segments, partitions, model, data, validate, test, within_cases)
 
     def data_scale_ndvars(self) -> tuple:
         """Normalization parameters packaged like the input data

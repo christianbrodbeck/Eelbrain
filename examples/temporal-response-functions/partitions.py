@@ -40,3 +40,39 @@ p = plot.preview_partitions(20, partitions=2, test=0)
 
 p = plot.preview_partitions()
 p = plot.preview_partitions(20, partitions=5)
+
+###############################################################################
+# Few long trials
+# ---------------
+# With fewer trials than partitions, trials have to be cut into pieces. By default, the partitions are then contiguous spans of (approximately) equal length along the concatenated time axis, cut additionally at trial boundaries. Each partition thus corresponds to a different period of time, and most partitions come from a single trial. To preview this, ``cases`` can be a list specifying the number of samples in each trial:
+
+p = plot.preview_partitions([100, 100], partitions=5, test=0)
+
+###############################################################################
+# With ``within_cases=True``, each trial is instead divided into ``partitions`` pieces, and each partition is formed from the corresponding piece of every trial. Every partition thus contains data from every trial:
+
+p = plot.preview_partitions([100, 100], partitions=5, test=0, within_cases=True)
+p = plot.preview_partitions([100, 100], partitions=5, within_cases=True)
+
+###############################################################################
+# Which scheme is preferable depends on the data.
+# Partitions that correspond to whole trials or contiguous periods of time test whether the model generalizes to a different time period.
+# However, when the trials differ systematically (e.g., different conditions, learning or fatigue effects),
+# a test partition that stems from a single trial may not represent the data as a whole.
+# Partitions within trials avoid this because every partition samples every trial, at the cost of more segment boundaries.
+#
+# Trials of different lengths
+# ---------------------------
+# When the number of partitions is a multiple of the number of trials, each trial is divided into the same number of pieces (here 2), so that the partitions differ in size when the trials differ in length:
+
+p = plot.preview_partitions([120, 60], partitions=4, test=0)
+
+###############################################################################
+# Otherwise, partitions contain (approximately) equal numbers of samples, regardless of the trial lengths:
+
+p = plot.preview_partitions([120, 60], partitions=5, test=0)
+
+###############################################################################
+# With ``within_cases=True``, each partition contains a piece from every trial, proportional to the trial's length:
+
+p = plot.preview_partitions([120, 60], partitions=5, test=0, within_cases=True)
