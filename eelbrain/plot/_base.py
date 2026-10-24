@@ -79,6 +79,7 @@ from collections import defaultdict
 from dataclasses import dataclass, replace
 from enum import Enum, auto
 from functools import cached_property, reduce
+from io import BytesIO
 from itertools import chain, cycle, repeat
 from logging import getLogger
 import math
@@ -1686,8 +1687,19 @@ class EelFigure(MatplotlibFigure):
         return f'<{title}>'
 
     def _ipython_display_(self):
+        # Use the figure's own display path so that InlineBackend settings (figure_format, print_figure_kwargs) apply
         from IPython.display import display
         display(self.figure)
+
+    def _mime_(self) -> tuple[str, str]:
+        "Display protocol of marimo, which renders the figure like its own matplotlib figures (marimo adds ``_mime_`` to all matplotlib artists)"
+        return self.figure._mime_()
+
+    def _repr_png_(self) -> bytes:
+        "PNG representation for notebooks that use neither IPython nor marimo"
+        buffer = BytesIO()
+        self.figure.savefig(buffer, format='png', bbox_inches='tight')
+        return buffer.getvalue()
 
     def _set_axtitle(
             self,
