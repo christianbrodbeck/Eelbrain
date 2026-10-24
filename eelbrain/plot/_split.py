@@ -2,6 +2,7 @@
 """Plot data split for cross-validation"""
 
 from collections.abc import Sequence
+from typing import Literal
 
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import MaxNLocator
@@ -104,7 +105,7 @@ def preview_partitions(
     model: CategorialArg = None,
     validate: int = 1,
     test: int = 1,
-    within_cases: bool = False,
+    split: Literal['cases', 'time', 'within_cases'] = None,
     data: Dataset = None,
     **kwargs,
 ) -> DataSplit:
@@ -132,6 +133,10 @@ def preview_partitions(
                 partitions = 5
             ns = [partitions]
             xlabel = 'Segment'
+        elif split in ('time', 'within_cases'):
+            # cases need enough samples to be cut into partitions
+            ns = [partitions or 5] * cases
+            xlabel = 'Sample'
         else:
             if partitions is None:
                 raise NotImplementedError('Automatic partitions with trials')
@@ -147,6 +152,6 @@ def preview_partitions(
         xlabel = 'Sample'
     index = numpy.cumsum([0] + ns)
     segments = numpy.hstack([index[:-1, None], index[1:, None]])
-    splits = split_data(segments, partitions, model, data, validate, test, within_cases)
+    splits = split_data(segments, partitions, model, data, validate, test, split)
     kwargs.setdefault('xlabel', xlabel)
     return DataSplit(splits, **kwargs)

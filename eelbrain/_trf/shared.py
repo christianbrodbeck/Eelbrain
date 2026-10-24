@@ -190,9 +190,10 @@ class Splits(PickleableDataClass, EQMixIn):
     split_segments
         ``(n_sections, 2)`` array of the sections into which the data was
         subdivided to form partitions.
-    within_cases
-        Whether each segment was divided into ``n_partitions`` pieces (see
-        :func:`split_data`).
+    split
+        The partitioning scheme, ``'cases'``, ``'time'`` or ``'within_cases'``
+        (see :func:`split_data`; ``None`` for splits created before this
+        attribute was added).
     """
     splits: list[Split]
     partitions_arg: int | None
@@ -202,7 +203,7 @@ class Splits(PickleableDataClass, EQMixIn):
     model: CategorialArg = None
     segments: np.ndarray = None
     split_segments: np.ndarray = None
-    within_cases: bool = False
+    split: Literal['cases', 'time', 'within_cases'] = None
 
     def __setstate__(self, state: dict):
         # Backwards compatibility for BoostingResult version < 17
@@ -236,8 +237,8 @@ class Splits(PickleableDataClass, EQMixIn):
             items.append(f'n_test={self.n_test}')
         if self.model is not None:
             items.append(f'model={dataobj_repr(self.model)}')
-        if self.within_cases:
-            items.append('within_cases=True')
+        if self.split:
+            items.append(f'split={self.split!r}')
         items = ', '.join(items)
         return f"<Splits: {desc} split into {len(self.split_segments)} sections{items}>"
 
@@ -260,7 +261,7 @@ def split_data(
         data: Dataset | None = None,
         validate: int = 1,
         test: int = 1,
-        within_cases: bool = False,
+        split: Literal['cases', 'time', 'within_cases'] = None,
 ) -> Splits:
     """Split data segments into train, validate and test segments
 
@@ -281,12 +282,13 @@ def split_data(
         Number of partitions in each validation set (0 or 1).
     test
         Number of partitions in each test set (0 or 1).
-    within_cases
-        Divide each segment into ``partitions`` pieces of equal length, and
-        form partition *i* from the *i*-th piece of every segment (default 5
-        partitions). By default, partitions are instead formed from whole
-        segments where possible, and from contiguous spans of the concatenated
-        time axis otherwise (see notes).
+    split
+        How to form partitions (see notes): ``'cases'`` to form each
+        partition from whole segments; ``'time'`` to form partitions from
+        contiguous spans of the concatenated time axis; ``'within_cases'`` to
+        divide each segment into ``partitions`` pieces of equal length and
+        form partition *i* from the *i*-th piece of every segment. The default
+        is ``'cases'`` for segmented data and ``'time'`` for continuous data.
 
     Notes
     -----
@@ -313,52 +315,42 @@ def split_data(
        continuous segment again. Hard boundaries are never merged.
 
     How the sections are formed and assigned to partitions (steps 1 and 2)
-    depends on the data and on the arguments. The default schemes keep whole
-    segments together where possible, and otherwise form partitions from
-    contiguous spans of time, so that a held-out partition typically
-    corresponds to a different time period (and often different segments)
-    than the training data. With ``within_cases=True``, every partition
-    instead contains a piece of every segment.
+    depends on ``split``. The scheme is never chosen based on the number of
+    segments, so that the same arguments lead to the same kind of
+    cross-validation for datasets that differ in the number of segments (e.g.,
+    a participant with a missing trial).
 
-    **Continuous data** (a single segment): the segment is cut into
-    ``partitions`` contiguous sections of equal length (default 5), and each
-    section is one partition. ``model`` is not allowed.
+    **Whole cases** (``split='cases'``, default for segmented data): whole
+    segments are used as sections, so that segment boundaries are always
+    partition boundaries. The segments are assigned to partitions in an
+    interleaved fashion, i.e., partition *p* receives segments
+    ``[p::partitions]``. With ``model``, this is done separately within each
+    cell, so that every partition samples each cell evenly (``model`` is only
+    allowed with this scheme). The automatic default is
+    ``partitions = n_segments`` (number of segments in the smallest cell with
+    ``model``), which amounts to leave-one-out and is only available for 3 to
+    10 segments (per cell); with ``model`` it further requires all cells to
+    have the same size. More partitions than segments (per cell) raise an
+    error.
 
-    **Segmented data with at least as many segments as partitions** (``model``
-    is ``None`` and ``n_segments >= partitions``, or each cell of ``model`` has
-    at least ``partitions`` segments): whole segments are used as sections. The
-    segments are assigned to partitions in an interleaved fashion, i.e.,
-    partition *p* receives segments ``[p::partitions]``. With ``model``, this
-    is done separately within each cell, so that every partition samples each
-    cell evenly. The automatic default is ``partitions = n_segments`` (number
-    of segments in the smallest cell with ``model``), which amounts to
-    leave-one-out and is only available for 3 to 10 segments (per cell); with
-    ``model`` it further requires all cells to have the same size.
+    **Time** (``split='time'``, default for continuous data): the
+    concatenated time axis is divided into ``partitions`` spans of equal
+    length (default 5), and the data is cut at these span boundaries (soft) as
+    well as at all segment boundaries (hard). Each section is assigned to the
+    partition whose span contains its start, so partitions contain
+    (approximately) equal numbers of samples and correspond to different
+    periods of time, while a span that straddles a segment boundary yields two
+    sections in the same partition. For continuous data (a single segment),
+    this simply cuts the data into ``partitions`` contiguous sections of equal
+    length.
 
-    **Segmented data with more partitions than segments** (``model`` is
-    ``None`` and ``partitions > n_segments``; not implemented with ``model``):
-    segments are cut into pieces, and the pieces are used as sections.
-
-     - If ``partitions`` is a multiple of ``n_segments``, each segment is cut
-       into ``partitions / n_segments`` pieces of equal length, and each piece
-       is one partition. Partitions are thus numbered consecutively along the
-       time axis (the first pieces all come from the first segment), and
-       partition sizes depend on the length of the segment they come from.
-     - Otherwise, the concatenated time axis is divided into ``partitions``
-       spans of equal length, and the data is cut at these span boundaries
-       (soft) as well as at all segment boundaries (hard). Each section is
-       assigned to the partition whose span contains its start, so partitions
-       contain (approximately) equal numbers of samples, while a span that
-       straddles a segment boundary yields two sections in the same partition.
-
-    **Within cases** (``within_cases=True``, regardless of the number of
-    segments): each segment is cut into ``partitions`` pieces of equal length
-    (default 5), and partition *i* consists of the *i*-th piece of every
-    segment. Every partition thus samples every segment (and hence every cell
-    of ``model``, which is not needed in this scheme) in proportion to its
-    length, at the cost of more segment boundaries. Note that partition *i*
-    always covers the same relative position within the segments (e.g., the
-    first partition contains the beginning of every segment).
+    **Within cases** (``split='within_cases'``): each segment is cut into
+    ``partitions`` pieces of equal length (default 5), and partition *i*
+    consists of the *i*-th piece of every segment. Every partition thus
+    samples every segment in proportion to its length, at the cost of more
+    segment boundaries. Note that partition *i* always covers the same
+    relative position within the segments (e.g., the first partition contains
+    the beginning of every segment).
 
     See :ref:`exa-data_split` for illustrations of these schemes, and use
     :meth:`Splits.plot` (or :func:`plot.preview_partitions`) to inspect a
@@ -379,28 +371,24 @@ def split_data(
     assert test >= 0
     if test > 1:
         raise NotImplementedError
-    if within_cases and partitions is None:
-        partitions = 5
-    if len(segments) == 1:
-        if partitions is None:
-            partitions = 5
-        if model is not None:
-            raise TypeError(f'model={dataobj_repr(model)!r}: model cannot be specified in unsegmented data')
-        split_segments, soft_splits = cut_segments(segments, partitions)
-        piece_partition = np.arange(partitions)
-    else:
+    if split is None:
+        split = 'cases' if len(segments) > 1 else 'time'
+    elif split not in ('cases', 'time', 'within_cases'):
+        raise ValueError(f"{split=}: must be 'cases', 'time' or 'within_cases'")
+    if model is not None and split != 'cases':
+        raise TypeError(f"model={dataobj_repr(model)!r} with {split=}: model can only be used with split='cases'")
+    if split == 'cases':
         n_segments = len(segments)
         # determine model cells
         if model is None:
-            categories = [None]
+            categories = [np.arange(n_segments)]
             cell_size = n_segments
         else:
             model = ascategorial(model, data=data, n=n_segments)
             categories = [np.flatnonzero(model == cell) for cell in model.cells]
             cell_sizes = [len(i) for i in categories]
             cell_size = min(cell_sizes)
-            cell_sizes_are_equal = len(set(cell_sizes)) == 1
-            if partitions is None and not cell_sizes_are_equal:
+            if partitions is None and len(set(cell_sizes)) > 1:
                 raise NotImplementedError(f'Automatic partition for variable cell size {dict(zip(model.cells, cell_sizes))}')
         # automatic selection of partitions
         if partitions is None:
@@ -408,26 +396,21 @@ def split_data(
                 partitions = cell_size
             else:
                 raise NotImplementedError(f"Automatic partition for {cell_size} cases")
-        # create segments, and assign each to a partition
-        if within_cases:
+        elif partitions > cell_size:
+            raise ValueError(f"{partitions=} with {split=}: only {cell_size} cases{'' if model is None else ' per cell'}; use fewer partitions, or split='time' or split='within_cases' to cut cases into pieces")
+        # whole segments, interleaved within each cell
+        soft_splits = False
+        split_segments = segments
+        piece_partition = np.empty(n_segments, np.int64)
+        for cell_index in categories:
+            piece_partition[cell_index] = np.arange(len(cell_index)) % partitions
+    else:
+        if partitions is None:
+            partitions = 5
+        if split == 'within_cases':
             # the i-th piece of every segment forms partition i
             split_segments, soft_splits = cut_segments(segments, partitions)
-            piece_partition = np.tile(np.arange(partitions), n_segments)
-        elif cell_size >= partitions:
-            # whole segments, interleaved within each cell
-            soft_splits = False
-            split_segments = segments
-            piece_partition = np.empty(n_segments, np.int64)
-            for cell_index in categories:
-                if cell_index is None:
-                    cell_index = np.arange(n_segments)
-                piece_partition[cell_index] = np.arange(len(cell_index)) % partitions
-        elif model is not None:
-            raise NotImplementedError(f'{partitions=}: with model')
-        elif partitions % cell_size == 0:
-            # subdivide each segment into the same number of parts, each part its own partition
-            split_segments, soft_splits = cut_segments(segments, partitions // cell_size)
-            piece_partition = np.arange(partitions)
+            piece_partition = np.tile(np.arange(partitions), len(segments))
         else:
             # partitions with equal numbers of samples, cut additionally at segment boundaries
             split_points = np.round(np.linspace(segments[0, 0], segments[-1, 1], partitions + 1)).astype(np.int64)
@@ -464,7 +447,7 @@ def split_data(
         splits = [make_split([p for p in all_partitions if p != i], i, False) for i in all_partitions]
     else:
         splits = [make_split(all_partitions, None, False)]
-    return Splits(splits, partitions_arg, partitions, validate, test, model, segments, split_segments, within_cases)
+    return Splits(splits, partitions_arg, partitions, validate, test, model, segments, split_segments, split)
 
 
 def cut_segments(
@@ -1263,7 +1246,7 @@ class DeconvolutionData:
             data: Dataset = None,
             validate: int = 1,
             test: int = 1,
-            within_cases: bool = False,
+            split: Literal['cases', 'time', 'within_cases'] = None,
     ):
         """Initialize the cross-validation scheme (:attr:`splits`)
 
@@ -1281,15 +1264,16 @@ class DeconvolutionData:
             Number of partitions in each validation set (0 or 1).
         test
             Number of partitions in each test set (0 or 1).
-        within_cases
-            Divide each segment into ``partitions`` pieces and form each
-            partition from one piece of every segment.
+        split
+            How to form partitions: ``'cases'`` (whole segments), ``'time'``
+            (contiguous spans of time) or ``'within_cases'`` (one piece of
+            every segment).
 
         Notes
         -----
         See :func:`split_data` for the algorithm.
         """
-        self.splits = split_data(self.segments, partitions, model, data, validate, test, within_cases)
+        self.splits = split_data(self.segments, partitions, model, data, validate, test, split)
 
     def data_scale_ndvars(self) -> tuple:
         """Normalization parameters packaged like the input data
