@@ -38,7 +38,7 @@ from ..exceptions import FileMissingError, ICAMissingError
 from ..pathing import bids_path, DERIV_DIR
 from .job import ICAJob
 from .config import (
-    MNE_VERBOSITY, RawPipeGraph, RawSource, CachedRawPipe, RawICA, RawApplyICA, RawMaxwell, find_chpi,
+    LEGACY_MONTAGE_NAMES, MNE_VERBOSITY, RawPipeGraph, RawSource, CachedRawPipe, RawICA, RawApplyICA, RawMaxwell, find_chpi,
     raw_node_name, raw_bad_channels_input_name, raw_input_name, ica_input_name,
 )
 
@@ -413,6 +413,11 @@ class RawSourceInput(Input[mne.io.BaseRaw]):
                 fp['electrodes'] = file_fingerprint(ctx.root, elec_path)
                 fp['coordsystem'] = file_fingerprint(ctx.root, coord_path)
         return fp
+
+    def normalize_stored_fingerprint(self, fingerprint: dict[str, Any]) -> None:
+        montage = fingerprint['pipe']['montage']  # None, a montage name, or a Sensor form for a DigMontage
+        if isinstance(montage, str) and montage in LEGACY_MONTAGE_NAMES:  # recorded before the configuration was updated for MNE 1.13
+            fingerprint['pipe']['montage'] = LEGACY_MONTAGE_NAMES[montage]
 
     def load(self, ctx: Request) -> mne.io.BaseRaw:
         return self._load_raw(ctx, ctx.view_options['preload'])
