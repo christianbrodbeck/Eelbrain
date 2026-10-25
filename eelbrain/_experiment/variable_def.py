@@ -53,7 +53,7 @@ from typing import Any
 from fnmatch import fnmatch as fnmatch_func
 from collections.abc import Collection, Sequence
 
-from .._data_obj import EVAL_CONTEXT_NAMES, Dataset, Factor, Var, asuv, assert_is_legal_dataset_key
+from .._data_obj import EVAL_CONTEXT_NAMES, Dataset, Factor, Var, asuv, assert_is_legal_dataset_key, nan_key
 from .._info import INTERPOLATE_CHANNELS, INTERPOLATE_WINDOWS
 from .._text import enumeration
 from .._utils.parse import find_variables
@@ -160,7 +160,8 @@ class LabelVar(VarDef):
         :class:`Var` (``'1'`` matches the value ``1``). This covers a
         ``value`` column that a BIDS ``*_events.tsv`` file provides as strings.
         In a numeric ``source``, missing values (``n/a``) are NaN and can be
-        matched with a ``float('nan')`` or ``'nan'`` key.
+        matched with a ``float('nan')`` or ``'nan'`` key. Keys that become
+        identical through this conversion (e.g., ``1`` and ``'1'``) are rejected.
     default
         Label for values not in ``codes``. By default, this is ``''`` for
         categorial and 0 for numerical output. Set to ``False`` to pass through
@@ -238,7 +239,10 @@ class LabelVar(VarDef):
             for key, target in self.labels.items():
                 if isinstance(key, float) and key.is_integer():
                     key = int(key)
-                labels[str(key)] = target
+                key = str(key)
+                if key in labels:
+                    raise ConfigurationError(f"{self}: several keys spell the {self.source!r} label {key!r}")
+                labels[key] = target
         elif isinstance(source, Var):
             labels = {}
             for key, target in self.labels.items():
@@ -247,6 +251,9 @@ class LabelVar(VarDef):
                         key = float(key)
                     except ValueError:
                         raise ConfigurationError(f"{self}: {self.source!r} is numeric, but the key {key!r} can not be interpreted as a number") from None
+                key = nan_key(key)
+                if key in labels:
+                    raise ConfigurationError(f"{self}: several keys spell the {self.source!r} value {key!r}")
                 labels[key] = target
         else:
             labels = self.labels

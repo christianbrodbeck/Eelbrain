@@ -467,6 +467,17 @@ def nan_key(value: Any) -> Any:
     return value
 
 
+def normalize_nan_keys(labels: dict) -> dict:
+    "Map NaN keys to ``np.nan`` (see :func:`nan_key`); different NaN objects are distinct dictionary keys, so this can expose duplicates"
+    out = {}
+    for key, value in labels.items():
+        key = nan_key(key)
+        if key in out:
+            raise ValueError(f"{labels=}: duplicate key {key!r}")
+        out[key] = value
+    return out
+
+
 def is_higher_order_effect(e1, e0):
     """Determine whether e1 is a higher order term of e0
 
@@ -1970,7 +1981,7 @@ class Var(Named):
         >>> Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
         Var([5, 5, 0, 0, 0, 0, 8])
         """
-        values = {nan_key(key): value for key, value in values.items()}
+        values = normalize_nan_keys(values)
         return cls([values.get(nan_key(b), default) for b in base], name, info=info)
 
     @classmethod
@@ -2483,10 +2494,7 @@ class Factor(_Effect):
         if labels is None:
             labels = {}
         else:
-            nan_labels = {label for key, label in labels.items() if nan_key(key) is np.nan}
-            if len(nan_labels) > 1:
-                raise ValueError(f"{labels=}: multiple NaN keys with different labels")
-            labels = {nan_key(key): label for key, label in labels.items()}
+            labels = normalize_nan_keys(labels)
         if isinstance(x, Factor):
             # translate label keys to x codes
             labels = {x._codes[src]: dst for src, dst in labels.items() if src in x._codes}

@@ -849,10 +849,11 @@ def test_factor_nan():
         assert_array_equal(Var.from_dict(x, {nan: 5, 1: 1}, default=0), [1, 5, 0, 5])
     # the NaN key keeps its position in the cell order
     assert Factor(x, labels={np.nan: 'n/a', 2: 'b', 1: 'a'}).cells == ('n/a', 'b', 'a')
-    # equivalent NaN keys must not conflict
-    assert_array_equal(Factor(x, labels={np.nan: 'n/a', float('nan'): 'n/a'}), ['1.0', 'n/a', '2.0', 'n/a'])
+    # different NaN objects are distinct dict keys, but duplicates as labels
     with pytest.raises(ValueError):
-        Factor(x, labels={np.nan: 'n/a', float('nan'): 'missing'})
+        Factor(x, labels={np.nan: 'n/a', float('nan'): 'n/a'})
+    with pytest.raises(ValueError):
+        Var.from_dict(x, {np.nan: 1, float('nan'): 1})
 
 
 def test_factor_relabel():
