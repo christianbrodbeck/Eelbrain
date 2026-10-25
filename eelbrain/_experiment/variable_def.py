@@ -56,7 +56,6 @@ from collections.abc import Collection, Sequence
 from .._data_obj import EVAL_CONTEXT_NAMES, Dataset, Factor, Var, asuv, assert_is_legal_dataset_key
 from .._info import INTERPOLATE_CHANNELS, INTERPOLATE_WINDOWS
 from .._text import enumeration
-from .._utils.numpy_utils import INT_TYPES
 from .._utils.parse import find_variables
 from .configuration import Configuration, ConfigurationError
 from .pathing import BIDS_ENTITY_KEYS
@@ -154,7 +153,12 @@ class LabelVar(VarDef):
     codes
         Mapping values in ``source`` to values in the new variable. The type
         of the values determines whether the output is a :class:`Factor`
-        (:class:`str` values) or a :class:`Var` (numerical values).
+        (:class:`str` values) or a :class:`Var` (numerical values). Keys are
+        matched against ``source`` as it is in the data: converted to
+        :class:`str` where ``source`` is a :class:`Factor` (``1`` and ``1.``
+        both spell the label ``'1'``), and to numbers where it is a
+        :class:`Var` (``'1'`` matches the value ``1``). This covers a
+        ``value`` column that a BIDS ``*_events.tsv`` file provides as strings.
     default
         Label for values not in ``codes``. By default, this is ``''`` for
         categorial and 0 for numerical output. Set to ``False`` to pass through
@@ -226,6 +230,22 @@ class LabelVar(VarDef):
                 for pattern, target in self.labels.items():
                     if fnmatch_func(value, pattern):
                         labels[value] = target
+        elif isinstance(source, Factor):
+            # Factor labels are strings; an integral float key spells the same label as the int
+            labels = {}
+            for key, target in self.labels.items():
+                if isinstance(key, float) and key.is_integer():
+                    key = int(key)
+                labels[str(key)] = target
+        elif isinstance(source, Var):
+            labels = {}
+            for key, target in self.labels.items():
+                if isinstance(key, str):
+                    try:
+                        key = float(key)
+                    except ValueError:
+                        raise ConfigurationError(f"{self}: {self.source!r} is numeric, but the key {key!r} can not be interpreted as a number") from None
+                labels[key] = target
         else:
             labels = self.labels
         if self.is_factor:
@@ -353,12 +373,6 @@ class Variables(Configuration):
                 across.add(name)
                 out[name] = vdef
         return out
-
-    def _check_trigger_vars(self):
-        for key, var in self.vars.items():
-            if isinstance(var, LabelVar) and var.source == 'value':
-                if not all(isinstance(v, INT_TYPES) for v in var.labels):
-                    raise ConfigurationError(f"Variable {key!r}: {var} codes must be integers")
 
     def _check_group_vars(self, groups: Collection[str], desc: str) -> None:
         """Make sure every :class:`GroupVar` refers to defined groups
