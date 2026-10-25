@@ -317,7 +317,6 @@ def evaluate_kernel(y, y_pred, test_seg_len, n_skip):
     return np.corrcoef(y, y_pred)[0, 1], scipy.stats.spearmanr(y, y_pred)[0]
 
 
-@pytest.mark.file_test
 def test_result_transform():
     "NDVar transformations (e.g., morphing) should preserve proportion_explained"
     ds = datasets._get_continuous(ynd=True)
@@ -335,6 +334,7 @@ def test_result_transform():
     assert_allclose(res_old.proportion_explained.x, proportion_explained.x)
 
 
+@pytest.mark.file_test
 def test_boosting_fit():
     "Test boosting() against svdboostV4pred.m"
     # 1d-TRF
