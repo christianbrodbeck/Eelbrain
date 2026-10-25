@@ -156,6 +156,11 @@ def test_labelvar_key_type():
     Variables({'side': LabelVar('value', {1.: 'left'}), 'high': LabelVar('score', {1.5: 'no', 2: 'yes'})}).resolve(events, input_events=True)
     assert list(events['side']) == ['left', '']
     assert list(events['high']) == ['no', 'yes']
+    # missing values (n/a) in a numeric source are NaN
+    events = Dataset({'value': Var([1, float('nan')])})
+    Variables({'side': LabelVar('value', {1: 'left', 'nan': 'n/a'}), 'weight': LabelVar('value', {float('nan'): -1.})}).resolve(events, input_events=True)
+    assert list(events['side']) == ['left', 'n/a']
+    assert list(events['weight']) == [0, -1]
     # a key that can not be a number is reported rather than silently falling through to the default
     with pytest.raises(ConfigurationError, match="'left'"):
         Variables({'side': LabelVar('value', {'left': 'l'})}).resolve(Dataset({'value': Var([1, 2])}), input_events=True)

@@ -159,6 +159,8 @@ class LabelVar(VarDef):
         both spell the label ``'1'``), and to numbers where it is a
         :class:`Var` (``'1'`` matches the value ``1``). This covers a
         ``value`` column that a BIDS ``*_events.tsv`` file provides as strings.
+        In a numeric ``source``, missing values (``n/a``) are NaN and can be
+        matched with a ``float('nan')`` or ``'nan'`` key.
     default
         Label for values not in ``codes``. By default, this is ``''`` for
         categorial and 0 for numerical output. Set to ``False`` to pass through
