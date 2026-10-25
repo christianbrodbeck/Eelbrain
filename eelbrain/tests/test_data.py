@@ -841,6 +841,7 @@ def test_factor_nan():
     assert_array_equal(Factor(x), ['1.0', 'nan', '2.0', 'nan'])
     assert_array_equal(Factor(x, labels={1: 'a'}), ['a', 'nan', '2.0', 'nan'])
     assert_array_equal(Factor(x, labels={1: 'a'}, default=''), ['a', '', '', ''])
+    assert_array_equal(Factor(Var([1, np.nan])), ['1.0', 'nan'])
 
 
 def test_factor_relabel():

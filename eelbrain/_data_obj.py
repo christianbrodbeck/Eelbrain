@@ -2484,7 +2484,7 @@ class Factor(_Effect):
 
         if isinstance(x, np.ndarray) and x.dtype.kind in 'ifb':
             assert x.ndim == 1
-            unique = np.unique(x)  # can contain NaN (e.g., pandas reads "n/a" as NaN)
+            unique, x_index = np.unique(x, return_inverse=True)  # can contain NaN (e.g., pandas reads "n/a" as NaN)
             unique_labels = []
             # make labels complete
             for v in unique:
@@ -2496,7 +2496,7 @@ class Factor(_Effect):
                 unique_labels.append(labels[v])
             # merge identical labels
             u_label_index = np.array([unique_labels.index(label) for label in unique_labels])
-            x_ = u_label_index[np.digitize(x, unique, True)]
+            x_ = u_label_index[x_index]
             # {label: code}
             codes = dict(zip(unique_labels, u_label_index))
         else:
