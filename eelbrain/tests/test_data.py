@@ -835,6 +835,14 @@ def test_factor():
     assert_array_equal(f.matches('b*'), [0, 0, 1, 1])
 
 
+def test_factor_nan():
+    "NaN in numeric input is a value like any other (e.g., n/a in a BIDS events file)"
+    x = Var([1., np.nan, 2., np.nan])
+    assert_array_equal(Factor(x), ['1.0', 'nan', '2.0', 'nan'])
+    assert_array_equal(Factor(x, labels={1: 'a'}), ['a', 'nan', '2.0', 'nan'])
+    assert_array_equal(Factor(x, labels={1: 'a'}, default=''), ['a', '', '', ''])
+
+
 def test_factor_relabel():
     "Test Factor.relabel() method"
     f = Factor('aaabbbccc')

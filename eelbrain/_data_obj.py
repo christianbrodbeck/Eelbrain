@@ -2485,14 +2485,16 @@ class Factor(_Effect):
         if isinstance(x, np.ndarray) and x.dtype.kind in 'ifb':
             assert x.ndim == 1
             unique = np.unique(x)
+            # find labels corresponding to unique values; insert and look up in the same
+            # iteration so that NaN, which is not equal to itself, is found as the same object
+            u_labels = []
             for v in unique:
                 if v not in labels:
                     if default is None:
                         labels[v] = str(v)
                     else:
                         labels[v] = default
-            # find labels corresponding to unique values
-            u_labels = [labels[v] for v in unique]
+                u_labels.append(labels[v])
             # merge identical labels
             u_label_index = np.array([u_labels.index(label) for label in u_labels])
             x_ = u_label_index[np.digitize(x, unique, True)]
