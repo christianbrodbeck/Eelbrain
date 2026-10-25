@@ -318,6 +318,23 @@ def evaluate_kernel(y, y_pred, test_seg_len, n_skip):
 
 
 @pytest.mark.file_test
+def test_result_transform():
+    "NDVar transformations (e.g., morphing) should preserve proportion_explained"
+    ds = datasets._get_continuous(ynd=True)
+    res = boosting(ds['ynd'], ds['x1'], 0, 1)
+    proportion_explained = res.proportion_explained
+    # morphing a masked source space scales values at the edge of the mask
+    res_t = pickle.loads(pickle.dumps(res))
+    res_t._apply_ndvar_transform(lambda obj: obj * 0.5)
+    assert_allclose(res_t.proportion_explained.x, proportion_explained.x)
+    # results from older versions did not store the total variability
+    res_old = pickle.loads(pickle.dumps(res))
+    res_old.l1_total = res_old.l2_total = None
+    assert_allclose(res_old.proportion_explained.x, proportion_explained.x)
+    res_old._apply_ndvar_transform(lambda obj: obj * 0.5)
+    assert_allclose(res_old.proportion_explained.x, proportion_explained.x)
+
+
 def test_boosting_fit():
     "Test boosting() against svdboostV4pred.m"
     # 1d-TRF
