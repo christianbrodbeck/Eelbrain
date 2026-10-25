@@ -477,6 +477,9 @@ class Variables(Configuration):
                 continue  # skip as resolve runs on data that is not expected to provide every input
             try:
                 data[name] = vdef._apply(data, groups)
+            except ConfigurationError as error:
+                # already a definition error; only add the name of the variable
+                raise ConfigurationError(f"Variable {name!r}: {error}") from None
             except Exception as error:
                 # An input the data does not provide was resolved from the evaluation context instead, which is the likely cause
                 shadowed = [key for key in vdef._input_vars() if key not in data and key in EVAL_CONTEXT_NAMES]
