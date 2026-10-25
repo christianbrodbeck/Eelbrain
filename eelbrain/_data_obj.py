@@ -469,13 +469,12 @@ def nan_key(value: Any) -> Any:
 
 def normalize_nan_keys(labels: dict) -> dict:
     "Map NaN keys to ``np.nan`` (see :func:`nan_key`); different NaN objects are distinct dictionary keys, so this can expose duplicates"
-    out = {}
-    for key, value in labels.items():
-        key = nan_key(key)
-        if key in out:
-            raise ValueError(f"{labels=}: duplicate key {key!r}")
-        out[key] = value
-    return out
+    nan_keys = [key for key in labels if nan_key(key) is np.nan]
+    if len(nan_keys) > 1:
+        raise ValueError(f"{labels=}: duplicate key {np.nan!r}")
+    elif nan_keys and nan_keys[0] is not np.nan:
+        return {nan_key(key): value for key, value in labels.items()}
+    return labels
 
 
 def is_higher_order_effect(e1, e0):
