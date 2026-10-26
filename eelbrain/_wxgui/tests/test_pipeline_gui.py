@@ -11,6 +11,7 @@ from eelbrain._exceptions import ConfigurationError, DataError
 from eelbrain._experiment.derivative_cache import ProtectedArtifactError
 from eelbrain._experiment.epoch_rejection import ChannelModelRejection, ManualRejection
 from eelbrain._experiment.exceptions import FileMissingError
+from eelbrain._experiment.pathing import MRI_SDIR
 from eelbrain._wxgui import bad_channel_summary, pipeline_gui
 from eelbrain._wxgui.pipeline_gui import COMMON_BRAIN_ROW, GREY, PLACEHOLDER, TASKS, TASKS_BY_NAME, Layout, PipelineFrame, _format_user_error
 
@@ -126,8 +127,8 @@ def test_task_status_bar():
 
     # the common brain is not a subject and stays out of the count
     mri = _layout('mri')
-    mri_rows = [('R01', 'R01', 'ok'), ('R02', 'fsaverage', 'template'), ('R03', 'R03', 'no MRI'), (COMMON_BRAIN_ROW, 'fsaverage', 'ok')]
-    assert TASKS_BY_NAME['mri'].status_bar(mri_rows, mri) == "2 / 3 subjects · MRI available  (1 missing)"
+    mri_rows = [('R01', 'R01', 'ok'), ('R02', 'fsaverage', 'template'), ('R03', 'R03', 'no MRI'), ('R04', 'R04', 'cfg'), (COMMON_BRAIN_ROW, 'fsaverage', 'ok')]
+    assert TASKS_BY_NAME['mri'].status_bar(mri_rows, mri) == "2 / 4 subjects · MRI available  (2 missing)"
     assert TASKS_BY_NAME['mri'].status_bar([('R01', 'R01', 'ok'), (COMMON_BRAIN_ROW, 'fsaverage', 'missing')], mri) == "1 / 1 subjects · MRI available"
 
     # Coregistration has two key fields but counts sessions, not recordings
@@ -148,6 +149,7 @@ def test_task_row_colour():
 
     mri = _layout('mri')
     assert TASKS_BY_NAME['mri'].row_colour(('R01', 'R01', 'no MRI'), mri) is wx.RED
+    assert TASKS_BY_NAME['mri'].row_colour(('R01', 'R01', 'cfg'), mri) is wx.RED
     assert TASKS_BY_NAME['mri'].row_colour(('R01', 'R01', 'ok'), mri) is None
     assert TASKS_BY_NAME['mri'].row_colour((COMMON_BRAIN_ROW, 'fsaverage', 'ok'), mri) is GREY
 
@@ -712,6 +714,21 @@ def test_iter_rows_yields_a_stale_ica_row():
     rows = list(frame._iter_rows('TOKEN', _ICA_SCOPE, [('R01',), ('R02',)]))
     assert [row for _, row, _, _ in rows] == [('R01', 'stale', PLACEHOLDER, PLACEHOLDER), ('R02', 'stale', PLACEHOLDER, PLACEHOLDER)]
     assert [error for *_, error in rows] == [None, None]
+
+
+def test_iter_rows_mri_status(tmp_path):
+    "MRI rows distinguish a reconstruction, a scaled template, bare scaling parameters and nothing"
+    for subject, files in {'R01': ['surf/lh.white'], 'R02': ['surf/lh.white', 'MRI scaling parameters.cfg'], 'R03': ['MRI scaling parameters.cfg'], 'fsaverage': ['surf/lh.white']}.items():
+        for name in files:
+            path = tmp_path / MRI_SDIR / subject / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.touch()
+    p = pipeline()
+    p.__dict__.update(root=tmp_path, _state={}, get=lambda field: 'fsaverage' if field == 'common_brain' else p._state['subject'], set=lambda **state: p._state.update(state), _temporary_state=contextlib.nullcontext())
+    frame = _frame(_pipeline=p, _refresh_token='TOKEN')
+    scope = (TASKS_BY_NAME['mri'], None, None, None, _layout('mri'))
+    rows = list(frame._iter_rows('TOKEN', scope, [('R01',), ('R02',), ('R03',), ('R04',), (COMMON_BRAIN_ROW,)]))
+    assert [row for _, row, _, _ in rows] == [('R01', 'R01', 'ok'), ('R02', 'R02', 'template'), ('R03', 'R03', 'cfg'), ('R04', 'R04', 'no MRI'), (COMMON_BRAIN_ROW, 'fsaverage', 'ok')]
 
 
 def test_iter_rows_reports_a_failing_row_and_keeps_going(tmp_path):

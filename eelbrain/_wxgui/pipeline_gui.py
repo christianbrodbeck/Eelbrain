@@ -507,6 +507,9 @@ class MRITask(Task):
     label = "MRI"
     status_width = 130
     missing_status = 'no MRI'
+    # scaling parameters (``MRI scaling parameters.cfg``) without surfaces: the MRI
+    # can be created on demand (see ensure_mri), so it is still counted as missing
+    cfg_status = 'cfg'
     done_status = 'ok'
     summary = "MRI available"
     missing_note = ''
@@ -521,12 +524,15 @@ class MRITask(Task):
     def counts_done(self, status: str) -> bool:
         return status in (self.done_status, 'template')
 
+    def counts_missing(self, status: str) -> bool:
+        return status in (self.missing_status, self.cfg_status)
+
     def row_colour(
             self,
             row: tuple[str, ...],
             layout: Layout,
     ) -> wx.Colour | None:
-        if row[layout.status_col] == self.missing_status:
+        if row[layout.status_col] in (self.missing_status, self.cfg_status):
             return wx.RED
         elif row[0] == COMMON_BRAIN_ROW:
             return GREY
@@ -1187,7 +1193,7 @@ class PipelineFrame(EelbrainFrame):
         subjects_dir = str(self._pipeline.root / MRI_SDIR)
         common_brain = self._pipeline.get('common_brain')
         # The compute worker's jobs create missing MRIs too (see ensure_mri); two concurrent mne.scale_mri() calls on one subject would delete each other's files
-        if status in (COMMON_BRAIN_MISSING, MRITask.missing_status) and self._worker_active:
+        if status in (COMMON_BRAIN_MISSING, MRITask.cfg_status, MRITask.missing_status) and self._worker_active:
             wx.MessageBox("Wait for the running computation to finish before creating an MRI subject.", "Computation in progress", wx.OK | wx.ICON_INFORMATION, self)
             return
 
@@ -1210,20 +1216,20 @@ class PipelineFrame(EelbrainFrame):
                         "in the FreeSurfer subjects directory.",
                         "MRI not found", wx.OK | wx.ICON_INFORMATION, self,
                     )
+        elif status == MRITask.cfg_status:
+            cfg = read_mri_scaling_cfg(mrisubject, subjects_dir)
+            source_subject = cfg['subject_from']
+            message = f"{mrisubject} has MRI scaling parameters ({source_subject} × {cfg['scale']}) but no scaled surfaces yet.\n\nCreate the scaled MRI now?"
+            if not (self._pipeline.root / MRI_SDIR / source_subject / 'surf' / 'lh.white').exists():
+                if source_subject != 'fsaverage':  # only fsaverage can be downloaded (see ensure_mri)
+                    wx.MessageBox(f"{mrisubject} has MRI scaling parameters, but its source subject {source_subject} is not present in {subjects_dir}.", "MRI not found", wx.OK | wx.ICON_INFORMATION, self)
+                    return
+                message += " This will first download fsaverage."
+            dlg = wx.MessageDialog(self, message, f"Scale {source_subject} for {mrisubject}?", wx.YES_NO | wx.ICON_QUESTION)
+            if dlg.ShowModal() == wx.ID_YES:
+                self._make_mri(mrisubject, f"Scaling {source_subject} for {mrisubject}…")
+            dlg.Destroy()
         elif status == MRITask.missing_status:
-            if (cfg := read_mri_scaling_cfg(mrisubject, subjects_dir)) is not None:
-                source_subject = cfg['subject_from']
-                message = f"{mrisubject} has MRI scaling parameters ({source_subject} × {cfg['scale']}) but no scaled surfaces yet.\n\nCreate the scaled MRI now?"
-                if not (self._pipeline.root / MRI_SDIR / source_subject / 'surf' / 'lh.white').exists():
-                    if source_subject != 'fsaverage':  # only fsaverage can be downloaded (see ensure_mri)
-                        wx.MessageBox(f"{mrisubject} has MRI scaling parameters, but its source subject {source_subject} is not present in {subjects_dir}.", "MRI not found", wx.OK | wx.ICON_INFORMATION, self)
-                        return
-                    message += " This will first download fsaverage."
-                dlg = wx.MessageDialog(self, message, f"Scale {source_subject} for {mrisubject}?", wx.YES_NO | wx.ICON_QUESTION)
-                if dlg.ShowModal() == wx.ID_YES:
-                    self._make_mri(mrisubject, f"Scaling {source_subject} for {mrisubject}…")
-                dlg.Destroy()
-                return
             dlg = wx.MessageDialog(
                 self,
                 f"To create a scaled template brain from {common_brain}, switch to the Coregistration task.",
@@ -2056,12 +2062,13 @@ class PipelineFrame(EelbrainFrame):
                         is_common_brain = combo == (COMMON_BRAIN_ROW,)
                         mrisubject = pipeline.get('common_brain' if is_common_brain else 'mrisubject')
                         mri_dir = pipeline.root / MRI_SDIR / mrisubject
-                        if not (mri_dir / 'surf' / 'lh.white').exists():
-                            status = COMMON_BRAIN_MISSING if is_common_brain else task.missing_status
-                        elif not is_common_brain and is_fake_mri(mri_dir):
-                            status = 'template'
+                        has_surfaces = (mri_dir / 'surf' / 'lh.white').exists()
+                        if is_common_brain:
+                            status = task.done_status if has_surfaces else COMMON_BRAIN_MISSING
+                        elif is_fake_mri(mri_dir):
+                            status = 'template' if has_surfaces else task.cfg_status
                         else:
-                            status = task.done_status
+                            status = task.done_status if has_surfaces else task.missing_status
                         row = (*combo, mrisubject, status)
 
                     elif task.name == 'coreg':
