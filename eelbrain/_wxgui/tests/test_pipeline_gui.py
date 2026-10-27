@@ -13,7 +13,7 @@ from eelbrain._experiment.epoch_rejection import ChannelModelRejection, ManualRe
 from eelbrain._experiment.exceptions import FileMissingError
 from eelbrain._experiment.pathing import MRI_SDIR
 from eelbrain._wxgui import bad_channel_summary, pipeline_gui
-from eelbrain._wxgui.pipeline_gui import COMMON_BRAIN_ROW, GREY, PLACEHOLDER, TASKS, TASKS_BY_NAME, Layout, PipelineFrame, _format_user_error
+from eelbrain._wxgui.pipeline_gui import COMMON_BRAIN_ROW, GREY, PLACEHOLDER, TASKS, TASKS_BY_NAME, Layout, PipelineFrame, RowAction, _format_user_error
 
 
 def pipeline(
@@ -217,6 +217,10 @@ class _FakeList:
         self.columns = []  # [(title, width), ...] as installed
         self.colours = {}  # {row: colour}
         self.cleared = False
+        self.selected = -1
+
+    def GetFirstSelected(self):
+        return self.selected
 
     def InsertColumn(self, col, label, width):
         assert col == len(self.columns)
@@ -354,7 +358,7 @@ def test_status_bar_shows_progress_while_rows_load():
     frame = _table_frame('ica', rows)
     texts = []
     updated = []
-    frame.__dict__.update(SetStatusText=texts.append, _n_loading=2, _refresh_token='TOKEN', _job_specs={}, _update_compute_button=lambda: updated.append(frame._n_loading))
+    frame.__dict__.update(SetStatusText=texts.append, _n_loading=2, _refresh_token='TOKEN', _job_specs={}, _update_compute_button=lambda: updated.append(frame._n_loading), _update_row_hint=lambda: None)
     frame._refresh_status_bar()
     assert texts == ["Loading… 1 / 3"]
 
@@ -388,17 +392,80 @@ def test_compute_button_waits_for_the_table_but_stop_does_not():
     assert bad_chs_enabled == [False, True, False, False]
 
 
-def test_activate_row_waits_for_the_table_to_load():
-    "A double-click does nothing while the refresh thread is still filling rows in, even on a row that is in"
+def test_row_actions_wait_for_the_table_to_load():
+    "While the refresh thread is still filling rows in, a row offers no action, even one that is in"
     layout = _layout('coreg')
     frame = _table_frame('coreg', [TASKS_BY_NAME['coreg'].missing_row(('R01', 's1'), layout, pipeline_gui.LOADING), ('R02', 's1', 'R02', 'missing')])
     activated = []
-    frame.__dict__.update(_activate_item=lambda idx, subject, task: activated.append(idx), _n_loading=1)
+    frame.__dict__.update(_coreg_actions=lambda idx: [RowAction("Open coregistration…", lambda: activated.append(idx))], _n_loading=1)
+    actions = frame._row_actions(1)
+    assert [action.run for action in actions] == [None]
     frame._activate_row(1)
     assert activated == []
+    # once every row is in, the first action is the one a double-click performs
     frame._n_loading = 0
     frame._activate_row(1)
     assert activated == [1]
+
+
+def test_row_hint_announces_the_default_action():
+    "The status bar names the selected row's default action, or why there is none"
+    frame = _table_frame('coreg', [('R01', 's1', 'R01', 'ok')])
+    texts = []
+    frame.__dict__.update(SetStatusText=lambda text, field: texts.append((text, field)), _n_loading=0, _coreg_actions=lambda idx: [RowAction("Open coregistration…", lambda: None)])
+    frame._update_row_hint()
+    assert texts[-1] == ("", 1)
+    frame._list.selected = 0
+    frame._update_row_hint()
+    assert texts[-1] == ("Double-click: Open coregistration", 1)
+    frame._n_loading = 1
+    frame._update_row_hint()
+    assert texts[-1] == ("Wait for the table to load", 1)
+
+
+def test_mri_actions(tmp_path):
+    "Each MRI status offers what can be done about it; only creating an MRI waits for the worker"
+    rows = [
+        (COMMON_BRAIN_ROW, 'fsaverage', pipeline_gui.COMMON_BRAIN_MISSING),
+        ('R01', 'R01', 'cfg'),
+        ('R02', 'R02', 'no MRI'),
+        ('R03', 'R03', 'ok'),
+        ('R04', 'R04', 'template'),
+    ]
+    frame = _table_frame('mri', rows)
+    pipeline = SimpleNamespace(root=tmp_path, get=lambda field: {'common_brain': 'fsaverage'}[field])
+    frame.__dict__.update(_pipeline=pipeline, _n_loading=0, _worker_active=False)
+    labels = [[(action.label, action.run is not None) for action in frame._row_actions(i)] for i in range(len(rows))]
+    assert labels == [
+        [("Download fsaverage…", True)],
+        [("Create scaled MRI…", True)],
+        [("No MRI for R02: scale fsaverage in the Coregistration task", False)],
+        [("MRI available", False)],
+        [("Scaled template MRI available", False)],
+    ]
+    # the compute worker creates MRIs too (see ensure_mri), so creating one by hand waits for it
+    frame._worker_active = True
+    assert [frame._row_actions(i)[0].run for i in range(2)] == [None, None]
+    assert [action.label for action in frame._row_actions(0)] == ["Wait for the running computation to finish before creating an MRI subject"]
+    # a common brain other than fsaverage cannot be downloaded
+    frame._list.rows[0] = (COMMON_BRAIN_ROW, 'mybrain', pipeline_gui.COMMON_BRAIN_MISSING)
+    frame._worker_active = False
+    assert frame._row_actions(0) == [RowAction(f"No FreeSurfer reconstruction for mybrain in {tmp_path / MRI_SDIR}")]
+
+
+def test_coreg_actions(tmp_path):
+    "A subject without a FreeSurfer reconstruction is coregistered to the template brain"
+    frame = _table_frame('coreg', [('R01', 's1', 'R01', 'missing'), ('R02', 's1', 'R02', 'ok')])
+    (tmp_path / MRI_SDIR / 'R02' / 'surf').mkdir(parents=True)
+    (tmp_path / MRI_SDIR / 'R02' / 'surf' / 'lh.white').touch()
+    opened = []
+    pipeline = SimpleNamespace(root=tmp_path, get=lambda field: {'common_brain': 'fsaverage'}[field])
+    frame.__dict__.update(_pipeline=pipeline, _n_loading=0, _open_coreg=lambda idx, mrisubject: opened.append((idx, mrisubject)))
+    assert [action.label for action in frame._row_actions(0)] == ["Open coregistration with fsaverage…"]
+    assert [action.label for action in frame._row_actions(1)] == ["Open coregistration…"]
+    frame._activate_row(0)
+    frame._activate_row(1)
+    assert opened == [(0, 'fsaverage'), (1, 'R02')]
 
 
 def test_set_row_result_writes_status_details_and_colour():

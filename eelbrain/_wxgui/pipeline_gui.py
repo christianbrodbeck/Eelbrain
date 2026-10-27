@@ -169,7 +169,7 @@ class BadChannelsDialog(wx.Dialog):
 COMMON_BRAIN_ROW = '(common brain)'
 # Status of the common brain row without a reconstruction. Distinct from
 # MRITask.missing_status because the row is not a subject: it is neither counted
-# nor coloured like one, and _on_mri_activated offers to download fsaverage for it
+# nor coloured like one, and _mri_actions offers to download fsaverage for it
 # (a subject row with scaling parameters but no surfaces is offered scaling instead).
 COMMON_BRAIN_MISSING = 'missing'
 # Statuses written by the compute queue while a row is in flight: the artifact
@@ -183,6 +183,26 @@ ERROR = 'error'
 # Stands in for a detail column that has no value because the artifact is missing
 PLACEHOLDER = '—'
 GREY = wx.Colour(150, 150, 150)
+
+
+@dataclass(frozen=True)
+class RowAction:
+    """Something the user can do with a table row.
+
+    The actions of a row make up its context menu; the first one is the default,
+    performed on double-click and announced in the status bar when the row is
+    selected (see :meth:`PipelineFrame._row_actions`).
+
+    Attributes
+    ----------
+    label
+        Menu entry; ends in ``…`` when the action opens a window or dialog.
+    run
+        Performs the action; ``None`` for an action that is not available, in
+        which case the label says why (shown disabled).
+    """
+    label: str
+    run: Callable[[], None] | None = None
 
 
 @dataclass(frozen=True)
@@ -213,7 +233,7 @@ class Task:
     One instance per entry in the task dropdown, holding everything that varies
     between tasks: which toolbar controls apply, the column layout, the status
     vocabulary, the row colouring and the status-bar summary. Building the rows
-    and acting on a double-click stay in :class:`PipelineFrame`, which
+    and the actions offered for a row stay in :class:`PipelineFrame`, which
     dispatches on :attr:`name`.
 
     Attributes
@@ -717,10 +737,14 @@ class PipelineFrame(EelbrainFrame):
         )
         self._list.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self._on_item_activated)
         self._list.Bind(wx.EVT_LIST_ITEM_RIGHT_CLICK, self._on_item_right_click)
+        self._list.Bind(wx.EVT_LIST_ITEM_SELECTED, self._on_item_selected)
+        self._list.Bind(wx.EVT_LIST_ITEM_DESELECTED, self._on_item_selected)
         vbox.Add(self._list, proportion=1, flag=wx.EXPAND)
 
         self._panel.SetSizer(vbox)
-        self.CreateStatusBar()
+        # table summary on the left, the selected row's default action on the right
+        self.CreateStatusBar(2)
+        self.SetStatusWidths([-3, -2])
 
         for w in (self._epoch_rejection_label, self._epoch_rejection_choice,
                   self._epoch_label, self._epoch_choice,
@@ -859,25 +883,41 @@ class PipelineFrame(EelbrainFrame):
         self._start_refresh()
 
     def _on_item_activated(self, event):
-        """Row double-click"""
+        """Row double-click: the row's default action."""
         self._activate_row(event.GetIndex())
 
     def _on_item_right_click(self, event):
-        """Row right-click: context menu (Bad channels task only)."""
-        if self._current_task().name != 'bad_chs' or self._n_loading:
-            return  # while rows are loading, the refresh thread is using the pipeline (see _activate_row)
+        """Row right-click: context menu of the row's actions, the default one on top."""
         idx = event.GetIndex()
         if idx == wx.NOT_FOUND:
             return
         menu = wx.Menu()
-        set_item = menu.Append(wx.ID_ANY, "Set Bad Channels")
-        plot_item = menu.Append(wx.ID_ANY, "Plot continuous data")
-        self.Bind(wx.EVT_MENU, lambda event: self._set_bad_channels_dialog(idx), set_item)
-        self.Bind(wx.EVT_MENU, lambda event: self._activate_row(idx), plot_item)
+        for action in self._row_actions(idx):
+            item = menu.Append(wx.ID_ANY, action.label)
+            if action.run is None:
+                item.Enable(False)
+            else:
+                # bound on the menu, so that the handler goes with it (the frame would keep it under a reusable ID)
+                menu.Bind(wx.EVT_MENU, lambda event, action=action: self._run_row_action(idx, action), item)
         self._list.PopupMenu(menu)
-        self.Unbind(wx.EVT_MENU, source=set_item)
-        self.Unbind(wx.EVT_MENU, source=plot_item)
         menu.Destroy()
+
+    def _on_item_selected(self, event):
+        """Row selected or deselected: announce its default action."""
+        self._update_row_hint()
+
+    def _update_row_hint(self) -> None:
+        """Show the selected row's default action in the status bar."""
+        idx = self._list.GetFirstSelected()
+        if idx == -1:
+            hint = ""
+        else:
+            action = self._row_actions(idx)[0]
+            if action.run is None:
+                hint = action.label
+            else:
+                hint = f"Double-click: {action.label.rstrip('…')}"
+        self.SetStatusText(hint, 1)
 
     def _set_bad_channels_dialog(self, idx: int) -> None:
         """Edit a row's bad channels via a text dialog with live validation."""
@@ -911,20 +951,50 @@ class PipelineFrame(EelbrainFrame):
             return
         self._start_refresh()
 
-    def _activate_row(self, idx: int) -> None:
-        """Perform the double-click action for the row at ``idx``."""
+    # ------------------------------------------------------------------
+    # Row actions
+
+    def _row_actions(self, idx: int) -> list[RowAction]:
+        """Actions offered for a row; the first is the default, performed on double-click.
+
+        Every action is minted afresh for each use (menu, double-click, status-bar
+        hint), so that it reflects the row's current status.
+        """
         if self._n_loading:
             # The refresh thread is still setting the pipeline's state row by row (see
             # _iter_rows), which an action on the main thread would interleave with
-            return
-        subject = self._list.GetItemText(idx, 0)
+            return [RowAction("Wait for the table to load")]
         task = self._current_task()
+        if task.name == 'bad_chs':
+            return [
+                RowAction("Set bad channels…", partial(self._set_bad_channels_dialog, idx)),
+                RowAction("Plot continuous data…", partial(self._open_bad_channels_gui, idx)),
+            ]
+        elif task.name == 'ica':
+            return [RowAction("Open ICA selection…", partial(self._open_ica_gui, idx))]
+        elif task.name == 'epoch_rej':
+            return self._epoch_rejection_actions(idx)
+        elif task.name == 'mri':
+            return self._mri_actions(idx)
+        elif task.name == 'coreg':
+            return self._coreg_actions(idx)
+        raise RuntimeError(f"No row actions for {task}")
+
+    def _activate_row(self, idx: int) -> None:
+        """Perform the default action for the row at ``idx`` (double-click)."""
+        action = self._row_actions(idx)[0]
+        if action.run is not None:
+            self._run_row_action(idx, action)
+
+    def _run_row_action(self, idx: int, action: RowAction) -> None:
+        """Run a row action, turning the errors it can raise into dialogs."""
+        subject = self._list.GetItemText(idx, 0)
         # Loop so that after the user incorporates a stale ICA we can retry the
         # action through the same try, keeping the _USER_ERROR_TYPES handler
         # around the retry; every other path falls through to the return.
         while True:
             try:
-                self._activate_item(idx, subject, task)
+                action.run()
             except ICAMissingError:
                 dlg = wx.MessageDialog(self, f"The ICA for {subject} has not been computed yet, so raw data at the ICA stage cannot be displayed. Compute the ICA first (Make ICA in the ICA task).", "ICA Not Computed", wx.OK | wx.ICON_INFORMATION)
                 dlg.ShowModal()
@@ -956,54 +1026,44 @@ class PipelineFrame(EelbrainFrame):
                 self._show_error(*_error_dialog_args(error))
             return
 
-    def _activate_item(self, idx: int, subject: str, task: Task) -> None:
-        """Perform the action for a double-clicked row."""
-        wx.BeginBusyCursor()
-        try:
-            if task.name == 'bad_chs':
-                raw_name = self._raw_name()
-                state = dict(zip(self._layout.key_fields, self._row_combo(idx)))
-                frame = self._pipeline.make_bad_channels_selection(raw=raw_name, **state)
-                if frame is not None:
-                    doc = frame.model.doc
-                    doc.callbacks.subscribe(
-                        'saved',
-                        lambda: wx.CallAfter(self._start_refresh),
-                    )
-            elif task.name == 'ica':
-                raw_name = self._raw_name()
-                scope = self._table_scope()
-                combo = self._row_combo(idx)
-                state = dict(zip(self._layout.key_fields, combo))
-                frame = self._pipeline.make_ica_selection(raw=raw_name, **state)
-                if frame is not None:
-                    doc = frame.model.doc
-                    # enables the ICA GUI to add bad channels it finds
-                    doc.bad_channels_callback = lambda names, recompute: self._add_ica_bad_channels(scope, [(combo, names)], recompute)
-                    doc.callbacks.subscribe(
-                        'saved',
-                        lambda: wx.CallAfter(self._update_ica_row, scope, combo, doc),
-                    )
-            elif task.name == 'epoch_rej':
-                name = self._current_epoch_rejection()
-                if name is not None:
-                    # opens an editable GUI for ManualRejection, read-only for an
-                    # automatically generated rejection
-                    self._pipeline.make_epoch_rejection(
-                        subject=subject,
-                        epoch_rejection=name,
-                        epoch=self._epoch_choice.GetStringSelection(),
-                        raw=self._raw_name(),
-                    )
-                    # Epoch rejection has no in-memory object to read from,
-                    # so do a targeted single-subject refresh instead.
-                    self._start_refresh()
-            elif task.name == 'mri':
-                self._on_mri_activated(idx, subject)
-            elif task.name == 'coreg':
-                self._on_coreg_activated(idx)
-        finally:
-            wx.EndBusyCursor()
+    def _open_bad_channels_gui(self, idx: int) -> None:
+        raw_name = self._raw_name()
+        state = dict(zip(self._layout.key_fields, self._row_combo(idx)))
+        with wx.BusyCursor():
+            frame = self._pipeline.make_bad_channels_selection(raw=raw_name, **state)
+        if frame is not None:
+            frame.model.doc.callbacks.subscribe('saved', lambda: wx.CallAfter(self._start_refresh))
+
+    def _open_ica_gui(self, idx: int) -> None:
+        raw_name = self._raw_name()
+        scope = self._table_scope()
+        combo = self._row_combo(idx)
+        state = dict(zip(self._layout.key_fields, combo))
+        with wx.BusyCursor():
+            frame = self._pipeline.make_ica_selection(raw=raw_name, **state)
+        if frame is not None:
+            doc = frame.model.doc
+            # enables the ICA GUI to add bad channels it finds
+            doc.bad_channels_callback = lambda names, recompute: self._add_ica_bad_channels(scope, [(combo, names)], recompute)
+            doc.callbacks.subscribe('saved', lambda: wx.CallAfter(self._update_ica_row, scope, combo, doc))
+
+    def _epoch_rejection_actions(self, idx: int) -> list[RowAction]:
+        name = self._current_epoch_rejection()
+        if name is None:
+            return [RowAction("No epoch rejection defined")]
+        # a ManualRejection is edited in its GUI; an automatic rejection is only inspected there
+        if isinstance(self._pipeline._epoch_rejection[name], ManualRejection):
+            label = "Edit epoch rejection…"
+        else:
+            label = "View epoch rejection (read-only)…"
+        return [RowAction(label, partial(self._open_epoch_rejection_gui, idx, name))]
+
+    def _open_epoch_rejection_gui(self, idx: int, name: str) -> None:
+        subject = self._list.GetItemText(idx, 0)
+        with wx.BusyCursor():
+            self._pipeline.make_epoch_rejection(subject=subject, epoch_rejection=name, epoch=self._epoch_choice.GetStringSelection(), raw=self._raw_name())
+        # Epoch rejection has no in-memory object to read from, so do a targeted single-subject refresh instead.
+        self._start_refresh()
 
     def _add_ica_bad_channels(
             self,
@@ -1186,72 +1246,71 @@ class PipelineFrame(EelbrainFrame):
         if results:
             BadChannelSummaryFrame(self, results, scope[4].key_fields, partial(self._add_ica_bad_channels, scope)).Show()
 
-    def _on_mri_activated(self, row_idx: int, subject: str):
-        """Handle double-click on an MRI row."""
-        mrisubject = self._list.GetItemText(row_idx, 1)
-        status = self._list.GetItemText(row_idx, 2)
-        subjects_dir = str(self._pipeline.root / MRI_SDIR)
-        common_brain = self._pipeline.get('common_brain')
+    def _mri_actions(self, idx: int) -> list[RowAction]:
+        subject = self._list.GetItemText(idx, 0)
+        mrisubject = self._list.GetItemText(idx, 1)
+        status = self._list.GetItemText(idx, 2)
+        subjects_dir = self._pipeline.root / MRI_SDIR
         # The compute worker's jobs create missing MRIs too (see ensure_mri); two concurrent mne.scale_mri() calls on one subject would delete each other's files
-        if status in (COMMON_BRAIN_MISSING, MRITask.cfg_status, MRITask.missing_status) and self._worker_active:
-            wx.MessageBox("Wait for the running computation to finish before creating an MRI subject.", "Computation in progress", wx.OK | wx.ICON_INFORMATION, self)
-            return
-
+        busy = RowAction("Wait for the running computation to finish before creating an MRI subject")
         if subject == COMMON_BRAIN_ROW:
-            if status == COMMON_BRAIN_MISSING:
-                if mrisubject == 'fsaverage':
-                    dlg = wx.MessageDialog(
-                        self,
-                        f"fsaverage is not yet present in {subjects_dir}.\n\n"
-                        "Download it now from the MNE dataset repository?",
-                        "Download fsaverage?",
-                        wx.YES_NO | wx.ICON_QUESTION,
-                    )
-                    if dlg.ShowModal() == wx.ID_YES:
-                        self._make_mri(mrisubject, "Downloading fsaverage…")
-                    dlg.Destroy()
-                else:
-                    wx.MessageBox(
-                        f"Common brain '{mrisubject}' has no FreeSurfer reconstruction "
-                        "in the FreeSurfer subjects directory.",
-                        "MRI not found", wx.OK | wx.ICON_INFORMATION, self,
-                    )
+            if status != COMMON_BRAIN_MISSING:
+                return [RowAction("Common brain available")]
+            elif mrisubject != 'fsaverage':  # only fsaverage can be downloaded (see ensure_mri)
+                return [RowAction(f"No FreeSurfer reconstruction for {mrisubject} in {subjects_dir}")]
+            elif self._worker_active:
+                return [busy]
+            return [RowAction("Download fsaverage…", self._download_fsaverage)]
         elif status == MRITask.cfg_status:
-            cfg = read_mri_scaling_cfg(mrisubject, subjects_dir)
-            source_subject = cfg['subject_from']
-            message = f"{mrisubject} has MRI scaling parameters ({source_subject} × {cfg['scale']}) but no scaled surfaces yet.\n\nCreate the scaled MRI now?"
-            if not (self._pipeline.root / MRI_SDIR / source_subject / 'surf' / 'lh.white').exists():
-                if source_subject != 'fsaverage':  # only fsaverage can be downloaded (see ensure_mri)
-                    wx.MessageBox(f"{mrisubject} has MRI scaling parameters, but its source subject {source_subject} is not present in {subjects_dir}.", "MRI not found", wx.OK | wx.ICON_INFORMATION, self)
-                    return
-                message += " This will first download fsaverage."
-            dlg = wx.MessageDialog(self, message, f"Scale {source_subject} for {mrisubject}?", wx.YES_NO | wx.ICON_QUESTION)
-            if dlg.ShowModal() == wx.ID_YES:
-                self._make_mri(mrisubject, f"Scaling {source_subject} for {mrisubject}…")
-            dlg.Destroy()
+            if self._worker_active:
+                return [busy]
+            return [RowAction("Create scaled MRI…", partial(self._scale_mri, mrisubject))]
         elif status == MRITask.missing_status:
-            dlg = wx.MessageDialog(
-                self,
-                f"To create a scaled template brain from {common_brain}, switch to the Coregistration task.",
-                f"No FreeSurfer reconstruction found for {mrisubject}",
-                wx.OK | wx.ICON_INFORMATION,
-            )
-            dlg.ShowModal()
-            dlg.Destroy()
+            return [RowAction(f"No MRI for {mrisubject}: scale {self._pipeline.get('common_brain')} in the Coregistration task")]
+        elif status == 'template':
+            return [RowAction("Scaled template MRI available")]
+        elif status == MRITask.done_status:
+            return [RowAction("MRI available")]
+        return [RowAction(f"MRI status: {status}")]
 
-    def _on_coreg_activated(self, row_idx: int):
-        """Handle double-click on a Coregistration row."""
-        subject = self._list.GetItemText(row_idx, 0)
-        session = self._list.GetItemText(row_idx, 1)
-        mrisubject = self._list.GetItemText(row_idx, 2)
-        subjects_dir_path = self._pipeline.root / MRI_SDIR
-        subjects_dir = str(subjects_dir_path)
+    def _download_fsaverage(self) -> None:
+        subjects_dir = self._pipeline.root / MRI_SDIR
+        dlg = wx.MessageDialog(self, f"fsaverage is not yet present in {subjects_dir}.\n\nDownload it now from the MNE dataset repository?", "Download fsaverage?", wx.YES_NO | wx.ICON_QUESTION)
+        if dlg.ShowModal() == wx.ID_YES:
+            self._make_mri('fsaverage', "Downloading fsaverage…")
+        dlg.Destroy()
+
+    def _scale_mri(self, mrisubject: str) -> None:
+        """Create the surfaces for a subject that only has MRI scaling parameters."""
+        subjects_dir = self._pipeline.root / MRI_SDIR
+        cfg = read_mri_scaling_cfg(mrisubject, str(subjects_dir))
+        source_subject = cfg['subject_from']
+        message = f"{mrisubject} has MRI scaling parameters ({source_subject} × {cfg['scale']}) but no scaled surfaces yet.\n\nCreate the scaled MRI now?"
+        if not (subjects_dir / source_subject / 'surf' / 'lh.white').exists():
+            if source_subject != 'fsaverage':  # only fsaverage can be downloaded (see ensure_mri)
+                wx.MessageBox(f"{mrisubject} has MRI scaling parameters, but its source subject {source_subject} is not present in {subjects_dir}.", "MRI not found", wx.OK | wx.ICON_INFORMATION, self)
+                return
+            message += " This will first download fsaverage."
+        dlg = wx.MessageDialog(self, message, f"Scale {source_subject} for {mrisubject}?", wx.YES_NO | wx.ICON_QUESTION)
+        if dlg.ShowModal() == wx.ID_YES:
+            self._make_mri(mrisubject, f"Scaling {source_subject} for {mrisubject}…")
+        dlg.Destroy()
+
+    def _coreg_actions(self, idx: int) -> list[RowAction]:
+        mrisubject = self._list.GetItemText(idx, 2)
+        if (self._pipeline.root / MRI_SDIR / mrisubject / 'surf' / 'lh.white').exists():
+            label = "Open coregistration…"
+        else:
+            # Without a FreeSurfer reconstruction, open the coreg GUI with the template
+            # brain, whose "Scale MRI" feature can create a subject-specific brain
+            mrisubject = self._pipeline.get('common_brain')
+            label = f"Open coregistration with {mrisubject}…"
+        return [RowAction(label, partial(self._open_coreg, idx, mrisubject))]
+
+    def _open_coreg(self, idx: int, mrisubject: str) -> None:
+        subject = self._list.GetItemText(idx, 0)
+        session = self._list.GetItemText(idx, 1)
         pipeline = self._pipeline
-        # If the subject has no FreeSurfer reconstruction, fall back to the
-        # template brain so the coreg GUI can open and the user can use its
-        # "Scale MRI" feature to create a subject-specific brain.
-        if not (subjects_dir_path / mrisubject / 'surf' / 'lh.white').exists():
-            mrisubject = pipeline.get('common_brain')
         with pipeline._temporary_state:
             kw = dict(subject=subject, raw='raw')
             if session:
@@ -1261,8 +1320,7 @@ class PipelineFrame(EelbrainFrame):
             inst = str(raw_ctx.node.path(raw_ctx))
             trans_ctx = pipeline._resolve_derivative('trans-input')
             trans = str(trans_ctx.node.path(trans_ctx)) if trans_ctx.node.exists(trans_ctx) else None
-        _launch_coreg_subprocess(mrisubject, subjects_dir, inst, trans,
-                                 on_close=lambda: wx.CallAfter(self._start_refresh))
+        _launch_coreg_subprocess(mrisubject, str(pipeline.root / MRI_SDIR), inst, trans, on_close=lambda: wx.CallAfter(self._start_refresh))
 
     # ------------------------------------------------------------------
     # Table management
@@ -1398,6 +1456,7 @@ class PipelineFrame(EelbrainFrame):
         else:
             rows = [self._row(i) for i in range(n)]
             self.SetStatusText(self._current_task().status_bar(rows, self._layout))
+            self._update_row_hint()  # the statuses the actions depend on are in now
             self._update_compute_button()
 
     # ------------------------------------------------------------------
@@ -1411,6 +1470,7 @@ class PipelineFrame(EelbrainFrame):
         self._list.DeleteAllItems()
         self._n_loading = 0
         self.SetStatusText("Loading…")
+        self.SetStatusText("", 1)  # no row is selected any more
         if self._compute_token is None:  # during a computation the button is Stop, which a refresh must not block
             self._compute_btn.Disable()
         self._bad_chs_btn.Disable()
