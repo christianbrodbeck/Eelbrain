@@ -2432,7 +2432,8 @@ def test_sample_neuromag(samples_experiment):
 
 @requires_mne_sample_data
 def test_epoch_run(samples_experiment):
-    """Test run aggregation for PrimaryEpoch and ContinuousEpoch."""
+    """Test run aggregation for PrimaryEpoch and ContinuousEpoch, including
+    that ignore_runs excludes an ignored run from that aggregation."""
     set_log_level('warning', 'mne')
 
     root = samples_experiment(n_subjects=2, n_segments=2, n_runs=2)
@@ -2517,6 +2518,26 @@ def test_epoch_run(samples_experiment):
     assert isinstance(cont_epochs['mag'], Datalist)
     assert cont_epochs.n_cases == cont_all.n_cases
     assert all(events[0, 'epoch_time'] == pytest.approx(y.time.tmin + 0.1, abs=0.002) for events, y in cont_epochs.zip('events', 'mag'))
+
+    # ignore_runs excludes the ignored run from the combine-all aggregation; with a
+    # single run left, run is unambiguous and stays in ds.info instead of a column
+    class IgnoreRunExperiment(MultiRunExperiment):
+        ignore_entities = {'ignore_runs': ('2',)}
+        # epochs pinned to the ignored run are rejected at initialization
+        epochs = {name: epoch for name, epoch in MultiRunExperiment.epochs.items() if not name.endswith('-r2')}
+
+    e_ignore = IgnoreRunExperiment(root)
+    e_ignore.set(epoch='target')
+    primary_ignoring_2 = e_ignore.load_epochs()
+    assert 'run' not in primary_ignoring_2
+    assert primary_ignoring_2.info['run'] == '1'
+    assert primary_ignoring_2.n_cases == ds_r1.n_cases
+
+    e_ignore.set(epoch='cont')
+    cont_ignoring_2 = e_ignore.load_epochs()
+    assert 'run' not in cont_ignoring_2
+    assert cont_ignoring_2.info['run'] == '1'
+    assert cont_ignoring_2.n_cases == cont_r1.n_cases
 
 
 @requires_mne_sample_data
