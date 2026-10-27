@@ -1152,8 +1152,9 @@ class Pipeline(StateModel):
         reject
             Reject bad trials. If ``True`` (default), bad trials are removed
             from the Dataset. Set to ``False`` to ignore the trial rejection.
-            Set ``reject='keep'`` to load the rejection (added it to the events
-            as ``'accept'`` variable), but keep bad trails.
+            Set ``reject='keep'`` to load the rejection (added to the events
+            as ``'accept'`` variable, with the reason for a rejection in
+            ``'rej_tag'``), but keep bad trials.
         samplingrate
             Samplingrate in Hz for the analysis (default is specified in epoch
             definition).
@@ -2122,8 +2123,9 @@ class Pipeline(StateModel):
         reject
             Reject bad trials. If ``True`` (default), bad trials are removed
             from the Dataset. Set to ``False`` to ignore the trial rejection.
-            Set ``reject='keep'`` to load the rejection (added it to the events
-            as ``'accept'`` variable), but keep bad trails.
+            Set ``reject='keep'`` to load the rejection (added to the events
+            as ``'accept'`` variable, with the reason for a rejection in
+            ``'rej_tag'``), but keep bad trials.
         vardef
             Additional variables to add to the returned Dataset, as
             :class:`Variables` or the name of a test defining them.

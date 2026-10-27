@@ -9,8 +9,9 @@ Dependency structure:
     │           ├── labeled-events
     │           │     ├── events-input   (BIDS sidecar, preferred when present)
     │           │     └── events         (trigger-based fallback)
-    │           └── rejection            (epoch-rejection-input | epoch-rejection-channel-model;
-    │                                      only when epoch_rejection is set and reject != False)
+    │           ├── rejection            (epoch-rejection-input | epoch-rejection-channel-model;
+    │           │                          only when epoch_rejection is set and reject != False)
+    │           └── raw                  (for BAD annotations; only with the rejection)
     │
     ├── PrimaryEpoch / ContinuousEpoch (combine runs)
     │     └── selected-events  ×N  (one per run)
@@ -48,7 +49,8 @@ Dependency structure:
     (``epoch-rejection-input`` for a manual rejection, or
     ``epoch-rejection-channel-model`` for an automatic one) as a dependency when
     epoch rejection is active (``epoch_rejection`` is set and ``reject`` is not
-    ``False``).
+    ``False``), and the raw recording when the rejection also excludes epochs
+    that overlap ``BAD`` annotations.
 
 :class:`EpochEventsDerivative` (``'epoch-events'``)
     Epoch-level event aggregation.  For :class:`~epochs.PrimaryEpoch` and
@@ -67,6 +69,7 @@ from pathlib import Path
 from typing import Any
 from collections.abc import Callable, Iterable
 
+import mne
 import numpy as np
 import pandas as pd
 from mne_bids import BIDSPath
@@ -75,6 +78,7 @@ from .. import load, save
 from .._data_obj import Datalist, Dataset, Factor, Var, combine
 from .._exceptions import ConfigurationError
 from .._info import INTERPOLATE_CHANNELS, INTERPOLATE_WINDOWS, INTERPOLATE_WINDOWS_MAX, merge_info
+from .._text import n_of
 from .derivative_cache import CachePolicy, Dependency, Derivative, Input, Request, UncachedDerivative, file_fingerprint
 from .epoch_rejection import EpochRejection, ManualRejection
 from .epochs import EPOCH_EXTRACT_OPTIONS, EpochCollection, SecondaryEpoch, SuperEpoch, PrimaryEpoch, ContinuousEpoch, single_recording_run
@@ -349,6 +353,47 @@ class LabeledEventsDerivative(Derivative[Dataset]):
         save.pickle(value, path)
 
 
+def _bad_annotation_tags(
+        raw: mne.io.BaseRaw,
+        ds: Dataset,
+        epoch: PrimaryEpoch,
+        options: dict[str, Any],
+) -> list[str]:
+    """For each event, the description of the first ``BAD`` annotation its epoch overlaps (``''`` for none)
+
+    Follows :class:`mne.Epochs` (``reject_by_annotation``): an annotation
+    counts if its description starts with ``bad`` (case-insensitive) and it
+    overlaps the epoch's time window.
+
+    Parameters
+    ----------
+    raw
+        The raw recording with the annotations.
+    ds
+        The selected events (after :meth:`~epochs.Epoch._prepare_selected_events`).
+    epoch
+        The epoch definition.
+    options
+        Selected-events load options that affect the epoch window.
+    """
+    tags = [''] * ds.n_cases
+    annotations = raw.annotations
+    bad = [i for i, description in enumerate(annotations.description) if description.lower().startswith('bad')]
+    if not bad:
+        return tags
+    # Both the annotation onsets and the event samples are relative to the start of the recording, including raw.first_samp
+    tmin, tmax = epoch._epoch_window(ds, options)
+    t_event = ds['sample'].x / ds.info['raw.samplingrate']
+    starts = t_event + tmin
+    stops = t_event + tmax
+    for i in bad:
+        onset = annotations.onset[i]
+        for j in np.flatnonzero((onset < stops) & (onset + annotations.duration[i] > starts)):
+            if not tags[j]:
+                tags[j] = annotations.description[i]
+    return tags
+
+
 class SelectedEventsDerivative(UncachedDerivative[Dataset]):
     """Selected events for a single raw recording (one task/run).
 
@@ -356,6 +401,9 @@ class SelectedEventsDerivative(UncachedDerivative[Dataset]):
     rejection, and bad-channel annotations for a single recording file.
     Always restricted to one task/run combination; multi-run aggregation is
     handled by :class:`EpochEventsDerivative`.
+
+    With ``reject='keep'``, the rejection is added as ``accept`` and
+    ``rej_tag`` columns instead of dropping rejected events.
     """
     name = 'selected-events'
     key_fields = ('subject', 'session', 'acquisition', 'run', 'raw', 'epoch', 'epoch_rejection')
@@ -393,6 +441,8 @@ class SelectedEventsDerivative(UncachedDerivative[Dataset]):
             if rejection_params is not None and reject:
                 node = 'epoch-rejection-input' if isinstance(rejection_params, ManualRejection) else 'epoch-rejection-channel-model'
                 deps.append(Dependency(node, label='rejection', state=state))
+                if rejection_params.annotations:
+                    deps.append(Dependency(raw_node_name(ctx.state['raw']), label='raw', state=state))
             return tuple(deps)
         elif isinstance(epoch, SecondaryEpoch):
             options = ctx.options_for('selected-events', 'reject', *EPOCH_EXTRACT_OPTIONS)
@@ -407,6 +457,8 @@ class SelectedEventsDerivative(UncachedDerivative[Dataset]):
     def build(self, ctx: Request) -> Dataset:
         epoch = self.epochs[ctx.state['epoch']]
         subject = ctx.state['subject']
+        reject = ctx.options['reject']
+        rejection_params = self.epoch_rejection[ctx.state['epoch_rejection']]
         if isinstance(epoch, (PrimaryEpoch, ContinuousEpoch)):
             ds = ctx.load('labeled-events')
             if epoch.sel:
@@ -416,8 +468,6 @@ class SelectedEventsDerivative(UncachedDerivative[Dataset]):
             ds.index()
 
             # Trial rejection
-            reject = ctx.options['reject']
-            rejection_params = self.epoch_rejection[ctx.state['epoch_rejection']]
             if rejection_params is not None and reject:
                 rejection_ds = ctx.load('rejection')
 
@@ -447,6 +497,10 @@ class SelectedEventsDerivative(UncachedDerivative[Dataset]):
 
                 if reject == 'keep':
                     ds['accept'] = rejection_ds['accept']
+                    if 'rej_tag' in rejection_ds:
+                        ds['rej_tag'] = rejection_ds['rej_tag']
+                    else:
+                        ds['rej_tag'] = Factor([''], repeat=ds.n_cases)
                 elif reject is True:
                     ds = ds.sub(rejection_ds['accept'])
                 elif reject is not False:
@@ -464,7 +518,21 @@ class SelectedEventsDerivative(UncachedDerivative[Dataset]):
 
         ds.info['epoch'] = ctx.state['epoch']
         ds.info['run'] = ctx.state['run']
-        return epoch._prepare_selected_events(ds, subject, ctx.options)
+        ds = epoch._prepare_selected_events(ds, subject, ctx.options)
+
+        # Epochs overlapping BAD annotations in the raw data (checked on the final epoch windows)
+        if isinstance(epoch, PrimaryEpoch) and rejection_params is not None and reject and rejection_params.annotations:
+            tags = _bad_annotation_tags(ctx.load('raw'), ds, epoch, ctx.options)
+            bad = np.array([bool(tag) for tag in tags])
+            if bad.any():
+                counts = ', '.join(f'{tag}: {tags.count(tag)}' for tag in sorted(set(tags)) if tag)
+                ctx.registry.log.info("%s/%s: rejecting %s overlapping BAD annotations (%s)", subject, epoch.name, n_of(bad.sum(), 'epoch'), counts)
+                if reject == 'keep':
+                    ds['accept'][bad] = False
+                    ds['rej_tag'] = Factor([tag or old_tag for tag, old_tag in zip(tags, ds['rej_tag'])])
+                else:
+                    ds = ds.sub(~bad)
+        return ds
 
 
 class EpochEventsDerivative(UncachedDerivative[Dataset]):

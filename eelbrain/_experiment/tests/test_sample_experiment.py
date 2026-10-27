@@ -3322,3 +3322,66 @@ def test_load_trfs_source(samples_experiment):
     assert ds[0, 'imp'].source.subject == 'fsaverage'
     assert ds[1, 'imp'].source.subject == 'fsaverage'
     assert ds[0, 'imp'].source == ds[1, 'imp'].source
+
+
+@requires_mne_sample_data
+def test_bad_annotation_rejection(samples_experiment):
+    "Epochs overlapping BAD annotations in the raw data are rejected with any epoch_rejection setting"
+    set_log_level('warning', 'mne')
+    from eelbrain._experiment.tests.sample_experiment import SampleExperiment
+    from eelbrain._meeg import new_rejection_ds
+
+    root = samples_experiment(1, n_segments=2)
+
+    class Experiment(SampleExperiment):
+        epochs = {
+            **SampleExperiment.epochs,
+            # tmax varies per epoch (0.2 or 0.5 s)
+            'varlen': PrimaryEpoch('sample', "event == 'target'", tmin=-0.1, tmax='0.2 + 0.3 * (index % 2)', decim=5),
+        }
+        epoch_rejection = {'manual': ManualRejection(), 'file-only': ManualRejection(annotations=False)}
+
+    e = Experiment(root)
+    e.set(subject='R0000', epoch='target', raw='raw', epoch_rejection='')
+    events = e.load_selected_events()
+    n = events.n_cases
+    t = events['sample'].x / events.info['raw.samplingrate']  # event times from the start of the recording
+
+    # Annotate 50 ms segments in the raw file: epoch 3 is affected in both epoch definitions, epoch 1 only with the longer 'varlen' window (tmax=0.5), epoch 2 only with the 'target' window (tmax=0.3); events are more than 0.6 s apart, so no neighboring epoch is affected; the annotation that is not BAD is ignored
+    onsets = [t[3] + 0.1, t[1] + 0.35, t[2] + 0.25, t[4] + 0.1]
+    descriptions = ['BAD_flat', 'BAD_mov_dist', 'BAD_flat', 'note']
+    raw_path = Path(root) / 'sub-R0000' / 'meg' / 'sub-R0000_task-sample_meg.fif'
+    raw = mne.io.read_raw_fif(raw_path, preload=True)
+    raw.set_annotations(mne.Annotations(onsets, [0.05] * 4, descriptions, orig_time=raw.info['meas_date']))
+    with catch_warnings():
+        filterwarnings('ignore', 'This filename', RuntimeWarning)
+        raw.save(raw_path, overwrite=True)
+
+    # the empty setting applies no rejection
+    assert e.load_epochs().n_cases == n
+    # with a rejection file, epochs overlapping BAD annotations are rejected in addition, with the annotation as reason
+    e.set(epoch_rejection='manual')
+    e.make_epoch_rejection(auto=1e-9)  # rejects nothing by amplitude
+    ds = e.load_selected_events(reject='keep')
+    assert_array_equal(ds['accept'].x, [i not in (2, 3) for i in range(n)])
+    assert list(ds['rej_tag']) == ['BAD_flat' if i in (2, 3) else '' for i in range(n)]
+    ds = e.load_epochs()
+    assert ds.n_cases == n - 2
+    assert not {2, 3}.intersection(ds['index'].x)
+    assert e.show_rej_info(asds=True)[0, 'n_good'] == n - 2
+    # variable-length epochs: the overlap is evaluated for each epoch's own window
+    e.set(epoch='varlen')
+    rej_ctx = e._resolve_derivative('epoch-rejection-input')
+    save.pickle(new_rejection_ds(e.load_selected_events(reject=False)), rej_ctx.node.path(rej_ctx))
+    ds = e.load_selected_events(reject='keep')
+    assert list(ds['rej_tag']) == ['BAD_mov_dist' if i == 1 else 'BAD_flat' if i == 3 else '' for i in range(n)]
+    ds = e.load_epochs()
+    assert ds.n_cases == n - 2
+    assert not {1, 3}.intersection(ds['index'].x)
+    # annotations=False only uses the rejection file
+    e.set(epoch='target', epoch_rejection='file-only')
+    e.make_epoch_rejection(auto=1e-9)
+    assert e.load_epochs().n_cases == n
+    # the default does not enter the configuration's fingerprint
+    assert 'annotations' not in ManualRejection()._as_dict()
+    assert ManualRejection(annotations=False)._as_dict()['annotations'] is False

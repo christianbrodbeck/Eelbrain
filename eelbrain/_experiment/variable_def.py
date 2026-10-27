@@ -69,7 +69,7 @@ from .pathing import BIDS_ENTITY_KEYS
 # evoked response). This list is the subset that can be reported when the pipeline is constructed.
 RESERVED_VAR_KEYS = (
     *BIDS_ENTITY_KEYS,  # promoted from ds.info to a column where recordings are combined
-    'sample', 'value', 'onset', 'index', 'epoch', 'accept',  # event columns the pipeline reads by name
+    'sample', 'value', 'onset', 'index', 'epoch', 'accept', 'rej_tag',  # event columns the pipeline reads by name
     INTERPOLATE_CHANNELS, INTERPOLATE_WINDOWS,  # copied from the rejection file
     'epochs', 'evoked', 'src', 'stc', 'label_tc', 'model',  # data columns added downstream
     'epoch_time', 'events', 'tmax',  # ContinuousEpoch

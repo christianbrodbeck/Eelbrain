@@ -29,15 +29,29 @@ from .pathing import rej_file_path
 class EpochRejection(Configuration):
     """Base class for :attr:`Pipeline.epoch_rejection` settings.
 
+    Epochs that overlap a ``BAD`` annotation in the raw data (for example
+    ``BAD_acq_skip``, or the ``BAD_flat`` and ``BAD_mov_*`` segments that
+    :class:`RawMaxwell` leaves unprocessed) are rejected in addition to the
+    rejection file, with the annotation's description as ``rej_tag``.
+
     Parameters
     ----------
     interpolation
         Enable by-epoch channel interpolation from the rejection file.
+    annotations
+        Reject epochs that overlap ``BAD`` annotations in the raw data (default
+        ``True``).
     """
     DICT_ATTRS = ('interpolation',)
+    DICT_DEFAULTS = {'annotations': True}
 
-    def __init__(self, interpolation: bool = True):
+    def __init__(
+            self,
+            interpolation: bool = True,
+            annotations: bool = True,
+    ):
         self.interpolation = interpolation
+        self.annotations = annotations
 
 
 class ManualRejection(EpochRejection):
@@ -88,6 +102,9 @@ class ChannelModelRejection(EpochRejection):
     interpolation
         Apply the by-epoch channel interpolation when loading epochs (default
         ``True``).
+    annotations
+        Reject epochs that overlap ``BAD`` annotations in the raw data (default
+        ``True``; see :class:`EpochRejection`).
     continuous
         Duration threshold in seconds: equal-length epochs longer than this use
         time-resolved (windowed) detection instead of whole-epoch detection
@@ -111,6 +128,7 @@ class ChannelModelRejection(EpochRejection):
             score_threshold: float = 50e-6,
             raw: str | None = None,
             interpolation: bool = True,
+            annotations: bool = True,
             continuous: float = 5.,
             window: float = 1.0,
             hop: float = 0.5,
@@ -120,7 +138,7 @@ class ChannelModelRejection(EpochRejection):
             alpha: float = 1e-4,
             epsilon: float = 1.35,
     ):
-        super().__init__(interpolation)
+        super().__init__(interpolation, annotations)
         self.max_interpolate = max_interpolate
         self.fit_threshold = fit_threshold
         self.score_threshold = score_threshold

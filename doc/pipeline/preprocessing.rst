@@ -240,7 +240,7 @@ Unmentioned trigger values are assigned the empty string (``''``).
 Some column names are reserved, because the pipeline writes them itself and a
 variable of the same name would be overwritten: the BIDS entities (``subject``,
 ``session``, ``task``, ``acquisition``, ``run``), the event columns ``sample``,
-``value``, ``onset``, ``index``, ``epoch``, ``accept``,
+``value``, ``onset``, ``index``, ``epoch``, ``accept``, ``rej_tag``,
 ``interpolate_channels`` and ``interpolate_windows``, the data columns
 ``epochs``, ``evoked``, ``src``, ``stc``, ``label_tc`` and ``model``, and
 ``epoch_time``, ``events`` and ``tmax`` (used by
@@ -359,6 +359,16 @@ Automatic rejection can also mark bad EEG channels for interpolation within an
 epoch, or within shorter windows for long and variable-length epochs.
 Rejections are always specific to a given ``raw`` state, primary epoch, and
 ``epoch_rejection`` setting.
+
+With any ``epoch_rejection`` setting, epochs that overlap a ``BAD`` annotation
+in the raw data are rejected as well: for example ``BAD_acq_skip`` segments, or
+the ``BAD_flat`` and ``BAD_mov_*`` segments that :class:`RawMaxwell` skips
+(those data are left unprocessed by the Maxwell filter). The annotation's
+description is the reason recorded for the rejection, visible with
+``e.load_selected_events(reject='keep')`` as the ``rej_tag`` column. Set
+``annotations=False`` (e.g. ``ManualRejection(annotations=False)``) to only use
+the rejection file. The empty setting (``epoch_rejection=''``) applies no
+rejection, not even for annotations.
 
 For example::
 

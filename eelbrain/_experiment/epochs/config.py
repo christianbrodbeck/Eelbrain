@@ -304,26 +304,42 @@ class Epoch(EpochBase):
         ds = super()._prepare_selected_events(ds, subject, options)
         return self._trim_to_raw_boundaries(ds, options)
 
+    def _epoch_window(
+            self,
+            ds: Dataset,
+            options: dict[str, Any],
+    ) -> tuple[float, float | np.ndarray]:
+        """The epoch time window relative to the event, as ``(tmin, tmax)``.
+
+        ``tmax`` is the time of the last sample (an array with one value per
+        event for variable-length epochs), as :func:`load.mne.mne_epochs`
+        resolves it from the epoch definition and the load-time ``tmax``,
+        ``tstop`` and ``pad`` options.
+        """
+        tmin, tmax, tstop, decim, variable_tmax = self._extraction_parameters(ds, options)
+        if variable_tmax:
+            return tmin, tmax.x
+        elif tmax is not None:
+            if tstop is not None:
+                raise TypeError(f"tmax and tstop can not both be specified at the same time, got tmax={tmax}, tstop={tstop}")
+            return tmin, tmax
+        elif tstop is None:
+            return tmin, 0.6
+        sfreq = ds.info['raw.samplingrate'] / decim
+        start_index = int(round(tmin * sfreq))
+        stop_index = int(round(tstop * sfreq))
+        return tmin, tmin + (stop_index - start_index - 1) / sfreq
+
     def _trim_to_raw_boundaries(
             self,
             ds: Dataset,
             options: dict[str, Any],
     ) -> Dataset:
         """Remove events whose requested epoch window exceeds raw bounds."""
-        tmin, tmax, tstop, decim, variable_tmax = self._extraction_parameters(ds, options)
-        if variable_tmax:
+        tmin, tmax = self._epoch_window(ds, options)
+        if not np.isscalar(tmax):  # variable-length epochs are truncated instead
             return ds
         raw_sfreq = ds.info['raw.samplingrate']
-        if tmax is None:
-            if tstop is None:
-                tmax = 0.6
-            else:
-                sfreq = raw_sfreq / decim
-                start_index = int(round(tmin * sfreq))
-                stop_index = int(round(tstop * sfreq))
-                tmax = tmin + (stop_index - start_index - 1) / sfreq
-        elif tstop is not None:
-            raise TypeError(f"tmax and tstop can not both be specified at the same time, got tmax={tmax}, tstop={tstop}")
         sample = ds['sample'].x
         i_min = sample + math.floor(tmin * raw_sfreq)
         i_max = sample + math.floor(tmax * raw_sfreq)

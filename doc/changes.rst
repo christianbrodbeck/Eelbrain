@@ -39,7 +39,10 @@ New in 0.43
   - Epoch rejection is now configured through
     :attr:`pipeline.Pipeline.epoch_rejection`, with manual rejection and
     :class:`pipeline.ChannelModelRejection` for automatic EEG channel/epoch
-    artifact detection.
+    artifact detection. Any epoch rejection also rejects epochs that overlap
+    ``BAD`` annotations in the raw data (such as the segments that
+    :class:`pipeline.RawMaxwell` skips), with the annotation as the reason
+    (``annotations`` parameter).
   - EEG data can be re-referenced after epoching and channel interpolation
     through :attr:`pipeline.Pipeline.references` and the ``reference`` state.
     This is generally preferable to re-referencing before epoching.
