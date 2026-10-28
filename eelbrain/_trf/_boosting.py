@@ -603,6 +603,13 @@ class BoostingResult(PickleableDataClass):
                 return tuple(sub_func(obj_) for obj_ in obj)
             return func(obj)
 
+        # Results from older versions did not store the total variability (which was implied by the normalization); store it explicitly so that transformations which rescale the residual (e.g., morphing a masked source space) preserve proportion_explained
+        if self.y_scale is not None and self.n_samples is not None:
+            for error in ('l1', 'l2'):
+                residual = getattr(self, f'{error}_residual')
+                if isinstance(residual, NDVar) and getattr(self, f'{error}_total') is None:
+                    setattr(self, f'{error}_total', NDVar(np.full(residual.shape, self.n_samples, float), residual.dims, residual.name, residual.info))
+
         # NDVars
         for attr in ('_h', 'r', 'r_rank', 'r_l1', 'l1_residual', 'l2_residual', 'l1_total', 'l2_total', 'train_r', 'train_r_rank', 'train_r_l1', 'train_l1_residual', 'train_l2_residual', 'train_l1_total', 'train_l2_total', 'y_mean', 'y_scale'):
             setattr(self, attr, sub_func(getattr(self, attr)))

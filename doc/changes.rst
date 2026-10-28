@@ -15,6 +15,7 @@ Check for open issues, or report new ones on `GitHub <https://github.com/Eelbrai
 Issues on prior versions
 ------------------------
 
+* Fixed in **0.43** (`#247 <https://github.com/Eelbrain/Eelbrain/issues/247>`_): :attr:`BoostingResult.proportion_explained` was inflated after morphing source-space results that were restricted to a mask (e.g., :meth:`Pipeline.load_trf` with ``morph=True``). Near the edge of the mask, morphing scaled down the residual while the total variability remained constant; at target sources that received no weight from any source inside the mask, the result was exactly 1. Correlation values (``r``) were not affected. Results loaded with previous versions should be reloaded with 0.43 or later (the stored model fits themselves are not affected).
 * Fixed in **0.38.3**, Windows only (`#52 <https://github.com/Eelbrain/Eelbrain/issues/52>`_): due to unexpected data loss in :class:`multiprocessing.sharedctypes.RawArray` for large arrays, permutation tests on large datasets using multiprocessing could return spurious results in which *p*-values for *all* clusters were reported as exactly 0.
 
 
@@ -87,6 +88,9 @@ New in 0.43
   - API change: the proportion of explained variance is now called ``ev``
     instead of ``det``, in the :class:`Dataset` returned by
     :meth:`BoostingResult.partition_result_data`
+  - Fix: :attr:`BoostingResult.proportion_explained` is now preserved when
+    morphing source-space results, including results that were fitted with
+    previous versions (see *Issues on prior versions*, above).
   - Fix: :attr:`BoostingResult.proportion_explained` inside
     :attr:`BoostingResult.partition_results` is now computed relative
     to the variability in the evaluated data segments. Previously, it was
