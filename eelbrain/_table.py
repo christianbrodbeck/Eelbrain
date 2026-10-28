@@ -15,10 +15,8 @@ from ._data_obj import (
     Categorial, Dataset, Factor, Interaction, NDVar, Scalar, UTS,
     Var, ascategorial, as_legal_dataset_key, asndvar, asvar, assub, asuv,
     cellname, combine, isuv)
-from ._utils import deprecate_ds_arg
 
 
-@deprecate_ds_arg
 def difference(
         y: NDVar | VarArg | Sequence[NDVar | VarArg],
         x: CategorialArg,
@@ -106,7 +104,6 @@ def difference(
     return out
 
 
-@deprecate_ds_arg
 def frequencies(
         y: UVArg,
         x: CategorialArg = None,
@@ -339,7 +336,7 @@ def melt_ndvar(
         ndvar: NDVarArg,
         dim: str = None,
         cells: Sequence = None,
-        ds: Dataset = None,
+        data: Dataset = None,
         varname: str = None,
         labels: dict | Callable = None,
 ) -> Dataset:
@@ -349,14 +346,14 @@ def melt_ndvar(
     Parameters
     ----------
     ndvar
-        The NDVar (or name of the NDVar in ``ds``).
+        The NDVar (or name of the NDVar in ``data``).
     dim
         The name of the dimension that should be unwrapped (optional if
         ``ndvar`` has only one non-case dimension).
     cells
         The values on ``dim`` that should be included in the output Dataset
         (default is to include all values).
-    ds
+    data
         Dataset with additional variables that should be included in the long
         table.
     varname
@@ -377,7 +374,7 @@ def melt_ndvar(
     --------
     See :ref:`exa-compare-topographies`.
     """
-    ndvar = asndvar(ndvar, data=ds)
+    ndvar = asndvar(ndvar, data=data)
     if dim is None:
         if ndvar.ndim == ndvar.has_case + 1:
             dim = ndvar.dims[-1]
@@ -412,11 +409,11 @@ def melt_ndvar(
             raise TypeError("Need to provide a name")
         varname = ndvar.name
 
-    if ds is None:
+    if data is None:
         base_ds = Dataset()
     else:
-        uv_keys = tuple(k for k, v in ds.items() if isuv(v))
-        base_ds = ds[uv_keys]
+        uv_keys = tuple(k for k, v in data.items() if isuv(v))
+        base_ds = data[uv_keys]
 
     if not ndvar.has_case:
         ndvar = ndvar[np.newaxis]
@@ -434,7 +431,6 @@ def melt_ndvar(
     return out
 
 
-@deprecate_ds_arg
 def cast_to_ndvar(
         y: VarArg | Sequence[VarArg],
         dim_values: VarArg | Factor,
@@ -550,7 +546,6 @@ def cast_to_ndvar(
     return out
 
 
-@deprecate_ds_arg
 def stats(
         y: Var,
         row: CategorialArg,

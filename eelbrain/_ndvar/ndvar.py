@@ -30,7 +30,6 @@ from .._mne import complete_source_space
 from .._stats.adjacency import Adjacency
 from .._stats.adjacency import find_peaks as _find_peaks
 from .._trf._fit_metrics import error_for_indexes
-from .._utils import deprecate_ds_arg
 from .._utils.numpy_utils import aslice
 from ._convolve import convolve_2d
 
@@ -215,7 +214,7 @@ def _concatenate_values(
 def convolve(
         h: NDVarArg | Sequence[NDVarArg],
         x: NDVarArg | Sequence[NDVarArg],
-        ds: Dataset = None,
+        data: Dataset = None,
         name: str = None,
 ) -> NDVar:
     """Convolve ``h`` and ``x`` along the time dimension
@@ -226,7 +225,7 @@ def convolve(
         Kernel.
     x
         Data to convolve, corresponding to ``h``.
-    ds
+    data
         If provided, elements of ``x`` can be specified as :class:`str`.
     name
         Name for output variable.
@@ -237,12 +236,12 @@ def convolve(
         Convolution, with same time dimension as ``x``.
     """
     if isinstance(x, str):
-        x = asndvar(x, data=ds)
+        x = asndvar(x, data=data)
         is_single = True
     elif isinstance(x, NDVar):
         is_single = True
     else:
-        x = [asndvar(xi, data=ds) for xi in x]
+        x = [asndvar(xi, data=data) for xi in x]
         is_single = False
 
     if isinstance(h, NDVar) != is_single:
@@ -915,7 +914,6 @@ def neighbor_correlation(
     return NDVar(ncs, (dim_obj,), name, info)
 
 
-@deprecate_ds_arg
 def normalize_in_cells(
         y: NDVarArg,
         for_dim: str,
