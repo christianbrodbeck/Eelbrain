@@ -261,33 +261,38 @@ class NCRF(Estimator):
     mu
         Regularization parameter (``'auto'`` to determine through
         cross-validation, or a numeric value / sequence of values).
-    nlevels
-        Number of levels for the lead-field decomposition.
+    basis_stride
+        Spacing between neighboring Gabor basis atoms, in samples.
     n_iter
-        Number of iterations.
+        Number of outer iterations.
     n_iterc
-        Number of coordinate-descent iterations.
+        Number of Champagne iterations within each outer iteration.
     n_iterf
-        Number of FASTA iterations.
+        Number of FASTA iterations within each outer iteration.
     n_splits
         Number of cross-validation splits for ``mu='auto'``.
     tol
         Convergence tolerance.
     use_ES
-        Use the early-stopping strategy.
+        Refine the cross-validated ``mu`` with the estimation stability criterion.
     basis_std
-        Standard deviation of the temporal basis (in seconds).
+        Standard deviation of the Gaussian basis atoms (in seconds).
+
+    Notes
+    -----
+    The fit-quality metrics (see :meth:`Pipeline.load_trfs`) are the selected
+    ``mu`` and the training-set scores of the :class:`ncrf.NCRFFit`.
     """
     extra_inputs = ('fwd', 'cov')
     extra_input_fields = ('cov', 'mrisubject', 'src')
     requires_sensor_space = True
-    DICT_ATTRS = ('mu', 'nlevels', 'n_iter', 'n_iterc', 'n_iterf', 'n_splits', 'tol', 'use_ES', 'basis_std')
-    metric_keys = ('mu',)
+    DICT_ATTRS = ('mu', 'basis_stride', 'n_iter', 'n_iterc', 'n_iterf', 'n_splits', 'tol', 'use_ES', 'basis_std')
+    metric_keys = ('mu', 'explained_variance', 'l2_error', 'cross_fit', 'weighted_l2_error')
 
     def __init__(
             self,
             mu: str | float | Sequence[float] = 'auto',
-            nlevels: int = 1,
+            basis_stride: int = 1,
             n_iter: int = 10,
             n_iterc: int = 10,
             n_iterf: int = 100,
@@ -297,7 +302,7 @@ class NCRF(Estimator):
             basis_std: float = 0.0085,
     ):
         self.mu = mu
-        self.nlevels = nlevels
+        self.basis_stride = typed_arg(basis_stride, int)
         self.n_iter = n_iter
         self.n_iterc = n_iterc
         self.n_iterf = n_iterf
@@ -321,10 +326,14 @@ class NCRF(Estimator):
         else:
             x = xs
         from ncrf import fit_ncrf
-        return fit_ncrf(y, x, fwd, cov, tstart, tstop, nlevels=self.nlevels, n_iter=self.n_iter, n_iterc=self.n_iterc, n_iterf=self.n_iterf, normalize=True, in_place=True, mu=self.mu, tol=self.tol, n_splits=self.n_splits, use_ES=self.use_ES, basis_std=self.basis_std)
+        return fit_ncrf(y, x, fwd, cov, tstart, tstop, basis_stride=self.basis_stride, n_iter=self.n_iter, n_iterc=self.n_iterc, n_iterf=self.n_iterf, mu=self.mu, tol=self.tol, n_splits=self.n_splits, use_ES=self.use_ES, basis_std=self.basis_std)
 
+    # ``result`` is an :class:`ncrf.NCRFFit` report; the kernels and TRF timing live on its ``model``
     def _result_metrics(self, result) -> dict[str, NDVar | float]:
-        return {'mu': result.mu}
+        return {'mu': result.solver.mu, **result.scores}
 
     def _result_tstep(self, result) -> float:
-        return result.tstep
+        return result.model.design.tstep
+
+    def _result_kernels(self, result, *, scale: str) -> list[NDVar]:
+        return super()._result_kernels(result.model, scale=scale)

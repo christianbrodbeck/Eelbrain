@@ -75,6 +75,7 @@ gui = [
 full = [
   'eelbrain[brain]',
   'eelbrain[gui]',
+  'graphviz',
 ]
 style = [
   'codespell[toml] >= 2.2.4',

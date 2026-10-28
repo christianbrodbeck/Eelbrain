@@ -30,7 +30,7 @@ import pandas as pd
 from ..._exceptions import DataError
 from ..derivative_cache import (
     ALLOW_PROTECTED_OVERWRITE, ArtifactManifest, CachePolicy, Dependency, Derivative, UncachedDerivative,
-    JobProvenance, Request, Input, MANIFEST_SCHEMA_VERSION, ProtectedArtifactError, UnverifiableArtifactError,
+    JobProvenance, Request, Input, ProtectedArtifactError, UnverifiableArtifactError,
     compare_manifests, file_fingerprint,
 )
 from ..logging import find_difference, format_difference_path
@@ -38,7 +38,7 @@ from ..exceptions import FileMissingError, ICAMissingError
 from ..pathing import bids_path, DERIV_DIR
 from .job import ICAJob
 from .config import (
-    MNE_VERBOSITY, RawPipeGraph, RawSource, CachedRawPipe, RawICA, RawApplyICA, RawMaxwell, find_chpi,
+    LEGACY_MONTAGE_NAMES, MNE_VERBOSITY, RawPipeGraph, RawSource, CachedRawPipe, RawICA, RawApplyICA, RawMaxwell, find_chpi,
     raw_node_name, raw_bad_channels_input_name, raw_input_name, ica_input_name,
 )
 
@@ -414,6 +414,11 @@ class RawSourceInput(Input[mne.io.BaseRaw]):
                 fp['coordsystem'] = file_fingerprint(ctx.root, coord_path)
         return fp
 
+    def normalize_stored_fingerprint(self, fingerprint: dict[str, Any]) -> None:
+        montage = fingerprint['pipe']['montage']  # None, a montage name, or a Sensor form for a DigMontage
+        if isinstance(montage, str) and montage in LEGACY_MONTAGE_NAMES:  # recorded before the configuration was updated for MNE 1.13
+            fingerprint['pipe']['montage'] = LEGACY_MONTAGE_NAMES[montage]
+
     def load(self, ctx: Request) -> mne.io.BaseRaw:
         return self._load_raw(ctx, ctx.view_options['preload'])
 
@@ -670,15 +675,29 @@ class ICAInput(Input[mne.preprocessing.ICA]):
             self,
             ctx: Request,
             tasks: tuple[str, ...],
+            preload: bool = True,
     ) -> mne.io.BaseRaw:
+        """Load the source recordings of ``tasks`` concatenated into one raw
+
+        Parameters
+        ----------
+        ctx
+            Resolved request for this ICA.
+        tasks
+            Tasks whose recordings to concatenate.
+        preload
+            Load the data into memory. With ``False``, cached recordings stay
+            file-backed, so that a consumer that decimates (e.g. the component
+            selection GUI) never holds the full-rate data in memory.
+        """
         bad_channels = self._load_bad_channels(ctx)
         states = self._source_states(ctx, tasks)
         if not states:
             raise FileMissingError(f"No source recordings found to estimate ICA {self.raw_name!r} ({ctx.state['subject']=}, session={ctx.state.get('session')!r}).")
-        raw = load_raw_dependency(ctx, self.pipe.source, preload=True, state=states[0])
+        raw = load_raw_dependency(ctx, self.pipe.source, preload=preload, state=states[0])
         raw.info['bads'] = bad_channels
         for state in states[1:]:
-            raw_ = load_raw_dependency(ctx, self.pipe.source, preload=True, state=state)
+            raw_ = load_raw_dependency(ctx, self.pipe.source, preload=preload, state=state)
             raw_.info['bads'] = bad_channels
             raw.append(raw_)
         return raw
@@ -773,35 +792,6 @@ class ICAInput(Input[mne.preprocessing.ICA]):
             parts = parts[1:] or [parts[0]]
         return format_difference_path(tuple(parts))
 
-    def _build_manifest(
-            self,
-            ctx: Request,
-            dependencies: dict[str, Any],
-            fingerprint: dict[str, Any] | None = None,
-    ) -> ArtifactManifest:
-        """Manifest for this request with the given fingerprints.
-
-        Validity checks pass the current dependency fingerprints
-        (``ctx.dependency_fingerprints()``) to compare against the stored
-        manifest; :meth:`save_result` passes the :meth:`JobSpec.make_job`
-        snapshot so the result is filed under the inputs it was computed from.
-        The node ``fingerprint`` defaults to the current one, with the same
-        snapshot override for :meth:`save_result`.
-        """
-        resolve_state, resolve_options = ctx._resolve_context()
-        return ArtifactManifest(
-            schema_version=MANIFEST_SCHEMA_VERSION,
-            derivative=self.name,
-            derivative_version=self.version,
-            key=ctx.key(),
-            fingerprint=ctx.registry.canonicalize(self.fingerprint(ctx)) if fingerprint is None else fingerprint,
-            dependencies=dependencies,
-            cache_policy=self.cache_policy.value,
-            software={'eelbrain_cache_schema': str(MANIFEST_SCHEMA_VERSION), 'mne': mne.__version__},
-            resolve_state=resolve_state,
-            resolve_options=resolve_options,
-        )
-
     def _manifests(self, ctx: Request) -> tuple[ArtifactManifest | None, ArtifactManifest]:
         """The manifest stored for this ICA file, and the one the current inputs describe.
 
@@ -811,7 +801,8 @@ class ICAInput(Input[mne.preprocessing.ICA]):
             Resolved request for this ICA.
         """
         previous = ctx._manifest()
-        return previous, self._build_manifest(ctx, ctx.dependency_fingerprints(previous.dependencies if previous else None))
+        dependencies = ctx.dependency_fingerprints(previous.dependencies if previous else None)
+        return previous, ctx._current_manifest(ctx.current_fingerprint(), dependencies)
 
     def is_valid(self, ctx: Request) -> bool:
         if not self.path(ctx).exists():
@@ -937,9 +928,9 @@ class ICAInput(Input[mne.preprocessing.ICA]):
         path.parent.mkdir(parents=True, exist_ok=True)
         result.save(path, overwrite=True)
         # The fit ran on the snapshot inputs, so the manifest records the snapshot
-        # fingerprint; 'exists' describes the artifact itself, just written.
+        # fingerprint and dependencies; 'exists' describes the artifact itself, just written.
         fingerprint = {**provenance.fingerprint, 'exists': True}
-        ctx.registry.write_manifest(ctx.manifest_path, self._build_manifest(ctx, provenance.dependencies, fingerprint))
+        ctx.registry.write_manifest(ctx.manifest_path, ctx._current_manifest(fingerprint, provenance.dependencies))
         # Reload without the validity check of load(): when the inputs changed during
         # the fit, the manifest just written is deliberately stale by current inputs.
         return self._load_value(ctx)

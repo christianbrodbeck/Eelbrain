@@ -4,11 +4,14 @@ import matplotlib
 from tqdm import tqdm, trange
 
 
-def use_inline_backend():
-    "Check whether matplotlib is using an inline backend, e.g. for notebooks"
+def use_inline_backend() -> bool:
+    "Check whether matplotlib is using a backend that renders figures into a notebook (Jupyter inline, ipympl, marimo, ...) rather than a GUI window"
     # matplotlib.get_backend() also initializes backend
     backend = dict.__getitem__(matplotlib.rcParams, 'backend')
-    return isinstance(backend, str) and (backend.endswith('inline') or backend == 'nbAgg')
+    if not isinstance(backend, str):
+        return False
+    # Only known notebook module:// backends; other module:// backends (e.g., mplcairo, PyCharm's backend_interagg) are GUI backends
+    return backend.endswith('inline') or backend == 'nbAgg' or backend.startswith(('module://matplotlib_inline', 'module://ipympl', 'module://marimo'))
 
 
 # import inline tqdm

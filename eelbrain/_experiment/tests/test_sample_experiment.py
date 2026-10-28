@@ -21,7 +21,7 @@ from eelbrain import *
 from eelbrain.pipeline import *
 from eelbrain._exceptions import ConfigurationError
 from eelbrain._experiment.covariance import EpochCovariance
-from eelbrain._experiment.derivative_cache import ALLOW_PROTECTED_OVERWRITE, ProtectedArtifactError
+from eelbrain._experiment.derivative_cache import ALLOW_PROTECTED_OVERWRITE, DependencyTree, ProtectedArtifactError
 from eelbrain._experiment.derivative_cache.garbage_collection import GCCategory
 from eelbrain._experiment.parc.nodes import AnnotDerivative
 from eelbrain._experiment.pathing import BIDS_ENTITY_KEYS, LOG_DIR, ica_file_path
@@ -188,11 +188,13 @@ def test_sample(samples_experiment):
     assert e._raw['raw'].name == 'raw'
     assert e._parcs['ac'].name == 'ac'
     assert e._parcs['lobes'].name == 'lobes'
-    tree = e._show_dependencies('evoked', return_str=True)
+    dep_tree = e.load_evoked(show_dependencies=True)
+    assert isinstance(dep_tree, DependencyTree)
+    tree = dep_tree.text(1000)
     assert 'evoked [derivative]' in tree
     # Dataset assembly is always uncached
     assert 'epochs [uncached]' in tree
-    wrapped_tree = e._show_dependencies('evoked', max_line_length=60, return_str=True)
+    wrapped_tree = dep_tree.text(max_line_length=60)
     assert all(len(line) <= 60 for line in wrapped_tree.splitlines())
 
     # wildcard formatting
@@ -244,22 +246,8 @@ def test_sample(samples_experiment):
     assert ds[0, 'evoked'].info['bads'] == ['MEG 0331']
 
     e.set(epoch_rejection='manual')
-    test_tree = e._show_dependencies(
-        'test-result',
-        options={
-            'data': DataSpec.coerce('meg.rms'),
-            'samples': 100,
-            'test': 'a>v',
-            'tstart': 0.05,
-            'tstop': 0.2,
-            'pmin': 0.05,
-            'baseline': False,
-            'src_baseline': None,
-            'smooth': None,
-            'samplingrate': None,
-        },
-        return_str=True,
-    )
+    test_tree = e.load_test('a>v', tstart=0.05, tstop=0.2, pmin=0.05, samples=100, data='meg.rms', baseline=False, show_dependencies=True).text(1000)
+    assert 'test-result [derivative]' in test_tree
     assert 'evoked-test-data [uncached]' in test_tree
     assert 'evoked-group-dataset [uncached]' in test_tree
     sds = []
@@ -783,6 +771,46 @@ def test_evoked_artifact_is_consumer_independent(samples_experiment):
 
 
 @requires_mne_sample_data
+def test_scaled_mri_from_cfg(samples_experiment):
+    """A subject directory holding only MRI scaling parameters is scaled on demand"""
+    from eelbrain._experiment.tests.sample_experiment import SampleExperiment
+
+    root = samples_experiment(n_subjects=1, n_segments=1, mris=True)
+    e = SampleExperiment(root)
+    mri_dir = Path(root) / 'derivatives' / 'freesurfer' / 'sub-R0000'
+    cfg_path = mri_dir / 'MRI scaling parameters.cfg'
+    cfg = "[MRI Scaling]\nsubject_from = fsaverage\nsubject_to = sub-R0000\nn_params = 1\nscale = 0.95\nversion = 1\n\n"
+    shutil.rmtree(mri_dir)
+    mri_dir.mkdir()
+    # a source subject that is neither present nor downloadable
+    cfg_path.write_text(cfg.replace('fsaverage', 'sub-template'))
+    with pytest.raises(FileNotFoundError, match='sub-template'):
+        e.load_src(src='ico-2')
+    assert not (mri_dir / 'surf').exists()
+    cfg_path.write_text(cfg)
+    # a directory with other content is never deleted
+    extra = mri_dir / 'label' / 'lh.custom.annot'
+    extra.parent.mkdir()
+    extra.touch()
+    with pytest.raises(FileExistsError, match='label'):
+        e.load_src(src='ico-2')
+    assert extra.exists()
+    shutil.rmtree(extra.parent)
+
+    src = e.load_src(src='ico-2')
+    assert src[0]['nuse'] == 162
+    assert (mri_dir / 'surf' / 'lh.white').exists()
+    assert (mri_dir / 'bem' / 'sub-R0000-inner_skull-bem.fif').exists()
+    assert (mri_dir / 'bem' / 'sub-R0000-ico-2-src.fif').exists()
+    assert (mri_dir / 'label' / 'lh.aparc.annot').exists()
+    assert cfg_path.read_text() == cfg
+    # a complete MRI is left alone
+    mtime = (mri_dir / 'surf' / 'lh.white').stat().st_mtime
+    e.load_annot(parc='aparc')
+    assert (mri_dir / 'surf' / 'lh.white').stat().st_mtime == mtime
+
+
+@requires_mne_sample_data
 @pytest.mark.slow
 def test_sample_source(samples_experiment):
     set_log_level('warning', 'mne')
@@ -1161,6 +1189,7 @@ def test_head_pos_without_chpi(samples_experiment):
     # the sample data has no cHPI, so the derivative falls back to the static dev_head_t
     head_pos = e.load_head_position()
     assert head_pos.shape == (1, 10)
+    assert 'raw-head-position [derivative]' in e.load_head_position(show_dependencies=True).text(1000)
     pos_request = e._derivatives.resolve('raw-head-position', state=e.state)
     assert pos_request.artifact_path.suffix == '.pos'
     assert pos_request.artifact_path.exists()
@@ -2065,6 +2094,73 @@ def test_recording_epochs_cache_uses_fif(samples_experiment):
 
 
 @requires_mne_sample_data
+def test_recording_epochs_factor_valued_trigger(samples_experiment):
+    "RecordingEpochsDerivative builds correct epochs when 'value' is a Factor"
+    set_log_level('warning', 'mne')
+    from eelbrain._experiment.tests.sample_experiment import SampleExperiment
+    from eelbrain._data_obj import Factor
+
+    root = samples_experiment(1, 1)
+
+    class BaseExperiment(SampleExperiment):
+        epochs = {
+            **SampleExperiment.epochs,
+            'varlen': PrimaryEpoch(
+                'sample', "event == 'target'",
+                tmin=-0.1, tmax='0.2 + 0.1*(index % 2)',
+            ),
+        }
+
+    class FactorValueExperiment(BaseExperiment):
+        def label_events(self, ds):
+            ds = super().label_events(ds)
+            # a user's label_events (or a `variables` entry) can legally
+            # overwrite 'value' with string labels instead of numbers
+            ds['value'] = Factor(
+                ds['value'],
+                labels={int(v): str(int(v)) for v in set(ds['value'].x)},
+            )
+            return ds
+
+    e_factor = FactorValueExperiment(root)
+    e_baseline = BaseExperiment(root)
+
+    # fixed-length epochs (RecordingEpochsDerivative's non-variable_tmax branch)
+    e_factor.set(subject='R0000', epoch='target', raw='raw', epoch_rejection='')
+    e_baseline.set(subject='R0000', epoch='target', raw='raw', epoch_rejection='')
+    ds_factor = e_factor.load_epochs()
+    ds_baseline = e_baseline.load_epochs()
+    assert ds_factor.n_cases == ds_baseline.n_cases
+    assert_array_equal(ds_factor['mag'].x, ds_baseline['mag'].x)
+
+    epochs_factor = e_factor._resolve_derivative('recording-epochs').load()
+    events = epochs_factor.events
+    assert events.dtype == np.int32
+    assert (events[:, 2] >= 0).all()
+    # event_id preserves the original Factor labels, for code that works
+    # with the raw mne.Epochs independently of the enclosing Dataset
+    assert set(epochs_factor.event_id) == set(ds_factor['value'])
+    for label, code in epochs_factor.event_id.items():
+        assert (events[ds_factor['value'] == label, 2] == code).all()
+
+    # variable-length epochs (the variable_tmax branch)
+    e_factor.set(epoch='varlen')
+    e_baseline.set(epoch='varlen')
+    ds_factor = e_factor.load_epochs()
+    ds_baseline = e_baseline.load_epochs()
+    assert ds_factor.n_cases == ds_baseline.n_cases
+    assert isinstance(ds_factor['mag'], Datalist)
+    for y_factor, y_baseline in zip(ds_factor['mag'], ds_baseline['mag']):
+        assert_array_equal(y_factor.x, y_baseline.x)
+
+    events_list = e_factor._resolve_derivative('recording-epochs').load()
+    assert all(epochs.events.dtype == np.int32 for epochs in events_list)
+    # each single-trial mne.Epochs keeps only the entry for its own label
+    for epochs, label in zip(events_list, ds_factor['value']):
+        assert epochs.event_id == {label: epochs.events[0, 2]}
+
+
+@requires_mne_sample_data
 def test_epochs_with_cached_recording_use_current_selected_events(samples_experiment):
     set_log_level('warning', 'mne')
     from eelbrain._experiment.tests.sample_experiment_sessions import SampleExperiment
@@ -2485,6 +2581,60 @@ def test_load_trf(samples_trf_experiment):
         e.load_trf('imp > 0', 0, 0.1)
     with pytest.raises(TypeError, match='not a comparison'):
         e.load_trfs('R0000', 'imp > 0', 0, 0.1)
+
+
+@requires_mne_sample_data
+def test_trf_ncrf_dependencies(samples_trf_experiment):
+    "NCRF reads sensor-space epochs, whose output depends on the EEG 'reference' state; like source localization, it pins reference=''"
+    from eelbrain._experiment.tests.sample_experiment import SampleTRF
+
+    class Experiment(SampleTRF):
+        estimators = {**SampleTRF.estimators, 'ncrf': NCRF()}
+
+    e = Experiment(samples_trf_experiment().root)
+    e.set(subject='R0000', epoch='target', epoch_rejection='', raw='1-40', inv='')
+    options = e._trf_options('env', 0., 0.1, 'ncrf', None, None, False)
+    ctx = e._resolve_derivative('trf', options=options)
+    # every edge satisfies key coverage (used to raise RuntimeError for the 'epochs' edge)
+    deps = {dep.label or dep.name: dep for dep, _ in ctx._dependency_handles()}
+    assert {'fwd', 'cov'} <= set(deps)
+    assert deps['response'].name == 'epochs'
+    assert deps['response'].state == {'reference': ''}
+    assert 'annot' in deps  # the parc state masks the source space
+    assert 'reference' not in ctx.node._get_key_fields(ctx)
+    assert 'parc' in ctx.node._get_key_fields(ctx)
+    # boosting on sensor data is keyed on the reference
+    boosting_ctx = e._resolve_derivative('trf', options=e._trf_options('env', 0., 0.1, 'boosting', None, None, False))
+    assert 'reference' in boosting_ctx.node._get_key_fields(boosting_ctx)
+    # the dataset nodes key the estimator's extra input fields (dependency_tree validates every edge)
+    e._derivatives.dependency_tree('trf-group-dataset', state={**e.state, 'group': 'all'}, options=options)
+    # NCRF results are in source space: morphed to the common brain, and smoothing is available
+    group_ctx = e._derivatives.resolve('trf-group-dataset', state={**e.state, 'group': 'all'}, options={**options, 'smooth': 0.005})
+    assert 'common_brain' in group_ctx.node._get_key_fields(group_ctx)
+    assert 'reference' not in group_ctx.node._get_key_fields(group_ctx)
+    options = e._trf_options('env > 0', 0., 0.1, 'ncrf', None, None, False, comparison=True)
+    e._derivatives.dependency_tree('trf-model-test', state={**e.state, 'group': 'all'}, options={**options, 'metric': 'explained_variance'})
+
+
+@requires_mne_sample_data
+def test_trf_ncrf_job(samples_experiment):
+    "NCRF job: sensor data with the forward operator as fixed-orientation (sensor, source) NDVar"
+    set_log_level('warning', 'mne')
+    from eelbrain._experiment.tests.sample_experiment import SampleTRF
+
+    class Experiment(SampleTRF):
+        estimators = {**SampleTRF.estimators, 'ncrf': NCRF()}
+
+    root = samples_experiment(n_subjects=1, n_segments=4, mris=True)
+    e = Experiment(root)
+    e.set(epoch='target', epoch_rejection='', raw='1-40', src='ico-2', parc='ac', inv='')
+    job = e.load_trf_job('imp', 0, 0.1, estimator='ncrf')
+    assert job.fwd.has_dim('sensor')
+    assert job.fwd.has_dim('source')
+    assert job.fwd.source.subject == e.get('mrisubject')
+    assert job.fwd.source.parc.name == 'ac'
+    assert not job.fwd.source.parc.startswith('unknown').any()
+    assert set(job.y.sensor.names) >= set(job.fwd.sensor.names)
 
 
 @requires_mne_sample_data
