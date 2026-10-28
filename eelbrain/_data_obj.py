@@ -460,6 +460,23 @@ def isintvar(x: Any) -> bool:
     return isinstance(x, Var) and x.x.dtype.kind in 'iu'
 
 
+def nan_key(value: Any) -> Any:
+    "Map any NaN to the ``np.nan`` singleton, so that NaN works as a dictionary key"
+    if isinstance(value, (float, np.floating)) and value != value:
+        return np.nan
+    return value
+
+
+def normalize_nan_keys(labels: dict) -> dict:
+    "Map NaN keys to ``np.nan`` (see :func:`nan_key`); different NaN objects are distinct dictionary keys, so this can expose duplicates"
+    nan_keys = [key for key in labels if nan_key(key) is np.nan]
+    if len(nan_keys) > 1:
+        raise ValueError(f"{labels=}: duplicate key {np.nan!r}")
+    elif nan_keys and nan_keys[0] is not np.nan:
+        return {nan_key(key): value for key, value in labels.items()}
+    return labels
+
+
 def is_higher_order_effect(e1, e0):
     """Determine whether e1 is a higher order term of e0
 
@@ -1963,7 +1980,8 @@ class Var(Named):
         >>> Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
         Var([5, 5, 0, 0, 0, 0, 8])
         """
-        return cls([values.get(b, default) for b in base], name, info=info)
+        values = normalize_nan_keys(values)
+        return cls([values.get(nan_key(b), default) for b in base], name, info=info)
 
     @classmethod
     def from_apply(
@@ -2400,7 +2418,8 @@ class Factor(_Effect):
         Repeat ``x`` as a whole ``tile`` many times.
     labels
         An optional dictionary mapping values as they occur in ``x`` to the
-        Factor's cell labels.
+        Factor's cell labels. A NaN key matches all NaN values in ``x``
+        (e.g., missing values in a table read with :mod:`pandas`).
     default
         Label to assign values not in ``label`` (by default this is
         ``str(value)``).
@@ -2471,7 +2490,10 @@ class Factor(_Effect):
             return
 
         # find mapping and ordered values
-        labels = {} if labels is None else dict(labels)
+        if labels is None:
+            labels = {}
+        else:
+            labels = normalize_nan_keys(labels)
         if isinstance(x, Factor):
             # translate label keys to x codes
             labels = {x._codes[src]: dst for src, dst in labels.items() if src in x._codes}
@@ -2484,26 +2506,29 @@ class Factor(_Effect):
 
         if isinstance(x, np.ndarray) and x.dtype.kind in 'ifb':
             assert x.ndim == 1
-            unique = np.unique(x)
+            unique, x_index = np.unique(x, return_inverse=True)  # can contain NaN (e.g., pandas reads "n/a" as NaN)
+            unique_labels = []
+            # make labels complete
             for v in unique:
+                v = nan_key(v)
                 if v not in labels:
                     if default is None:
                         labels[v] = str(v)
                     else:
                         labels[v] = default
-            # find labels corresponding to unique values
-            u_labels = [labels[v] for v in unique]
+                unique_labels.append(labels[v])
             # merge identical labels
-            u_label_index = np.array([u_labels.index(label) for label in u_labels])
-            x_ = u_label_index[np.digitize(x, unique, True)]
+            u_label_index = np.array([unique_labels.index(label) for label in unique_labels])
+            x_ = u_label_index[x_index]
             # {label: code}
-            codes = dict(zip(u_labels, u_label_index))
+            codes = dict(zip(unique_labels, u_label_index))
         else:
             # convert x to codes
             highest_code = -1
             codes = {}  # {label -> code}
             x_ = np.empty(n_cases, dtype=np.uint32)
             for i, value in enumerate(x):
+                value = nan_key(value)
                 if value in labels:
                     label = labels[value]
                 elif default is not None:

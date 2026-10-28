@@ -2308,6 +2308,30 @@ def test_events_input(samples_experiment):
     with pytest.raises(ConfigurationError, match="reserved"):
         ReservedExperiment(root)
 
+    # A 'value' column with non-numeric entries is read as Factor; LabelVar keys match
+    # its labels whether they are written as int or as str (#254)
+    lines = path.read_text().splitlines()
+    i_value = lines[0].split('\t').index('value')
+    for i in range(5, len(lines), 5):
+        fields = lines[i].split('\t')
+        fields[i_value] = 'unknown'
+        lines[i] = '\t'.join(fields)
+    path.write_text('\n'.join(lines) + '\n')
+
+    class StringValueExperiment(SampleExperiment):
+        variables = {
+            **SampleExperiment.variables,
+            'side_str': LabelVar('value', {('1', '3'): 'left', ('2', '4'): 'right'}),
+        }
+
+    e = StringValueExperiment(root)
+    ds = e.load_events(subject='R0000')
+    assert isinstance(ds['value'], Factor)
+    assert 'unknown' in ds['value'].cells
+    assert set(ds['side'].cells) == {'left', 'right', ''}
+    assert list(ds['side_str']) == list(ds['side'])
+    assert set(ds['side'][ds['value'] == 'unknown'].cells) == {''}
+
 
 @requires_mne_sample_data
 def test_raw_cache_identity_ignores_view_options(samples_experiment):

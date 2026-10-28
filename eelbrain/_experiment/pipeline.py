@@ -362,7 +362,6 @@ class Pipeline(StateModel):
 
         # variables
         self._variables = Variables(self.variables)
-        self._variables._check_trigger_vars()
         self._variables._check_group_vars(self._groups, 'Pipeline.variables')
 
         # epochs

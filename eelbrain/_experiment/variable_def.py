@@ -53,10 +53,9 @@ from typing import Any
 from fnmatch import fnmatch as fnmatch_func
 from collections.abc import Collection, Sequence
 
-from .._data_obj import EVAL_CONTEXT_NAMES, Dataset, Factor, Var, asuv, assert_is_legal_dataset_key
+from .._data_obj import EVAL_CONTEXT_NAMES, Dataset, Factor, Var, asuv, assert_is_legal_dataset_key, nan_key
 from .._info import INTERPOLATE_CHANNELS, INTERPOLATE_WINDOWS
 from .._text import enumeration
-from .._utils.numpy_utils import INT_TYPES
 from .._utils.parse import find_variables
 from .configuration import Configuration, ConfigurationError
 from .pathing import BIDS_ENTITY_KEYS
@@ -154,7 +153,15 @@ class LabelVar(VarDef):
     codes
         Mapping values in ``source`` to values in the new variable. The type
         of the values determines whether the output is a :class:`Factor`
-        (:class:`str` values) or a :class:`Var` (numerical values).
+        (:class:`str` values) or a :class:`Var` (numerical values). Keys are
+        matched against ``source`` as it is in the data: converted to
+        :class:`str` where ``source`` is a :class:`Factor` (``1`` and ``1.``
+        both spell the label ``'1'``), and to numbers where it is a
+        :class:`Var` (``'1'`` matches the value ``1``). This covers a
+        ``value`` column that a BIDS ``*_events.tsv`` file provides as strings.
+        In a numeric ``source``, missing values (``n/a``) are NaN and can be
+        matched with a ``float('nan')`` or ``'nan'`` key. Keys that become
+        identical through this conversion (e.g., ``1`` and ``'1'``) are rejected.
     default
         Label for values not in ``codes``. By default, this is ``''`` for
         categorial and 0 for numerical output. Set to ``False`` to pass through
@@ -226,6 +233,28 @@ class LabelVar(VarDef):
                 for pattern, target in self.labels.items():
                     if fnmatch_func(value, pattern):
                         labels[value] = target
+        elif isinstance(source, Factor):
+            # Factor labels are strings; an integral float key spells the same label as the int
+            labels = {}
+            for key, target in self.labels.items():
+                if isinstance(key, float) and key.is_integer():
+                    key = int(key)
+                key = str(key)
+                if key in labels:
+                    raise ConfigurationError(f"{self}: several keys spell the {self.source!r} label {key!r}")
+                labels[key] = target
+        elif isinstance(source, Var):
+            labels = {}
+            for key, target in self.labels.items():
+                if isinstance(key, str):
+                    try:
+                        key = float(key)
+                    except ValueError:
+                        raise ConfigurationError(f"{self}: {self.source!r} is numeric, but the key {key!r} can not be interpreted as a number") from None
+                key = nan_key(key)
+                if key in labels:
+                    raise ConfigurationError(f"{self}: several keys spell the {self.source!r} value {key!r}")
+                labels[key] = target
         else:
             labels = self.labels
         if self.is_factor:
@@ -354,12 +383,6 @@ class Variables(Configuration):
                 out[name] = vdef
         return out
 
-    def _check_trigger_vars(self):
-        for key, var in self.vars.items():
-            if isinstance(var, LabelVar) and var.source == 'value':
-                if not all(isinstance(v, INT_TYPES) for v in var.labels):
-                    raise ConfigurationError(f"Variable {key!r}: {var} codes must be integers")
-
     def _check_group_vars(self, groups: Collection[str], desc: str) -> None:
         """Make sure every :class:`GroupVar` refers to defined groups
 
@@ -454,6 +477,9 @@ class Variables(Configuration):
                 continue  # skip as resolve runs on data that is not expected to provide every input
             try:
                 data[name] = vdef._apply(data, groups)
+            except ConfigurationError as error:
+                # already a definition error; only add the name of the variable
+                raise ConfigurationError(f"Variable {name!r}: {error}") from None
             except Exception as error:
                 # An input the data does not provide was resolved from the evaluation context instead, which is the likely cause
                 shadowed = [key for key in vdef._input_vars() if key not in data and key in EVAL_CONTEXT_NAMES]
