@@ -42,3 +42,23 @@ def test_preview_partitions():
     p = plot.preview_partitions('uts', data=ds, partitions=4)
     assert p.figure.axes[0].get_xlabel() == 'Time [s]'
     p.close()
+    # chronological without time information: one sample per partition
+    p = plot.preview_partitions(partitions=4, test=0, split='chronological')
+    assert p.figure.axes[0].get_xlabel() == 'Segment'
+    assert_array_equal(p.splits.split_segments, [[0, 1], [1, 2], [2, 3], [3, 4]])
+    p.close()
+    # chronological: equal partitions of continuous data; unused data is grayed out
+    p = plot.preview_partitions(ds['uts'][0], partitions=4, test=0, split='chronological')
+    assert_array_equal(p.splits.split_segments[:, 1], [25, 50, 75, 100])
+    assert sum(abs(patch.get_facecolor()[0] - 0.85) < 1e-6 for patch in p.figure.axes[0].patches) == 2
+    p.close()
+    # NCRF: windows at the end of every trial; unused data is grayed out
+    p = plot.preview_partitions(ds['uts'][0], partitions=3, test=0, split='ncrf')
+    assert_array_equal(p.splits.split_segments[:, 1], [85, 90, 95, 100])
+    ax = p.figure.axes[0]
+    assert sum(abs(patch.get_facecolor()[0] - 0.85) < 1e-6 for patch in ax.patches) == 2  # the last split uses all data
+    p.close()
+    p = plot.preview_partitions(2, partitions=3, test=0, split='ncrf')
+    assert p.figure.axes[0].get_xlabel() == 'Sample'
+    assert len(p.splits.split_segments) == 8
+    p.close()

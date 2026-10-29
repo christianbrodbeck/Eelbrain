@@ -371,6 +371,77 @@ def test_trf_module():
     assert isinstance(trf.n_workers(), int)
 
 
+def test_split_data_chronological():
+    "split='chronological': equal partitions of continuous data, trained on the partitions before the validation partition"
+    segments = np.array([[0, 150]])
+    splits = split_data(segments, 3, validate=1, test=0, split='chronological')
+    assert splits.split == 'chronological'
+    assert splits.n_partitions == 3
+    assert len(splits.splits) == 2
+    assert_array_equal(splits.split_segments, [[0, 50], [50, 100], [100, 150]])
+    assert_array_equal(splits.splits[0].reserved, [[50, 100]])
+    assert_array_equal(splits.splits[0].train, [[0, 50]])
+    assert_array_equal(splits.splits[1].reserved, [[100, 150]])
+    assert_array_equal(splits.splits[1].train, [[0, 100]])
+    assert not any(split.is_test for split in splits.splits)
+    assert "split='chronological'" in repr(splits)
+    assert splits == pickle.loads(pickle.dumps(splits))
+    # default: 5 partitions
+    splits = split_data(np.array([[0, 100]]), test=0, split='chronological')
+    assert len(splits.splits) == 4
+    assert_array_equal(splits.split_segments, [[0, 20], [20, 40], [40, 60], [60, 80], [80, 100]])
+    with pytest.raises(NotImplementedError, match="only implemented for continuous data"):
+        split_data(np.array([[0, 100], [100, 160]]), 3, validate=1, test=0, split='chronological')
+    with pytest.raises(NotImplementedError, match="only implements validation splits"):
+        split_data(segments, 3, split='chronological')
+    with pytest.raises(NotImplementedError, match="only implements validation splits"):
+        split_data(segments, 3, validate=0, test=0, split='chronological')
+    with pytest.raises(ValueError, match="need at least 2 partitions"):
+        split_data(segments, 1, validate=1, test=0, split='chronological')
+
+
+def test_split_data_ncrf():
+    "split='ncrf': windows at the end of every segment, trained on the data before them"
+    # windows of ceil(0.05 / 1.05 * 160) = 8 samples
+    segments = np.array([[0, 160]])
+    splits = split_data(segments, 2, validate=1, test=0, split='ncrf')
+    assert splits.split == 'ncrf'
+    assert splits.partitions_arg == 2
+    assert splits.n_partitions == 3
+    assert len(splits.splits) == 2
+    assert_array_equal(splits.split_segments, [[0, 144], [144, 152], [152, 160]])
+    assert_array_equal(splits.splits[0].reserved, [[144, 152]])
+    assert_array_equal(splits.splits[0].train, [[0, 144]])
+    assert_array_equal(splits.splits[1].reserved, [[152, 160]])
+    assert_array_equal(splits.splits[1].train, [[0, 152]])
+    assert not any(split.is_test for split in splits.splits)
+    assert "split='ncrf'" in repr(splits)
+    assert splits == pickle.loads(pickle.dumps(splits))
+    # the same windows in every segment
+    segments = np.array([[0, 160], [160, 320]])
+    splits = split_data(segments, 2, validate=1, test=0, split='ncrf')
+    assert_array_equal(splits.split_segments, [[0, 144], [144, 152], [152, 160], [160, 304], [304, 312], [312, 320]])
+    assert_array_equal(splits.splits[0].reserved, [[144, 152], [304, 312]])
+    assert_array_equal(splits.splits[0].train, [[0, 144], [160, 304]])
+    assert_array_equal(splits.splits[1].reserved, [[152, 160], [312, 320]])
+    assert_array_equal(splits.splits[1].train, [[0, 152], [160, 312]])
+    # default: 3 windows; a single window is allowed
+    splits = split_data(np.array([[0, 100]]), test=0, split='ncrf')
+    assert len(splits.splits) == 3
+    assert_array_equal(splits.split_segments, [[0, 85], [85, 90], [90, 95], [95, 100]])
+    assert len(split_data(np.array([[0, 100]]), 1, test=0, split='ncrf').splits) == 1
+    with pytest.raises(NotImplementedError, match="segments of equal length"):
+        split_data(np.array([[0, 100], [100, 160]]), 2, validate=1, test=0, split='ncrf')
+    with pytest.raises(NotImplementedError, match="only implements validation splits"):
+        split_data(segments, 2, split='ncrf')
+    with pytest.raises(NotImplementedError, match="only implements validation splits"):
+        split_data(segments, 2, validate=0, test=0, split='ncrf')
+    with pytest.raises(ValueError, match="too short for 10 windows"):
+        split_data(np.array([[0, 10]]), 10, validate=1, test=0, split='ncrf')
+    with pytest.raises(ValueError, match="need at least one window"):
+        split_data(segments, 0, validate=1, test=0, split='ncrf')
+
+
 def test_split_data_time():
     "split='time': equal sample counts, cut at segment boundaries"
     segments = np.array([[0, 100], [100, 200]])
