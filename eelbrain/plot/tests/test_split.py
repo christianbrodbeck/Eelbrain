@@ -44,7 +44,10 @@ def test_preview_partitions():
     p.close()
     # chronological without time information: one sample per partition
     p = plot.preview_partitions(partitions=4, test=0, split='chronological')
-    assert p.figure.axes[0].get_xlabel() == 'Segment'
+    ax = p.figure.axes[0]
+    assert ax.get_xlabel() == 'Partition'
+    assert_array_equal(ax.get_xticks(), [0.5, 1.5, 2.5, 3.5])
+    assert [label.get_text() for label in ax.get_xticklabels()] == ['0', '1', '2', '3']
     assert_array_equal(p.splits.split_segments, [[0, 1], [1, 2], [2, 3], [3, 4]])
     p.close()
     # chronological: equal partitions of continuous data; unused data is grayed out
