@@ -61,11 +61,17 @@ else:  # Some flavor of Linux
 if IS_AMD64 and not IS_WINDOWS:
     open_mp_args["extra_compile_args"].append("-mavx")
     base_args["extra_compile_args"].append("-mavx")
+# Boosting: let the compiler reorder floating point sums so that the error loops vectorize (~3.5x faster) and fuse multiply-add across statements (L2).
+# Not -ffast-math, which implies -ffinite-math-only and would break the inf sentinels in the kernel.
+if IS_WINDOWS:
+    boosting_args = open_mp_args
+else:
+    boosting_args = {**open_mp_args, 'extra_compile_args': open_mp_args['extra_compile_args'] + ['-fno-math-errno', '-fassociative-math', '-fno-signed-zeros', '-fno-trapping-math', '-ffp-contract=fast']}
 ext = '.pyx' if cythonize else '.c'
 ext_cpp = '.pyx' if cythonize else '.cpp'
 extensions = [
     Extension('eelbrain._data_opt', [f'eelbrain/_data_opt{ext}'], **base_args),
-    Extension('eelbrain._trf._boosting_opt', [f'eelbrain/_trf/_boosting_opt{ext}'], **open_mp_args),
+    Extension('eelbrain._trf._boosting_opt', [f'eelbrain/_trf/_boosting_opt{ext}'], **boosting_args),
     Extension('eelbrain._ndvar._convolve', [f'eelbrain/_ndvar/_convolve{ext}'], **open_mp_args),
     Extension('eelbrain._ndvar._gammatone', [f'eelbrain/_ndvar/_gammatone{ext}'], **base_args),
     Extension('eelbrain._stats.adjacency_opt', [f'eelbrain/_stats/adjacency_opt{ext}'], **base_args),
