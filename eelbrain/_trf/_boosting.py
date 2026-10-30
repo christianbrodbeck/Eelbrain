@@ -43,6 +43,9 @@ from ._fit_metrics import get_evaluators
 from . import _boosting_opt as opt
 
 
+BOOSTING_VERSION: int = 5
+
+
 def to_array(ndvar: NDVar | tuple[NDVar, ...] | float) -> np.ndarray:
     if isinstance(ndvar, NDVar):
         return ndvar.x.ravel()
@@ -1030,7 +1033,7 @@ class Boosting:
                     h_i, self._get_h_failed(partition), 0,
                     self.data.basis, self.data.basis_window, None,
                     int(np.sum(eval_segments[:, 1] - eval_segments[:, 0])), self.data.y_info, self.data.ydims,
-                    algorithm_version=4, execution_context=execution_context,
+                    algorithm_version=BOOSTING_VERSION, execution_context=execution_context,
                     i_test=split.i_test, i_validate=None if cross_fit else split.i_validate, **evaluations_i)
                 partition_results_list.append(result)
         else:
@@ -1047,7 +1050,7 @@ class Boosting:
             # advanced data properties
             n_samples, self.data.y_info, self.data.ydims,
             partition_results=partition_results_list,
-            algorithm_version=4, execution_context=execution_context,
+            algorithm_version=BOOSTING_VERSION, execution_context=execution_context,
             i_test=i_test, **evaluations)
 
 
