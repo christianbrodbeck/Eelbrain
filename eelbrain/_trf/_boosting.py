@@ -848,11 +848,12 @@ class Boosting:
 
     def _get_h(self, split_results: list[SplitResult]) -> np.ndarray:
         "Average kernel over the given splits, skipping failed kernels (channels that failed in all splits are 0)"
-        weights = np.zeros(self.hs.shape[:2])  # (n_splits, n_y)
-        for split in split_results:
-            weights[split.i_split] = ~split.h_failed
-        weights /= np.maximum(weights.sum(0), 1)
-        return np.einsum('sy,syxt->yxt', weights, self.hs)
+        weights = ~np.array([split.h_failed for split in split_results])  # (n_splits, n_y)
+        weights = weights / np.maximum(weights.sum(0), 1)
+        h = np.zeros(self.hs.shape[1:])  # (n_y, n_x, n_times_h)
+        for split, split_weights in zip(split_results, weights):
+            h += split_weights[:, newaxis, newaxis] * self.hs[split.i_split]
+        return h
 
     def _get_h_failed(self, split_results: list[SplitResult]) -> np.ndarray:
         out = np.all([split.h_failed for split in split_results], 0)
