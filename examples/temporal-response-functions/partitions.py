@@ -113,5 +113,5 @@ p = plot.preview_partitions(20, partitions=5)
 # The `NCRF <https://proloyd.github.io/neuro-currentRF>`_ package selects its regularization parameter with a chronological scheme, applied to every trial:
 # The last ``partitions`` short windows of every trial (each about 5% of the trial) are held out one at a time, so that ``partitions`` corresponds to the number of splits (NCRF's ``n_splits``), and each split trains only on the data before its validation window.
 
-p = plot.preview_partitions([300], partitions=3, test=0, split='ncrf', legend='upper center')
-p = plot.preview_partitions([300, 300], partitions=3, test=0, split='ncrf', legend=False)
+p = plot.preview_partitions(1, partitions=3, test=0, split='ncrf', legend='upper center')
+p = plot.preview_partitions(2, partitions=3, test=0, split='ncrf', legend=False)
