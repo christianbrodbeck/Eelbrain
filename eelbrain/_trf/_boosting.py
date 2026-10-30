@@ -17,7 +17,7 @@ x2 = ds['x2']
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
-from functools import cached_property, reduce
+from functools import cache, cached_property, reduce
 import inspect
 from itertools import chain, repeat
 from math import ceil
@@ -41,6 +41,9 @@ from .._utils import PickleableDataClass, user_activity
 from .shared import PredictorData, DeconvolutionData, Split, Splits, merge_segments
 from ._fit_metrics import get_evaluators
 from . import _boosting_opt as opt
+
+
+BOOSTING_VERSION: int = 5
 
 
 def to_array(ndvar: NDVar | tuple[NDVar, ...] | float) -> np.ndarray:
@@ -191,6 +194,7 @@ class BoostingResult(PickleableDataClass):
           - 1: Numba implementation
           - 2: Cython multiprocessing implementation (Eelbrain 0.38)
           - 3: Cython based convolution (Eelbrain 0.40)
+          - 4: Delta-halving steps compare against the current training error; kernel time axis on the sample grid (Eelbrain 0.43)
 
     execution_context
         Information on the context in which the model was estimated.
@@ -697,12 +701,26 @@ class BoostingResult(PickleableDataClass):
         return cls(**out)
 
 
-class SplitResult:
-    __slots__ = ('split', 'h', 'h_failed')
+@cache
+def _execution_context() -> dict[str, str | tuple[str, ...]]:
+    from .. import __version__
 
-    def __init__(self, split: Split, h: np.ndarray, h_failed: np.ndarray):
+    return {
+        'machine': platform.machine(),
+        'architecture': platform.architecture(),
+        'processor': platform.processor(),
+        'platform': sys.platform,
+        'platform_version': platform.version(),
+        'eelbrain_version': __version__,
+    }
+
+
+class SplitResult:
+    __slots__ = ('i_split', 'split', 'h_failed')
+
+    def __init__(self, i_split: int, split: Split, h_failed: np.ndarray):
+        self.i_split = i_split  # index into Boosting.hs
         self.split = split
-        self.h = h  # (n_y, n_x, n_times_h)
         self.h_failed = h_failed  # (n_y,)
 
 
@@ -735,6 +753,7 @@ class Boosting:
     t_fit_done = None
     # fit result
     _i_start = None
+    hs = None  # (n_splits, n_y, n_x, n_times_h)
     split_results = None
     # eval result
     y_pred = None
@@ -755,50 +774,64 @@ class Boosting:
             mindelta: float = None,  # narrow search by reducing delta until reaching mindelta
     ):
         self.data._check_data()
-        assert error in ('l1', 'l2')
+        if error not in ('l1', 'l2'):
+            raise ValueError(f"{error=}")
         error_id = int(error[1])
-        mindelta_ = delta if mindelta is None else mindelta
+        if delta <= 0:
+            raise ValueError(f"{delta=}: needs to be positive")
+        if mindelta is None:
+            mindelta_ = delta
+        elif not 0 < mindelta <= delta:
+            raise ValueError(f"{mindelta=}: needs to be positive and not larger than {delta=}")
+        else:
+            mindelta_ = mindelta
         self.selective_stopping = selective_stopping
         self.error = error
         self.delta = delta
         self.mindelta = mindelta
         n_x = len(self.data.x)
         # find TRF start/stop for each x
-        if isinstance(tstart, (tuple, list, np.ndarray)):
-            if len(tstart) != len(self.data.x_name):
-                raise ValueError(f'{tstart=}: {len(tstart)=} is different from len(x)={len(self.data.x_name)}')
-            elif len(tstart) != len(tstop):
+        tstart_is_sequence = isinstance(tstart, (tuple, list, np.ndarray))
+        if tstart_is_sequence != isinstance(tstop, (tuple, list, np.ndarray)):
+            raise TypeError(f"{tstart=}, {tstop=}: need to be both scalar or both sequences")
+        elif tstart_is_sequence:
+            n_predictors = len(self.data._x_meta)
+            if len(tstart) != n_predictors:
+                raise ValueError(f'{tstart=}: {len(tstart)=} is different from the number of predictors ({n_predictors})')
+            elif len(tstop) != len(tstart):
                 raise ValueError(f'{tstop=}: {len(tstop)=} does not match {len(tstart)=}')
-            self.tstart = tuple(tstart)
-            self.tstart_h = min(self.tstart)
-            self.tstop = tuple(tstop)
-            if any(start >= stop for start, stop in zip(self.tstart, self.tstop)):
+            elif any(start >= stop for start, stop in zip(tstart, tstop)):
                 raise ValueError(f"Some tstart > tstop: {tstart=} and {tstop=}")
+            if self.data._multiple_x:
+                self.tstart = tuple(tstart)
+                self.tstop = tuple(tstop)
+            else:
+                self.tstart, self.tstop = tstart[0], tstop[0]
             n_xs = [reduce(mul, map(len, xdims), 1) for _, xdims, _ in self.data._x_meta]
             tstart_by_x = [t for t, n in zip(tstart, n_xs) for _ in range(n)]
             tstop_by_x = [t for t, n in zip(tstop, n_xs) for _ in range(n)]
         else:
             if tstart >= tstop:
                 raise ValueError(f"{tstart=} > {tstop=}")
-            self.tstart = self.tstart_h = tstart
+            self.tstart = tstart
             self.tstop = tstop
             tstart_by_x = [tstart] * n_x
             tstop_by_x = [tstop] * n_x
 
-        # TRF extent in indices
+        # TRF extent in indices (round before ceil to avoid floating point artifacts, e.g., 0.07 / 0.01 = 7.000000000000001)
         tstep = self.data.time.tstep
         i_start_by_x = np.asarray([int(round(t / tstep)) for t in tstart_by_x], np.int64)
-        i_stop_by_x = np.asarray([int(ceil(t / tstep)) for t in tstop_by_x], np.int64)
+        i_stop_by_x = np.asarray([ceil(round(t / tstep, 6)) for t in tstop_by_x], np.int64)
         self._i_start = i_start = np.min(i_start_by_x)
+        self.tstart_h = i_start * tstep
         i_stop = np.max(i_stop_by_x)
-        h_n_times = i_stop - i_start
-        # Data segments need to be at least as long as the TRF
-        h_n_times_max = np.max(h_n_times)
-        if h_n_times_max > self.data.shortest_segment_n_times:
-            raise ValueError(f"{tstart=}, {tstop=}: the kernel is longer than shortest data segment")
+        # The boosting kernel shifts x by each lag within each segment, so no lag can exceed the segment length (i_stop is exclusive)
+        max_lag_n_times = max(i_stop - 1, -i_start)
+        if max_lag_n_times > self.data.shortest_segment_n_times:
+            raise ValueError(f"{tstart=}, {tstop=}: the kernel extends beyond the shortest data segment ({self.data.shortest_segment_n_times} samples)")
         shortest_cv_segment_n_times = np.min(np.diff(self.data.splits.split_segments, axis=1))
-        if h_n_times_max > shortest_cv_segment_n_times:
-            raise ValueError(f"{tstart=}, {tstop=}: the kernel is longer than shortest cross-validation data segment")
+        if max_lag_n_times > shortest_cv_segment_n_times:
+            raise ValueError(f"{tstart=}, {tstop=}: the kernel extends beyond the shortest cross-validation data segment ({shortest_cv_segment_n_times} samples)")
 
         self.t_fit_start = time.time()
 
@@ -807,8 +840,8 @@ class Boosting:
         split_train = package_splits([split.train for split in self.data.splits.splits])
         split_validate = package_splits([split.validate for split in self.data.splits.splits])
         split_train_and_validate = package_splits([split.train_and_validate for split in self.data.splits.splits])
-        hs, hs_failed = opt.boosting_runs(self.data.y, self.data.x, self.data.x_pads, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta_, error_id, selective_stopping, num_threads)
-        self.split_results = [SplitResult(split, h, h_failed) for split, h, h_failed in zip(self.data.splits.splits, hs, hs_failed)]
+        self.hs, hs_failed = opt.boosting_runs(self.data.y, self.data.x, self.data.x_pads, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta_, error_id, selective_stopping, num_threads)
+        self.split_results = [SplitResult(i, split, h_failed) for i, (split, h_failed) in enumerate(zip(self.data.splits.splits, hs_failed))]
 
         self.t_fit_done = time.time()
 
@@ -816,13 +849,13 @@ class Boosting:
         assert self.data.splits.n_test
         return sorted({split.split.i_test for split in self.split_results})
 
-    @staticmethod
-    def _get_h(split_results: list[SplitResult]) -> np.ndarray:
-        "Average kernel, skipping failed kernels (channels that failed in all splits are 0)"
-        hs = np.array([split.h for split in split_results])  # (n_splits, n_y, n_x, n_times_h)
-        ok = ~np.array([split.h_failed for split in split_results])  # (n_splits, n_y)
-        h = np.einsum('sy,syxt->yxt', ok.astype(hs.dtype), hs)
-        h /= np.maximum(ok.sum(0), 1)[:, newaxis, newaxis]
+    def _get_h(self, split_results: list[SplitResult]) -> np.ndarray:
+        "Average kernel over the given splits, skipping failed kernels (channels that failed in all splits are 0)"
+        weights = ~np.array([split.h_failed for split in split_results])  # (n_splits, n_y)
+        weights = weights / np.maximum(weights.sum(0), 1)
+        h = np.zeros(self.hs.shape[1:])  # (n_y, n_x, n_times_h)
+        for split, split_weights in zip(split_results, weights):
+            h += split_weights[:, newaxis, newaxis] * self.hs[split.i_split]
         return h
 
     def _get_h_failed(self, split_results: list[SplitResult]) -> np.ndarray:
@@ -910,8 +943,6 @@ class Boosting:
         debug
             Add additional attributes to the returned result.
         """
-        from .. import __version__ as eelbrain_version
-
         if cross_fit is None:
             cross_fit = bool(self.data.splits.n_test)
         elif cross_fit and not self.data.splits.n_test:
@@ -975,7 +1006,7 @@ class Boosting:
 
         # package h
         if cross_fit:
-            h_x = hs[0] if len(hs) == 1 else np.mean(hs, 0)
+            h_x = hs[0] if len(hs) == 1 else sum(hs) / len(hs)
         else:
             h_x = self._get_h(self.split_results)
             if debug:
@@ -988,14 +1019,7 @@ class Boosting:
             evaluations['y_pred'] = self.data.package_y_like(self.y_pred, 'y-pred')
             evaluations['fit'] = self
         t_run = self.t_fit_done - self.t_fit_start
-        execution_context = {
-            'machine': platform.machine(),
-            'architecture': platform.architecture(),
-            'processor': platform.processor(),
-            'platform': sys.platform,
-            'platform_version': platform.version(),
-            'eelbrain_version': eelbrain_version,
-        }
+        execution_context = _execution_context()
         # partition-specific results
         if partition_results:
             partition_results_list = []
@@ -1009,7 +1033,7 @@ class Boosting:
                     h_i, self._get_h_failed(partition), 0,
                     self.data.basis, self.data.basis_window, None,
                     int(np.sum(eval_segments[:, 1] - eval_segments[:, 0])), self.data.y_info, self.data.ydims,
-                    algorithm_version=3, execution_context=execution_context,
+                    algorithm_version=BOOSTING_VERSION, execution_context=execution_context,
                     i_test=split.i_test, i_validate=None if cross_fit else split.i_validate, **evaluations_i)
                 partition_results_list.append(result)
         else:
@@ -1026,7 +1050,7 @@ class Boosting:
             # advanced data properties
             n_samples, self.data.y_info, self.data.ydims,
             partition_results=partition_results_list,
-            algorithm_version=3, execution_context=execution_context,
+            algorithm_version=BOOSTING_VERSION, execution_context=execution_context,
             i_test=i_test, **evaluations)
 
 

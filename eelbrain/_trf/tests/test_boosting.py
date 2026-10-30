@@ -434,3 +434,39 @@ def test_trf_len():
     # assert_array_equal(res.h[0], res2.h[0])
     # assert_array_equal(res.h[1], res2.h[1])
     # assert_array_equal(res.h[2], res2.h[2])
+
+    # lags must not exceed the segment length (the kernel shifts x within each segment)
+    uts = UTS(0, 0.01, 20)
+    x6 = NDVar(rng.normal(0, 1, (30, 20)), ('case', uts), name='x')
+    y6 = NDVar(rng.normal(0, 1, (30, 20)), ('case', uts), name='y')
+    boosting(y6, x6, 0.1, 0.2, partitions=3)
+    with pytest.raises(ValueError, match='extends beyond'):
+        boosting(y6, x6, 0.3, 0.4, partitions=3)
+    with pytest.raises(ValueError, match='extends beyond'):
+        boosting(y6, x6, -0.4, -0.3, partitions=3)
+    # kernel extent: tstop / tstep is subject to floating point artifacts (0.07 / 0.01 = 7.000000000000001)
+    res = boosting(y6, x6, 0, 0.07, partitions=3)
+    assert len(res.h.time) == 7
+    # kernel time axis reflects the sample grid
+    res = boosting(y6, x6, 0.004, 0.1, partitions=3)
+    assert res.h.time.tmin == 0
+    assert len(res.h.time) == 10
+
+
+def test_boosting_arguments():
+    "Argument validation"
+    ds = datasets._get_continuous()
+    for kwargs in [dict(error='l3'), dict(error='l3', scale_data=False), dict(delta=0), dict(mindelta=0), dict(mindelta=0.01)]:
+        with pytest.raises(ValueError):
+            boosting('y', 'x1', 0, 0.1, data=ds, partitions=3, **kwargs)
+    with pytest.raises(ValueError):
+        boosting('y', 'x1', [0, 0], [0.1, 0.1], data=ds, partitions=3)
+    with pytest.raises(TypeError):
+        boosting('y', 'x1', [0], 0.1, data=ds, partitions=3)
+    with pytest.raises(NotImplementedError):
+        boosting('y', 'x1', 0, 0.1, data=ds, partitions=3, validate=0)
+    # sequence tstart/tstop for a single predictor
+    res = boosting('y', 'x1', [0], [0.1], data=ds, partitions=3)
+    assert res.tstart == 0
+    assert res.tstop == 0.1
+    assert repr(res) == '<BoostingResult y ~ x1, 0 - 0.1, partitions=3>'

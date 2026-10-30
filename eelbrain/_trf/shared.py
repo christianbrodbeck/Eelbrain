@@ -118,12 +118,12 @@ def split_data(
     if partitions is not None and partitions <= validate + test:
         raise ValueError(f"{partitions=}: need at least {validate + test + 1} partitions with {validate=} and {test=}")
     partitions_arg = partitions
-    assert validate >= 0
-    if validate > 1:
-        raise NotImplementedError
-    assert test >= 0
-    if test > 1:
-        raise NotImplementedError
+    if validate != 1:
+        raise NotImplementedError(f"{validate=}: currently has to be 1")
+    if test < 0:
+        raise ValueError(f"{test=}")
+    elif test > 1:
+        raise NotImplementedError(f"{test=}: currently has to be 0 or 1")
     if len(segments) == 1:
         if partitions is None:
             partitions = 5
@@ -523,7 +523,7 @@ class DeconvolutionData:
             y_scale = (y_data_for_scale ** 2).mean(-1) ** 0.5
             x_scale = (self.x ** 2).mean(-1) ** 0.5
         else:
-            raise RuntimeError(f"{error=}")
+            raise ValueError(f"{error=}")
 
         if self.vector_shape:
             y_data_vector_shape /= y_scale[:, newaxis, newaxis]

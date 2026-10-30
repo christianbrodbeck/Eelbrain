@@ -189,7 +189,10 @@ def boosting_runs(
         free(x_active)
         free(y_error)
 
-    return hs.base, np.asarray(hs_failed, 'bool')
+    hs_failed_array = np.asarray(hs_failed)
+    if np.any(hs_failed_array == 2):
+        raise RuntimeError("Boosting: maximum number of iterations exceeded")
+    return hs.base, hs_failed_array.astype(bool)
 
 
 ctypedef struct BoostingStep:
@@ -203,7 +206,7 @@ ctypedef struct BoostingStep:
 
 
 ctypedef struct BoostingRunResult:
-    int failed
+    int failed  # 0: success; 1: validation error never improved (h is not meaningful); 2: iteration limit exceeded
     BoostingStep *history
 
 
@@ -222,7 +225,7 @@ cdef void free_history(
         BoostingStep *step_i
 
     step = result.history
-    while step.previous != NULL:
+    while step != NULL:
         step_i = step.previous
         free(step)
         step = step_i
@@ -320,10 +323,11 @@ cdef BoostingRunResult * boosting_run(
                     n_x_active -= 1
                     if n_x_active == 0:
                         break
-                    # revert changes
+                    # revert changes (skipping delta-halving steps, which did not change h)
                     for i in range(undo):
-                        h[step.i_stim, step.i_time] -= step.delta
-                        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split_train_and_validate, -step.delta, step.i_time + i_start)
+                        if step.delta:
+                            h[step.i_stim, step.i_time] -= step.delta
+                            update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split_train_and_validate, -step.delta, step.i_time + i_start)
                         step_j = step.previous
                         free(step)
                         step = step_j
@@ -342,16 +346,19 @@ cdef BoostingRunResult * boosting_run(
         step = <BoostingStep *> malloc(sizeof(BoostingStep))
         step.previous = history
         step.i_step = i_step
+        step.e_test = history.e_test  # valid until h is updated (i.e., for steps that are not applied)
         generate_options(step, y_error, x, x_pads, x_active, split_train, i_start, i_start_by_x, i_stop_by_x, error, delta, n_x)
         history = step
 
         # If no improvements can be found reduce delta
         if step.e_train > step.previous.e_train:
-            delta *= 0.5
+            # h is unchanged, so the step keeps the current training error (not the rejected candidate's)
+            step.e_train = step.previous.e_train
             step.delta = 0
+            step.i_stim = -1
+            step.i_time = -1
+            delta *= 0.5
             if delta >= mindelta:
-                step.i_stim = -1
-                step.i_time = -1
                 continue
             else:
                 # print("No improvement possible for training data")
@@ -367,8 +374,8 @@ cdef BoostingRunResult * boosting_run(
         h[step.i_stim, step.i_time] += step.delta
         update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split_train_and_validate, step.delta, step.i_time + i_start)
     else:
-        with gil:
-            raise RuntimeError("Boosting: maximum number of iterations exceeded")
+        # exceptions can not propagate from a noexcept nogil function; the caller raises
+        return boosting_run_result(2, history)
 
     # reverse changes after best iteration
     if best_step_i > -1:
@@ -402,6 +409,9 @@ cdef void generate_options(
         FLOAT64 * x_stim
 
     step.e_train = inf
+    step.i_stim = -1
+    step.i_time = -1
+    step.delta = 0
     for i_stim in range(n_x):
         if x_active[i_stim] == 0:
             continue
@@ -543,6 +553,9 @@ def boosting_fit(
     result = boosting_run(y, x, x_pads, h, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, i_start, n_times_h, x_active, y_error)
     free(x_active)
     free(y_error)
+    if result.failed == 2:
+        free_history(result)
+        raise RuntimeError("Boosting: maximum number of iterations exceeded")
 
     out = []
     step = result.history
