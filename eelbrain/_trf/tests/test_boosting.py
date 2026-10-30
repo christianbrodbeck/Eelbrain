@@ -434,3 +434,13 @@ def test_trf_len():
     # assert_array_equal(res.h[0], res2.h[0])
     # assert_array_equal(res.h[1], res2.h[1])
     # assert_array_equal(res.h[2], res2.h[2])
+
+    # lags must not exceed the segment length (the kernel shifts x within each segment)
+    uts = UTS(0, 0.01, 20)
+    x6 = NDVar(rng.normal(0, 1, (30, 20)), ('case', uts), name='x')
+    y6 = NDVar(rng.normal(0, 1, (30, 20)), ('case', uts), name='y')
+    boosting(y6, x6, 0.1, 0.2, partitions=3)
+    with pytest.raises(ValueError, match='extends beyond'):
+        boosting(y6, x6, 0.3, 0.4, partitions=3)
+    with pytest.raises(ValueError, match='extends beyond'):
+        boosting(y6, x6, -0.4, -0.3, partitions=3)

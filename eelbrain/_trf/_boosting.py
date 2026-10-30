@@ -791,14 +791,13 @@ class Boosting:
         i_stop_by_x = np.asarray([int(ceil(t / tstep)) for t in tstop_by_x], np.int64)
         self._i_start = i_start = np.min(i_start_by_x)
         i_stop = np.max(i_stop_by_x)
-        h_n_times = i_stop - i_start
-        # Data segments need to be at least as long as the TRF
-        h_n_times_max = np.max(h_n_times)
-        if h_n_times_max > self.data.shortest_segment_n_times:
-            raise ValueError(f"{tstart=}, {tstop=}: the kernel is longer than shortest data segment")
+        # The boosting kernel shifts x by each lag within each segment, so no lag can exceed the segment length
+        max_lag_n_times = max(i_stop, -i_start)
+        if max_lag_n_times > self.data.shortest_segment_n_times:
+            raise ValueError(f"{tstart=}, {tstop=}: the kernel extends beyond the shortest data segment ({self.data.shortest_segment_n_times} samples)")
         shortest_cv_segment_n_times = np.min(np.diff(self.data.splits.split_segments, axis=1))
-        if h_n_times_max > shortest_cv_segment_n_times:
-            raise ValueError(f"{tstart=}, {tstop=}: the kernel is longer than shortest cross-validation data segment")
+        if max_lag_n_times > shortest_cv_segment_n_times:
+            raise ValueError(f"{tstart=}, {tstop=}: the kernel extends beyond the shortest cross-validation data segment ({shortest_cv_segment_n_times} samples)")
 
         self.t_fit_start = time.time()
 
