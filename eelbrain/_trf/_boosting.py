@@ -770,7 +770,6 @@ class Boosting:
             elif len(tstart) != len(tstop):
                 raise ValueError(f'{tstop=}: {len(tstop)=} does not match {len(tstart)=}')
             self.tstart = tuple(tstart)
-            self.tstart_h = min(self.tstart)
             self.tstop = tuple(tstop)
             if any(start >= stop for start, stop in zip(self.tstart, self.tstop)):
                 raise ValueError(f"Some tstart > tstop: {tstart=} and {tstop=}")
@@ -780,16 +779,17 @@ class Boosting:
         else:
             if tstart >= tstop:
                 raise ValueError(f"{tstart=} > {tstop=}")
-            self.tstart = self.tstart_h = tstart
+            self.tstart = tstart
             self.tstop = tstop
             tstart_by_x = [tstart] * n_x
             tstop_by_x = [tstop] * n_x
 
-        # TRF extent in indices
+        # TRF extent in indices (round before ceil to avoid floating point artifacts, e.g., 0.07 / 0.01 = 7.000000000000001)
         tstep = self.data.time.tstep
         i_start_by_x = np.asarray([int(round(t / tstep)) for t in tstart_by_x], np.int64)
-        i_stop_by_x = np.asarray([int(ceil(t / tstep)) for t in tstop_by_x], np.int64)
+        i_stop_by_x = np.asarray([ceil(round(t / tstep, 6)) for t in tstop_by_x], np.int64)
         self._i_start = i_start = np.min(i_start_by_x)
+        self.tstart_h = i_start * tstep
         i_stop = np.max(i_stop_by_x)
         # The boosting kernel shifts x by each lag within each segment, so no lag can exceed the segment length
         max_lag_n_times = max(i_stop, -i_start)
