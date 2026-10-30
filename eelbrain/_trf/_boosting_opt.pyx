@@ -349,11 +349,13 @@ cdef BoostingRunResult * boosting_run(
 
         # If no improvements can be found reduce delta
         if step.e_train > step.previous.e_train:
-            delta *= 0.5
+            # h is unchanged, so the step keeps the current training error (not the rejected candidate's)
+            step.e_train = step.previous.e_train
             step.delta = 0
+            step.i_stim = -1
+            step.i_time = -1
+            delta *= 0.5
             if delta >= mindelta:
-                step.i_stim = -1
-                step.i_time = -1
                 continue
             else:
                 # print("No improvement possible for training data")
