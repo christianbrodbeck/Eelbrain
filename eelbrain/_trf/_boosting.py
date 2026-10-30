@@ -822,8 +822,8 @@ class Boosting:
         self._i_start = i_start = np.min(i_start_by_x)
         self.tstart_h = i_start * tstep
         i_stop = np.max(i_stop_by_x)
-        # The boosting kernel shifts x by each lag within each segment, so no lag can exceed the segment length
-        max_lag_n_times = max(i_stop, -i_start)
+        # The boosting kernel shifts x by each lag within each segment, so no lag can exceed the segment length (i_stop is exclusive)
+        max_lag_n_times = max(i_stop - 1, -i_start)
         if max_lag_n_times > self.data.shortest_segment_n_times:
             raise ValueError(f"{tstart=}, {tstop=}: the kernel extends beyond the shortest data segment ({self.data.shortest_segment_n_times} samples)")
         shortest_cv_segment_n_times = np.min(np.diff(self.data.splits.split_segments, axis=1))
