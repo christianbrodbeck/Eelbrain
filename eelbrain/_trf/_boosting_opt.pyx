@@ -222,7 +222,7 @@ cdef void free_history(
         BoostingStep *step_i
 
     step = result.history
-    while step.previous != NULL:
+    while step != NULL:
         step_i = step.previous
         free(step)
         step = step_i
