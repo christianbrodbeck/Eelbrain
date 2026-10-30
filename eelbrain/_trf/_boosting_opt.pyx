@@ -189,7 +189,10 @@ def boosting_runs(
         free(x_active)
         free(y_error)
 
-    return hs.base, np.asarray(hs_failed, 'bool')
+    hs_failed_array = np.asarray(hs_failed)
+    if np.any(hs_failed_array == 2):
+        raise RuntimeError("Boosting: maximum number of iterations exceeded")
+    return hs.base, hs_failed_array.astype(bool)
 
 
 ctypedef struct BoostingStep:
@@ -203,7 +206,7 @@ ctypedef struct BoostingStep:
 
 
 ctypedef struct BoostingRunResult:
-    int failed
+    int failed  # 0: success; 1: validation error never improved (h is not meaningful); 2: iteration limit exceeded
     BoostingStep *history
 
 
@@ -371,8 +374,8 @@ cdef BoostingRunResult * boosting_run(
         h[step.i_stim, step.i_time] += step.delta
         update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split_train_and_validate, step.delta, step.i_time + i_start)
     else:
-        with gil:
-            raise RuntimeError("Boosting: maximum number of iterations exceeded")
+        # exceptions can not propagate from a noexcept nogil function; the caller raises
+        return boosting_run_result(2, history)
 
     # reverse changes after best iteration
     if best_step_i > -1:
@@ -550,6 +553,9 @@ def boosting_fit(
     result = boosting_run(y, x, x_pads, h, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, i_start, n_times_h, x_active, y_error)
     free(x_active)
     free(y_error)
+    if result.failed == 2:
+        free_history(result)
+        raise RuntimeError("Boosting: maximum number of iterations exceeded")
 
     out = []
     step = result.history
