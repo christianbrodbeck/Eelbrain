@@ -451,3 +451,22 @@ def test_trf_len():
     res = boosting(y6, x6, 0.004, 0.1, partitions=3)
     assert res.h.time.tmin == 0
     assert len(res.h.time) == 10
+
+
+def test_boosting_arguments():
+    "Argument validation"
+    ds = datasets._get_continuous()
+    for kwargs in [dict(error='l3'), dict(error='l3', scale_data=False), dict(delta=0), dict(mindelta=0), dict(mindelta=0.01)]:
+        with pytest.raises(ValueError):
+            boosting('y', 'x1', 0, 0.1, data=ds, partitions=3, **kwargs)
+    with pytest.raises(ValueError):
+        boosting('y', 'x1', [0, 0], [0.1, 0.1], data=ds, partitions=3)
+    with pytest.raises(TypeError):
+        boosting('y', 'x1', [0], 0.1, data=ds, partitions=3)
+    with pytest.raises(NotImplementedError):
+        boosting('y', 'x1', 0, 0.1, data=ds, partitions=3, validate=0)
+    # sequence tstart/tstop for a single predictor
+    res = boosting('y', 'x1', [0], [0.1], data=ds, partitions=3)
+    assert res.tstart == 0
+    assert res.tstop == 0.1
+    assert repr(res) == '<BoostingResult y ~ x1, 0 - 0.1, partitions=3>'

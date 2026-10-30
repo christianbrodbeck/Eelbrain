@@ -755,24 +755,39 @@ class Boosting:
             mindelta: float = None,  # narrow search by reducing delta until reaching mindelta
     ):
         self.data._check_data()
-        assert error in ('l1', 'l2')
+        if error not in ('l1', 'l2'):
+            raise ValueError(f"{error=}")
         error_id = int(error[1])
-        mindelta_ = delta if mindelta is None else mindelta
+        if delta <= 0:
+            raise ValueError(f"{delta=}: needs to be positive")
+        if mindelta is None:
+            mindelta_ = delta
+        elif not 0 < mindelta <= delta:
+            raise ValueError(f"{mindelta=}: needs to be positive and not larger than {delta=}")
+        else:
+            mindelta_ = mindelta
         self.selective_stopping = selective_stopping
         self.error = error
         self.delta = delta
         self.mindelta = mindelta
         n_x = len(self.data.x)
         # find TRF start/stop for each x
-        if isinstance(tstart, (tuple, list, np.ndarray)):
-            if len(tstart) != len(self.data.x_name):
-                raise ValueError(f'{tstart=}: {len(tstart)=} is different from len(x)={len(self.data.x_name)}')
-            elif len(tstart) != len(tstop):
+        tstart_is_sequence = isinstance(tstart, (tuple, list, np.ndarray))
+        if tstart_is_sequence != isinstance(tstop, (tuple, list, np.ndarray)):
+            raise TypeError(f"{tstart=}, {tstop=}: need to be both scalar or both sequences")
+        elif tstart_is_sequence:
+            n_predictors = len(self.data._x_meta)
+            if len(tstart) != n_predictors:
+                raise ValueError(f'{tstart=}: {len(tstart)=} is different from the number of predictors ({n_predictors})')
+            elif len(tstop) != len(tstart):
                 raise ValueError(f'{tstop=}: {len(tstop)=} does not match {len(tstart)=}')
-            self.tstart = tuple(tstart)
-            self.tstop = tuple(tstop)
-            if any(start >= stop for start, stop in zip(self.tstart, self.tstop)):
+            elif any(start >= stop for start, stop in zip(tstart, tstop)):
                 raise ValueError(f"Some tstart > tstop: {tstart=} and {tstop=}")
+            if self.data._multiple_x:
+                self.tstart = tuple(tstart)
+                self.tstop = tuple(tstop)
+            else:
+                self.tstart, self.tstop = tstart[0], tstop[0]
             n_xs = [reduce(mul, map(len, xdims), 1) for _, xdims, _ in self.data._x_meta]
             tstart_by_x = [t for t, n in zip(tstart, n_xs) for _ in range(n)]
             tstop_by_x = [t for t, n in zip(tstop, n_xs) for _ in range(n)]
