@@ -191,6 +191,7 @@ class BoostingResult(PickleableDataClass):
           - 1: Numba implementation
           - 2: Cython multiprocessing implementation (Eelbrain 0.38)
           - 3: Cython based convolution (Eelbrain 0.40)
+          - 4: Delta-halving steps compare against the current training error; kernel time axis on the sample grid (Eelbrain 0.43)
 
     execution_context
         Information on the context in which the model was estimated.
@@ -1028,7 +1029,7 @@ class Boosting:
                     h_i, self._get_h_failed(partition), 0,
                     self.data.basis, self.data.basis_window, None,
                     int(np.sum(eval_segments[:, 1] - eval_segments[:, 0])), self.data.y_info, self.data.ydims,
-                    algorithm_version=3, execution_context=execution_context,
+                    algorithm_version=4, execution_context=execution_context,
                     i_test=split.i_test, i_validate=None if cross_fit else split.i_validate, **evaluations_i)
                 partition_results_list.append(result)
         else:
@@ -1045,7 +1046,7 @@ class Boosting:
             # advanced data properties
             n_samples, self.data.y_info, self.data.ydims,
             partition_results=partition_results_list,
-            algorithm_version=3, execution_context=execution_context,
+            algorithm_version=4, execution_context=execution_context,
             i_test=i_test, **evaluations)
 
 
