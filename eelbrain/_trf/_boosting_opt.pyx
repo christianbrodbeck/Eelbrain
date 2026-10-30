@@ -320,10 +320,11 @@ cdef BoostingRunResult * boosting_run(
                     n_x_active -= 1
                     if n_x_active == 0:
                         break
-                    # revert changes
+                    # revert changes (skipping delta-halving steps, which did not change h)
                     for i in range(undo):
-                        h[step.i_stim, step.i_time] -= step.delta
-                        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split_train_and_validate, -step.delta, step.i_time + i_start)
+                        if step.delta:
+                            h[step.i_stim, step.i_time] -= step.delta
+                            update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split_train_and_validate, -step.delta, step.i_time + i_start)
                         step_j = step.previous
                         free(step)
                         step = step_j
@@ -342,6 +343,7 @@ cdef BoostingRunResult * boosting_run(
         step = <BoostingStep *> malloc(sizeof(BoostingStep))
         step.previous = history
         step.i_step = i_step
+        step.e_test = history.e_test  # valid until h is updated (i.e., for steps that are not applied)
         generate_options(step, y_error, x, x_pads, x_active, split_train, i_start, i_start_by_x, i_stop_by_x, error, delta, n_x)
         history = step
 
@@ -402,6 +404,9 @@ cdef void generate_options(
         FLOAT64 * x_stim
 
     step.e_train = inf
+    step.i_stim = -1
+    step.i_time = -1
+    step.delta = 0
     for i_stim in range(n_x):
         if x_active[i_stim] == 0:
             continue
