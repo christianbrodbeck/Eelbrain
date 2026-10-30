@@ -14,8 +14,9 @@ DEFAULT_PIPELINE_FILES = ('pipeline.py', 'experiment.py')
 
 
 def _split_spec(spec: PathArg | str | None) -> tuple[Path, str | None]:
+    """Interpret ``spec`` as "path[:class_name]" """
     if spec is None:
-        path = Path.cwd()
+        path = Path()
         class_name = None
     elif isinstance(spec, Path):
         path = spec
@@ -31,7 +32,15 @@ def _split_spec(spec: PathArg | str | None) -> tuple[Path, str | None]:
             path = Path(spec)
             class_name = None
 
-    path = path.expanduser().absolute()
+    # in marimo, the working directory is the launch directory
+    path = path.expanduser()
+    if not path.is_absolute():
+        if 'marimo' in sys.modules:
+            base_path = sys.modules['marimo'].notebook_dir() or Path.cwd()
+        else:
+            base_path = Path.cwd()
+        path = base_path / path
+
     if path.is_dir():
         for filename in DEFAULT_PIPELINE_FILES:
             candidate = path / filename
@@ -40,10 +49,7 @@ def _split_spec(spec: PathArg | str | None) -> tuple[Path, str | None]:
         filenames = ' or '.join(repr(name) for name in DEFAULT_PIPELINE_FILES)
         raise FileNotFoundError(f"No pipeline file found in {path}. Expected {filenames}.")
     if path.suffix != '.py':
-        raise ValueError(
-            f"Invalid pipeline spec {spec!r}: expected a Python file, a directory, or "
-            f"'path/to/file.py:ClassName'."
-        )
+        raise ValueError(f"Invalid pipeline spec {spec!r}: expected a Python file, a directory, or 'path/to/file.py:ClassName'.")
     return path, class_name
 
 
@@ -103,6 +109,8 @@ def load_pipeline(
         ``spec`` can also be a directory, in which case ``pipeline.py`` is
         tried first and then ``experiment.py``.
         If ``spec`` is omitted, the current working directory is searched.
+        Relative paths are relative to the current working directory, except
+        in marimo notebooks, where they are relative to the notebook directory.
         When only a file path is provided, the file must define exactly one
         :class:`~pipeline.Pipeline` subclass.
     root
