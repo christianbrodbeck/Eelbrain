@@ -2068,6 +2068,27 @@ def test_gc_dead_node_dir():
     assert ctx.artifact_path.exists()
 
 
+def test_gc_uncached_node_dir():
+    "The cache directory of a node whose cache was turned off is dead, while its dependents stay valid"
+    registry, configured, downstream, root = make_gc_registry()
+    registry.resolve('downstream', state=DEFAULT_STATE).load()
+    configured_dir = registry.resolve('configured', state=DEFAULT_STATE).manifest_path.parent
+    assert configured_dir.is_relative_to(registry.cache_dir / 'configured')
+
+    configured.cache_policy = CachePolicy.NEVER
+    report = registry.scan_cache()
+    entry = _single_entry(report, GCCategory.DEAD_NODE_DIR)
+    assert entry.path == registry.cache_dir / 'configured'
+    assert entry.node == 'configured'
+    assert entry.reason == 'node is no longer cached'
+    assert len(report.entries) == 1
+    assert report.scanned_manifests == 1
+    report.collect()
+    assert not (registry.cache_dir / 'configured').exists()
+    assert registry.resolve('downstream', state=DEFAULT_STATE).is_valid()
+    assert registry.scan_cache().entries == []
+
+
 def test_gc_schema_mismatch():
     registry, configured, downstream, root = make_gc_registry()
     ctx = registry.resolve('configured', state=DEFAULT_STATE)
