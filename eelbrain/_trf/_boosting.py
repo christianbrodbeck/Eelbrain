@@ -715,7 +715,7 @@ class BoostingResult(PickleableDataClass):
 
 
 @dataclass(frozen=True)
-class ExecutionContext:
+class ExecutionContext(PickleableDataClass):
     """Context in which a model was estimated
 
     Stored as :attr:`BoostingResult.execution_context`. Estimators create it
@@ -763,9 +763,6 @@ class ExecutionContext:
     machine: str = None
     compile_flags: tuple[str, ...] = None
     n_workers: int = None
-
-    def __setstate__(self, state: dict):
-        self.__init__(**state)  # fields added later get their default
 
     @classmethod
     def collect(
