@@ -391,6 +391,13 @@ def test_execution_context():
     res_old = BoostingResult.__new__(BoostingResult)
     res_old.__setstate__(state)
     assert res_old.execution_context == (ExecutionContext(eelbrain_version='0.40.0'), ExecutionContext(eelbrain_version='0.41.0'))
+    # ... including None for parts without execution context
+    state['execution_context'] = [None, {'eelbrain_version': '0.40.0'}]
+    state['t_run'] = 3.0
+    state['version'] = 16
+    res_old = BoostingResult.__new__(BoostingResult)
+    res_old.__setstate__(state)
+    assert res_old.execution_context == ExecutionContext(eelbrain_version='0.40.0')
     # version 14 stored only the Eelbrain version
     state = res.__getstate__()
     state['version'] = 14

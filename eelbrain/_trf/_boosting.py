@@ -307,7 +307,7 @@ class BoostingResult(PickleableDataClass):
                 # n_samples reflects all data, which is wrong for a single test partition
                 state['n_samples'] = None
             if version < 17:
-                # dict -> ExecutionContext, and t_run moved into the context as duration; concatenated results stored a list of dicts and the sum of t_run over parts, which is dropped
+                # dict -> ExecutionContext, and t_run moved into the context as duration; concatenated results stored a list of distinct dicts (None for parts without context) and the sum of t_run over parts, which is dropped
                 context = state.get('execution_context')
                 duration = state.pop('t_run')
                 if context is None:
@@ -315,7 +315,7 @@ class BoostingResult(PickleableDataClass):
                 elif isinstance(context, dict):
                     state['execution_context'] = ExecutionContext._from_legacy(context, duration)
                 else:
-                    contexts = tuple(dict.fromkeys(ExecutionContext._from_legacy(c) for c in context))
+                    contexts = tuple(dict.fromkeys(ExecutionContext._from_legacy(c) for c in context if c is not None))
                     state['execution_context'] = contexts[0] if len(contexts) == 1 else contexts
         PickleableDataClass.__setstate__(self, state)
 
