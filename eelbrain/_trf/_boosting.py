@@ -121,8 +121,6 @@ class BoostingResult(PickleableDataClass):
         consider using ``proportion_explained``.
     r_rank : float | NDVar
         As ``r``, the Spearman rank correlation.
-    t_run
-        Time it took to run the boosting algorithm (in seconds).
     error
         The error evaluation method used.
     residual : float | NDVar
@@ -234,7 +232,6 @@ class BoostingResult(PickleableDataClass):
     # results
     _h: NDVar | tuple[NDVar, ...]
     _isnan: np.ndarray
-    t_run: float
     # advanced parameters
     basis: float
     basis_window: str
@@ -309,11 +306,14 @@ class BoostingResult(PickleableDataClass):
             if version < 16 and state.get('i_test') is not None:
                 # n_samples reflects all data, which is wrong for a single test partition
                 state['n_samples'] = None
-            if version < 17 and state.get('execution_context') is not None:
-                # dict -> ExecutionContext; concatenated results stored a list of dicts
-                context = state['execution_context']
-                if isinstance(context, dict):
-                    state['execution_context'] = ExecutionContext._from_legacy(context)
+            if version < 17:
+                # dict -> ExecutionContext, and t_run moved into the context as duration; concatenated results stored a list of dicts and the sum of t_run over parts, which is dropped
+                context = state.get('execution_context')
+                duration = state.pop('t_run')
+                if context is None:
+                    state['execution_context'] = ExecutionContext(duration=duration)
+                elif isinstance(context, dict):
+                    state['execution_context'] = ExecutionContext._from_legacy(context, duration)
                 else:
                     contexts = tuple(dict.fromkeys(ExecutionContext._from_legacy(c) for c in context))
                     state['execution_context'] = contexts[0] if len(contexts) == 1 else contexts
@@ -682,9 +682,6 @@ class BoostingResult(PickleableDataClass):
                 out['_isnan'] = None
                 continue
             values = [getattr(result, field_i.name) for result in results]
-            if field_i.name == 't_run':
-                out['t_run'] = None if any(v is None for v in values) else sum(values)
-                continue
             if field_i.name == 'partition_results' and any(v is not None for v in values):
                 if not all(v is not None for v in values):
                     raise ValueError('partition_results available for some but not all part-results')
@@ -725,6 +722,8 @@ class ExecutionContext:
     ----------
     timestamp
         Local time at which the fit started (ISO 8601).
+    duration
+        Time it took to run the boosting algorithm (in seconds).
     eelbrain_version
         Eelbrain version used for the fit.
     python_version
@@ -749,6 +748,7 @@ class ExecutionContext:
     these; the missing attributes are ``None``.
     """
     timestamp: str = None
+    duration: float = None
     eelbrain_version: str = None
     python_version: str = None
     numpy_version: str = None
@@ -762,9 +762,9 @@ class ExecutionContext:
         self.__init__(**state)  # fields added later get their default
 
     @classmethod
-    def _from_legacy(cls, state: dict) -> ExecutionContext:
+    def _from_legacy(cls, state: dict, duration: float = None) -> ExecutionContext:
         "From the dict stored by BoostingResult versions 14-16"
-        return cls(eelbrain_version=state.get('eelbrain_version'), platform=state.get('platform'), os_version=state.get('platform_version'), machine=state.get('machine'))
+        return cls(duration=duration, eelbrain_version=state.get('eelbrain_version'), platform=state.get('platform'), os_version=state.get('platform_version'), machine=state.get('machine'))
 
 
 @cache
@@ -782,9 +782,9 @@ def _static_execution_context() -> dict:
     }
 
 
-def _execution_context(t_start: float, n_workers: int) -> ExecutionContext:
+def _execution_context(t_start: float, t_done: float, n_workers: int) -> ExecutionContext:
     timestamp = datetime.fromtimestamp(t_start).isoformat(timespec='seconds')
-    return ExecutionContext(timestamp, n_workers=n_workers, **_static_execution_context())
+    return ExecutionContext(timestamp, t_done - t_start, n_workers=n_workers, **_static_execution_context())
 
 
 class SplitResult:
@@ -1091,8 +1091,7 @@ class Boosting:
         if debug:
             evaluations['y_pred'] = self.data.package_y_like(self.y_pred, 'y-pred')
             evaluations['fit'] = self
-        t_run = self.t_fit_done - self.t_fit_start
-        execution_context = _execution_context(self.t_fit_start, self.n_workers)
+        execution_context = _execution_context(self.t_fit_start, self.t_fit_done, self.n_workers)
         # partition-specific results
         if partition_results:
             partition_results_list = []
@@ -1103,7 +1102,7 @@ class Boosting:
                 result = BoostingResult(
                     self.data.y_name, self.data.x_name, self.tstart, self.tstop, bool(self.data.scale_data), self.delta, self.mindelta, self.error, self.selective_stopping,
                     y_mean, y_scale, x_mean, x_scale,
-                    h_i, self._get_h_failed(partition), 0,
+                    h_i, self._get_h_failed(partition),
                     self.data.basis, self.data.basis_window, None,
                     int(np.sum(eval_segments[:, 1] - eval_segments[:, 0])), self.data.y_info, self.data.ydims,
                     algorithm_version=BOOSTING_VERSION, execution_context=execution_context,
@@ -1117,7 +1116,7 @@ class Boosting:
             # data properties
             y_mean, y_scale, x_mean, x_scale,
             # results
-            h, self._get_h_failed(self.split_results), t_run,
+            h, self._get_h_failed(self.split_results),
             # advanced parameters
             self.data.basis, self.data.basis_window, self.data.splits,
             # advanced data properties

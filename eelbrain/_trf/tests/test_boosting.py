@@ -349,6 +349,7 @@ def test_execution_context():
     assert abs(datetime.fromisoformat(context.timestamp).timestamp() - time.time()) < 600
     assert isinstance(context.compile_flags, tuple)
     assert context.n_workers > 0
+    assert context.duration >= 0
     for partition_result in res.partition_results:
         assert partition_result.execution_context == context
     # concatenation deduplicates
@@ -365,15 +366,17 @@ def test_execution_context():
     state['version'] = 16
     state['execution_context'] = {'machine': 'arm64', 'architecture': ('64bit', ''), 'processor': 'arm', 'platform': 'darwin', 'platform_version': 'Darwin Kernel Version 24.0.0', 'eelbrain_version': '0.40.0'}
     state['partition_results'] = None
+    state['t_run'] = 1.5
     res_old = BoostingResult.__new__(BoostingResult)
     res_old.__setstate__(state)
-    assert res_old.execution_context == ExecutionContext(eelbrain_version='0.40.0', platform='darwin', os_version='Darwin Kernel Version 24.0.0', machine='arm64')
+    assert res_old.execution_context == ExecutionContext(duration=1.5, eelbrain_version='0.40.0', platform='darwin', os_version='Darwin Kernel Version 24.0.0', machine='arm64')
     assert res_old.execution_context.timestamp is None
     # concatenated results from older versions stored a list of dicts
     state = res.__getstate__()
     state['version'] = 16
     state['execution_context'] = [{'eelbrain_version': '0.40.0'}, {'eelbrain_version': '0.40.0'}, {'eelbrain_version': '0.41.0'}]
     state['partition_results'] = None
+    state['t_run'] = 3.0
     res_old = BoostingResult.__new__(BoostingResult)
     res_old.__setstate__(state)
     assert res_old.execution_context == (ExecutionContext(eelbrain_version='0.40.0'), ExecutionContext(eelbrain_version='0.41.0'))
@@ -383,9 +386,19 @@ def test_execution_context():
     del state['execution_context']
     state['eelbrain_version'] = '0.39.0'
     state['partition_results'] = None
+    state['t_run'] = 1.5
     res_old = BoostingResult.__new__(BoostingResult)
     res_old.__setstate__(state)
-    assert res_old.execution_context == ExecutionContext(eelbrain_version='0.39.0')
+    assert res_old.execution_context == ExecutionContext(duration=1.5, eelbrain_version='0.39.0')
+    # results without execution context
+    state = res.__getstate__()
+    state['version'] = 14
+    del state['execution_context']
+    state['partition_results'] = None
+    state['t_run'] = 1.5
+    res_old = BoostingResult.__new__(BoostingResult)
+    res_old.__setstate__(state)
+    assert res_old.execution_context == ExecutionContext(duration=1.5)
 
 
 @pytest.mark.file_test
