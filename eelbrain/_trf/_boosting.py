@@ -716,14 +716,18 @@ class BoostingResult(PickleableDataClass):
 
 @dataclass(frozen=True)
 class ExecutionContext:
-    """Context in which a :class:`BoostingResult` was estimated
+    """Context in which a model was estimated
+
+    Stored as :attr:`BoostingResult.execution_context`. Estimators create it
+    with :meth:`collect`; a subclass can add fields for estimator-specific
+    information (e.g., the version of a package that is not Eelbrain).
 
     Attributes
     ----------
     timestamp
         Local time at which the fit started (ISO 8601).
     duration
-        Time it took to run the boosting algorithm (in seconds).
+        Time it took to run the fit (in seconds).
     eelbrain_version
         Eelbrain version used for the fit.
     python_version
@@ -737,10 +741,12 @@ class ExecutionContext:
     machine
         Processor architecture (e.g. ``'arm64'``, ``'x86_64'``).
     compile_flags
-        Compiler flags with which the boosting extension was built. These can
+        Compiler flags with which the compiled extension used for the fit was
+        built (``None`` for estimators without a compiled extension). These can
         affect floating point results.
     n_workers
-        Number of parallel workers used for the fit.
+        Number of parallel workers configured for the fit (what this counts
+        depends on the estimator, e.g. OpenMP threads for :func:`boosting`).
 
     Notes
     -----
@@ -762,13 +768,41 @@ class ExecutionContext:
         self.__init__(**state)  # fields added later get their default
 
     @classmethod
+    def collect(
+            cls,
+            t_start: float,
+            t_done: float,
+            n_workers: int = None,
+            compile_flags: tuple[str, ...] = None,
+            **fields,
+    ) -> ExecutionContext:
+        """Describe a fit that was run in the current process
+
+        Parameters
+        ----------
+        t_start
+            Time at which the fit started (from :func:`time.time`).
+        t_done
+            Time at which the fit finished.
+        n_workers
+            Number of parallel workers configured for the fit.
+        compile_flags
+            Compiler flags of the compiled extension used for the fit.
+        **fields
+            Values for additional fields of a subclass.
+        """
+        timestamp = datetime.fromtimestamp(t_start).isoformat(timespec='seconds')
+        return cls(timestamp, t_done - t_start, n_workers=n_workers, compile_flags=compile_flags, **_environment(), **fields)
+
+    @classmethod
     def _from_legacy(cls, state: dict, duration: float = None) -> ExecutionContext:
         "From the dict stored by BoostingResult versions 14-16"
         return cls(duration=duration, eelbrain_version=state.get('eelbrain_version'), platform=state.get('platform'), os_version=state.get('platform_version'), machine=state.get('machine'))
 
 
 @cache
-def _static_execution_context() -> dict:
+def _environment() -> dict:
+    "ExecutionContext fields that describe the running process"
     from .. import __version__
 
     return {
@@ -778,13 +812,7 @@ def _static_execution_context() -> dict:
         'platform': sys.platform,
         'os_version': platform.platform(terse=True),
         'machine': platform.machine(),
-        'compile_flags': opt.COMPILE_FLAGS,
     }
-
-
-def _execution_context(t_start: float, t_done: float, n_workers: int) -> ExecutionContext:
-    timestamp = datetime.fromtimestamp(t_start).isoformat(timespec='seconds')
-    return ExecutionContext(timestamp, t_done - t_start, n_workers=n_workers, **_static_execution_context())
 
 
 class SplitResult:
@@ -1091,7 +1119,7 @@ class Boosting:
         if debug:
             evaluations['y_pred'] = self.data.package_y_like(self.y_pred, 'y-pred')
             evaluations['fit'] = self
-        execution_context = _execution_context(self.t_fit_start, self.t_fit_done, self.n_workers)
+        execution_context = ExecutionContext.collect(self.t_fit_start, self.t_fit_done, self.n_workers, opt.COMPILE_FLAGS)
         # partition-specific results
         if partition_results:
             partition_results_list = []

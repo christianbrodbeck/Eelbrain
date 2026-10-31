@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime
 from itertools import product
 from math import floor
@@ -352,6 +352,17 @@ def test_execution_context():
     assert context.duration >= 0
     for partition_result in res.partition_results:
         assert partition_result.execution_context == context
+    # subclass for another estimator
+
+    @dataclass(frozen=True)
+    class OtherContext(ExecutionContext):
+        other_version: str = None
+
+    other = OtherContext.collect(time.time() - 2, time.time(), other_version='1.0')
+    assert other.eelbrain_version == context.eelbrain_version
+    assert other.compile_flags is None
+    assert other.other_version == '1.0'
+    assert other.duration == approx(2, abs=0.1)
     # concatenation deduplicates
     ds = datasets._get_continuous(ynd=True)
     res = boosting(ds['ynd'], ds['x1'], 0, 0.5, partitions=3)
