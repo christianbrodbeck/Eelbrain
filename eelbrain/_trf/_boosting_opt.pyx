@@ -11,6 +11,17 @@ ctypedef np.int8_t INT8
 ctypedef np.int64_t INT64
 ctypedef np.float64_t FLOAT64
 
+# Compiler flags used to build this extension (set in setup.py); they affect floating point results
+cdef extern from *:
+    """
+    #ifndef EELBRAIN_BOOSTING_FLAGS
+    #define EELBRAIN_BOOSTING_FLAGS ""
+    #endif
+    """
+    const char* EELBRAIN_BOOSTING_FLAGS
+
+COMPILE_FLAGS: tuple[str, ...] = tuple(EELBRAIN_BOOSTING_FLAGS.decode('ascii').split())
+
 
 cdef double inf = float('inf')
 

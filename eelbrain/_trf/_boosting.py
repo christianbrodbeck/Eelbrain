@@ -17,6 +17,7 @@ x2 = ds['x2']
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
+from datetime import datetime
 from functools import cache, cached_property, reduce
 import inspect
 from itertools import chain, repeat
@@ -197,7 +198,9 @@ class BoostingResult(PickleableDataClass):
           - 4: Delta-halving steps compare against the current training error; kernel time axis on the sample grid (Eelbrain 0.43)
 
     execution_context
-        Information on the context in which the model was estimated.
+        Information on the context in which the model was estimated (see
+        :class:`ExecutionContext`). For results combined from several
+        separately estimated parts, a tuple with one entry per distinct context.
 
 
     Examples
@@ -261,9 +264,9 @@ class BoostingResult(PickleableDataClass):
     train_r_l1: NDVar = None
     partition_results: list[BoostingResult] = None
     # store the version of the boosting algorithm with which model was fit
-    version: int = 16  # file format (updates when re-saving)
+    version: int = 17  # file format (updates when re-saving)
     algorithm_version: int = -1  # do not change when re-saving
-    execution_context: dict[str, str | tuple[str, ...]] = None  # do not change when re-saving
+    execution_context: ExecutionContext | tuple[ExecutionContext, ...] = None  # do not change when re-saving
     # debug parameters
     y_pred: NDVar = None
     fit: Boosting = None
@@ -306,6 +309,14 @@ class BoostingResult(PickleableDataClass):
             if version < 16 and state.get('i_test') is not None:
                 # n_samples reflects all data, which is wrong for a single test partition
                 state['n_samples'] = None
+            if version < 17 and state.get('execution_context') is not None:
+                # dict -> ExecutionContext; concatenated results stored a list of dicts
+                context = state['execution_context']
+                if isinstance(context, dict):
+                    state['execution_context'] = ExecutionContext._from_legacy(context)
+                else:
+                    contexts = tuple(dict.fromkeys(ExecutionContext._from_legacy(c) for c in context))
+                    state['execution_context'] = contexts[0] if len(contexts) == 1 else contexts
         PickleableDataClass.__setstate__(self, state)
 
     def __repr__(self):
@@ -685,14 +696,19 @@ class BoostingResult(PickleableDataClass):
                 else:
                     new_value = tuple(sorted(values))
             elif field_i.name == 'execution_context':
-                new_values = values[:1]
-                for value in values[1:]:
-                    if value not in new_values:
-                        new_values.append(value)
-                if len(new_values) == 1:
-                    new_value = new_values[0]
+                contexts = []
+                for value in values:
+                    if isinstance(value, tuple):
+                        contexts.extend(value)
+                    elif value is not None:
+                        contexts.append(value)
+                contexts = tuple(dict.fromkeys(contexts))
+                if len(contexts) == 0:
+                    new_value = None
+                elif len(contexts) == 1:
+                    new_value = contexts[0]
                 else:
-                    new_value = values
+                    new_value = contexts
             elif any(v is None for v in values):
                 new_value = None
             else:
@@ -701,18 +717,74 @@ class BoostingResult(PickleableDataClass):
         return cls(**out)
 
 
+@dataclass(frozen=True)
+class ExecutionContext:
+    """Context in which a :class:`BoostingResult` was estimated
+
+    Attributes
+    ----------
+    timestamp
+        Local time at which the fit started (ISO 8601).
+    eelbrain_version
+        Eelbrain version used for the fit.
+    python_version
+        Python version used for the fit.
+    numpy_version
+        NumPy version used for the fit.
+    platform
+        Operating system (:data:`sys.platform`, e.g. ``'darwin'``, ``'linux'``, ``'win32'``).
+    os_version
+        Operating system release (e.g. ``'macOS-15.1'``).
+    machine
+        Processor architecture (e.g. ``'arm64'``, ``'x86_64'``).
+    compile_flags
+        Compiler flags with which the boosting extension was built. These can
+        affect floating point results.
+    n_workers
+        Number of parallel workers used for the fit.
+
+    Notes
+    -----
+    Results estimated with Eelbrain versions before 0.43 only stored some of
+    these; the missing attributes are ``None``.
+    """
+    timestamp: str = None
+    eelbrain_version: str = None
+    python_version: str = None
+    numpy_version: str = None
+    platform: str = None
+    os_version: str = None
+    machine: str = None
+    compile_flags: tuple[str, ...] = None
+    n_workers: int = None
+
+    def __setstate__(self, state: dict):
+        self.__init__(**state)  # fields added later get their default
+
+    @classmethod
+    def _from_legacy(cls, state: dict) -> ExecutionContext:
+        "From the dict stored by BoostingResult versions 14-16"
+        return cls(eelbrain_version=state.get('eelbrain_version'), platform=state.get('platform'), os_version=state.get('platform_version'), machine=state.get('machine'))
+
+
 @cache
-def _execution_context() -> dict[str, str | tuple[str, ...]]:
+def _static_execution_context() -> dict:
     from .. import __version__
 
     return {
-        'machine': platform.machine(),
-        'architecture': platform.architecture(),
-        'processor': platform.processor(),
-        'platform': sys.platform,
-        'platform_version': platform.version(),
         'eelbrain_version': __version__,
+        'python_version': platform.python_version(),
+        'numpy_version': np.__version__,
+        'platform': sys.platform,
+        'os_version': platform.platform(terse=True),
+        'machine': platform.machine(),
+        'compile_flags': opt.COMPILE_FLAGS,
     }
+
+
+def _execution_context(t_start: float, n_workers: int) -> ExecutionContext:
+    timestamp = datetime.fromtimestamp(t_start).isoformat(timespec='seconds')
+    return ExecutionContext(timestamp, n_workers=n_workers, **_static_execution_context())
 
 
 class SplitResult:
@@ -751,6 +823,7 @@ class Boosting:
     # timing
     t_fit_start = None
     t_fit_done = None
+    n_workers = None
     # fit result
     _i_start = None
     hs = None  # (n_splits, n_y, n_x, n_times_h)
@@ -836,7 +909,7 @@ class Boosting:
         self.t_fit_start = time.time()
 
         # boosting
-        num_threads = CONFIG['n_workers']
+        self.n_workers = num_threads = CONFIG['n_workers']
         split_train = package_splits([split.train for split in self.data.splits.splits])
         split_validate = package_splits([split.validate for split in self.data.splits.splits])
         split_train_and_validate = package_splits([split.train_and_validate for split in self.data.splits.splits])
@@ -1019,7 +1092,7 @@ class Boosting:
             evaluations['y_pred'] = self.data.package_y_like(self.y_pred, 'y-pred')
             evaluations['fit'] = self
         t_run = self.t_fit_done - self.t_fit_start
-        execution_context = _execution_context()
+        execution_context = _execution_context(self.t_fit_start, self.n_workers)
         # partition-specific results
         if partition_results:
             partition_results_list = []

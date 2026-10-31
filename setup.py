@@ -66,7 +66,10 @@ if IS_AMD64 and not IS_WINDOWS:
 if IS_WINDOWS:
     boosting_args = open_mp_args
 else:
-    boosting_args = {**open_mp_args, 'extra_compile_args': open_mp_args['extra_compile_args'] + ['-fno-math-errno', '-fassociative-math', '-fno-signed-zeros', '-fno-trapping-math', '-ffp-contract=fast']}
+    boosting_compile_args = open_mp_args['extra_compile_args'] + ['-fno-math-errno', '-fassociative-math', '-fno-signed-zeros', '-fno-trapping-math', '-ffp-contract=fast']
+    # Record the flags in the extension (exposed as _boosting_opt.COMPILE_FLAGS) because they affect numerical results
+    boosting_define_macros = open_mp_args['define_macros'] + [('EELBRAIN_BOOSTING_FLAGS', '"' + ' '.join(boosting_compile_args) + '"')]
+    boosting_args = {**open_mp_args, 'extra_compile_args': boosting_compile_args, 'define_macros': boosting_define_macros}
 ext = '.pyx' if cythonize else '.c'
 ext_cpp = '.pyx' if cythonize else '.cpp'
 extensions = [
