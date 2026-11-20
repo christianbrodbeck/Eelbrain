@@ -48,6 +48,12 @@ def test_boosting():
         Boosting(partitions=-5, split='case')
     with pytest.raises(ValueError):
         Boosting(partitions=-5, scheme='walk-forward', test=0)
+    # unfreeze: the default is not part of the definition, so that results cached before the parameter existed remain valid
+    assert Boosting(selective_stopping=1, unfreeze=0) == Boosting(selective_stopping=1)
+    assert Boosting(selective_stopping=1, unfreeze=-1)._as_dict()['unfreeze'] == -1
+    assert repr(Boosting(selective_stopping=1, unfreeze=-1)) == "Boosting(selective_stopping=1, unfreeze=-1)"
+    with pytest.raises(ValueError, match='selective stopping'):
+        Boosting(unfreeze=1)
     # no fit metrics without test set
     assert Boosting(test=0).metric_keys == ()
     assert repr(Boosting(basis=0.1, backward=True)) == "Boosting(basis=0.1, backward=True)"

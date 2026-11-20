@@ -186,6 +186,7 @@ def boosting_runs(
         double mindelta,
         int error,
         int selective_stopping,
+        int unfreeze,
         int num_threads,
 ):
     """Estimate multiple filters with boosting
@@ -200,6 +201,8 @@ def boosting_runs(
         Number of iterations before each run stopped.
     stops : array of int (n_splits, n_y)
         Why each run stopped (index into ``STOP_REASONS``).
+    n_unfrozen : array of int (n_splits, n_y)
+        Number of times the predictors were unfrozen.
     """
     cdef:
         Py_ssize_t i_start = np.min(i_start_by_x)
@@ -213,6 +216,7 @@ def boosting_runs(
         INT8[:,:] hs_failed = np.zeros((n_splits, n_y), 'int8')
         INT64[:,:] n_steps = np.zeros((n_splits, n_y), 'int64')
         INT8[:,:] stops = np.zeros((n_splits, n_y), 'int8')
+        INT64[:,:] n_unfrozen = np.zeros((n_splits, n_y), 'int64')
         Py_ssize_t i, i_y, i_split
         BoostingRunResult *result
         INT8 * x_active
@@ -225,10 +229,11 @@ def boosting_runs(
         for i in prange(n_total, schedule='guided'):
             i_y = i // n_splits
             i_split = i % n_splits
-            result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, i_start, n_times_h, x_active, y_error)
+            result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, unfreeze, i_start, n_times_h, x_active, y_error)
             hs_failed[i_split, i_y] = result.failed
             n_steps[i_split, i_y] = result.n_steps
             stops[i_split, i_y] = result.stop
+            n_unfrozen[i_split, i_y] = result.n_unfrozen
             free_history(result)
 
         free(x_active)
@@ -237,7 +242,7 @@ def boosting_runs(
     hs_failed_array = np.asarray(hs_failed)
     if np.any(hs_failed_array == 2):
         raise RuntimeError("Boosting: maximum number of iterations exceeded")
-    return hs.base, hs_failed_array.astype(bool), n_steps.base, stops.base
+    return hs.base, hs_failed_array.astype(bool), n_steps.base, stops.base, n_unfrozen.base
 
 
 ctypedef struct BoostingStep:
@@ -254,14 +259,16 @@ ctypedef struct BoostingRunResult:
     int failed  # 0: success; 1: validation error never improved (h is not meaningful); 2: iteration limit exceeded
     int stop  # index into STOP_REASONS
     Py_ssize_t n_steps  # number of iterations before the run stopped
+    Py_ssize_t n_unfrozen  # number of times the predictors were unfrozen
     BoostingStep *history
 
 
-cdef BoostingRunResult * boosting_run_result(int failed, int stop, Py_ssize_t n_steps, BoostingStep *history) noexcept nogil:
+cdef BoostingRunResult * boosting_run_result(int failed, int stop, Py_ssize_t n_steps, Py_ssize_t n_unfrozen, BoostingStep *history) noexcept nogil:
     result = <BoostingRunResult*> malloc(sizeof(BoostingRunResult))
     result.failed = failed
     result.stop = stop
     result.n_steps = n_steps
+    result.n_unfrozen = n_unfrozen
     result.history = history
     return result
 
@@ -295,6 +302,7 @@ cdef BoostingRunResult * boosting_run(
         double mindelta,
         int error,
         int selective_stopping,
+        int unfreeze,
         Py_ssize_t i_start,
         Py_ssize_t n_times_h,
         # buffers
@@ -312,6 +320,9 @@ cdef BoostingRunResult * boosting_run(
         # history
         double best_test_error = inf
         Py_ssize_t best_step_i = -1
+        # unfreezing
+        double unfreeze_test_error = inf  # best_test_error when the predictors were last unfrozen
+        Py_ssize_t n_unfrozen = 0
         int n_bad, undo
         Py_ssize_t i_step, i
 
@@ -371,7 +382,14 @@ cdef BoostingRunResult * boosting_run(
                     x_active[step.i_stim] = 0
                     n_x_active -= 1
                     if n_x_active == 0:
-                        break
+                        # all predictors are frozen: stop, unless more unfreezing is requested and the validation error improved since the predictors were last unfrozen
+                        if n_unfrozen == unfreeze or best_step_i == -1 or best_test_error >= unfreeze_test_error:
+                            break
+                        n_unfrozen += 1
+                        unfreeze_test_error = best_test_error
+                        for i in range(n_x):
+                            x_active[i] = 1
+                        n_x_active = n_x
                     # revert changes (skipping delta-halving steps, which did not change h)
                     for i in range(undo):
                         if step.delta:
@@ -435,7 +453,7 @@ cdef BoostingRunResult * boosting_run(
         update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split_train_and_validate, step.delta, step.i_time + i_start)
     else:
         # exceptions can not propagate from a noexcept nogil function; the caller raises
-        return boosting_run_result(2, stop, i_step, history)
+        return boosting_run_result(2, stop, i_step, n_unfrozen, history)
 
     # reverse changes after best iteration
     if best_step_i > -1:
@@ -443,10 +461,10 @@ cdef BoostingRunResult * boosting_run(
             if step.delta:
                 h[step.i_stim, step.i_time] -= step.delta
             step = step.previous
-        return boosting_run_result(0, stop, i_step, history)
+        return boosting_run_result(0, stop, i_step, n_unfrozen, history)
     else:
         # print(' failed')
-        return boosting_run_result(1, stop, i_step, history)
+        return boosting_run_result(1, stop, i_step, n_unfrozen, history)
 
 
 cdef void generate_options(
@@ -565,6 +583,7 @@ def boosting_fit(
         double mindelta,
         int error,
         int selective_stopping = 0,
+        int unfreeze = 0,
 ):
     """Single model fit using boosting
 
@@ -596,6 +615,8 @@ def boosting_fit(
         Error function to use (1 for l1, 2 for l2).
     selective_stopping : int
         Selective stopping.
+    unfreeze : int
+        Number of times to unfreeze all predictors once they are all frozen (``-1``: until the validation error stops improving).
     """
     cdef:
         BoostingRunResult *result
@@ -610,7 +631,7 @@ def boosting_fit(
         FLOAT64 * y_error = <FLOAT64 *> malloc(sizeof(FLOAT64) * n_times)
 
     x = np.asarray(x, order='C')
-    result = boosting_run(y, x, x_pads, h, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, i_start, n_times_h, x_active, y_error)
+    result = boosting_run(y, x, x_pads, h, split_train, split_validate, split_train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, unfreeze, i_start, n_times_h, x_active, y_error)
     free(x_active)
     free(y_error)
     if result.failed == 2:

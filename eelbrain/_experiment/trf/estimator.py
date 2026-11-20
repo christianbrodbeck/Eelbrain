@@ -157,6 +157,8 @@ class Boosting(Estimator):
         in half until it is smaller than ``mindelta``.
     selective_stopping
         Stop boosting each predictor separately (see :func:`eelbrain.boosting`).
+    unfreeze
+        With ``selective_stopping``, continue with all predictors after all predictors are stopped (see :func:`eelbrain.boosting`).
     scale_data
         Normalize ``y`` and ``x`` before fitting.
     partitions
@@ -202,6 +204,7 @@ class Boosting(Estimator):
         valid with a single-term model.
     """
     DICT_ATTRS = ('basis', 'basis_window', 'error', 'delta', 'mindelta', 'selective_stopping', 'scale_data', 'partitions', 'split', 'scheme', 'validate', 'test', 'min_section', 'partition_results', 'backward')
+    DICT_DEFAULTS = {'unfreeze': 0}
 
     def __init__(
             self,
@@ -211,6 +214,7 @@ class Boosting(Estimator):
             delta: float = 0.005,
             mindelta: float = None,
             selective_stopping: int = 0,
+            unfreeze: int = 0,
             scale_data: bool = True,
             partitions: int | None = 5,
             split: Literal['case', 'time', 'within-case'] | None = 'time',
@@ -227,6 +231,9 @@ class Boosting(Estimator):
         self.delta = typed_arg(delta, float)
         self.mindelta = typed_arg(mindelta, float, allow_none=True)
         self.selective_stopping = typed_arg(selective_stopping, int)
+        self.unfreeze = typed_arg(unfreeze, int)
+        if self.unfreeze and not self.selective_stopping:
+            raise ValueError(f"{unfreeze=} with {selective_stopping=}: predictors are only frozen with selective stopping")
         self.scale_data = typed_arg(scale_data, bool)
         if test not in (0, 1):
             raise ValueError(f"{test=}: needs to be 0 or 1")
@@ -289,7 +296,7 @@ class Boosting(Estimator):
                 raise ValueError(f"Multiple predictors with the same name: {', '.join(names)}")
             x = xs
         scale_data = 'inplace' if self.scale_data else False
-        return boosting(y, x, tstart, tstop, scale_data, self.delta, self.mindelta, self.error, self.basis, self.basis_window, selective_stopping=self.selective_stopping, partition_results=self.partition_results, **self._split_args)
+        return boosting(y, x, tstart, tstop, scale_data, self.delta, self.mindelta, self.error, self.basis, self.basis_window, selective_stopping=self.selective_stopping, unfreeze=self.unfreeze, partition_results=self.partition_results, **self._split_args)
 
     def _result_metrics(self, result) -> dict[str, NDVar | float]:
         if not self.test:

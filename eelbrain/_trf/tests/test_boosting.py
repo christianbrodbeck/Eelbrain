@@ -154,6 +154,18 @@ def test_boosting():
     assert res.r == approx(0.929, abs=0.001)
     res = boosting(y, [x1, x2], 0, 1, selective_stopping=2)
     assert res.r == approx(0.940, abs=0.001)
+    # unfreeze
+    res = boosting(y, [x1, x2], 0, 1, selective_stopping=1, unfreeze=-1)
+    assert res.r == approx(0.934, abs=0.001)
+    assert res.unfreeze == -1
+    assert repr(res) == '<BoostingResult y ~ x1 + x2, 0 - 1, selective_stopping=1, unfreeze=-1>'
+    assert pickle.loads(pickle.dumps(res)).unfreeze == -1
+    res = boosting(y, [x1, x2], 0, 1, selective_stopping=1, unfreeze=1, debug=True)
+    assert max(split_result.n_unfrozen.max() for split_result in res.fit.split_results) == 1
+    with pytest.raises(ValueError, match='selective stopping'):
+        boosting(y, [x1, x2], 0, 1, unfreeze=1)
+    with pytest.raises(ValueError, match='unfreeze=-2'):
+        boosting(y, [x1, x2], 0, 1, selective_stopping=1, unfreeze=-2)
 
     # 2d-y
     res_cv = boosting('ynd', ['x1', 'x2'], 0, 1, data=ds, test=1, partitions=4, partition_results=True)
@@ -585,6 +597,33 @@ def test_boosting_fit_best_step(selective_stopping, seed):
             best_test_error = step.e_test
             h_best = h_replay.copy()
     assert_allclose(h, h_best, rtol=0, atol=1e-12)
+
+
+def test_boosting_fit_unfreeze():
+    "Unfreezing continues the fit with selective stopping, and stops when it does not reduce the validation error"
+    n_times, n_x, n_lags = 3000, 4, 10
+    rng = np.random.RandomState(0)
+    x = rng.normal(0, 1, (n_x, n_times))
+    x[1] += x[0]
+    h_true = rng.normal(0, 1, (n_x, n_lags))
+    y = sum(np.convolve(x_i, h_i)[:n_times] for x_i, h_i in zip(x, h_true)) + rng.normal(0, 10, n_times)
+    y = (y - y.mean()) / y.std()
+    x = (x - x.mean(1, keepdims=True)) / x.std(1, keepdims=True)
+    args = (y, x, np.zeros(n_x), np.array([[0, 2000]], np.int64), np.array([[2000, n_times]], np.int64), np.array([[0, n_times]], np.int64), np.zeros(n_x, np.int64), np.full(n_x, n_lags, np.int64), 0.005, 0.005, 2, 1)
+
+    h_0, history_0 = boosting_fit(*args)
+    test_errors = [min(step.e_test for step in history_0)]
+    for unfreeze in (1, 2, -1):
+        h, history = boosting_fit(*args, unfreeze)
+        # the fit is the same until all predictors are frozen (the last step is reverted)
+        for step, step_0 in zip(history, history_0[:-1]):
+            assert (step.i_step, step.i_stim, step.i_time, step.delta) == (step_0.i_step, step_0.i_stim, step_0.i_time, step_0.delta)
+        test_errors.append(min(step.e_test for step in history))
+    # unfreezing reduces the validation error, until it does not (which ends the fit without a limit)
+    assert test_errors[1] < test_errors[0]
+    assert test_errors[2] < test_errors[1]
+    assert test_errors[3] == test_errors[2]
+    assert_array_equal(boosting_fit(*args, 0)[0], h_0)
 
 
 def test_trf_len():

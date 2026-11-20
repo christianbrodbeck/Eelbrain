@@ -243,6 +243,8 @@ class BoostingResult(PickleableDataClass):
     n_samples: int = None
     _y_info: dict = field(default_factory=dict)
     _y_dims: tuple[Dimension, ...] = None
+    # parameters added later
+    unfreeze: int = 0
     # fit metrics
     i_test: int = None  # test partition for fit metrics
     i_validate: int = None  # validation partition (partition results without test set)
@@ -830,7 +832,7 @@ def _environment() -> dict:
 
 class SplitResult:
     "Result of one boosting run"
-    __slots__ = ('i_split', 'split', 'top_split', 'h_failed', 'n_steps', 'stop')
+    __slots__ = ('i_split', 'split', 'top_split', 'h_failed', 'n_steps', 'stop', 'n_unfrozen')
 
     def __init__(
             self,
@@ -840,6 +842,7 @@ class SplitResult:
             h_failed: np.ndarray,
             n_steps: np.ndarray,
             stop: np.ndarray,
+            n_unfrozen: np.ndarray,
     ):
         self.i_split = i_split  # index into Boosting.hs
         self.split = split  # leaf split
@@ -847,6 +850,7 @@ class SplitResult:
         self.h_failed = h_failed  # (n_y,)
         self.n_steps = n_steps  # (n_y,) number of iterations before the run stopped
         self.stop = stop  # (n_y,) why the run stopped (index into opt.STOP_REASONS)
+        self.n_unfrozen = n_unfrozen  # (n_y,) number of times the predictors were unfrozen
 
 
 class Boosting:
@@ -870,6 +874,7 @@ class Boosting:
     tstart_h = None
     tstop = None
     selective_stopping = None
+    unfreeze = 0
     error = None
     delta = None
     mindelta = None
@@ -909,6 +914,7 @@ class Boosting:
             error: str = 'l1',
             delta: float = 0.005,  # coordinate search step
             mindelta: float = None,  # narrow search by reducing delta until reaching mindelta
+            unfreeze: int = 0,  # number of times to unfreeze all predictors (-1: until the validation error stops improving)
     ):
         self.data.check_data()
         if (self.data.x.mean is None) != (self.data.y.mean is None):
@@ -924,7 +930,12 @@ class Boosting:
             raise ValueError(f"{mindelta=}: needs to be positive and not larger than {delta=}")
         else:
             mindelta_ = mindelta
+        if unfreeze < -1:
+            raise ValueError(f"{unfreeze=}")
+        elif unfreeze and not selective_stopping:
+            raise ValueError(f"{unfreeze=} with {selective_stopping=}: predictors are only frozen with selective stopping")
         self.selective_stopping = selective_stopping
+        self.unfreeze = unfreeze
         self.error = error
         self.delta = delta
         self.mindelta = mindelta
@@ -961,8 +972,8 @@ class Boosting:
         validate = package_splits([split.reserved for _, split in runs])
         train_and_validate = package_splits([split.train_and_reserved for _, split in runs])
         self.n_workers = num_threads = CONFIG['n_workers']
-        self.hs, hs_failed, n_steps, stops = opt.boosting_runs(self.data.y.flat, self.data.x.flat, self.data.x.pads, train, validate, train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta_, error_id, selective_stopping, num_threads)
-        self.split_results = [SplitResult(i, split, top_split, hs_failed[i], n_steps[i], stops[i]) for i, (top_split, split) in enumerate(runs)]
+        self.hs, hs_failed, n_steps, stops, n_unfrozen = opt.boosting_runs(self.data.y.flat, self.data.x.flat, self.data.x.pads, train, validate, train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta_, error_id, selective_stopping, unfreeze, num_threads)
+        self.split_results = [SplitResult(i, split, top_split, hs_failed[i], n_steps[i], stops[i], n_unfrozen[i]) for i, (top_split, split) in enumerate(runs)]
 
         self.t_fit_done = time.time()
 
@@ -1150,7 +1161,7 @@ class Boosting:
                     h_i, self._get_h_failed(partition),
                     self.data.basis, self.data.basis_window, None,
                     int(np.sum(split.reserved[:, 1] - split.reserved[:, 0])), y_block.info, y_block.dims,
-                    algorithm_version=BOOSTING_VERSION, execution_context=execution_context,
+                    algorithm_version=BOOSTING_VERSION, execution_context=execution_context, unfreeze=self.unfreeze,
                     i_test=split.i_reserved if cross_fit else None, i_validate=None if cross_fit else split.i_reserved, **evaluations_i)
                 partition_results_list.append(result)
         else:
@@ -1167,7 +1178,7 @@ class Boosting:
             # advanced data properties
             n_samples, y_block.info, y_block.dims,
             partition_results=partition_results_list,
-            algorithm_version=BOOSTING_VERSION, execution_context=execution_context,
+            algorithm_version=BOOSTING_VERSION, execution_context=execution_context, unfreeze=self.unfreeze,
             i_test=i_test, **evaluations)
 
 
@@ -1193,6 +1204,7 @@ def boosting(
         min_section: float = None,
         data: Dataset = None,
         selective_stopping: int = 0,
+        unfreeze: int = 0,
         partition_results: bool = False,
         debug: bool = False,
 ) -> BoostingResult:
@@ -1305,6 +1317,15 @@ def boosting(
         increase in validation error, and continues until all predictors are
         stopped. The integer value of ``selective_stopping`` determines after
         how many steps with error increases each predictor is excluded.
+    unfreeze
+        With ``selective_stopping``, boosting stops once all predictors are
+        excluded. With ``unfreeze``, all predictors are then included again
+        and boosting continues until all predictors are excluded again. This
+        gives predictors that were excluded early another chance in the
+        context of the complete model. ``unfreeze`` is the maximum number of
+        times the predictors are included again (``-1``: no limit); boosting
+        always stops when including them again did not reduce the validation
+        error.
     partition_results
         Keep results (TRFs and model evaluation) for each test partition, or,
         with ``test=0``, for each validation partition (including the fit to
@@ -1362,7 +1383,7 @@ def boosting(
     splits = split_data(dec_data.segments, tstep=dec_data.time.tstep, partitions=partitions, split=split, scheme=scheme, validate=validate, test=test, model=model, min_section=min_section, data=data)
 
     fit = Boosting(dec_data, splits)
-    fit.fit(tstart, tstop, selective_stopping, error, delta, mindelta)
+    fit.fit(tstart, tstop, selective_stopping, error, delta, mindelta, unfreeze)
     return fit.evaluate_fit(debug=debug, partition_results=partition_results)
 
 
