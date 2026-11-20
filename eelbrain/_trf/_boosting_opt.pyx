@@ -354,6 +354,15 @@ cdef BoostingRunResult * boosting_run(
                         free(step)
                         step = step_j
                     history = step
+                    if best_step_i > step.i_step:
+                        # the best step was among the reverted steps: find the best remaining step (the first one among ties)
+                        best_test_error = inf
+                        step_j = step
+                        while step_j != NULL:
+                            if step_j.e_test <= best_test_error:
+                                best_test_error = step_j.e_test
+                                best_step_i = step_j.i_step
+                            step_j = step_j.previous
             # Basic
             # -----
             # stop the iteration if all the following requirements are met

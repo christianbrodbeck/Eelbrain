@@ -44,7 +44,7 @@ from ._fit_metrics import get_evaluators
 from . import _boosting_opt as opt
 
 
-BOOSTING_VERSION: int = 6
+BOOSTING_VERSION: int = 7
 
 
 def to_array(ndvar: NDVar | tuple[NDVar, ...] | float) -> np.ndarray:
@@ -195,6 +195,7 @@ class BoostingResult(PickleableDataClass):
           - 3: Cython based convolution (Eelbrain 0.40)
           - 5: Delta-halving steps compare against the current training error; kernel time axis on the sample grid (Eelbrain 0.43; version 4 was only used during development)
           - 6: ``basis`` applied to each case separately (Eelbrain 0.43)
+          - 7: With ``selective_stopping > 1``, the kernel is the best of the steps that were not reverted (Eelbrain 0.43)
 
     execution_context
         Information on the context in which the model was estimated (see

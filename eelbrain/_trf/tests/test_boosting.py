@@ -554,6 +554,33 @@ def test_boosting_fit():
     assert rr == approx(mat['crlt'][1, 0])
 
 
+@pytest.mark.parametrize('selective_stopping, seed', [(1, 0), (2, 420), (3, 13)])
+def test_boosting_fit_best_step(selective_stopping, seed):
+    "The kernel is the one with the lowest validation error among the steps that were not reverted (seeds with which reverting a predictor's steps removes the best step)"
+    n_times, n_x, n_lags = 1500, 3, 10
+    rng = np.random.RandomState(seed)
+    x = rng.normal(0, 1, (n_x, n_times))
+    x[1] += x[0]
+    h_true = rng.normal(0, 1, (n_x, n_lags))
+    y = sum(np.convolve(x_i, h_i)[:n_times] for x_i, h_i in zip(x, h_true)) + rng.normal(0, 10, n_times)
+    y = (y - y.mean()) / y.std()
+    x = (x - x.mean(1, keepdims=True)) / x.std(1, keepdims=True)
+    train = np.array([[0, 1000]], np.int64)
+    validate = np.array([[1000, n_times]], np.int64)
+    all_segments = np.array([[0, n_times]], np.int64)
+    h, history = boosting_fit(y, x, np.zeros(n_x), train, validate, all_segments, np.zeros(n_x, np.int64), np.full(n_x, n_lags, np.int64), 0.005, 0.005, 2, selective_stopping)
+    # replay the remaining steps
+    h_replay = np.zeros_like(h)
+    best_test_error = np.inf
+    for step in history:
+        if step.delta:
+            h_replay[step.i_stim, step.i_time] += step.delta
+        if step.e_test < best_test_error:
+            best_test_error = step.e_test
+            h_best = h_replay.copy()
+    assert_allclose(h, h_best, rtol=0, atol=1e-12)
+
+
 def test_trf_len():
     # test vanilla boosting
     rng = np.random.RandomState(0)

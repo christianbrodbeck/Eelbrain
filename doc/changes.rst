@@ -114,6 +114,7 @@ New in 0.43
     to the variability in the evaluated data segments. Previously, it was
     computed relative to the variability in all data, which strongly
     overestimated it.
+  - Fix: with ``selective_stopping > 1``, reverting the steps since a predictor started to overfit could also revert the step with the lowest validation error, in which case the returned kernel was not the best one among the remaining steps. This affected few models and changed them only slightly (:attr:`BoostingResult.algorithm_version` changes to ``7``). ``selective_stopping=1`` is not affected.
   - More options for data partitioning (see :ref:`exa-data_split`).
   - The ``basis`` is now applied to each case separately, so that it no longer
     smooths across case boundaries.
