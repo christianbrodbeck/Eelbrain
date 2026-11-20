@@ -18,7 +18,7 @@ from eelbrain import datasets, boosting, combine, concatenate, convolve, correla
 
 from eelbrain.testing import assert_dataobj_equal
 from eelbrain._trf._boosting import Boosting, DeconvolutionData, convolve_1d
-from eelbrain._trf._boosting_opt import boosting_fit
+from eelbrain._trf._boosting_opt import STOP_REASONS, boosting_fit
 
 
 DATA_DIR = Path(__file__).parent
@@ -330,6 +330,12 @@ def test_boosting_object():
     model = Boosting(data, splits)
     model.fit(0, 1, selective_stopping=1, error='l1')
     res_oo = model.evaluate_fit()
+    # run diagnostics
+    assert len(model.split_results) == 12
+    for split_result in model.split_results:
+        assert split_result.n_steps.shape == (1,)
+        assert split_result.n_steps[0] > 10
+        assert STOP_REASONS[split_result.stop[0]] == 'validation'
 
     res_func = boosting('y', 'x2', 0, 1, data=ds, error='l1', basis=0.2, partitions=4, test=1, selective_stopping=1)
     assert res_oo.r == res_func.r

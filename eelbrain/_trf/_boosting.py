@@ -830,7 +830,7 @@ def _environment() -> dict:
 
 class SplitResult:
     "Result of one boosting run"
-    __slots__ = ('i_split', 'split', 'top_split', 'h_failed')
+    __slots__ = ('i_split', 'split', 'top_split', 'h_failed', 'n_steps', 'stop')
 
     def __init__(
             self,
@@ -838,11 +838,15 @@ class SplitResult:
             split: Split,
             top_split: Split,
             h_failed: np.ndarray,
+            n_steps: np.ndarray,
+            stop: np.ndarray,
     ):
         self.i_split = i_split  # index into Boosting.hs
         self.split = split  # leaf split
         self.top_split = top_split  # top-level split containing the leaf (or the leaf itself)
         self.h_failed = h_failed  # (n_y,)
+        self.n_steps = n_steps  # (n_y,) number of iterations before the run stopped
+        self.stop = stop  # (n_y,) why the run stopped (index into opt.STOP_REASONS)
 
 
 class Boosting:
@@ -957,8 +961,8 @@ class Boosting:
         validate = package_splits([split.reserved for _, split in runs])
         train_and_validate = package_splits([split.train_and_reserved for _, split in runs])
         self.n_workers = num_threads = CONFIG['n_workers']
-        self.hs, hs_failed = opt.boosting_runs(self.data.y.flat, self.data.x.flat, self.data.x.pads, train, validate, train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta_, error_id, selective_stopping, num_threads)
-        self.split_results = [SplitResult(i, split, top_split, h_failed) for i, ((top_split, split), h_failed) in enumerate(zip(runs, hs_failed))]
+        self.hs, hs_failed, n_steps, stops = opt.boosting_runs(self.data.y.flat, self.data.x.flat, self.data.x.pads, train, validate, train_and_validate, i_start_by_x, i_stop_by_x, delta, mindelta_, error_id, selective_stopping, num_threads)
+        self.split_results = [SplitResult(i, split, top_split, hs_failed[i], n_steps[i], stops[i]) for i, (top_split, split) in enumerate(runs)]
 
         self.t_fit_done = time.time()
 

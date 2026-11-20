@@ -36,6 +36,13 @@ COMPILER: str = EELBRAIN_BOOSTING_COMPILER.decode('ascii')
 
 cdef double inf = float('inf')
 
+# Why a boosting run stopped; the index is the code stored in BoostingRunResult.stop
+STOP_REASONS: tuple[str, ...] = (
+    'validation',  # the validation error stopped improving (with selective stopping: for all predictors)
+    'training',  # the training error can not be reduced (delta < mindelta)
+    'circle',  # the best step would revert the previous step
+)
+
 
 cdef double square(double x) noexcept nogil:
     # cf. https://github.com/scikit-image/scikit-image/issues/3026
@@ -181,7 +188,19 @@ def boosting_runs(
         int selective_stopping,
         int num_threads,
 ):
-    """Estimate multiple filters with boosting"""
+    """Estimate multiple filters with boosting
+
+    Returns
+    -------
+    hs : array (n_splits, n_y, n_x, n_times_h)
+        Kernels.
+    hs_failed : array of bool (n_splits, n_y)
+        Runs in which the validation error never improved.
+    n_steps : array of int (n_splits, n_y)
+        Number of iterations before each run stopped.
+    stops : array of int (n_splits, n_y)
+        Why each run stopped (index into ``STOP_REASONS``).
+    """
     cdef:
         Py_ssize_t i_start = np.min(i_start_by_x)
         Py_ssize_t n_y = y.shape[0]
@@ -192,6 +211,8 @@ def boosting_runs(
         Py_ssize_t n_times_h = np.max(i_stop_by_x) - i_start
         FLOAT64[:,:,:,:] hs = np.empty((n_splits, n_y, n_x, n_times_h))
         INT8[:,:] hs_failed = np.zeros((n_splits, n_y), 'int8')
+        INT64[:,:] n_steps = np.zeros((n_splits, n_y), 'int64')
+        INT8[:,:] stops = np.zeros((n_splits, n_y), 'int8')
         Py_ssize_t i, i_y, i_split
         BoostingRunResult *result
         INT8 * x_active
@@ -206,6 +227,8 @@ def boosting_runs(
             i_split = i % n_splits
             result = boosting_run(y[i_y], x, x_pads, hs[i_split, i_y], split_train[i_split], split_validate[i_split], split_train_and_validate[i_split], i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping, i_start, n_times_h, x_active, y_error)
             hs_failed[i_split, i_y] = result.failed
+            n_steps[i_split, i_y] = result.n_steps
+            stops[i_split, i_y] = result.stop
             free_history(result)
 
         free(x_active)
@@ -214,7 +237,7 @@ def boosting_runs(
     hs_failed_array = np.asarray(hs_failed)
     if np.any(hs_failed_array == 2):
         raise RuntimeError("Boosting: maximum number of iterations exceeded")
-    return hs.base, hs_failed_array.astype(bool)
+    return hs.base, hs_failed_array.astype(bool), n_steps.base, stops.base
 
 
 ctypedef struct BoostingStep:
@@ -229,12 +252,16 @@ ctypedef struct BoostingStep:
 
 ctypedef struct BoostingRunResult:
     int failed  # 0: success; 1: validation error never improved (h is not meaningful); 2: iteration limit exceeded
+    int stop  # index into STOP_REASONS
+    Py_ssize_t n_steps  # number of iterations before the run stopped
     BoostingStep *history
 
 
-cdef BoostingRunResult * boosting_run_result(int failed, BoostingStep *history) noexcept nogil:
+cdef BoostingRunResult * boosting_run_result(int failed, int stop, Py_ssize_t n_steps, BoostingStep *history) noexcept nogil:
     result = <BoostingRunResult*> malloc(sizeof(BoostingRunResult))
     result.failed = failed
+    result.stop = stop
+    result.n_steps = n_steps
     result.history = history
     return result
 
@@ -275,7 +302,7 @@ cdef BoostingRunResult * boosting_run(
         FLOAT64 * y_error,
 ) noexcept nogil:
     cdef:
-        int out
+        int stop = 0  # index into STOP_REASONS
         Py_ssize_t n_x = x.shape[0]
         Py_ssize_t n_x_active = n_x
         Py_ssize_t n_times = x.shape[1]
@@ -393,12 +420,14 @@ cdef BoostingRunResult * boosting_run(
                 continue
             else:
                 # print("No improvement possible for training data")
+                stop = 1  # 'training'
                 break
 
         # abort if we're moving in circles
         if step.delta == -step.previous.delta and step.i_stim == step.previous.i_stim and step.i_time == step.previous.i_time:
             step.delta = 0
             # print("Moving in circles")
+            stop = 2  # 'circle'
             break
 
         # update h with best movement
@@ -406,7 +435,7 @@ cdef BoostingRunResult * boosting_run(
         update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split_train_and_validate, step.delta, step.i_time + i_start)
     else:
         # exceptions can not propagate from a noexcept nogil function; the caller raises
-        return boosting_run_result(2, history)
+        return boosting_run_result(2, stop, i_step, history)
 
     # reverse changes after best iteration
     if best_step_i > -1:
@@ -414,10 +443,10 @@ cdef BoostingRunResult * boosting_run(
             if step.delta:
                 h[step.i_stim, step.i_time] -= step.delta
             step = step.previous
-        return boosting_run_result(0, history)
+        return boosting_run_result(0, stop, i_step, history)
     else:
         # print(' failed')
-        return boosting_run_result(1, history)
+        return boosting_run_result(1, stop, i_step, history)
 
 
 cdef void generate_options(
